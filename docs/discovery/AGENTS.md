@@ -30,6 +30,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`agent-onboarding.md`](./agent-onboarding.md) — onboarding guide for future agents.
 - [`agentic-coding-benchmarks.md`](./agentic-coding-benchmarks.md) — migration guide from direct coding tasks to long-horizon agentic coding benchmarks.
 - [`claw-eval-leaderboard.md`](./claw-eval-leaderboard.md) — ranked Claw-Eval full/quick scores on this 8 GB rig + operational lessons.
+- [`coding-leaderboard.md`](./coding-leaderboard.md) — ranked coding-10 (HE/MBPP/LCB/BC) scores on this 8 GB rig.
 - [`agent-shell-hard-gates.md`](./agent-shell-hard-gates.md) — live gate inventory, disable/rollback playbook (§3), threat model (Cursor + Claude Code).
 - [`../models/README.md`](../../models/README.md) — nested GGUF store shared with LM Studio.
 

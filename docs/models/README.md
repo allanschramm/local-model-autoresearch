@@ -17,24 +17,25 @@ Dense and MoE models can both have MTP support.
 
 Cards:
 - [Gemma-4-12B](gemma-4-12b.md)
-- [Gemma-4-E4B](gemma-4-e4b.md) — **default speed Baseline** (122 t/s with draft MTP)
+- [Gemma-4-E4B](gemma-4-e4b.md) — draft MTP speed Baseline (~122 t/s); claw-full **0.3333** @ 65k MTP
 - [Nanbeige4.2-3B](nanbeige4.2-3b.md) — looped dense; needs `llama.cpp-nanbeige42`
 - [Qwythos-9B-Claude-Mythos-5-1M](qwythos-9b-claude-mythos-5-1m.md) — also notes Qwythos-9B-v2
 - [Qwen3.5-9B](qwen3.5-9b.md)
 - [Qwen3.6-35B-A3B](qwen3.6-35b-a3b.md)
 - [Qwen-AgentWorld-35B-A3B](qwen-agentworld-35b-a3b.md)
 - [Gemma-4-26B-A4B](gemma-4-26b-a4b.md)
-- [Ornith-1.0-9B](ornith-1.0-9b.md) — UD base + Hub MTP GGUF
+- [Ornith-1.0-9B](ornith-1.0-9b.md) — UD base; claw-full **0.6000** @ 65k; coding-10 **0.570** @ **32k**
 - [Ornith-1.0-35B](ornith-1.0-35b.md) — Q4_K_M (primary) + IQ3_M variant
 - [Ornith-1.0-35B IQ3_M](ornith-1.0-35b-iq3_m.md) — IQ3_M variant (rejected: slower than Q4_K_M)
-- [Laguna-XS-2.1](laguna-xs-2.1.md) — MoE 256×2.2B; **best claw-full Val Score 0.6667** on this rig
+- [Laguna-XS-2.1](laguna-xs-2.1.md) — MoE 256×2.2B; **best claw-full 0.6667**; coding-10 **0.195**
 - [Bonsai-27B](bonsai-27b.md) — Q1_0; agentic @ 65k (131k VRAM-kill); Ternary Q2_0 rejected
 - [Ternary-Bonsai-27B](ternary-bonsai-27b.md) — **deleted** (10.6 t/s < floor; PrismML)
-- [LFM2.5-1.2B](lfm2.5-1.2b.md) — tiny dense; alias **65k f16** (180.6 t/s, claw-quick 0.80); 128k needs KV quant
-- [LFM2.5-8B-A1B](lfm2.5-8b-a1b.md) — MoE hybrid; ~174 t/s; full VRAM (`n-cpu-moe 0`); claw-quick 0.20
+- [LFM2.5-1.2B](lfm2.5-1.2b.md) — tiny dense; claw-full **0.6000** @ 166 t/s; coding-10 **0.350**
+- [LFM2.5-8B-A1B](lfm2.5-8b-a1b.md) — MoE hybrid; ~174–184 t/s; full VRAM (`n-cpu-moe 0`); claw-full ≤0.20
 - [VITRIOL technique](vitriol-technique.md) — Codacus MoE-split strategy (`N_CPU_MOE=None` ≠ no offload in harness)
 
-Claw-Eval ranks (all models): [docs/discovery/claw-eval-leaderboard.md](../discovery/claw-eval-leaderboard.md).
+Claw-Eval ranks: [claw-eval-leaderboard.md](../discovery/claw-eval-leaderboard.md).  
+Coding-10 ranks: [coding-leaderboard.md](../discovery/coding-leaderboard.md).
 
 ## Open extraction tasks
 Unsloth's web docs return ~5k chars per `web_extract` call, truncating longer pages. The following sections are still missing from our cards and should be re-extracted via `browser_navigate` or a longer timeout when needed:

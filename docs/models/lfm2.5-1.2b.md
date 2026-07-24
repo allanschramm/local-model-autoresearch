@@ -68,12 +68,30 @@ N/A (dense).
 
 Evidence: [session 2026-07-24](../sessions/2026-07-24-lfm2.5-1.2b-ctx-kv-matrix.md). Sibling MoE: [lfm2.5-8b-a1b.md](lfm2.5-8b-a1b.md).
 
+## Measured (claw-full, 2026-07-24)
+
+| Setup | Val Score | pass | TPS | peak VRAM |
+|---|---|---|---|---|
+| **65k f16 (alias)** | **0.6000** | 9/15 | **166.4** | 3.7 GB |
+
+Ties Ornith-9B/35B on Val Score; ~4× TPS. Evidence: [session top-TPS full](../sessions/2026-07-24-claw-full-top-tps.md). Leaderboard: [claw-eval-leaderboard.md](../discovery/claw-eval-leaderboard.md).
+
+## Measured (coding-10, 2026-07-24)
+
+| Metric | Value |
+|---|---|
+| coding | **0.3500** (LCB patched†) |
+| LCB / HE / MBPP / BC | 0.10 / 0.50 / 0.70 / 0.10 |
+| bench_tg | 167.6 t/s |
+| peak VRAM | 4.0 GB |
+
+† HE/MBPP/BC from Trial `9af96f3c-…`; LCB via `scripts/lcb_only.py`. Sessions: [coding-10](../sessions/2026-07-24-coding-10-claw-leaders.md), [lcb-patch](../sessions/2026-07-24-lcb-patch-gambiarra.md).
+
 ## Sources / Verification
 
 - Local GGUF `lfm2.context_length` via `GGUFReader` — 2026-07-24
-- Harness `--validation` rows in `results.tsv` — 2026-07-24
+- Harness `--validation` / `--agentic-full` / `--include-coding` rows in `results.tsv` — 2026-07-24
 
 ## Open questions
 
-- Claw-Eval full not run (tiny model; optional later).
-- Whether 128k q4 smoke 0.60 vs 65k f16 0.80 is KV quality or n=5 noise — full would clarify.
+- Whether 128k q4 smoke 0.60 vs 65k f16 0.80 is KV quality or n=5 noise — optional 128k full later.

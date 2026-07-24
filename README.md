@@ -106,12 +106,15 @@ Ranking local atual (8 GB): [docs/discovery/claw-eval-leaderboard.md](docs/disco
 
 ### Preflight coding
 
-HE+/MBPP+/LCB/BigCode ficam como preflight rápido opcional, não como medida final de agente:
+HE+/MBPP+/LCB/BigCode ficam como preflight rápido opcional, não como medida final de agente. Ranking local: [docs/discovery/coding-leaderboard.md](docs/discovery/coding-leaderboard.md) — líder histórico Mythos **0.6400**; Ornith UD atual **0.5700** @ ctx 32k.
 
 ```bash
-python benchmark_search.py --list-agentic-benchmarks
-```
+# coding-10 completo (edite config.py antes)
+.\venv\Scripts\python.exe benchmark_search.py --include-coding --no-agentic-quick --no-agentic-full --desc "coding-10 …"
 
+# só LCB (gambiarra / re-medida)
+.\venv\Scripts\python.exe scripts\lcb_only.py
+```
 ### Segurança
 
 - Checagem de VRAM antes de subir o servidor

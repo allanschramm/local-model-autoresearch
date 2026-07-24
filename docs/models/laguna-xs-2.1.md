@@ -95,17 +95,21 @@ TPS_FLOOR = 15.0
 |---|---|---|
 | claw-quick | **1.0000** (5/5) | Best smoke on this rig |
 | claw-full | **0.6667** (10/15) KEEP | **Best Val Score** in `results.tsv` (sane 0–1) |
-| bench_tg | **37.2** t/s | cli-bench gen=512 |
-| peak VRAM | **3.6 GB** | Under agentic full |
+| coding-10 | **0.1950** | LCB 0.20 / HE 0.20 / MBPP 0.30 / BC 0.00 (LCB patched†) |
+| bench_tg | **37.2** t/s | cli-bench gen=512 (claw-full row) |
+| peak VRAM | **3.6–4.5 GB** | Agentic ~3.6; coding ~4.5 |
 
-Evidence: [session 2026-07-24](../sessions/2026-07-24-claw-full-smoke-high.md), [leaderboard](../discovery/claw-eval-leaderboard.md).
+† Coding HE/MBPP/BC from Trial `d8851b80-…`; LCB re-measured 2026-07-24 (`scripts/lcb_only.py`) after symlink fix.
+
+Evidence: [claw-full](../sessions/2026-07-24-claw-full-smoke-high.md), [coding-10](../sessions/2026-07-24-coding-10-claw-leaders.md), [lcb-patch](../sessions/2026-07-24-lcb-patch-gambiarra.md), [claw leaderboard](../discovery/claw-eval-leaderboard.md), [coding leaderboard](../discovery/coding-leaderboard.md).
 
 ## Sources / Verification
 
 - Local GGUF metadata via `gguf.GGUFReader` — 2026-07-24
-- Harness runs logged in `results.tsv` (`category=agentic-full` / `validation`) — 2026-07-24
+- Harness runs logged in `results.tsv` (`agentic-full` / `10-task`) — 2026-07-24
 - Alias: `models/aliases/laguna-xs/config.yaml`
 
 ## Open questions
 
 - None blocking local agentic use. Optional later: ctx >65k headroom test if VRAM_LIMIT raised or KV further compressed.
+- Coding remains weak vs Ornith/Mythos — do not use Laguna as coding Baseline.

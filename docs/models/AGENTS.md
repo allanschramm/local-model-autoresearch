@@ -52,14 +52,14 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 ## Child DOX Index
 - [`README.md`](./README.md) — index and summary of available GGUF model cards.
 - [`bonsai-27b.md`](./bonsai-27b.md) — Bonsai 27B model card.
-- [`laguna-xs-2.1.md`](./laguna-xs-2.1.md) — Laguna-XS-2.1 MoE; best claw-full Val Score (0.6667).
+- [`laguna-xs-2.1.md`](./laguna-xs-2.1.md) — Laguna-XS-2.1 MoE; best claw-full (0.6667); weak coding (0.195).
 - [`ternary-bonsai-27b.md`](./ternary-bonsai-27b.md) — Ternary Q2_0 (rejected/deleted; PrismML; ~10.6 t/s).
-- [`lfm2.5-1.2b.md`](./lfm2.5-1.2b.md) — LFM2.5-1.2B dense; preferred 65k f16; 128k KV matrix.
+- [`lfm2.5-1.2b.md`](./lfm2.5-1.2b.md) — LFM2.5-1.2B dense; claw-full 0.6000; coding 0.350 @ 65k f16.
 - [`lfm2.5-8b-a1b.md`](./lfm2.5-8b-a1b.md) — LFM2.5-8B-A1B MoE hybrid (`lfm2moe`); full VRAM `n-cpu-moe 0`.
 - [`gemma-4-12b.md`](./gemma-4-12b.md) — Gemma 4 12B model card.
 - [`gemma-4-26b-a4b.md`](./gemma-4-26b-a4b.md) — Gemma 4 26B A4B MoE model card.
 - [`gemma-4-e4b.md`](./gemma-4-e4b.md) — Gemma 4 E4B model card.
-- [`ornith-1.0-9b.md`](./ornith-1.0-9b.md) — Ornith 1.0 9B model card.
+- [`ornith-1.0-9b.md`](./ornith-1.0-9b.md) — Ornith 1.0 9B; claw-full 0.6000 @ 65k; coding 0.570 @ 32k.
 - [`ornith-1.0-35b.md`](./ornith-1.0-35b.md) — Ornith 1.0 35B model card.
 - [`ornith-1.0-35b-iq3_m.md`](./ornith-1.0-35b-iq3_m.md) — Ornith 1.0 35B IQ3_M quant model card.
 - [`qwen-agentworld-35b-a3b.md`](./qwen-agentworld-35b-a3b.md) — Qwen AgentWorld 35B A3B model card.

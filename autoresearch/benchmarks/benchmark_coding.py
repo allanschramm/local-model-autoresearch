@@ -21,6 +21,7 @@ import json
 import os
 import pickle
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -87,9 +88,12 @@ def _run_subprocess(script: str, stdin_input: str | None = None) -> tuple[int, s
             [sys.executable, "-c", script],
             input=stdin_input,
             capture_output=True, text=True,
+            timeout=30,
             env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         )
         return result.returncode, result.stdout, result.stderr
+    except subprocess.TimeoutExpired:
+        return -1, "", "TIMEOUT"
     except Exception as e:
         return -1, "", str(e)
 
@@ -190,21 +194,21 @@ def _download_lcb_file(force: bool = False) -> Path:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     LCB_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     target = LCB_CACHE_DIR / LCB_FILENAME
-    if target.exists() and target.stat().st_size > 0 and not force:
+    if target.exists() and not target.is_symlink() and target.stat().st_size > 0 and not force:
         return target
     try:
         from huggingface_hub import hf_hub_download
-        # download to a temp name then move (atomic-ish)
-        tmp = hf_hub_download(
+        # download into HF cache, then copy to canonical name (no symlink —
+        # Windows without Developer Mode raises WinError 1314 on symlink_to).
+        src = hf_hub_download(
             "livecodebench/code_generation_lite",
             filename=LCB_FILENAME,
             repo_type="dataset",
             cache_dir=str(LCB_CACHE_DIR / "_hf_cache"),
         )
-        # symlink to canonical name for stability
         if target.exists() or target.is_symlink():
             target.unlink()
-        target.symlink_to(tmp)
+        shutil.copy2(src, target)
         return target
     except Exception as e:
         raise RuntimeError(f"LiveCodeBench download failed: {e}")

@@ -3,9 +3,10 @@
 **Source repo:** https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF
 **Unsloth docs:** https://unsloth.ai/docs/models/gemma-4
 **License:** Apache-2.0 (Gemma 4 license)
-**Local file:** `models/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf` (4.22 GB)
+**Local file:** `models/lmstudio-community/gemma-4-e4b-it-gguf/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf` (also under `models/unsloth/gemma-4-E4B-it-qat-GGUF/`)
 **Family:** Gemma 4 (Google DeepMind)
 **Quantization:** Unsloth Dynamic QAT — `UD-Q4_K_XL` (QAT-lossless 4-bit)
+**Alias:** `gemma-4-e4b` (`model-up`)
 
 ## Hardware requirements (RTX 4060 8GB)
 - Fits entirely in GPU VRAM (NGL = 99).
@@ -45,7 +46,20 @@
 
 ### Status
 - **Default speed Baseline (2026-07-20):** winner of fair small-model TPS matrix — see [session](../sessions/2026-07-20-small-model-tps-matrix.md).
-- **Fair matrix (`llama-cli` `-n 512`, shared knobs):** base **67.6 t/s** → MTP **122.0 t/s** (**+80%**). Fastest absolute TPS among tested small models.
+- **Fair matrix (`llama-cli` `-n 512`, shared knobs):** base **67.6 t/s** → MTP **122.0 t/s** (**+80%**).
 - **Earlier spot checks:** `-n 128` MTP **136.6 t/s** (+95.4% vs 69.9 base); sustained `-n 512` MTP **113.4 t/s** (pre-matrix knobs).
 - **Autoloop note:** server-path TPS with PPL ceiling previously peaked **76.67 t/s** at same draft/`q4_0`/n_max=4 — lower than raw cli-bench (different workload). Prefer cli matrix for apples-to-apples MTP compares.
 - **KV:** use `q4_0` only on upstream builds. `turbo*` KV types are **not** in upstream `llama.cpp`.
+
+## Measured (claw-full, 2026-07-24)
+
+Alias path: ctx **65k**, draft-mtp n=4, KV q4_0, cont-batching on.
+
+| Metric | Value |
+|---|---|
+| Val Score | **0.3333** (5/15) |
+| bench_tg | 113.3 t/s |
+| peak VRAM | 5.8 GB |
+| agentic wall | 502 s |
+
+Below Laguna/Ornith/LFM-1.2B. Harness STATUS DISCARD vs polluted previous best `76.67` (engine-tps) — ignore STATUS; Val Score valid. Evidence: [session top-TPS full](../sessions/2026-07-24-claw-full-top-tps.md).

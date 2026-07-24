@@ -54,12 +54,23 @@ No Docker, remote judges, or external APIs.
 * Use exactly 10 tasks per dataset for preflight comparisons
 * Claw-Eval full is the main quality gate; quick is smoke only
 * Context: use Baseline `CTX_SIZE` that fits physical VRAM under agentic load. On 8 GB, **65k + KV q4_0** is the usual agentic band; 131k can smoke-pass then VRAM-kill mid-full (see Bonsai 2026-07-24)
+* **LCB cache on Windows:** harness copies `test6.jsonl` into `autoresearch/data/benchmark_cache/livecodebench_v6/` (no symlink — `WinError 1314` without Developer Mode)
+* **LCB / coding sandbox:** `_run_subprocess` uses `timeout=30` so infinite-loop model code cannot hang the coding bench forever
 
 ## Local leaderboard (8 GB)
 
-Live ranked Val Scores + operational lessons: **[claw-eval-leaderboard.md](claw-eval-leaderboard.md)**.
+* **Claw-Eval full (Val Score):** [claw-eval-leaderboard.md](claw-eval-leaderboard.md) — best Laguna-XS **0.6667**.
+* **Coding-10 preflight:** [coding-leaderboard.md](coding-leaderboard.md) — best Mythos **0.6400**; current Ornith UD **0.5700** @ 32k.
 
-As of 2026-07-24: best claw-full = **Laguna-XS 0.6667**; best claw-quick = **Laguna-XS 1.00**.
+### Coding CLI
+
+```powershell
+# Full 10-task preflight (HE+MBPP+LCB+BC)
+.\venv\Scripts\python.exe benchmark_search.py --include-coding --no-agentic-quick --no-agentic-full --desc "coding-10 …"
+
+# LCB-only remeasure (gambiarra / patch helper)
+.\venv\Scripts\python.exe scripts\lcb_only.py
+```
 
 ## Approved Targets
 

@@ -44,4 +44,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - [`2026-07-23-nanbeige42-tps-matrix.md`](./2026-07-23-nanbeige42-tps-matrix.md) — Nanbeige4.2-3B arch fork + KV/batch TPS matrix (8 GB).
 - [`2026-07-23-lfm2.5-8b-a1b-validation.md`](./2026-07-23-lfm2.5-8b-a1b-validation.md) — LFM2.5-8B-A1B Q4_K_M validation + full-VRAM vs exps→CPU A/B.
 - [`2026-07-24-claw-full-smoke-high.md`](./2026-07-24-claw-full-smoke-high.md) — Claw-Eval full queue + historical Val Score ceiling (Laguna 0.6667).
+- [`2026-07-24-claw-full-top-tps.md`](./2026-07-24-claw-full-top-tps.md) — Claw-Eval full on top-TPS trio (LFM 1.2B/8B, Gemma E4B).
+- [`2026-07-24-coding-10-claw-leaders.md`](./2026-07-24-coding-10-claw-leaders.md) — coding-10 on Laguna / LFM 1.2B / Ornith-9B (+ VRAM-kill @ 65k).
+- [`2026-07-24-lcb-patch-gambiarra.md`](./2026-07-24-lcb-patch-gambiarra.md) — LCB-only remeasure + in-place results.tsv patch (symlink/timeout fixes).
 - [`2026-07-24-lfm2.5-1.2b-ctx-kv-matrix.md`](./2026-07-24-lfm2.5-1.2b-ctx-kv-matrix.md) — LFM2.5-1.2B claw-quick ctx/KV matrix (65k f16 preferred).

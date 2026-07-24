@@ -131,16 +131,28 @@ Harness: `benchmark_search.py --validation` (claw-quick only; coding off). Runti
 
 Only T010_contact_lookup passed in both runs. TPS identical because Combined TPS comes from `llama-cli` bench (already GPU); VRAM/wall-time change is server-side expert placement.
 
-Related tiny dense sibling: alias `lfm2.5-1.2b` — claw-quick **0.80**, **180.6 t/s** @ ctx **65k** f16 (2026-07-24 matrix; 128k needs q4/q8). Card: [lfm2.5-1.2b.md](lfm2.5-1.2b.md).
+## Measured (claw-full, 2026-07-24)
+
+`N_CPU_MOE=0`, ctx 65k, KV q4_0 (upstream CUDA):
+
+| Run | Val Score | pass | bench_tg | peak VRAM |
+|---|---|---|---|---|
+| A | 0.1333 | 2/15 | 184.3 | 7.3 GB |
+| B (re-run) | **0.2000** | 3/15 | 178.5 | 7.8 GB |
+
+Not preferred for agentic despite top TPS. Sibling dense `lfm2.5-1.2b` claw-full **0.6000**. Evidence: [session top-TPS full](../sessions/2026-07-24-claw-full-top-tps.md).
+
+Related tiny dense sibling: alias `lfm2.5-1.2b` — claw-quick **0.80**, claw-full **0.6000**, **166–180 t/s** @ ctx **65k** f16. Card: [lfm2.5-1.2b.md](lfm2.5-1.2b.md).
 
 ## Sources / Verification
 
 - HF model card LiquidAI/LFM2.5-8B-A1B — sampling + tool-use notes — extracted 2026-07-23.
 - Local GGUF metadata via `gguf.GGUFReader` — 2026-07-23.
 - Session: [2026-07-23-lfm2.5-8b-a1b-validation.md](../sessions/2026-07-23-lfm2.5-8b-a1b-validation.md).
+- Claw-full: [2026-07-24-claw-full-top-tps.md](../sessions/2026-07-24-claw-full-top-tps.md).
 
 ## Open questions
 
-- Claw-quick 0.20 vs LFM2.5-1.2B 0.80 — Liquid default tool calls are **Pythonic**; Claw-Eval may expect JSON. Confirm adapter / system prompt override before treating as quality fail.
+- Claw-quick/full ≤0.20 vs LFM2.5-1.2B 0.80/0.60 — Liquid default tool calls are **Pythonic**; Claw-Eval may expect JSON. Confirm adapter / system prompt override before treating as quality fail.
 - Whether reasoning / CoT budget flags improve tool-call formatting on this GGUF.
 - 131k ctx on 8 GB with heavier KV compression — not tried (65k validated).

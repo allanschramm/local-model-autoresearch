@@ -181,6 +181,27 @@ class TestBenchmarkCoding(unittest.TestCase):
         entry = {"_private_tests_decoded": json.loads(private_json)}
         self.assertFalse(benchmark_coding._run_lcb_tests(code, entry))
 
+    @patch("huggingface_hub.hf_hub_download")
+    def test_download_lcb_file_copies_not_symlinks(self, mock_hf):
+        """Windows without Developer Mode cannot symlink; copy2 must materialize test6.jsonl."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            src = tmp_path / "hf_src" / "test6.jsonl"
+            src.parent.mkdir(parents=True)
+            src.write_text('{"question_title":"x"}\n', encoding="utf-8")
+            mock_hf.return_value = str(src)
+
+            cache = tmp_path / "lcb_cache"
+            with patch.object(benchmark_coding, "LCB_CACHE_DIR", cache), \
+                 patch.object(benchmark_coding, "DATA_DIR", tmp_path / "data"):
+                out = benchmark_coding._download_lcb_file(force=True)
+
+            self.assertEqual(out, cache / "test6.jsonl")
+            self.assertTrue(out.is_file())
+            self.assertFalse(out.is_symlink())
+            self.assertGreater(out.stat().st_size, 0)
+            self.assertEqual(out.read_text(encoding="utf-8"), src.read_text(encoding="utf-8"))
+
     @patch("autoresearch.benchmarks.benchmark_coding._download_lcb_file")
     def test_lcb_loader_filters_and_decodes(self, mock_dl):
         """Loader: reads JSONL, decodes private tests, applies platform filter."""

@@ -114,5 +114,17 @@ Since the model is ~5.6 GB and we have 8 GB of VRAM, we can run with maximum GPU
 ### Claw-Eval full (2026-07-24)
 - **Val Score 0.6000** (9/15) @ ctx **65536**, bench_tg **42.1**, peak **7.5 GB**. Prior claw-quick 0.80.
 
+### Coding-10 (2026-07-24, UD-Q4_K_XL)
+
+| Metric | Value |
+|---|---|
+| ctx | **32768** (65k VRAM-kill mid-HumanEval) |
+| coding | **0.5700** (LCB patched†) |
+| LCB / HE / MBPP / BC | 0.40 / 0.90 / 0.70 / 0.20 |
+| bench_tg | 38.4 t/s |
+| peak VRAM | 7.4 GB |
+
+† HE/MBPP/BC from Trial `15f6bed0-…`; LCB via `scripts/lcb_only.py`. Alias `ornith-9b` stays **65k for agentic**; use **≤32k for coding** on 8 GB. Evidence: [coding-10](../sessions/2026-07-24-coding-10-claw-leaders.md), [coding leaderboard](../discovery/coding-leaderboard.md).
+
 ## Open questions
-- None (baseline verified).
+- None (baseline verified). Coding vs historical Mythos 0.64 still open if Mythos GGUF present.
