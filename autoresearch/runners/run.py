@@ -143,30 +143,35 @@ def parse_args():
     return parser.parse_args()
 
 
-def _result_config() -> dict[str, Any]:
-    baseline = config.load_config()
+def tsv_fields_from_cfg(baseline: dict[str, Any]) -> dict[str, Any]:
+    """Map a Baseline-style config dict to write_row flat-column kwargs."""
     recorded = {key.lower(): value for key, value in baseline.items()}
     return {
-        "model": baseline["MODEL"],
-        "kv": baseline["KV_CACHE"],
-        "ctx": baseline["CTX_SIZE"],
-        "threads": baseline["THREADS"],
-        "threads_batch": baseline["THREADS_BATCH"],
-        "batch_size": baseline["BATCH_SIZE"],
-        "ubatch_size": baseline["UBATCH_SIZE"],
-        "n_cpu_moe": baseline["N_CPU_MOE"],
-        "temp": baseline["TEMP"],
-        "top_p": baseline["TOP_P"],
-        "top_k": baseline["TOP_K"],
-        "min_p": baseline["MIN_P"],
-        "repeat_penalty": baseline["REPEAT_PENALTY"],
-        "presence_penalty": baseline["PRESENCE_PENALTY"],
-        "cont_batching": baseline["CONT_BATCHING"],
-        "flash_attn": baseline["FLASH_ATTN"],
-        "no_mmap": baseline["NO_MMAP"],
-        "spec_draft_n_max": baseline["SPEC_DRAFT_N_MAX"],
+        "model": baseline.get("MODEL", ""),
+        "kv": baseline.get("KV_CACHE", ""),
+        "ctx": baseline.get("CTX_SIZE"),
+        "threads": baseline.get("THREADS"),
+        "threads_batch": baseline.get("THREADS_BATCH"),
+        "batch_size": baseline.get("BATCH_SIZE"),
+        "ubatch_size": baseline.get("UBATCH_SIZE"),
+        "n_cpu_moe": baseline.get("N_CPU_MOE"),
+        "temp": baseline.get("TEMP"),
+        "top_p": baseline.get("TOP_P"),
+        "top_k": baseline.get("TOP_K"),
+        "min_p": baseline.get("MIN_P"),
+        "repeat_penalty": baseline.get("REPEAT_PENALTY"),
+        "presence_penalty": baseline.get("PRESENCE_PENALTY"),
+        "cont_batching": baseline.get("CONT_BATCHING"),
+        "flash_attn": baseline.get("FLASH_ATTN", ""),
+        "no_mmap": baseline.get("NO_MMAP"),
+        "spec_draft_n_max": baseline.get("SPEC_DRAFT_N_MAX"),
         "config_json": json.dumps(recorded, separators=(",", ":"), sort_keys=True),
     }
+
+
+def _result_config() -> dict[str, Any]:
+    return tsv_fields_from_cfg(config.load_config())
+
 
 def get_git_commit() -> str:
     try:
@@ -241,7 +246,14 @@ def _ensure_category_column(results_file: Path) -> None:
         writer.writerows(rows)
 
 
-def write_row(results_file: Path, commit: str, val_score: float, swe_score: float, he_score: float, mbpp_score: float, memory_gb: float, status: str, description: str, lcb_score: float = 0.0, bigcode_score: float = 0.0, category: str = "", elapsed_sec: float = 0.0, model: str = "", tps: float = 0.0, bench_tg: float = 0.0, kv: str = "", ctx: int = 0, threads: int = 0, threads_batch: int = 0, batch_size: int = 0, ubatch_size: int = 0, n_cpu_moe: int = 0, temp: float = 0.0, top_p: float = 0.0, top_k: int = 0, min_p: float = 0.0, repeat_penalty: float = 0.0, presence_penalty: float = 0.0, cont_batching: str = "", flash_attn: str = "", no_mmap: str = "", spec_draft_n_max: int = 0, outcome: str = "", diagnostic: str = "", evaluation_profile: str = "", scoring_benchmark: str = "", task_ids: str = "", config_json: str = "", tps_source: str = ""):
+def _tsv_cell(value: Any, fmt: str | None = None) -> str:
+    """Format a TSV cell; None stays blank, zeros stay zeros."""
+    if value is None:
+        return ""
+    return format(value, fmt) if fmt else str(value)
+
+
+def write_row(results_file: Path, commit: str, val_score: float, swe_score: float, he_score: float, mbpp_score: float, memory_gb: float, status: str, description: str, lcb_score: float = 0.0, bigcode_score: float = 0.0, category: str = "", elapsed_sec: float = 0.0, model: str = "", tps: float | None = None, bench_tg: float | None = None, kv: str = "", ctx: int | None = None, threads: int | None = None, threads_batch: int | None = None, batch_size: int | None = None, ubatch_size: int | None = None, n_cpu_moe: int | None = None, temp: float | None = None, top_p: float | None = None, top_k: int | None = None, min_p: float | None = None, repeat_penalty: float | None = None, presence_penalty: float | None = None, cont_batching: Any = None, flash_attn: str = "", no_mmap: Any = None, spec_draft_n_max: int | None = None, outcome: str = "", diagnostic: str = "", evaluation_profile: str = "", scoring_benchmark: str = "", task_ids: str = "", config_json: str = "", tps_source: str = ""):
     _ensure_category_column(results_file)
     new_file = not results_file.exists() or results_file.stat().st_size == 0
     with open(results_file, "a", newline="", encoding="utf-8") as f:
@@ -269,25 +281,25 @@ def write_row(results_file: Path, commit: str, val_score: float, swe_score: floa
             "bigcode_score": f"{bigcode_score:.6f}",
             "memory_gb": f"{memory_gb:.1f}",
             "elapsed_sec": f"{elapsed_sec:.0f}",
-            "tps": f"{tps:.1f}" if tps else "",
-            "bench_tg": f"{bench_tg:.1f}" if bench_tg else "",
+            "tps": _tsv_cell(tps, ".1f"),
+            "bench_tg": _tsv_cell(bench_tg, ".1f"),
             "kv": kv,
-            "ctx": str(ctx) if ctx else "",
-            "threads": str(threads) if threads else "",
-            "threads_batch": str(threads_batch) if threads_batch else "",
-            "batch_size": str(batch_size) if batch_size else "",
-            "ubatch_size": str(ubatch_size) if ubatch_size else "",
-            "n_cpu_moe": str(n_cpu_moe) if n_cpu_moe else "",
-            "temp": f"{temp}" if temp else "",
-            "top_p": f"{top_p}" if top_p else "",
-            "top_k": str(top_k) if top_k else "",
-            "min_p": f"{min_p}" if min_p else "",
-            "repeat_penalty": f"{repeat_penalty}" if repeat_penalty else "",
-            "presence_penalty": f"{presence_penalty}" if presence_penalty else "",
-            "cont_batching": str(cont_batching) if cont_batching else "",
+            "ctx": _tsv_cell(ctx),
+            "threads": _tsv_cell(threads),
+            "threads_batch": _tsv_cell(threads_batch),
+            "batch_size": _tsv_cell(batch_size),
+            "ubatch_size": _tsv_cell(ubatch_size),
+            "n_cpu_moe": _tsv_cell(n_cpu_moe),
+            "temp": _tsv_cell(temp),
+            "top_p": _tsv_cell(top_p),
+            "top_k": _tsv_cell(top_k),
+            "min_p": _tsv_cell(min_p),
+            "repeat_penalty": _tsv_cell(repeat_penalty),
+            "presence_penalty": _tsv_cell(presence_penalty),
+            "cont_batching": _tsv_cell(cont_batching),
             "flash_attn": flash_attn,
-            "no_mmap": str(no_mmap) if no_mmap else "",
-            "spec_draft_n_max": str(spec_draft_n_max) if spec_draft_n_max else "",
+            "no_mmap": _tsv_cell(no_mmap),
+            "spec_draft_n_max": _tsv_cell(spec_draft_n_max),
             "task_ids": task_ids,
             "random_seed": "",
             "config_json": config_json or json.dumps({
@@ -361,6 +373,8 @@ def handle_single_run(args):
             RESULTS_FILE, commit, 0.0, 0.0, 0.0, 0.0, res["peak_vram_gb"],
             "discard", f"FAIL: {res['status']} | {args.desc}",
             category=determine_category(args), elapsed_sec=res.get("elapsed_sec", 0.0),
+            tps=res.get("avg_tps"),
+            bench_tg=res.get("bench_tg_tps"),
             outcome=res.get("outcome", ""),
             diagnostic=res.get("diagnostic", ""),
             task_ids=",".join(res.get("task_ids", [])),
@@ -393,6 +407,12 @@ def handle_single_run(args):
         bigcode_score=res.get("bigcode_val", 0.0),
         category=determine_category(args),
         elapsed_sec=res.get("elapsed_sec", 0.0),
+        tps=res.get("avg_tps"),
+        bench_tg=res.get("bench_tg_tps"),
+        outcome=res.get("outcome", ""),
+        diagnostic=res.get("diagnostic", ""),
+        task_ids=",".join(res.get("task_ids", [])),
+        tps_source=res.get("tps_source", ""),
         **_result_config(),
     )
     

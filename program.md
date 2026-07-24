@@ -67,8 +67,7 @@ If a Trial falls below the **TPS Floor** (Baseline `TPS_FLOOR`, default 20.0 TPS
 - Drive Trials via raw `llama-server` / CLI flag soup — change `config.py`, then run the harness.
 
 ## Output format
-Each Trial logs exclusively to the canonical results file `results.tsv`. No other log files should be committed. The output format in `results.tsv` is tab-separated:
-`commit\tmodel\tval_score\tmemory_gb\telapsed_sec\tstatus\tcategory\tdescription`
+Each Trial logs exclusively to the canonical results file `results.tsv`. No other log files should be committed. The output is tab-separated with schema columns owned by `CATEGORY_FIELDNAMES` in `autoresearch/runners/run.py` (scores, throughput `tps`/`bench_tg`, flat Baseline knobs, `config_json`, `tps_source`, `description`). Callers must pass measured throughput and Baseline fields into `write_row` — do not rely on stuffing them only into `description`.
 
 ## The Search Process
 

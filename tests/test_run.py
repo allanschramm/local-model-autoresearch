@@ -435,6 +435,73 @@ class TestRun(unittest.TestCase):
             run.handle_single_run(args)
             mock_exit.assert_called_once_with(1)
 
+    def test_write_row_keeps_zeros_and_throughput_columns(self):
+        """write_row must record legitimate zeros and throughput fields, not blank them."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "results.tsv"
+            run.write_row(
+                path, "abc123", 0.5, 0.0, 0.1, 0.2, 4.5, "keep", "desc",
+                lcb_score=0.0, bigcode_score=0.0, category="10-task",
+                elapsed_sec=12.0, model="m.gguf",
+                tps=47.7, bench_tg=43.2,
+                kv="q4_0", ctx=65536, threads=6, threads_batch=8,
+                batch_size=256, ubatch_size=128, n_cpu_moe=0,
+                temp=0.4, top_p=0.95, top_k=20, min_p=0.0,
+                repeat_penalty=1.0, presence_penalty=0.0,
+                cont_batching=True, flash_attn="on", no_mmap=True,
+                spec_draft_n_max=0, tps_source="llama-bench",
+            )
+            with open(path, encoding="utf-8") as f:
+                row = next(csv.DictReader(f, delimiter="\t"))
+
+        self.assertEqual(row["tps"], "47.7")
+        self.assertEqual(row["bench_tg"], "43.2")
+        self.assertEqual(row["min_p"], "0.0")
+        self.assertEqual(row["presence_penalty"], "0.0")
+        self.assertEqual(row["n_cpu_moe"], "0")
+        self.assertEqual(row["spec_draft_n_max"], "0")
+        self.assertEqual(row["tps_source"], "llama-bench")
+
+    @patch("autoresearch.runners.run.run_evaluation")
+    @patch("autoresearch.runners.run.get_previous_best", return_value=0.0)
+    @patch("autoresearch.runners.run.get_git_commit", return_value="abcdefg")
+    def test_successful_single_run_logs_throughput_columns(self, mock_commit, mock_best, mock_eval):
+        """Successful single-run must populate tps/bench_tg/tps_source on the TSV row."""
+        import tempfile
+
+        mock_eval.return_value = {
+            "status": "OK",
+            "val_score": 0.55,
+            "coding_val": 0.55,
+            "lcb_val": 0.4, "he_val": 0.7, "mbpp_val": 0.6, "bigcode_val": 0.2,
+            "swe_val": 0.0,
+            "avg_tps": 47.7,
+            "peak_vram_gb": 7.4,
+            "bench_tg_tps": 43.2,
+            "elapsed_sec": 90.0,
+            "outcome": "OK",
+            "diagnostic": "",
+            "task_ids": ["he-1", "mbpp-2"],
+            "tps_source": "llama-bench",
+        }
+        with patch("sys.argv", ["benchmark_search.py", "--desc", "throughput columns"]):
+            args = run.parse_args()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "results.tsv"
+            with patch.object(run, "RESULTS_FILE", path):
+                run.handle_single_run(args)
+            with open(path, encoding="utf-8") as f:
+                row = next(csv.DictReader(f, delimiter="\t"))
+
+        self.assertEqual(row["tps"], "47.7")
+        self.assertEqual(row["bench_tg"], "43.2")
+        self.assertEqual(row["tps_source"], "llama-bench")
+        self.assertEqual(row["outcome"], "OK")
+        self.assertEqual(row["task_ids"], "he-1,mbpp-2")
+
     @patch("autoresearch.runners.run.run_evaluation")
     @patch("autoresearch.runners.run.get_previous_best", return_value=0.0)
     @patch("autoresearch.runners.run.get_git_commit", return_value="abcdefg")

@@ -195,6 +195,42 @@ class TestAutoLoop(unittest.TestCase):
         mock_write_row.assert_called()
         # "Exhausted random search space" reached → no crash
 
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--vram-limit-mb", "99999", "--models", "test.gguf"])
+    @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
+    @patch("autoloop.ExperimentRunner")
+    @patch("autoloop.load_config")
+    @patch("autoloop.SearchState.update_baseline")
+    @patch("autoloop.get_git_commit", return_value="abc123")
+    @patch("autoloop.write_row")
+    def test_autoloop_write_row_includes_throughput_and_flat_config(
+        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg,
+        mock_runner_cls, _mock_models
+    ):
+        """AutoLoop baseline row must pass tps/bench_tg and flat engine/sampler fields."""
+        mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
+        mock_runner = MagicMock()
+        mock_runner.run_trial.return_value = self._make_trial_result(
+            avg_tps=47.7, bench_tg_tps=43.2, tps_source="llama-bench",
+        )
+        mock_runner_cls.return_value = mock_runner
+
+        with patch.object(SearchStrategy, "get_neighbors", return_value=[]):
+            with patch.object(SearchStrategy, "random_restart", return_value=None):
+                autoloop.main()
+
+        kwargs = mock_write_row.call_args.kwargs
+        self.assertEqual(kwargs["tps"], 47.7)
+        self.assertEqual(kwargs["bench_tg"], 43.2)
+        self.assertEqual(kwargs["tps_source"], "llama-bench")
+        self.assertEqual(kwargs["kv"], "q4_0")
+        self.assertEqual(kwargs["ctx"], 131072)
+        self.assertEqual(kwargs["threads"], 8)
+        self.assertEqual(kwargs["batch_size"], 1024)
+        self.assertEqual(kwargs["n_cpu_moe"], 32)
+        self.assertEqual(kwargs["min_p"], 0.0)
+        self.assertEqual(kwargs["presence_penalty"], 0.0)
+        self.assertEqual(kwargs["spec_draft_n_max"], 0)
+
     @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")

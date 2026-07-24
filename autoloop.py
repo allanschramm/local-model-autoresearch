@@ -22,7 +22,7 @@ from autoresearch.core.config import (
     ENGINE_DEFAULTS,
     SAMPLER_DEFAULTS,
 )
-from autoresearch.runners.run import get_git_commit, write_row, RESULTS_FILE, MODELS_DIR
+from autoresearch.runners.run import get_git_commit, write_row, RESULTS_FILE, MODELS_DIR, tsv_fields_from_cfg
 from autoresearch.runners.evaluation import ExperimentRunner
 from autoresearch.runners.evaluation import TrialOutcome
 from autoresearch.core.search import SearchStrategy
@@ -393,14 +393,19 @@ def main():
                 f"TPS={baseline_tps:.1f} PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}",
                 lcb_score=baseline_res.lcb_val, bigcode_score=baseline_res.bigcode_val,
                 category=tsv_category,
-                model=model_name,
+                tps=baseline_tps,
+                bench_tg=getattr(baseline_res, "bench_tg_tps", None),
                 outcome=getattr(getattr(baseline_res, "outcome", TrialOutcome.OK), "value", "OK"),
                 diagnostic=getattr(baseline_res, "diagnostic", ""),
                 evaluation_profile=tsv_category,
                 scoring_benchmark="claw-eval",
                 task_ids=",".join(getattr(baseline_res, "task_ids", ())),
-                config_json=json.dumps(baseline_cfg, sort_keys=True, default=repr),
                 tps_source=getattr(baseline_res, "tps_source", ""),
+                **{
+                    **tsv_fields_from_cfg(baseline_cfg),
+                    "model": model_name,
+                    "config_json": json.dumps(baseline_cfg, sort_keys=True, default=repr),
+                },
             )
 
             ppl_str = f" PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}" if (is_tps_mode or cli_args.perplexity_val) else ""
@@ -474,14 +479,19 @@ def main():
                     f"{search_strategy.format_config_summary(neighbor.config)} TPS={tps:.1f} PPL={getattr(res, 'bench_ppl', 0.0):.4f} Δ={delta:+.6f}",
                     lcb_score=res.lcb_val, bigcode_score=res.bigcode_val,
                     category=tsv_category,
-                    model=model_name,
+                    tps=tps,
+                    bench_tg=getattr(res, "bench_tg_tps", None),
                     outcome=getattr(getattr(res, "outcome", TrialOutcome.OK), "value", "OK"),
                     diagnostic=getattr(res, "diagnostic", ""),
                     evaluation_profile=tsv_category,
                     scoring_benchmark="claw-eval",
                     task_ids=",".join(getattr(res, "task_ids", ())),
-                    config_json=json.dumps(neighbor.config, sort_keys=True, default=repr),
                     tps_source=getattr(res, "tps_source", ""),
+                    **{
+                        **tsv_fields_from_cfg(neighbor.config),
+                        "model": model_name,
+                        "config_json": json.dumps(neighbor.config, sort_keys=True, default=repr),
+                    },
                 )
 
                 if is_improvement:
