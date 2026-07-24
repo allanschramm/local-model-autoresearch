@@ -78,32 +78,33 @@ Don't try to autotune every candidate. Pick the Pareto-optimal point that matche
 
 Once picked, download the GGUF and place it where `local-model-autotuning` expects.
 
-## Step 5 — Hand off to the autoloop
+## Step 5 — Hand off to tuning (speed first)
 
-Set the single source of truth:
+Do **not** burn overnight Claw full while hunting flags. Default path:
+
+1. Seed `MODEL` in `autoresearch/core/config.py`
+2. Follow [`good-enough-tuning.md`](./good-enough-tuning.md): `--validation` → `autoloop.py --mode tps` → champion `--agentic-full`
 
 ```bash
 # Edit autoresearch/core/config.py
 MODEL = '<your-chosen-model-filename>.gguf'
-```
 
-Then run the autoloop overnight:
-
-```bash
 # Optional: point at a non-default llama.cpp tree (upstream submodule is default)
 export AUTORESEARCH_LLAMA_CPP_ROOT=/path/to/your/llama.cpp
 
 cd local-model-autotuning
-python3 autoloop.py --vram-limit-mb=<your-VRAM-budget-in-MB>
+.\venv\Scripts\python.exe autoloop.py --mode tps --vram-limit-mb=<your-VRAM-budget-in-MB>
 ```
 
-The autoloop hill-climbs around the baseline, saves the best `config.py`, and appends every trial to `results.tsv` (gitignored, stays local).
+The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on keep, and appends rows to `results.tsv` (gitignored, stays local).
 
-**Expected behavior overnight**:
-- Trial every ~2-5 minutes (model load + Nexus + Claw + Coding)
-- Each trial writes 1 row to `results.tsv` with score / VRAM / status
+**Only after TPS is acceptable**, run Claw full / coding-10 on the champion (see good-enough-tuning.md §4). Overnight `--mode both` is for quality search *after* speed, not the default first pass.
+
+**Expected behavior (TPS mode)**:
+- Cheap Trials (bench + PPL ceiling) — minutes, not Claw-full hours
+- Each Trial writes 1 row to `results.tsv` with TPS / VRAM / status
 - On keep, `config.py` rewrites with the better config
-- SIGINT handler saves state — kill it any time, resume tomorrow
+- SIGINT handler saves state — kill any time, resume later
 - TPS Floor (`TPS_FLOOR` in Baseline `config.py`, default 20): configs below the floor are auto-discarded; lower it for large MoE on constrained VRAM
 
 ## Quick checklist
@@ -114,8 +115,10 @@ The autoloop hill-climbs around the baseline, saves the best `config.py`, and ap
 - [ ] Pick the Pareto-optimal point matching your preference
 - [ ] Download GGUF, place in models/, set `MODEL` in config.py
 - [ ] Set `AUTORESEARCH_LLAMA_CPP_ROOT` if using a non-upstream llama.cpp fork
-- [ ] Run `python3 autoloop.py` and let it cook
-- [ ] Read `results.tsv` in the morning
+- [ ] Smoke: `benchmark_search.py --validation`
+- [ ] Speed search: `autoloop.py --mode tps` ([good-enough-tuning.md](./good-enough-tuning.md))
+- [ ] Champion quality: `--agentic-full` (optional coding-10)
+- [ ] Read `results.tsv`
 
 ## Common pitfalls
 
@@ -127,6 +130,7 @@ The autoloop hill-climbs around the baseline, saves the best `config.py`, and ap
 
 ## Related docs
 
+- [`good-enough-tuning.md`](./good-enough-tuning.md) — default speed path after you pick a GGUF
 - `docs/models/` — per-model GGUF specs and architecture notes
 - `docs/sessions/` — empirical session logs (yours and others)
 - `docs/adr/` — architecture decisions (why certain conventions exist)

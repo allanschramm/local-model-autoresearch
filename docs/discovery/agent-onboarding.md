@@ -27,16 +27,17 @@ Bootstrap context for agents working on this repo.
 bash scripts/setup-check.sh
 
 # Test suite
-pytest
+.\venv\Scripts\python.exe -m pytest tests/
 
-# Autonomous optimizer
-python autoloop.py
+# Default speed path (good enough, fast) — see docs/discovery/good-enough-tuning.md
+.\venv\Scripts\python.exe benchmark_search.py --validation --desc "validate <model>"
+.\venv\Scripts\python.exe autoloop.py --mode tps --vram-limit-mb=<budget>
 
-# Single manual trial
-python benchmark_search.py --desc "Hypothesis details here"
+# Champion quality check (after TPS is acceptable)
+.\venv\Scripts\python.exe benchmark_search.py --agentic-full --desc "champion claw-full"
 
-# Validate a model (quick check)
-python3 benchmark_search.py --validation --desc "validate <model-filename>"
+# Single manual trial (Baseline already in config.py)
+.\venv\Scripts\python.exe benchmark_search.py --desc "Hypothesis details here"
 ```
 
 ## Reading Order
@@ -45,5 +46,6 @@ python3 benchmark_search.py --validation --desc "validate <model-filename>"
 2. `program.md` — Search protocol rules
 3. `GOLDEN-RULES.md` — Performance flags, safety, validation
 4. `CONTEXT.md` — Terminology and definitions
-5. `docs/discovery/discover-models.md` — Model selection workflow
-6. `docs/llamacpp-toolset.md` — llama.cpp binary reference
+5. `docs/discovery/good-enough-tuning.md` — **default** path: TPS first, quality second
+6. `docs/discovery/discover-models.md` — Model selection workflow (which GGUF)
+7. `docs/llamacpp-toolset.md` — llama.cpp binary reference

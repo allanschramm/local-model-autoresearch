@@ -125,6 +125,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - **README language**: README.md must always be in pt-BR. Agent-facing docs (docs/, AGENTS.md, GOLDEN-RULES.md, CONTEXT.md, program.md) stay in English.
 - **Agentic coding migration**: Treat HumanEval+/MBPP+/LiveCodeBench/BigCodeBench as direct-coding preflight benchmarks. Prefer long-horizon agentic targets for future coding-agent quality decisions once adapters exist.
 - **Agentic-first Search**: Claw-Eval full is the canonical Val Score; Claw-Eval quick is smoke validation. Direct-coding is optional and, when enabled, uses exactly 10 tasks per dataset.
+- **Good-enough speed path (default for new models)**: Find runtime flags with cheap Trials first — `--validation` smoke, then `autoloop.py --mode tps`. Run Claw full / coding-10 only on the champion. Details: [docs/discovery/good-enough-tuning.md](docs/discovery/good-enough-tuning.md). Large `--grid` sweeps are not the default.
 - **No eval-score floor**: Only the TPS Floor rejects a Trial. Claw-Eval quick/full scores are recorded for keep/discard comparison; low smoke scores must not short-circuit as `MODEL_REJECTED`. `TPS_FLOOR` lives in Baseline `config.py` (default 20.0); user may lower it for MoE on constrained VRAM.
 - **config.py is the only mutable Baseline (local)**: Seed with `cp autoresearch/core/config.py.example autoresearch/core/config.py`. Agents and Search edit `ENGINE_DEFAULTS` / `SAMPLER_DEFAULTS` there. File is gitignored — do not commit machine Baseline. `program.md` and harnesses stay fixed. Do not drive Trials with CLI flag soup. `.autoresearch_state.json` is visited memory only.
 - **Every requested Trial edits `config.py` first**: For each user-requested test/run, set the Baseline in `config.py` (then invoke harness). Never pass the experiment knobs as CLI flags.
@@ -145,7 +146,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - [docs/AGENTS.md](docs/AGENTS.md) — Durable documentation contract.
   - [docs/models/AGENTS.md](docs/models/AGENTS.md) — Per-model GGUF specs (architecture, quant, settings).
   - [docs/adr/AGENTS.md](docs/adr/AGENTS.md) — Architecture decision records contract + index (ADRs 0001–0005).
-  - [docs/discovery/AGENTS.md](docs/discovery/AGENTS.md) — User-facing guides: model selection workflow, whichllm/llmfit CLI references, quantization cascade, agent onboarding, MTP inventory/TPS, inference engines.
+  - [docs/discovery/AGENTS.md](docs/discovery/AGENTS.md) — User-facing guides: model selection, good-enough speed path, whichllm/llmfit, quantization, agent onboarding, MTP/TPS, inference engines.
   - [docs/sessions/AGENTS.md](docs/sessions/AGENTS.md) — Empirical session logs (reproducibility evidence).
  - [docs/architecture.html](docs/architecture.html) — Interactive architecture diagram.
  - [docs/llamacpp-toolset.md](docs/llamacpp-toolset.md) — llama.cpp binary reference (build, bench, server, quantize).

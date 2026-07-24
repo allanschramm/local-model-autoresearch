@@ -53,6 +53,8 @@ Every Trial runs hard gates that prove the rig can load the model, then smoke va
 
 **Validation mode** (`python3 benchmark_search.py --validation`): runs gates 0–2 and exits. No extended eval, no keep/discard. For quick config sanity checks.
 
+**Default speed path** (good enough, fast): smoke `--validation` → `autoloop.py --mode tps` → champion Claw full only after TPS is acceptable. See `docs/discovery/good-enough-tuning.md`. Do not use Claw full / coding-10 inside the speed search loop.
+
 **Short-circuit**: Gate 0 or step 1 failure → logged as `FAIL`. The loop never wastes time on unloadable or unusably slow configs. Smoke score never short-circuits.
 
 See `autoresearch/runners/evaluation.py` → `run_llama_bench_validation()` + `run_trial()` for implementation.

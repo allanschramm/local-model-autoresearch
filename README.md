@@ -20,9 +20,9 @@ O agente vai:
 3. Cruzar com SWE-bench / Aider / LiveCodeBench
 4. Plotar Pareto frontier (tok/s vs qualidade)
 5. Semear e editar o Baseline (`cp autoresearch/core/config.py.example autoresearch/core/config.py`, depois definir `MODEL`)
-6. Rodar `python3 autoloop.py --vram-limit-mb=<budget>` overnight
+6. Caminho padrão de speed: smoke `--validation` → `autoloop.py --mode tps` → só então Claw full no campeão ([docs/discovery/good-enough-tuning.md](docs/discovery/good-enough-tuning.md))
 
-**Resultado de manhã:** `results.tsv` com todos os Trials + `config.py` local com a melhor configuração (visited em `.autoresearch_state.json`).
+**Resultado:** `results.tsv` com os Trials + `config.py` local com a melhor config de velocidade (visited em `.autoresearch_state.json`). Qualidade agentic fica pro check do campeão, não pra cada vizinho.
 
 ---
 
