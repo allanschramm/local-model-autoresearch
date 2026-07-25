@@ -22,5 +22,10 @@ pyyaml
 # Operator scripts
 psutil              # scripts/check_hardware.py RAM probe (falls back to wmic/os if missing)
 
+# Claw-Eval mock services (claw-eval/mock_services/* need these)
+fastapi>=0.115
+uvicorn>=0.30
+pypdf>=4.0
+
 # Dev / tests (also needed for `pytest`)
 pytest

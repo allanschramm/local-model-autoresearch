@@ -157,7 +157,7 @@ fi
 echo ""
 echo "--- Python dependencies ---"
 if [[ -f "$REPO_ROOT/requirements.txt" ]]; then
-    if python3 -c "import yaml, requests, huggingface_hub, gguf, evalplus, datasets, psutil, pytest" 2>/dev/null; then
+    if python3 -c "import yaml, requests, huggingface_hub, gguf, evalplus, datasets, psutil, pytest, fastapi, uvicorn" 2>/dev/null; then
         ok "Core Python deps installed"
     else
         warn "Some Python deps missing (pip install -r requirements.txt)"
