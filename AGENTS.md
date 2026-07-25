@@ -157,4 +157,19 @@ When the user requests a durable behavior change, record it here or in the relev
   - [llama.cpp/](llama.cpp/) — upstream runtime (**git submodule**).
   - [claw-eval/](claw-eval/) — Claw-Eval harness (**local vendor tree**, gitignored; not a submodule).
   - `llama.cpp-nanbeige42/`, `llama.cpp-prismml/` — arch forks (**local vendor trees**, gitignored).
+- [docs/agents/](docs/agents/) — Matt Pocock engineering-skills config (issue tracker, triage labels, domain docs).
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues via `gh` (`allanschramm/local-model-autotuning`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical roles = label strings: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
 
