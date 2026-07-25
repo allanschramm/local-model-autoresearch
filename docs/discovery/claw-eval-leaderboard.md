@@ -16,11 +16,16 @@ Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (hist
 | 2 | `LFM2.5-1.2B-Instruct-Q8_0.gguf` | **0.6000** | 166.4 | 3.7 GB | 65k f16 | `lfm2.5-1.2b` | [top-TPS full](../sessions/2026-07-24-claw-full-top-tps.md) |
 | 5 | `Qwythos-9B-v2-MTP-Q4_K_M.gguf` | **0.5333** | 34.5 | 7.9 GB | 131k | — | GGUF may be missing; Hub MTP scarce |
 | 6 | `Bonsai-27B-Q1_0.gguf` | **0.4667** | 40.2 | 6.5 GB | **65k** | `bonsai` | 131k VRAM-kill mid-agentic |
-| 7 | `gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf` | **0.3333** | 113.3 | 5.8 GB | 65k MTP | `gemma-4-e4b` | top-TPS full; draft-mtp n=4 |
-| 8 | `nanbeige4.2-3b-Q4_K_M.gguf` | **0.2667** | 32.4 | 6.9 GB | 32k | `nanbeige4.2-3b` | arch fork |
-| 9 | `LFM2.5-8B-A1B-Q4_K_M.gguf` | **0.2000** | 178.5 | 7.8 GB | 65k | `lfm2.5-8b-a1b` | `n-cpu-moe 0`; re-run also 0.1333 |
-
-Best discard worth noting: Mythos non-MTP full **0.3333** (ties Gemma E4B; below Ornith/Laguna/LFM-1.2B keeps).
+| 6 | `Ornith-1.0-9B-MTP-Q4_K_M.gguf` | **0.4667** | 63.7 | 7.0 GB | **32k** | `ornith-9b-mtp` | [pending queue 2026-07-25](../sessions/2026-07-25-claw-full-pending-queue.md) |
+| 8 | `Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf` | **0.4000** | 29.5 | 5.7 GB | 65k | `qwen3.6-35b-q3xl` | same; TEMP=1.0 thinking |
+| 9 | `gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf` | **0.3333** | 113.3 | 5.8 GB | 65k MTP | `gemma-4-e4b` | top-TPS full; draft-mtp n=4 |
+| 9 | `Qwythos-9B-v2-Q4_K_M.gguf` | **0.3333** | 44.1 | 7.7 GB | **32k** | `qwythos-9b-v2` | 65k VRAM-kill mid-full → retry 32k |
+| 9 | `Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf` | **0.3333** | 43.6 | 8.0 GB | 131k | `qwythos-9b` | historical discard |
+| 12 | `nanbeige4.2-3b-Q4_K_M.gguf` | **0.2667** | 32.4 | 6.9 GB | 32k | `nanbeige4.2-3b` | arch fork |
+| 12 | `Qwythos-9B-Claude-Mythos-5-1M-MTP.Q4_K_M.gguf` | **0.2667** | 45.6 | 7.6 GB | 65k | `qwythos-9b-mtp` | pending queue; weaker than non-MTP |
+| 14 | `LFM2.5-8B-A1B-Q4_K_M.gguf` | **0.2000** | 178.5 | 7.8 GB | 65k | `lfm2.5-8b-a1b` | `n-cpu-moe 0`; re-run also 0.1333 |
+| 15 | `gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf` | **0.1333** | 29.2 | 4.1 GB | 65k | `gemma-4-26b-a4b` | pending queue; weak |
+| 15 | `Qwen3.5-9B-UD-Q4_K_XL.gguf` | **0.1333** | 65.0 | 7.5 GB | 32k | `qwen3.5-9b` | pending queue; harness DISCARD vs polluted prior best |
 
 ## Claw-Eval quick (n=5) — smoke ceiling
 
@@ -28,7 +33,7 @@ Best discard worth noting: Mythos non-MTP full **0.3333** (ties Gemma E4B; below
 | :---: | :--- |
 | **1.00** | Laguna-XS only (so far) |
 | **0.80** | LFM2.5-1.2B @ **65k f16** (alias), Bonsai@131k smoke, Ornith-9B, Ornith-35B, some Qwythos |
-| **≤0.40** | Prefer sibling / skip full queue (e.g. Ornith-9B-MTP, LFM2.5-8B-A1B **0.20**) |
+| **≤0.40** | Prefer sibling / skip full queue unless curious (e.g. LFM2.5-8B-A1B **0.20** → full ≤0.20; Ornith-9B-MTP quick 0.40 → full **0.4667**) |
 
 Smoke ≠ Val Score: Laguna quick 1.00 → full 0.67; Bonsai quick 0.80 → full 0.47; LFM2.5-1.2B quick 0.80 → full **0.60**; LFM2.5-8B quick 0.20 → full 0.13–0.20.
 

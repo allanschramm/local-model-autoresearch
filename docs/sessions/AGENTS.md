@@ -48,3 +48,4 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - [`2026-07-24-coding-10-claw-leaders.md`](./2026-07-24-coding-10-claw-leaders.md) — coding-10 on Laguna / LFM 1.2B / Ornith-9B (+ VRAM-kill @ 65k).
 - [`2026-07-24-lcb-patch-gambiarra.md`](./2026-07-24-lcb-patch-gambiarra.md) — LCB-only remeasure + in-place results.tsv patch (symlink/timeout fixes).
 - [`2026-07-24-lfm2.5-1.2b-ctx-kv-matrix.md`](./2026-07-24-lfm2.5-1.2b-ctx-kv-matrix.md) — LFM2.5-1.2B claw-quick ctx/KV matrix (65k f16 preferred).
+- [`2026-07-25-claw-full-pending-queue.md`](./2026-07-25-claw-full-pending-queue.md) — Claw-Eval full on six pending aliases.

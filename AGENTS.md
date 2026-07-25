@@ -25,6 +25,7 @@ Repository-wide agent guidelines are owned by the repository developers.
 - Ask first, ship never: When user asks "can we do X?", answer yes/no only. Do not implement unless user explicitly says "do it" / "implement" / "go ahead".
 - Never assume. When uncertain whether a file is scratch, a decision is right, or a path is safe — ask the user or yourself explicitly before acting.
 - NEVER commit and/or push without explicit user command. Wait for "commit", "commit and push", or equivalent. Do not infer intent.
+- **Atomic commit = entire working tree**: When the user asks for an "atomic commit" / "commit atômico", stage and commit **all** current git changes (modified + untracked that belong in the repo), regardless of whether they were made in this session or relate to the latest task. Do not split by topic or leave leftovers unless the user explicitly excludes paths.
 - **Never edit upstream/vendor trees:** `llama.cpp/` (submodule), local `claw-eval/`, `llama.cpp-nanbeige42/`, `llama.cpp-prismml/`, and any other third-party checkout are read-only for agents. No Edit/Write/Delete/patch inside them. Work around via env (`PYTHONUTF8=1`), harness code owned by this repo, or ask the user.
 
 ## Work Guidance
