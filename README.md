@@ -38,6 +38,7 @@ Instale **antes** de pedir pro agente:
 | uvx / whichllm | `pip install uv` | rodar `uvx whichllm@latest` |
 | llmfit | `cargo install llmfit` (ou `scoop install llmfit`) | dimensionamento de hardware e CLI/TUI Rust |
 | huggingface_hub[cli] | `pip install huggingface_hub[cli]` | baixar GGUFs |
+| deps do repo | `uv pip install --python ./venv/Scripts/python.exe -r requirements.txt` | harness (`gguf`, `evalplus`, `datasets`, …) |
 
 Depois clone e compile o `llama.cpp` (ver [seção Build](#build-do-llamacpp-com-cuda) abaixo).
 

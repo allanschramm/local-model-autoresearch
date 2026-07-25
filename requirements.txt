@@ -1,18 +1,26 @@
 # Runtime dependencies for local-model-autoresearch
 # Tested with Python 3.11+
+# Install: uv pip install --python ./venv/Scripts/python.exe -r requirements.txt
+#      or: ./venv/Scripts/python.exe -m pip install -r requirements.txt
 
 # Core autoloop + bench harness
 evalplus            # Coding benchmark (HumanEval+ / MBPP+)
+datasets            # BigCodeBench Hard via HF (benchmark_coding)
+gguf                # GGUF metadata — MoE vs dense (model_arch); hard required
 
 # Model discovery + download
 huggingface_hub[cli] # `hf` CLI used to download GGUF files
 uv                   # `uvx` for running `uvx whichllm@latest` (prefer `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pipx install uv`)
 
-# llama-server HTTP client (used by LlamaClient)
-httpx
+# HTTP
+httpx               # reserved / optional clients (LlamaClient uses stdlib urllib today)
+requests            # SGLang runner health checks
 
-# Config + YAML parsing (autoloop reads config.py + benchmark fixtures)
+# Config + YAML (autoloop alias YAML, claw-eval task defs)
 pyyaml
 
-# Misc utilities
-requests
+# Operator scripts
+psutil              # scripts/check_hardware.py RAM probe (falls back to wmic/os if missing)
+
+# Dev / tests (also needed for `pytest`)
+pytest

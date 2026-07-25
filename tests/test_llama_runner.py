@@ -433,32 +433,36 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_moe_n_cpu_moe_allowed(self):
         from autoresearch.core.config import validate_config
-        cfg = validate_config({
-            "MODEL": "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf",
-            "CTX_SIZE": 65536,
-            "FLASH_ATTN": "on",
-            "BATCH_SIZE": 512,
-            "UBATCH_SIZE": 128,
-            "N_CPU_MOE": 32,
-            "VRAM_LIMIT_MB": 7900,
-        })
+        with patch("autoresearch.core.config.is_dense_model", return_value=False):
+            cfg = validate_config({
+                "MODEL": "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf",
+                "CTX_SIZE": 65536,
+                "FLASH_ATTN": "on",
+                "BATCH_SIZE": 512,
+                "UBATCH_SIZE": 128,
+                "N_CPU_MOE": 32,
+                "VRAM_LIMIT_MB": 7900,
+            })
         self.assertEqual(cfg["N_CPU_MOE"], 32)
 
     def test_ornith_moe_via_gguf_not_filename(self):
         from autoresearch.core.config import validate_config
-        from autoresearch.core.model_arch import is_moe_model
-        # Filename has no A3B/MOE token — classification must come from GGUF.
-        self.assertTrue(is_moe_model("Ornith-1.0-35B-UD-Q4_K_XL.gguf"))
-        self.assertTrue(is_moe_model("Laguna-XS-2.1-Q3_K_XL.gguf"))
-        cfg = validate_config({
-            "MODEL": "Ornith-1.0-35B-UD-Q4_K_XL.gguf",
-            "CTX_SIZE": 65536,
-            "FLASH_ATTN": "on",
-            "BATCH_SIZE": 512,
-            "UBATCH_SIZE": 128,
-            "N_CPU_MOE": 32,
-            "VRAM_LIMIT_MB": 7900,
-        })
+        from autoresearch.core import model_arch
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "Ornith-1.0-35B-UD-Q4_K_XL.gguf"
+            model.touch()
+            with patch.object(model_arch, "gguf_is_moe", return_value=True):
+                self.assertTrue(model_arch.is_moe_model(model.name, models_dir=Path(tmp)))
+        with patch("autoresearch.core.config.is_dense_model", return_value=False):
+            cfg = validate_config({
+                "MODEL": "Ornith-1.0-35B-UD-Q4_K_XL.gguf",
+                "CTX_SIZE": 65536,
+                "FLASH_ATTN": "on",
+                "BATCH_SIZE": 512,
+                "UBATCH_SIZE": 128,
+                "N_CPU_MOE": 32,
+                "VRAM_LIMIT_MB": 7900,
+            })
         self.assertEqual(cfg["N_CPU_MOE"], 32)
 
     def test_missing_gguf_treated_dense_for_n_cpu_moe(self):
