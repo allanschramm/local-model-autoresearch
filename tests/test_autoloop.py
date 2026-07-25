@@ -163,12 +163,12 @@ class TestAutoLoop(unittest.TestCase):
             "INCLUDE_CODING": True, "CODING_TASK_LIMIT": 10,
             "INCLUDE_NEXUS": False, "INCLUDE_CLAW": False,
             "INCLUDE_AGENTIC_QUICK": True, "INCLUDE_AGENTIC_FULL": True,
-            "N_CPU_MOE": 32,
+            "N_CPU_MOE": 32, "VRAM_LIMIT_MB": 7900,
         }
         cfg.update(overrides)
         return cfg
 
-    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--vram-limit-mb", "99999", "--models", "test.gguf"])
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")
     @patch("autoloop.load_config")
@@ -195,7 +195,7 @@ class TestAutoLoop(unittest.TestCase):
         mock_write_row.assert_called()
         # "Exhausted random search space" reached → no crash
 
-    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--vram-limit-mb", "99999", "--models", "test.gguf"])
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")
     @patch("autoloop.load_config")
@@ -362,8 +362,7 @@ class TestAutoLoop(unittest.TestCase):
         args, kwargs = mock_runner.run_trial.call_args
         self.assertEqual(kwargs, {})
 
-    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf",
-                         "--vram-limit-mb", "1"])
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")
     @patch("autoloop.load_config")
@@ -376,7 +375,7 @@ class TestAutoLoop(unittest.TestCase):
         mock_runner_cls, _mock_models
     ):
         """Neighbor exceeding VRAM limit gets skipped."""
-        mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
+        mock_lcfg.return_value = self._full_config(MODEL="test.gguf", VRAM_LIMIT_MB=1)
         mock_runner = MagicMock()
         mock_runner.run_trial.return_value = self._make_trial_result()
         mock_runner_cls.return_value = mock_runner
@@ -393,7 +392,7 @@ class TestAutoLoop(unittest.TestCase):
                 autoloop.main()
 
         # Neighbor was skipped (vram over budget), but baseline still ran
-        self.assertGreaterEqual(mock_runner.run_trial.call_count, 1)
+        self.assertEqual(mock_runner.run_trial.call_count, 1)
 
     @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf", "--perplexity-val"])
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
@@ -445,7 +444,7 @@ class TestAutoLoop(unittest.TestCase):
             dummy_config = {
                 "alias": "test-model",
                 "model": "models/test-model-gguf",
-                "flags": [],
+                "flags": ["--n-gpu-layers 42"],
                 "metrics": {"tps": 10.0}
             }
             with open(yaml_path, "w", encoding="utf-8") as f:
@@ -457,7 +456,12 @@ class TestAutoLoop(unittest.TestCase):
             mock_path.resolve.return_value.parent = Path(tmpdir)
             mock_path_cls.return_value = mock_path
             
-            new_cfg = {"THREADS": 4, "BATCH_SIZE": 512}
+            new_cfg = {
+                "THREADS": 4,
+                "BATCH_SIZE": 512,
+                "N_CPU_MOE": 32,
+                "NO_MMAP": True,
+            }
             autoloop.update_model_alias("test-model-v1.gguf", new_cfg, 25.5, "tps")
             
             with open(yaml_path, "r", encoding="utf-8") as f:
@@ -465,6 +469,10 @@ class TestAutoLoop(unittest.TestCase):
                 
             self.assertEqual(updated["metrics"]["tps"], 25.5)
             self.assertIn("--threads 4", updated["flags"])
+            self.assertIn("--n-gpu-layers 42", updated["flags"])
+            self.assertIn("--n-cpu-moe 32", updated["flags"])
+            self.assertIn("--no-mmap", updated["flags"])
+            self.assertNotIn("--n-gpu-layers 99", updated["flags"])
 
     @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf", "--mode", "tps"])
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])

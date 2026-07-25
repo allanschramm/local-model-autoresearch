@@ -71,6 +71,14 @@ class TestSearchStrategy(unittest.TestCase):
         final_cfg = strategy.random_restart(visited, current, max_attempts=50)
         self.assertIsNone(final_cfg)
 
+    def test_config_key_distinguishes_models(self):
+        strategy = SearchStrategy({"THREADS": [8, 12]})
+
+        first = strategy.get_config_key({"MODEL": "first.gguf", "THREADS": 8})
+        second = strategy.get_config_key({"MODEL": "second.gguf", "THREADS": 8})
+
+        self.assertNotEqual(first, second)
+
     def test_is_batch_consistent(self):
         strategy = SearchStrategy({})
         self.assertTrue(strategy.is_batch_consistent({"BATCH_SIZE": 512, "UBATCH_SIZE": 128}))

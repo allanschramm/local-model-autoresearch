@@ -290,7 +290,7 @@ class ExperimentRunner:
     - VRAM tracking
     - metric computation
 
-    Leverage: one interface, N callers (CLI, autoloop, grid sweep).
+    Leverage: one interface, N callers (CLI and autoloop).
     Locality: trial orchestration logic and bugs concentrate in one module.
     """
 

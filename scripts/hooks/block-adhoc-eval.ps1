@@ -134,10 +134,7 @@ $baselineCliFlags = @(
     '--cont-batching', '--temp', '--top-p', '--min-p', '--top-k',
     '--repeat-penalty', '--presence-penalty', '--frequency-penalty',
     '--coding-task-limit', '--lcb-task-limit', '--bigcode-task-limit',
-    '--bench-tts-threshold', '--grid', '--grid-kvs', '--grid-kvs-k',
-    '--grid-kvs-v', '--grid-max-tokens', '--grid-threads',
-    '--grid-threads-batch', '--grid-batch-sizes', '--grid-ubatch-sizes',
-    '--grid-spec-draft-n-max'
+    '--bench-tts-threshold'
 )
 $baselineCliFlagRegex = '(?i)(?:^|\s)(?:' + (($baselineCliFlags | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')(?=\s|=|$)'
 

@@ -115,9 +115,22 @@ def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) ->
 
         # 1. Compile flags from new_cfg
         flags = []
+        existing_ngl = next(
+            (
+                flag for flag in data.get("flags", [])
+                if isinstance(flag, str) and flag.startswith(("--n-gpu-layers ", "-ngl "))
+            ),
+            None,
+        )
         if new_cfg.get("JINJA"): flags.append("--jinja")
         if new_cfg.get("CTX_SIZE"): flags.append(f"--ctx-size {new_cfg['CTX_SIZE']}")
-        flags.append("--n-gpu-layers 99")
+        if existing_ngl:
+            flags.append(existing_ngl)
+
+        model_path = resolve_model_path(MODELS_DIR, model_name)
+        n_cpu_moe, _ = resolve_n_cpu_moe(model_path, new_cfg.get("N_CPU_MOE"))
+        if n_cpu_moe is not None:
+            flags.append(f"--n-cpu-moe {n_cpu_moe}")
         
         k_val = new_cfg.get("KV_CACHE_K") or new_cfg.get("KV_CACHE")
         if k_val: flags.append(f"--cache-type-k {k_val}")
@@ -131,6 +144,7 @@ def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) ->
         if new_cfg.get("BATCH_SIZE"): flags.append(f"--batch-size {new_cfg['BATCH_SIZE']}")
         if new_cfg.get("UBATCH_SIZE"): flags.append(f"--ubatch-size {new_cfg['UBATCH_SIZE']}")
         if new_cfg.get("CONT_BATCHING"): flags.append("--cont-batching")
+        if new_cfg.get("NO_MMAP"): flags.append("--no-mmap")
         
         spec_type = new_cfg.get("SPEC_TYPE")
         if spec_type and spec_type != "none":
@@ -244,7 +258,6 @@ def main():
             pass
     import argparse
     parser = argparse.ArgumentParser(description="Autonomous Hill-Climbing Evaluation Loop")
-    parser.add_argument("--vram-limit-mb", type=float, default=7900.0, help="Max safe VRAM in MB")
     parser.add_argument("--max-rounds", type=int, default=0, help="Max rounds (0=infinite)")
     parser.add_argument("--reset-visited", action="store_true", help="Clear visited memory only (Baseline stays in config.py)")
     parser.add_argument("--models", nargs="+", help="Space-separated list of model filenames to optimize (1 or more)")
@@ -252,7 +265,6 @@ def main():
     parser.add_argument("--mode", choices=["tps", "quality", "both"], default="both", help="Optimization mode: 'tps' (speed), 'quality' (accuracy), 'both' (everything)")
     cli_args = parser.parse_args()
 
-    vram_limit = cli_args.vram_limit_mb
     max_rounds = cli_args.max_rounds
 
     state_manager = SearchState()
@@ -358,6 +370,7 @@ def main():
 
             # ── Step 1: Load current baseline from config.py ─────────────
             baseline_cfg = load_config(state_manager.get_baseline())
+            vram_limit = baseline_cfg.get("VRAM_LIMIT_MB")
             baseline_key = search_strategy.get_config_key(baseline_cfg)
             if not state_manager.is_visited(baseline_key):
                 state_manager.mark_visited(baseline_key)

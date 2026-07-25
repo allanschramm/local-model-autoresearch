@@ -9,6 +9,7 @@ Repository developers.
 ## Local Contracts
 - Do not modify internal evaluation logic or benchmarks under `autoresearch/benchmarks/` without authorization.
 - `autoresearch/core/config.py` owns the mutable Baseline (`ENGINE_DEFAULTS` / `SAMPLER_DEFAULTS`) and validation. File is **gitignored**; seed from `config.py.example`. The ignored `.autoresearch_state.json` stores visited memory only. `TPS_FLOOR` (default 20.0) is the only Trial reject gate for throughput — set per model (MoE on 8GB often needs 15–18).
+- Baseline `VRAM_LIMIT_MB` is the single VRAM budget for autoloop preflight and runtime monitoring; there is no CLI override.
 - Do not add hardcoded user or absolute directory paths in the source files.
 - Model paths: `resolve_model_path(models_dir, ref)` owns flat + nested (`publisher/model/*.gguf`) lookup. Config Baseline keeps basenames (and `draft/...` for drafts).
 - Architecture class (MoE vs dense): `autoresearch/core/model_arch.py` reads local GGUF metadata (`expert_count` / `*moe*` arch). No filename heuristics. Model cards must mirror that GGUF truth.

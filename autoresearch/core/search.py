@@ -23,7 +23,7 @@ class SearchStrategy:
 
     def get_config_key(self, cfg: Config) -> str:
         """Deterministically serialize the search-space parameters of a config."""
-        return str(sorted((k, v) for k, v in cfg.items() if k in self.search_space))
+        return str(sorted((k, v) for k, v in cfg.items() if k in self.search_space or k == "MODEL"))
 
     @staticmethod
     def is_batch_consistent(cfg: Config) -> bool:

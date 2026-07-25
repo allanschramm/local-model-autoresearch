@@ -2,7 +2,6 @@ import sys
 import csv
 import argparse
 import subprocess
-import itertools
 import json
 import uuid
 import shutil
@@ -35,10 +34,7 @@ BASELINE_CLI_FLAGS = {
     "--cont-batching", "--temp", "--top-p", "--min-p", "--top-k",
     "--repeat-penalty", "--presence-penalty", "--frequency-penalty",
     "--coding-task-limit", "--lcb-task-limit", "--bigcode-task-limit",
-    "--bench-tts-threshold", "--grid", "--grid-kvs", "--grid-kvs-k",
-    "--grid-kvs-v", "--grid-max-tokens", "--grid-threads",
-    "--grid-threads-batch", "--grid-batch-sizes", "--grid-ubatch-sizes",
-    "--grid-spec-draft-n-max",
+    "--bench-tts-threshold",
 }
 
 
@@ -121,18 +117,6 @@ def parse_args():
     parser.add_argument("--presence-penalty", type=float, default=config.PRESENCE_PENALTY, help="Presence penalty")
     parser.add_argument("--frequency-penalty", type=float, default=config.FREQUENCY_PENALTY, help="Frequency penalty")
     
-    # Grid sweep options
-    parser.add_argument("--grid", action="store_true", help="Run in grid search sweep mode (ignores --desc)")
-    parser.add_argument("--grid-kvs", type=str, default=None, help="Comma-separated KV cache options (sweeps both K & V)")
-    parser.add_argument("--grid-kvs-k", type=str, default=None, help="Comma-separated Key cache options (overrides K)")
-    parser.add_argument("--grid-kvs-v", type=str, default=None, help="Comma-separated Value cache options (overrides V)")
-    parser.add_argument("--grid-max-tokens", type=str, default="1024", help="Comma-separated Max Token options for grid search")
-    parser.add_argument("--grid-threads", type=str, default=None, help="Comma-separated Thread count options")
-    parser.add_argument("--grid-threads-batch", type=str, default=None, help="Comma-separated batch thread count options")
-    parser.add_argument("--grid-batch-sizes", type=str, default=None, help="Comma-separated batch size options")
-    parser.add_argument("--grid-ubatch-sizes", type=str, default=None, help="Comma-separated ubatch size options")
-    parser.add_argument("--grid-spec-draft-n-max", type=str, default=None, help="Comma-separated speculative draft max tokens options")
-
     for action in parser._actions:
         if BASELINE_CLI_FLAGS.intersection(action.option_strings):
             action.help = argparse.SUPPRESS
@@ -443,82 +427,6 @@ def handle_single_run(args):
         print(">>> Run this to discard your tweak:")
         print("    git checkout . && git clean -fd")
 
-def handle_grid_run(args):
-    """Run a multidimensional sweep over comma-separated grid parameters."""
-    def _g(attr, default):
-        """Grid param: comma-separated string → list of strings, or [default]."""
-        raw = getattr(args, attr, None)
-        return [x.strip() for x in raw.split(",") if x.strip()] if isinstance(raw, str) else [default]
-
-    def _fa(attr, default):
-        """Safe getattr: skip MagicMock auto-created attrs, return default instead."""
-        v = getattr(args, attr, None)
-        return v if isinstance(v, (int, str, type(None), float, bool)) else default
-
-    print("Starting multidimensional grid sweep...")
-    
-    kvs = _g("grid_kvs", args.kv)
-    max_tokens_list = [int(x) for x in _g("grid_max_tokens", "1024")]
-    kvs_k = _g("grid_kvs_k", None)
-    kvs_v = _g("grid_kvs_v", None)
-    threads_list = [int(x) for x in _g("grid_threads", _fa("threads", 12))]
-    tb_raw = getattr(args, "grid_threads_batch", None)
-    threads_batch_list = (
-        [int(x.strip()) for x in tb_raw.split(",") if x.strip()]
-        if isinstance(tb_raw, str) else
-        [_fa("threads_batch", None)]
-    )
-    batch_sizes = [int(x) for x in _g("grid_batch_sizes", _fa("batch_size", 512))]
-    ubatch_sizes = [int(x) for x in _g("grid_ubatch_sizes", _fa("ubatch_size", 128))]
-    spec_draft_list = [int(x) for x in _g("grid_spec_draft_n_max", _fa("spec_draft_n_max", 1))]
-
-    commit = get_git_commit()
-    
-    combinations = list(itertools.product(
-        kvs, max_tokens_list, kvs_k, kvs_v, threads_list, threads_batch_list, batch_sizes, ubatch_sizes, spec_draft_list
-    ))
-    
-    print(f"Total configurations to evaluate: {len(combinations)}")
-    
-    for kv, mt, kv_k, kv_v, threads, threads_batch, batch_size, ubatch_size, spec_draft in combinations:
-        k_lbl = kv_k if kv_k is not None else kv
-        v_lbl = kv_v if kv_v is not None else kv
-        
-        print(f"\n{'='*80}")
-        print(f"GRID Sweep: KV_K={k_lbl}, KV_V={v_lbl}, Max Tokens={mt}, Threads={threads}, Threads_Batch={threads_batch}, Batch={batch_size}, Ubatch={ubatch_size}, SpecDraft={spec_draft}")
-        print(f"{'='*80}")
-        
-        res = run_evaluation(
-            args, kv=kv, max_tokens=mt,
-            kv_k=kv_k, kv_v=kv_v, threads=threads, threads_batch=threads_batch,
-            batch_size=batch_size, ubatch_size=ubatch_size, spec_draft_n_max=spec_draft
-        )
-        
-        status = "keep" if res["status"] == "OK" else "discard"
-        details = (f"GRID Sweep: model={args.model} kv_k={k_lbl} kv_v={v_lbl} max_tokens={mt} "
-                   f"ctx={args.ctx_size} threads={threads} threads_batch={threads_batch} "
-                   f"batch={batch_size} ubatch={ubatch_size} spec_draft={spec_draft} "
-                   f"TPS={res['avg_tps']:.1f} VRAM={res['peak_vram_gb']:.1f}GB "
-                   f"coding={res.get('coding_val', 0.0):.4f} lcb={res.get('lcb_val', 0.0):.4f} "
-                   f"he={res.get('he_val', 0.0):.4f} mbpp={res.get('mbpp_val', 0.0):.4f} "
-                   f"bigcode={res.get('bigcode_val', 0.0):.4f}")
-            
-        write_row(
-            RESULTS_FILE, commit, res["val_score"],
-            res.get("swe_val", 0.0), res.get("he_val", 0.0), res.get("mbpp_val", 0.0),
-            res["peak_vram_gb"], status, details,
-            lcb_score=res.get("lcb_val", 0.0),
-            bigcode_score=res.get("bigcode_val", 0.0),
-            category=determine_category(args),
-            elapsed_sec=res.get("elapsed_sec", 0.0),
-            model=args.model,
-            outcome=res.get("outcome", ""),
-            diagnostic=res.get("diagnostic", ""),
-            task_ids=",".join(res.get("task_ids", [])),
-            tps_source=res.get("tps_source", ""),
-        )
-        print(f"Grid sweep entry logged: score={res['val_score']:.6f}")
-
 def main():
     args = parse_args()
     if args.list_agentic_benchmarks:
@@ -527,10 +435,7 @@ def main():
     if args.list_claw_tiers:
         print(format_claw_tiers())
         return
-    if args.grid:
-        handle_grid_run(args)
-    else:
-        handle_single_run(args)
+    handle_single_run(args)
 
 if __name__ == "__main__":
     main()

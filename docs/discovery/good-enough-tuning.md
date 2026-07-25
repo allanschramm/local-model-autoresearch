@@ -9,8 +9,7 @@ This is the **default path** for new agents and humans when the question is “w
 | Approach | When | Cost |
 |---|---|---|
 | **Autoloop `--mode tps`** (default here) | Few speed knobs; want “good enough” fast | Low — bench + PPL, no Claw full per Trial |
-| Tiny fixed grid (≤ ~12–20 combos) | Closing 2–3 rivals after a plateau | Medium — only if space stays tiny |
-| Full Cartesian `--grid` | Rare; space explodes fast | High — avoid as default |
+| Manual A/B via `config.py` | Closing 2–3 rivals after a plateau | Medium — one explicit Baseline at a time |
 | Autoloop `--mode both` / quality overnight | After speed is acceptable | High — Claw full / agentic Val Score |
 
 **Do not** run Claw full or coding-10 on every neighbor. That is champion validation, not search.
@@ -47,14 +46,16 @@ Gates: load + TPS floor + Claw quick smoke. One model at a time. Read the latest
 ### 3. Hill-climb for speed
 
 ```bash
-.\venv\Scripts\python.exe autoloop.py --mode tps --vram-limit-mb=<budget>
+.\venv\Scripts\python.exe autoloop.py --mode tps
 ```
+
+Set `VRAM_LIMIT_MB` in `config.py`; the same Baseline value governs preflight and runtime monitoring.
 
 - Mutates **one** engine knob per Trial.
 - Optimizes TPS; perplexity acts as quality ceiling (do not keep big PPL regressions).
 - Stop on local maxima / Ctrl+C. Baseline stays in `config.py`; history in `results.tsv`.
 
-Optional: small manual A/B of 2–3 configs via `config.py` + `--validation` if you already know the candidates — cheaper than a big grid.
+Optional: small manual A/B of 2–3 configs via `config.py` + `--validation` if you already know the candidates.
 
 ### 4. Validate the champion (quality)
 
@@ -70,7 +71,7 @@ Compare Val Score / coding-10 in `results.tsv`. Keep or revert `config.py`.
 ## Anti-patterns
 
 1. **Overnight `autoloop` default/`both` before a TPS pass** — burns hours on slow configs.
-2. **Large `--grid-*` sweeps** — product of lists explodes; not the default path.
+2. **CLI sweep flags** — every Trial must edit `config.py` first.
 3. **Coding-10 / Claw full inside the search loop** — use for the winner only.
 4. **Dense models spilling to shared GPU memory** — cut `CTX_SIZE` / KV / draft, or reject; never “spill and hope”.
 5. **Parallel validations** — one Trial at a time on the shared GPU/port.
