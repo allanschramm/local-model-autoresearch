@@ -18,7 +18,8 @@ Bootstrap context for agents working on this repo.
 1. **Be Terse**: Respond in smart caveman style (drop articles, filler, pleasantries).
 2. **Loop Rule**: If running `autoloop.py` and a crash or code error occurs, **stop immediately**. Do not edit code to fix bugs during active search unless explicitly requested.
 3. **No Pushing**: Never push results or config tweaks to remote branches. Keep all benchmark runs offline.
-4. **DOX Framework**: Read the `AGENTS.md` hierarchy path to any file before touching it.
+4. **Sampler seed**: Before first Trial on a model, copy Recommended settings from `docs/models/<card>.md` into `SAMPLER_DEFAULTS` (agentic/general vs coding). Do not start from template `TEMP=0.4` when the card differs.
+5. **DOX Framework**: Read the `AGENTS.md` hierarchy path to any file before touching it.
 
 ## Essential Commands
 

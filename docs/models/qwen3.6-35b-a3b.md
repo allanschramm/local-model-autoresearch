@@ -149,7 +149,9 @@ MTP adds ~2 GB RAM/VRAM headroom and 1.4-2.2× speedup (Unsloth). Unambiguously 
 - `FLASH_ATTN = "on"`
 - `--n-gpu-layers`: Validar (autoloop vai descobrir)
 - `--n-cpu-moe`: 40 (= total de layers — mantém todos os experts no CPU/RAM, padrão Codacus) — suporte nativo adicionado em commit `2bd795b`
-- Sampling for coding: `temperature=0.6, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=0.0, repeat_penalty=1.0`
+- Sampling (seed `SAMPLER_DEFAULTS` before Trials):
+  - **Agentic / general (thinking):** `TEMP=1.0`, `TOP_P=0.95`, `TOP_K=20`, `MIN_P=0.0`, `PRESENCE_PENALTY=0.0`, `REPEAT_PENALTY=1.0`
+  - **Coding-10:** same but `TEMP=0.6`
 
 ## TPS medidos (2026-06-19)
 - `r_q4` (base GGUF, sem MTP): **11.1 tok/s** (medido Allan)

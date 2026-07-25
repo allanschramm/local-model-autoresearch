@@ -53,7 +53,9 @@ ENGINE_DEFAULTS = {
     'TPS_FLOOR': 20.0,
 }
 
-# Generation/Sampling configuration parameters (affect quality and token selection)
+# Generation/Sampling — seed from the model card "Recommended settings"
+# for the job (agentic/general vs coding) BEFORE the first Trial. Do not
+# leave the template TEMP=0.4 when the publisher recommends something else.
 SAMPLER_DEFAULTS = {
     'TEMP': 0.4,
     'TOP_P': 0.95,

@@ -17,7 +17,7 @@ Repository-wide agent guidelines are owned by the repository developers.
 - Parallel processes: NEVER run multiple validations, benchmarks, or command tasks in parallel. Always run one command/task at a time sequentially.
 - Architecture: Never overengineer. Keep it simple. Less is more. Reduce lines of code. Simplify instead of complicate.
 - Docs always: Update relevant docs (model cards, ADRs, config comments) whenever any codebase/model/config improvement is found or applied.
-- Config surface: Agents and the Search loop change Baseline only via `autoresearch/core/config.py`. Do not drive Trials with CLI flag soup. Never edit `program.md` or harness code from the Search loop.
+- Config surface: Agents and the Search loop change Baseline only via `autoresearch/core/config.py`. Do not drive Trials with CLI flag soup. Never edit `program.md` or harness code from the Search loop. Before the first Trial on a model, seed `SAMPLER_DEFAULTS` from that model's card Recommended settings (job profile: agentic/general vs coding).
 - **Hard gate (hooks):** Claude Code shell allowlist + Baseline CLI-override rejection + gate-file protection. Scripts: `scripts/hooks/block-adhoc-eval.ps1`, `scripts/hooks/block-gate-tamper.ps1`. Wiring: `.claude/settings.json`. Trial loop = edit `config.py` → `benchmark_search.py` / `autoloop.py`. **Disable playbook:** [docs/discovery/agent-shell-hard-gates.md](docs/discovery/agent-shell-hard-gates.md) §3 (teach human; wiring edits require unlock).
 - Context size: CTX_SIZE default is 131072. User may lower it to trade context for speed. Code minimum is 2048 (llama.cpp practical floor). Always use the user-configured value.
 - No timeouts: Never set execution timeouts on commands unless explicitly told to. Benchmarks and model tests run until completion.
@@ -121,6 +121,7 @@ Default section order:
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
+- **Seed sampler from the model card before Trials**: Before the first Trial on a model, copy publisher-recommended sampling (TEMP / TOP_P / TOP_K / MIN_P / penalties) from `docs/models/<card>.md` § Recommended settings into `SAMPLER_DEFAULTS`. Pick the profile for the job — agentic/general vs coding (they often differ). Do not start Search with the template `TEMP=0.4` when the card says otherwise. Engine knobs may still hill-climb after; sampler stays at recommended until an explicit quality pass.
 - **Fair testing across models**: Always keep exactly 10 tasks per dataset for direct-coding evaluations (never 5 tasks) to guarantee fair model comparisons. Claw-Eval quick smoke (5 tasks) is exempt — it is observational smoke, not a cross-model score.
 - **README language**: README.md must always be in pt-BR. Agent-facing docs (docs/, AGENTS.md, GOLDEN-RULES.md, CONTEXT.md, program.md) stay in English.
 - **Agentic coding migration**: Treat HumanEval+/MBPP+/LiveCodeBench/BigCodeBench as direct-coding preflight benchmarks. Prefer long-horizon agentic targets for future coding-agent quality decisions once adapters exist.

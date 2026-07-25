@@ -17,6 +17,7 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 - **Verify from the GGUF, not the HF card.** Use `gguf.GGUFReader` to read the local file's header — that gives the truth (architecture name, block_count, expert_count, tensor prefixes). The HF card is marketing; the GGUF is what's running.
 - **Architecture class (MoE vs dense):** state it explicitly in the Architecture section (`expert_count > 1` ⇒ MoE). Harness `is_moe_model` / VITRIOL / `N_CPU_MOE` gates read **GGUF metadata only** — never filename tokens (`A3B`, `ORNITH`, `LAGUNA`, …). Cards must match the GGUF; do not invent a parallel name filter.
 - **MoE config baseline:** start with `N_CPU_MOE=None` (harness → GGUF `block_count`) unless the quant fits physical VRAM — then `N_CPU_MOE=0`. Record the resolved N and measured TPS/VRAM after validation.
+- **Sampler seed before Trials:** § Recommended settings is the source of truth for `SAMPLER_DEFAULTS`. Match the profile to the upcoming job (agentic/general vs coding). Only change sampler after an intentional quality experiment — never as the first Search mutation.
 - **Mark TBDs explicitly.** Anything we couldn't verify (extraction truncated, doc missing) gets a `**TBD:**` marker and a row in the "Open questions" section. Never invent values.
 
 ## Work Guidance
@@ -25,7 +26,7 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 1. **Header block** — Source repo, Unsloth/docs URL, MTP-specific repo (if exists), license, local absolute file path, symlink path, family, quantization.
 2. **Architecture** — verified from GGUF metadata: `block_count`, hidden dim, ctx, expert counts, attention pattern (full / sliding / DeltaNet / hybrid), shared expert, tensor types for embd/output.
 3. **Hardware requirements** — Unsloth's published table for the quant row we chose + warnings (CUDA version, offload, OOM risk).
-4. **Recommended settings** — sampling params (thinking vs instruct), max context, output length. Cite the Unsloth doc.
+4. **Recommended settings** — sampling params by job when the publisher splits them (e.g. thinking/general vs precise coding vs instruct). Include TEMP / TOP_P / TOP_K / MIN_P / presence / repeat. Agents **must seed** `SAMPLER_DEFAULTS` from this section before the first Trial — do not leave the template defaults. Cite Unsloth/HF.
 5. **MTP section** — does THIS GGUF contain MTP tensors? If not, where do we get MTP from? Which flags? Plus a `verified from our common/arg.cpp` note so we don't re-introduce the `draft-mtp` bug.
 6. **VITRIOL split** — the Codacus 2-knob MoE strategy: `--n-gpu-layers` + `--n-cpu-moe N`. Cite the YouTube source.
 7. **Our config baseline (TBD)** — concrete flag values to start from. Mark TBD until we run.

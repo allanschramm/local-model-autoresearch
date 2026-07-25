@@ -24,7 +24,7 @@ Touch these first (edit `autoresearch/core/config.py` only — no CLI Baseline s
 - `SPEC_DRAFT_N_MAX` (and draft model) when MTP/draft exists
 - MoE: `N_CPU_MOE` (`None` = auto full expert CPU offload; `0` = full GPU only if it fits **physical** VRAM)
 
-Leave sampler knobs alone until speed plateaus and you switch to quality mode.
+Leave sampler at the card recommendation through the TPS speed path. Mutate sampler only in a later quality pass.
 
 ## Default recipe
 
@@ -33,6 +33,8 @@ Leave sampler knobs alone until speed plateaus and you switch to quality mode.
 ```bash
 cp autoresearch/core/config.py.example autoresearch/core/config.py
 # Set MODEL=…gguf basename; adjust TPS_FLOOR / CTX_SIZE / N_CPU_MOE for the rig
+# Seed SAMPLER_DEFAULTS from docs/models/<card>.md Recommended settings
+# (agentic/general vs coding profile) BEFORE any Trial — not template TEMP=0.4
 ```
 
 ### 2. Smoke that it loads
