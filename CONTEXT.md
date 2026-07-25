@@ -1,6 +1,6 @@
 # AutoResearch
 
-Autonomous hill-climbing system that optimizes local LLM runtime flags by repeatedly benchmarking configurations and keeping improvements.
+Autonomous multi-objective Search that benchmarks local LLM runtime configurations and maintains a Pareto frontier of non-dominated Trials (context × throughput × agentic × coding) for a given hardware budget.
 
 ## Language
 
@@ -11,58 +11,82 @@ The overall optimization process. An indefinite sequence of Rounds that continue
 _Avoid_: loop, sweep, experiment
 
 **Round**:
-One iteration of the Search: evaluate the current baseline, then evaluate neighbor configurations until one improves or all are exhausted.
+One iteration of the Search: evaluate Neighbors of the active Baseline until the per-model frontier stops improving or Neighbors are exhausted.
 _Avoid_: step, iteration, cycle
 
 **Trial**:
-One complete execution of all benchmarks against a single configuration. The atomic unit of work. Produces a score, TPS, and VRAM measurement.
+One execution of chosen benchmarks against a single Fingerprint. The atomic unit of work. May be partial (subset of axes) or complete (all four Objective Vector axes measured).
 _Avoid_: run, evaluation, pass, execution
 
+**Objective Vector**:
+The four maximize axes of a Trial: configured context (`CTX_SIZE`), TPS, agentic (Claw-Eval full), coding (coding-10). Domination compares Objective Vectors.
+_Avoid_: Val Score, blended intelligence, single score
+
+**Pareto Set**:
+The set of Trials whose Objective Vectors are not dominated. Global ranking is the union of per-model fronts for a hardware+budget identity; Neighbor generation stays inside one model.
+_Avoid_: leaderboard winner, single champion, keep list
+
+**Domination**:
+Trial A dominates B when A is ≥ on every Objective Vector axis and > on at least one. Dominated Trials are not failures — a better tradeoff exists on the front.
+_Avoid_: discard, reject, worse score
+
+**Fingerprint**:
+Identity of a configuration for merge and frontier membership: the full `ENGINE_DEFAULTS` + `SAMPLER_DEFAULTS` used for the Trial (model, ctx, KV, batch/threads, MTP/spec, offload, sampler, …).
+_Avoid_: model-only key, engine-only key
+
+**Usage Profile**:
+A selection lens over the Pareto Set, not a separate frontier. **Day** prefers max TPS (supervised chat). **Night** requires `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`, with fallback to max ctx if none qualify (unsupervised long loops).
+_Avoid_: separate day/night frontiers, TPS Floor as keep rule
+
+**NIGHT_CTX_FLOOR**:
+Minimum configured `CTX_SIZE` for Night profile selection (default 65536). Revisitable when project architecture / ticket size / compaction change how much context night loops need.
+_Avoid_: ctx axis, hard reject below floor
+
 **Local Maxima**:
-A state where all valid Neighbors from the current Baseline have been evaluated and none improved the score.
+A state where all valid Neighbors from the active Baseline have been evaluated and none join or improve the per-model Pareto Set.
 _Avoid_: stuck state, convergence
 
-**Pareto Tie-Breaker**:
-The logic used to break exact ties in Val Score (diff < 0.0001). A Neighbor is kept if it matches the Baseline's score but improves TPS by >5%, or matches both score and TPS but reduces VRAM by >5%.
-_Avoid_: secondary objective, performance score
-
 **Random Restart**:
-The mechanism used to escape a Local Maxima. Generates a random configuration far from the current Baseline that isn't in the visited memory, sets it as the new Baseline, and resumes the Search.
+The mechanism used to escape a Local Maxima. Generates a random configuration far from the active Baseline that isn't in visited memory, sets it as the new Baseline, and resumes the Search.
 _Avoid_: random jump, memory wipe
 
 **SearchStrategy**:
-A deep module encapsulating the rules of hill-climbing optimization. It unifies Neighbor generation, Pareto Tie-Breaker logic, and Random Restarts across different search spaces.
-_Avoid_: heuristic loop, search script
+A deep module encapsulating Neighbor generation, Pareto Set updates, Usage Profile Baseline pick, and Random Restarts across Search Spaces.
+_Avoid_: heuristic loop, search script, Pareto Tie-Breaker
 
 ### Configuration
 
 **Baseline**:
-The current best-known configuration. Persisted in `autoresearch/core/config.py` (`ENGINE_DEFAULTS` / `SAMPLER_DEFAULTS`). A Trial must strictly beat the Baseline score to replace it. `.autoresearch_state.json` holds visited memory only.
-_Avoid_: default, current config, state baseline
+The active Neighbor origin for Search — a Fingerprint persisted in `autoresearch/core/config.py` (`ENGINE_DEFAULTS` / `SAMPLER_DEFAULTS`). Chosen by Usage Profile (or manual override) from the per-model front; not “the single best config”. `.autoresearch_state.json` holds visited memory only.
+_Avoid_: sole champion, default, current config, state baseline
 
 **Neighbor**:
-A configuration derived from the Baseline by changing exactly one parameter. The Search evaluates Neighbors to find improvements.
+A configuration derived from the Baseline by changing exactly one parameter. The Search evaluates Neighbors to grow or improve the per-model Pareto Set.
 _Avoid_: candidate, variant, mutation
 
 **Search Space**:
-The set of parameters and their candidate values that the Search explores. Defines which Neighbors are reachable from any Baseline.
+The set of parameters and their candidate values that the Search explores. Defines which Neighbors are reachable from any Baseline. Neighbors do not jump across models.
 _Avoid_: grid, parameter space
 
 ### Evaluation
 
 **Validation**:
-The pre-check before a full Trial: (1) local backend throughput validation, then (2) Claw-Eval quick. Optional direct-coding preflight always uses exactly 10 tasks per dataset. The `--validation` flag runs throughput plus Claw-Eval quick and exits.
+The pre-check before an expensive Trial: (1) local backend throughput validation, then (2) Claw-Eval quick. Optional direct-coding preflight always uses exactly 10 tasks per dataset. The `--validation` flag runs throughput plus Claw-Eval quick and exits.
 
 **To validate a single model**: (1) set `MODEL` (and other flags) in `config.py` Baseline, (2) run `python3 benchmark_search.py --validation --desc "validate <model>"` with no CLI flag soup. One model at a time — never parallel. See GOLDEN-RULES.md §5 for the full step-by-step.
 _Avoid_: bench-only, speed check, smoke test
 
+**Trial Status**:
+Canonical outcome labels: `on_front` (complete vector, non-dominated), `dominated` (complete vector, dominated), `incomplete` (missing axes; may merge into a Fingerprint), `rejected` (invalid config, infra/VRAM kill, crash). 
+_Avoid_: keep, discard (legacy; `keep` may alias `on_front` only during migration)
+
 **Val Score**:
-The single scalar metric used for keep/discard decisions. Claw-Eval full is canonical. Direct-coding is an optional preflight and never replaces the agentic Val Score. Zeroed if TPS falls below the TPS Floor.
-_Avoid_: score, result, metric
+Legacy scalar (historically Claw-Eval full) retained for display/compat only. Not the Search keep rule. Prefer the Objective Vector.
+_Avoid_: score, result, metric (when meaning frontier truth)
 
 **TPS Floor**:
-The minimum throughput (tokens per second) a Trial must achieve, set via Baseline `ENGINE_DEFAULTS['TPS_FLOOR']` (default 20.0). Below this, Val Score is forced to zero regardless of accuracy. User-tunable per model (large MoE on 8GB often needs a lower floor).
-_Avoid_: threshold, minimum TPS
+Legacy minimum throughput knob in Baseline `ENGINE_DEFAULTS['TPS_FLOOR']`. Does **not** gate Pareto Set membership. Usage Profiles may still use throughput thresholds when *selecting* a point (especially Day). Removable once callers stop depending on it.
+_Avoid_: threshold as frontier rule, minimum TPS for on_front
 
 ### Benchmarks
 
@@ -71,11 +95,11 @@ Retrieval benchmark. Tests context-stress with synthetic history — the model m
 _Avoid_: retrieval, context stress
 
 **Claw**:
-Agency benchmark. Tests tool-use (JSON browser calls) and instruction-following.
+Agency benchmark. Tests tool-use (JSON browser calls) and instruction-following. Claw-Eval full supplies the **agentic** Objective Vector axis; quick remains observational smoke.
 _Avoid_: agency, ClawBench, tool-use benchmark
 
 **Coding**:
-Benchmark using LiveCodeBench v6, HumanEval+, MBPP+, and BigCodeBench Hard. Measures code generation accuracy under the current Coding profile.
+Benchmark using LiveCodeBench v6, HumanEval+, MBPP+, and BigCodeBench Hard (exactly 10 tasks per dataset when enabled). Supplies the **coding** Objective Vector axis.
 _Avoid_: EvalPlus, HumanEval
 
 ### Runtime
@@ -93,7 +117,7 @@ Hardware-accelerated KV cache compression formats (`turbo2`, `turbo3`, `turbo4`)
 _Avoid_: quantized cache, compressed KV
 
 **Multi-Token Prediction (MTP)**:
-Speculative decoding using specialized draft heads (built into the model) to predict multiple tokens ahead, improving throughput. Distinct from "speculative decoding with separate draft model", which fails on MoE+SSM models.
+Speculative decoding using specialized draft heads (built into the model) to predict multiple tokens ahead, improving throughput. Distinct from "speculative decoding with separate draft model", which fails on MoE+SSM models. MTP is a Search dial (buy ctx or TPS), not a required default.
 _Avoid_: speculative decoding (when referring specifically to MTP)
 
 ### Generic Configuration Skeleton
@@ -142,11 +166,12 @@ Notes:
 
 ## Discovery Workflow (cross-reference)
 
-For users selecting which model to autotune, see [`docs/discovery/discover-models.md`](discovery/discover-models.md). It documents the **whichllm → Pareto frontier → autoloop handoff** flow that complements the autoloop once a Baseline model has been picked.
+For users selecting which model to autotune, see [`docs/discovery/discover-models.md`](docs/discovery/discover-models.md). It documents the **whichllm → Pareto Set → Baseline handoff** flow. Canonical frontier rules: [ADR 0006](docs/adr/0006-pareto-frontier-search.md).
 
 ## Cached lessons (general, not user-specific)
 
 - **MoE offload is mandatory on 8GB VRAM**: without explicit `--n-cpu-moe`, auto-fit can put 36/42 layers with GATE overflow, dropping throughput to ~0.7 tok/s. Always pair `--n-cpu-moe` with explicit `--override-tensor`.
 - **Speculative decoding with separate draft models fails on MoE+SSM**: verification becomes PCIe-bound (MoE expert fetch per token) and SSM layers can't parallelize across a draft window. MTP is a different mechanism and works.
 - **`whichllm` score ≠ coding benchmark**: whichllm blends AA Intelligence Index, Aider, LiveBench (intelligence weighted). For Claude Code / Pi Agent loops, cross-reference SWE-bench Verified — Gemma-4-26B-A4B ranks top in whichllm but scores only ~17% on SWE-bench Verified (bad coding agent despite high general intelligence).
-- **Pareto frontier beats "highest score"**: for coding agents with high mistake cost, pick the Pareto-optimal tok/s × SWE-bench point, not the highest single-axis leader.
+- **Pareto Set beats "highest score"**: pick a point on the frontier with a Usage Profile (Day/Night), not the highest single-axis leader.
+- **Configured ctx is the ctx axis**: `llama-server` reserves KV for full `CTX_SIZE` even when a short coding prompt uses few tokens. Night loops that fill 65k+ need that reservation; coding-10 alone does not prove lung capacity.

@@ -31,5 +31,6 @@ Durable record of architecture decisions for the `local-model-autotuning` projec
 - [`0001-deepen-llama-server-runner.md`](./0001-deepen-llama-server-runner.md) — Deepen llama-server runner.
 - [`0002-consolidated-evaluation-harness.md`](./0002-consolidated-evaluation-harness.md) — Consolidated evaluation harness.
 - [`0003-in-process-benchmark-orchestration.md`](./0003-in-process-benchmark-orchestration.md) — In-process benchmark orchestration.
-- [`0004-agentic-first-search.md`](./0004-agentic-first-search.md) — Agentic-first Search (Val Score); Baseline location superseded by 0005.
+- [`0004-agentic-first-search.md`](./0004-agentic-first-search.md) — Agentic measurements; Val Score keep superseded by 0006; Baseline location by 0005.
 - [`0005-config-py-mutable-baseline.md`](./0005-config-py-mutable-baseline.md) — `config.py` as mutable Baseline; state = visited memory only.
+- [`0006-pareto-frontier-search.md`](./0006-pareto-frontier-search.md) — Multi-objective Pareto Set (ctx × TPS × agentic × coding); Day/Night pick; status vocabulary.
