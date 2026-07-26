@@ -35,8 +35,12 @@ Identity of a configuration for merge and frontier membership: the full `ENGINE_
 _Avoid_: model-only key, engine-only key
 
 **Usage Profile**:
-A selection lens over the Pareto Set, not a separate frontier. **Day** prefers max TPS (supervised chat). **Night** requires `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`, with fallback to max ctx if none qualify (unsupervised long loops).
-_Avoid_: separate day/night frontiers, TPS Floor as keep rule
+A selection lens over the Pareto Set, not a separate frontier. **Day** (supervised chat): among points with `TPS ≥ DAY_TPS_RATIO × max(TPS on the set)`, maximize `min(agentic, coding)`; ties → max TPS; empty band → max `min(agentic, coding)` on the full set then max TPS. **Night** requires `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`, with fallback to max ctx if none qualify (unsupervised long loops).
+_Avoid_: separate day/night frontiers, Day = pure max TPS, TPS Floor as keep rule
+
+**DAY_TPS_RATIO**:
+Fraction of the Pareto Set’s max TPS required to enter the Day speed band (default 0.5). Day then picks intelligence inside that band, not the raw TPS leader.
+_Avoid_: absolute tok/s Day floor, Day = max TPS
 
 **NIGHT_CTX_FLOOR**:
 Minimum configured `CTX_SIZE` for Night profile selection (default 65536). Revisitable when project architecture / ticket size / compaction change how much context night loops need.
@@ -85,8 +89,8 @@ Legacy scalar (historically Claw-Eval full) retained for display/compat only. No
 _Avoid_: score, result, metric (when meaning frontier truth)
 
 **TPS Floor**:
-Legacy minimum throughput knob in Baseline `ENGINE_DEFAULTS['TPS_FLOOR']`. Does **not** gate Pareto Set membership. Usage Profiles may still use throughput thresholds when *selecting* a point (especially Day). Removable once callers stop depending on it.
-_Avoid_: threshold as frontier rule, minimum TPS for on_front
+Legacy minimum throughput knob in Baseline `ENGINE_DEFAULTS['TPS_FLOOR']`. Does **not** gate Pareto Set membership. Day selection uses relative `DAY_TPS_RATIO` ([ADR 0007](docs/adr/0007-day-profile-speed-band.md)), not this absolute floor. Removable once callers stop depending on it.
+_Avoid_: threshold as frontier rule, minimum TPS for on_front, Day = TPS Floor
 
 ### Benchmarks
 
@@ -166,12 +170,12 @@ Notes:
 
 ## Discovery Workflow (cross-reference)
 
-For users selecting which model to autotune, see [`docs/discovery/discover-models.md`](docs/discovery/discover-models.md). It documents the **whichllm → Pareto Set → Baseline handoff** flow. Canonical frontier rules: [ADR 0006](docs/adr/0006-pareto-frontier-search.md).
+For users selecting which model to autotune, see [`docs/discovery/discover-models.md`](docs/discovery/discover-models.md). It documents the **whichllm → Pareto Set → Baseline handoff** flow. Canonical frontier rules: [ADR 0006](docs/adr/0006-pareto-frontier-search.md); Day pick: [ADR 0007](docs/adr/0007-day-profile-speed-band.md).
 
 ## Cached lessons (general, not user-specific)
 
 - **MoE offload is mandatory on 8GB VRAM**: without explicit `--n-cpu-moe`, auto-fit can put 36/42 layers with GATE overflow, dropping throughput to ~0.7 tok/s. Always pair `--n-cpu-moe` with explicit `--override-tensor`.
 - **Speculative decoding with separate draft models fails on MoE+SSM**: verification becomes PCIe-bound (MoE expert fetch per token) and SSM layers can't parallelize across a draft window. MTP is a different mechanism and works.
 - **`whichllm` score ≠ coding benchmark**: whichllm blends AA Intelligence Index, Aider, LiveBench (intelligence weighted). For Claude Code / Pi Agent loops, cross-reference SWE-bench Verified — Gemma-4-26B-A4B ranks top in whichllm but scores only ~17% on SWE-bench Verified (bad coding agent despite high general intelligence).
-- **Pareto Set beats "highest score"**: pick a point on the frontier with a Usage Profile (Day/Night), not the highest single-axis leader.
+- **Pareto Set beats "highest score"**: pick a point on the frontier with a Usage Profile (Day/Night), not the highest single-axis leader. Day is not pure max TPS — speed band then `min(agentic, coding)` ([ADR 0007](docs/adr/0007-day-profile-speed-band.md)).
 - **Configured ctx is the ctx axis**: `llama-server` reserves KV for full `CTX_SIZE` even when a short coding prompt uses few tokens. Night loops that fill 65k+ need that reservation; coding-10 alone does not prove lung capacity.

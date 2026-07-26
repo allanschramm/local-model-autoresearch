@@ -1,7 +1,7 @@
 # ADR 0006: Multi-Objective Pareto Frontier Search
 
 **Date:** 2026-07-25
-**Status:** Accepted
+**Status:** Accepted. **Day Usage Profile pick superseded by [0007](0007-day-profile-speed-band.md)** (2026-07-26). Night + Pareto Set membership unchanged.
 **Supersedes in part:** [0004](0004-agentic-first-search.md) (canonical scalar Val Score + keep/discard as Search truth). Agentic + coding benchmarks remain the intelligence measurements; Baseline location remains [0005](0005-config-py-mutable-baseline.md).
 
 ## Context & Problem Statement
@@ -14,7 +14,7 @@ Day vs night use differs: supervised daytime wants speed; unsupervised night `/l
 
 1. **Pareto Set** is the keep surface: non-dominated Trials under four maximize axes — configured `CTX_SIZE`, TPS, agentic (Claw-Eval full), coding (coding-10).
 2. **Search / Neighbors stay per model.** The **global** frontier (union across models) is ranked for a hardware+budget identity so users pick a model for their rig.
-3. **Baseline** is the Neighbor origin (active point), not the sole champion. Profile **Day** / **Night** selects that origin (manual override allowed): Day → max TPS on the model front; Night → among points with `CTX_SIZE ≥ NIGHT_CTX_FLOOR` (default 65536), max `min(agentic, coding)`; if none qualify, fallback to max ctx with a complete vector.
+3. **Baseline** is the Neighbor origin (active point), not the sole champion. Profile **Day** / **Night** selects that origin (manual override allowed): Day → max TPS on the model front *(superseded by [0007](0007-day-profile-speed-band.md): speed band then max `min(agentic, coding)`)*; Night → among points with `CTX_SIZE ≥ NIGHT_CTX_FLOOR` (default 65536), max `min(agentic, coding)`; if none qualify, fallback to max ctx with a complete vector.
 4. **Complete vector required for `on_front`.** Partial Trials (coding-only, claw-only, …) stay `incomplete` and **merge** into the same **Fingerprint** (full `ENGINE_DEFAULTS` + `SAMPLER_DEFAULTS`) when axes arrive later.
 5. **Status vocabulary:** `on_front` | `dominated` | `incomplete` | `rejected`. Do not overload `keep`/`discard` with new meaning (`keep` may remain a deprecated alias of `on_front` during migration).
 6. **No TPS Floor on frontier membership.** TPS remains an axis. Day/Night apply throughput (and Night ctx floor) only when *selecting* a point. Legacy `TPS_FLOOR` may remain for smoke/tooling until removed.
@@ -42,3 +42,4 @@ Day vs night use differs: supervised daytime wants speed; unsupervised night `/l
 - Separate day/night Pareto Sets — duplicates measurement; teaching worse.
 - Hard TPS Floor on keep — fights night-loop models that are slow but capable.
 - Night pick = max ctx first — can prefer huge-context weak models over balanced ones that still clear a ctx floor.
+- Day pick = pure max TPS — see [0007](0007-day-profile-speed-band.md) (superseding correction).
