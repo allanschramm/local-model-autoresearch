@@ -91,6 +91,12 @@ Harness: `benchmark_search.py --no-agentic-quick --no-agentic-full --no-coding` 
 ### Claw-Eval full (2026-07-24)
 - **Val Score 0.4667** (7/15) @ ctx **65536**, bench_tg **40.2**, peak **6.5 GB**. Alias `bonsai` locked to 65k for agentic.
 
+### Coding-10 (2026-07-26, vs POCKET)
+- **coding 0.4550** @ ctx **65536**, TEMP 0.6 (fair A/B knobs), bench_tg **41.7**, peak **7.5 GB**
+- HE 0.40 / MBPP 0.80 / LCB 0.40 / BC 0.10
+- Session: [2026-07-26-bonsai-coding-vs-pocket.md](../sessions/2026-07-26-bonsai-coding-vs-pocket.md)
+- POCKET-35B Q3_K_M on same recipe: coding **0.6150**, claw-full **0.6667**, VRAM **3.7 GB**
+
 ## Config Baseline (agentic / claw-full)
 ```python
 MODEL = 'Bonsai-27B-Q1_0.gguf'

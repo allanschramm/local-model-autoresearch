@@ -49,3 +49,6 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - [`2026-07-24-lcb-patch-gambiarra.md`](./2026-07-24-lcb-patch-gambiarra.md) — LCB-only remeasure + in-place results.tsv patch (symlink/timeout fixes).
 - [`2026-07-24-lfm2.5-1.2b-ctx-kv-matrix.md`](./2026-07-24-lfm2.5-1.2b-ctx-kv-matrix.md) — LFM2.5-1.2B claw-quick ctx/KV matrix (65k f16 preferred).
 - [`2026-07-25-claw-full-pending-queue.md`](./2026-07-25-claw-full-pending-queue.md) — Claw-Eval full on six pending aliases.
+- [`2026-07-26-pocket-35b-pipeline.md`](./2026-07-26-pocket-35b-pipeline.md) — POCKET-35B Q3_K_M validation → claw-full 0.6667 → coding 0.615.
+- [`2026-07-26-bonsai-coding-vs-pocket.md`](./2026-07-26-bonsai-coding-vs-pocket.md) — Bonsai coding-10 0.455 vs POCKET 0.615.
+- [`2026-07-26-pocket-26b-pipeline.md`](./2026-07-26-pocket-26b-pipeline.md) — POCKET-26B Q4_K_M; claw-full 0.20 / coding 0.49.

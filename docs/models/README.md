@@ -32,6 +32,8 @@ Cards:
 - [Ternary-Bonsai-27B](ternary-bonsai-27b.md) — **deleted** (10.6 t/s < floor; PrismML)
 - [LFM2.5-1.2B](lfm2.5-1.2b.md) — tiny dense; claw-full **0.6000** @ 166 t/s; coding-10 **0.350**
 - [LFM2.5-8B-A1B](lfm2.5-8b-a1b.md) — MoE hybrid; ~174–184 t/s; full VRAM (`n-cpu-moe 0`); claw-full ≤0.20
+- [POCKET-35B](pocket-35b.md) — claw-full **0.6667** + coding **0.615** @ ~35 t/s / 3.7 GB
+- [POCKET-26B](pocket-26b.md) — **GGUF deleted**; claw-full **0.2000** + coding **0.490** (historical)
 - [VITRIOL technique](vitriol-technique.md) — Codacus MoE-split strategy (`N_CPU_MOE=None` ≠ no offload in harness)
 
 Claw-Eval ranks: [claw-eval-leaderboard.md](../discovery/claw-eval-leaderboard.md).  

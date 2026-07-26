@@ -68,4 +68,6 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 - [`qwen3.6-35b-a3b.md`](./qwen3.6-35b-a3b.md) — Qwen 3.6 35B A3B model card.
 - [`qwythos-9b-claude-mythos-5-1m.md`](./qwythos-9b-claude-mythos-5-1m.md) — Qwythos 9B Claude Mythos model card.
 - [`nanbeige4.2-3b.md`](./nanbeige4.2-3b.md) — Nanbeige4.2-3B looped dense (arch fork required).
+- [`pocket-35b.md`](./pocket-35b.md) — POCKET-35B Q3_K_M; claw-full **0.6667** + coding **0.615** @ ~35 t/s.
+- [`pocket-26b.md`](./pocket-26b.md) — POCKET-26B **deleted**; historical claw **0.2000** / coding **0.490**.
 - [`vitriol-technique.md`](./vitriol-technique.md) — Codacus VITRIOL technique note (2-knob MoE offload strategy).
