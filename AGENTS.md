@@ -25,7 +25,7 @@ Repository-wide agent guidelines are owned by the repository developers.
 - Ask first, ship never: When user asks "can we do X?", answer yes/no only. Do not implement unless user explicitly says "do it" / "implement" / "go ahead".
 - Never assume. When uncertain whether a file is scratch, a decision is right, or a path is safe — ask the user or yourself explicitly before acting.
 - NEVER commit and/or push without explicit user command. Wait for "commit", "commit and push", or equivalent. Do not infer intent.
-- **Atomic commit = entire working tree**: When the user asks for an "atomic commit" / "commit atômico", stage and commit **all** current git changes (modified + untracked that belong in the repo), regardless of whether they were made in this session or relate to the latest task. Do not split by topic or leave leftovers unless the user explicitly excludes paths.
+- **Atomic commit = no leftovers**: When the user asks for an "atomic commit" / "commit atômico", every current git change that belongs in the repo (modified + untracked) must end up committed — do not leave files sitting unstaged/uncommitted. Split into **multiple logical commits** when the working tree mixes concerns (preferred). "Entire working tree" means cover everything, **not** dump everything into one commit. Only leave paths out when the user explicitly excludes them.
 - **Never edit upstream/vendor trees:** `llama.cpp/` (submodule), local `claw-eval/`, `llama.cpp-nanbeige42/`, `llama.cpp-prismml/`, and any other third-party checkout are read-only for agents. No Edit/Write/Delete/patch inside them. Work around via env (`PYTHONUTF8=1`), harness code owned by this repo, or ask the user.
 
 ## Work Guidance
@@ -156,7 +156,7 @@ When the user requests a durable behavior change, record it here or in the relev
  - [docs/llamacpp-toolset.md](docs/llamacpp-toolset.md) — llama.cpp binary reference (build, bench, server, quantize).
 - [scripts/AGENTS.md](scripts/AGENTS.md) — Operator scripts (setup, monitoring, server daemon).
 - [tests/AGENTS.md](tests/AGENTS.md) — Unit and integration test suite.
-- [teach/AGENTS.md](teach/AGENTS.md) — Course materials (Semana 1 TPS / Semana 2 quality); Dia 1 LM Studio, Dia 2+ this repo.
+- [teach/AGENTS.md](teach/AGENTS.md) — Course materials (M0 + S1 TPS + S2D1 samplers; S2D2–4 drafts); Dia 1 LM Studio, Dia 2+ this repo.
 - External sources (**agent read-only — never edit**):
   - [llama.cpp/](llama.cpp/) — upstream runtime (**git submodule**).
   - [claw-eval/](claw-eval/) — Claw-Eval harness (**local vendor tree**, gitignored; not a submodule).
