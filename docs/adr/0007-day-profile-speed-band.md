@@ -1,7 +1,7 @@
 # ADR 0007: Day Usage Profile uses a speed band, then intelligence
 
 **Date:** 2026-07-26
-**Status:** Accepted
+**Status:** Accepted. **Day Usage Profile pick superseded by [0008](0008-day-iq-epsilon-then-tps.md)** (2026-07-27). Night + membership unchanged.
 **Supersedes:** [0006](0006-pareto-frontier-search.md) Decision §3 **Day** pick only (Night + Pareto Set membership unchanged).
 
 ## Context & Problem Statement
@@ -12,9 +12,10 @@ Supervised daytime chat still wants speed — but not a dumb model that is worse
 
 ## Decision
 
-1. **Day pick (replace ADR 0006 §3 Day clause):** From the Pareto Set, keep points with  
+1. **Day pick (historical — superseded by [0008](0008-day-iq-epsilon-then-tps.md)):** From the Pareto Set, keep points with  
    `TPS ≥ DAY_TPS_RATIO × max(TPS on that set)`  
-   (default `DAY_TPS_RATIO = 0.5`). Among that **speed band**, maximize `min(agentic, coding)`; ties → max TPS.
+   (default `DAY_TPS_RATIO = 0.5`). Among that **speed band**, maximize `min(agentic, coding)`; ties → max TPS.  
+   **Current Day:** IQ ε-constraint then max TPS — see ADR 0008.
 2. **Empty band fallback:** If no point clears the ratio, maximize `min(agentic, coding)` on the full set; ties → max TPS (same intelligence-first spirit, no ratio gate).
 3. **Night unchanged:** `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`; else max ctx with a complete vector.
 4. **Membership unchanged:** TPS stays an Objective Vector axis; no TPS Floor on `on_front`.

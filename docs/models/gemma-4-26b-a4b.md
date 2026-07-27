@@ -130,6 +130,11 @@ MTP: `--spec-type mtp` (corrected flag, not `draft-mtp` — see Qwen3.6 card for
 - Benchmarked: **17.00 TPS** (interactive llama-cli) with MTP active via `mtp-gemma-4-26B-A4B-it.gguf` vs **15.3 TPS** base speed (+11% speedup).
 - Note: `--n-cpu-moe 15` was retired because it exceeded 8 GB VRAM at 65k context, causing severe memory swapping.
 
+### Claw-Eval full + coding-10 (2026-07-25 / 2026-07-26)
+- Claw-full **0.1333** @ ctx **65536**, `n-cpu-moe 30`, draft-mtp n=2, TEMP 1.0, bench_tg **29.2**.
+- Coding-10 **0.5900** (LCB 0.40 / HE **1.00** / MBPP 0.80 / BC 0.00); Combined TPS **33.5**; bench_tg **27.8**; peak **5.2 GB** — same Fingerprint.
+- Objective Vector complete: strong coding, weak agentic → `min(ag,cod)=0.1333`. Prefer E4B / POCKET / Ornith-9B for real use.
+
 ## Sources / Verification
 - HF model card (extracted 2026-06-15)
 - Unsloth Gemma 4 doc (https://unsloth.ai/docs/models/gemma-4.md, extracted same day, truncated at 5k chars)

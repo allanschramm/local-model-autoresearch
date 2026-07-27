@@ -58,13 +58,13 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 - [`lfm2.5-1.2b.md`](./lfm2.5-1.2b.md) — LFM2.5-1.2B dense; claw-full 0.6000; coding 0.350 @ 65k f16.
 - [`lfm2.5-8b-a1b.md`](./lfm2.5-8b-a1b.md) — LFM2.5-8B-A1B MoE hybrid (`lfm2moe`); full VRAM `n-cpu-moe 0`.
 - [`gemma-4-12b.md`](./gemma-4-12b.md) — Gemma 4 12B model card.
-- [`gemma-4-26b-a4b.md`](./gemma-4-26b-a4b.md) — Gemma 4 26B A4B MoE model card.
+- [`gemma-4-26b-a4b.md`](./gemma-4-26b-a4b.md) — Gemma 4 26B A4B; claw 0.1333 / coding 0.590 @ 65k.
 - [`gemma-4-e4b.md`](./gemma-4-e4b.md) — Gemma 4 E4B model card.
-- [`ornith-1.0-9b.md`](./ornith-1.0-9b.md) — Ornith 1.0 9B; claw-full 0.6000 @ 65k; coding 0.570 @ 32k.
-- [`ornith-1.0-35b.md`](./ornith-1.0-35b.md) — Ornith 1.0 35B model card.
+- [`ornith-1.0-9b.md`](./ornith-1.0-9b.md) — Ornith 1.0 9B; claw-full 0.6000 @ 65k; coding 0.570 (UD) / 0.580 (MTP) @ 32k.
+- [`ornith-1.0-35b.md`](./ornith-1.0-35b.md) — Ornith 1.0 35B; Q4 claw 0.6000 / coding 0.580; Q3 claw 0.4667 / coding 0.555.
 - [`ornith-1.0-35b-iq3_m.md`](./ornith-1.0-35b-iq3_m.md) — Ornith 1.0 35B IQ3_M quant model card.
 - [`qwen-agentworld-35b-a3b.md`](./qwen-agentworld-35b-a3b.md) — Qwen AgentWorld 35B A3B model card.
-- [`qwen3.5-9b.md`](./qwen3.5-9b.md) — Qwen 3.5 9B model card.
+- [`qwen3.5-9b.md`](./qwen3.5-9b.md) — Qwen 3.5 9B; claw 0.1333; coding-10 **rejected** (VRAM) on 8 GB.
 - [`qwen3.6-35b-a3b.md`](./qwen3.6-35b-a3b.md) — Qwen 3.6 35B A3B model card.
 - [`qwythos-9b-claude-mythos-5-1m.md`](./qwythos-9b-claude-mythos-5-1m.md) — Qwythos 9B Claude Mythos model card.
 - [`nanbeige4.2-3b.md`](./nanbeige4.2-3b.md) — Nanbeige4.2-3B looped dense (arch fork required).

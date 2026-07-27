@@ -126,5 +126,10 @@ Since the model is ~5.6 GB and we have 8 GB of VRAM, we can run with maximum GPU
 
 † HE/MBPP/BC from Trial `15f6bed0-…`; LCB via `scripts/lcb_only.py`. Alias `ornith-9b` stays **65k for agentic**; use **≤32k for coding** on 8 GB. Evidence: [coding-10](../sessions/2026-07-24-coding-10-claw-leaders.md), [coding leaderboard](../discovery/coding-leaderboard.md).
 
+### Coding-10 MTP variant (2026-07-27, `Ornith-1.0-9B-MTP-Q4_K_M.gguf`)
+- ctx **32768**, draft-mtp n=4, TEMP 0.4.
+- **coding 0.5800** (LCB 0.40 / HE 0.80 / MBPP 0.90 / BC 0.10); Combined TPS **86.7**; bench_tg **64.0**; peak **7.4 GB**.
+- Ties UD coding (0.57); agentic claw-full **0.4667** (weaker than UD 0.60). Speed pick only.
+
 ## Open questions
 - None (baseline verified). Coding vs historical Mythos 0.64 still open if Mythos GGUF present.

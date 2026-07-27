@@ -51,3 +51,19 @@
 
 ### Status
 - **Measured (2026-07-20):** embedded MTP works on upstream CUDA; +48% vs base under fair knobs. Slower absolute than Gemma+draft MTP (122 t/s).
+
+### Claw-Eval full (2026-07-25)
+- **agentic_full 0.1333** @ ctx **32768**, draft-mtp n=4, TEMP 0.4, bench_tg **65.0**, peak **7.5 GB**. Weak agentic — skip for tool loops.
+
+### Coding-10 — **rejected on this rig** (2026-07-27)
+Objective Vector **incomplete** (coding axis never landed). All attempts hit harness `VRAM_LIMIT_MB=7900` mid-eval during long codegen:
+
+| config | outcome |
+|---|---|
+| ctx 32768 + MTP n=4 | **VRAM kill** 7913 MB mid HumanEval |
+| ctx 65536, no MTP | **VRAM kill** 7931 MB mid HumanEval (preflight est 7584 MB) |
+
+Claw-full @ 32k+MTP fits because tool calls are short; coding-10 long generation does not. **Do not retry** on RTX 4060 8 GB unless `VRAM_LIMIT_MB` or ctx/KV policy changes. **SSD delete candidate** — weak agentic + no coding vector.
+
+## Open questions
+- None for this rig — coding axis closed as failure.

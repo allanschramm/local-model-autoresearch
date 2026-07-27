@@ -108,11 +108,23 @@ See [IQ3_M variant card](ornith-1.0-35b-iq3_m.md) for detailed testing results.
 
 ### 2026-07-19 Update (Unsloth Dynamic 4-bit XL Quant)
 - Upgraded local model to the newly released `Ornith-1.0-35B-UD-Q4_K_XL.gguf` (22.32 GB) from Unsloth.
-- Alias: `ornith-35b` (INDEX name; old `o35` retired 2026-07-23). Prefer UD-Q4_K_XL — do not keep a parallel Q3_K_XL alias.
+- Alias: `ornith-35b` (INDEX name; old `o35` retired 2026-07-23). Prefer UD-Q4_K_XL for quality. UD-Q3_K_XL is a **separate Trial** (measured 2026-07-27) — not a duplicate; keep scores for A/B.
 
 ### Claw-Eval full + VITRIOL (2026-07-24)
 - A/B: `n-cpu-moe=block_count(40)` beats prior 32 on smoke (28.9 vs 27.0 t/s).
 - **Val Score 0.6000** (9/15) @ ctx **65536**, `n-cpu-moe 40`, bench_tg **25.7**, peak **4.9 GB**. Prior claw-quick 0.80.
+
+### Coding-10 (2026-07-26) — Objective Vector complete (Q4_K_XL)
+- Same Fingerprint as claw-full: ctx **65536**, `n-cpu-moe 40`, TEMP 0.4.
+- **coding 0.5800** (LCB 0.40 / HE 0.90 / MBPP 0.80 / BC 0.10); Combined TPS **32.0**; bench_tg **24.1**; peak **5.1 GB**.
+- vs Ornith-9B UD: same agentic (0.60), coding ≈ tied (0.58 vs 0.57), slower. 9B still preferred unless need 35B capacity.
+
+### Q3_K_XL quant pipeline (2026-07-27) — separate fingerprint, full vector
+- File: `Ornith-1.0-35B-UD-Q3_K_XL.gguf` (~15.7 GB). ctx **65536**, `n-cpu-moe 40`, TEMP 0.4, no MTP.
+- Validation smoke: agentic_quick **0.6000**, TPS **25.9**, peak **4.4 GB**.
+- Claw-full: **0.4667** (7/15); bench_tg **25.2**; peak **4.5 GB**.
+- Coding-10: **0.5550** (LCB 0.40 / HE 0.90 / MBPP 0.70 / BC 0.10); Combined TPS **29.5**; bench_tg **26.0**; peak **4.6 GB**.
+- vs **Q4_K_XL** on same rig: agentic **0.47 vs 0.60**, coding **0.555 vs 0.580**, lower VRAM (~4.5 vs ~5.1 GB), smaller file. **Prefer Q4 for quality**; Q3 if SSD/VRAM budget matters.
 
 ## Open questions
 - None (baseline verified).

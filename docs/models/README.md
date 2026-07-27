@@ -17,25 +17,26 @@ Dense and MoE models can both have MTP support.
 
 Cards:
 - [Gemma-4-12B](gemma-4-12b.md)
-- [Gemma-4-E4B](gemma-4-e4b.md) — draft MTP speed Baseline (~122 t/s); claw-full **0.3333** @ 65k MTP
+- [Gemma-4-E4B](gemma-4-e4b.md) — draft MTP speed Baseline (~122 t/s); claw-full **0.3333** @ 65k MTP; coding **0.555**
 - [Nanbeige4.2-3B](nanbeige4.2-3b.md) — looped dense; needs `llama.cpp-nanbeige42`
 - [Qwythos-9B-Claude-Mythos-5-1M](qwythos-9b-claude-mythos-5-1m.md) — also notes Qwythos-9B-v2
-- [Qwen3.5-9B](qwen3.5-9b.md)
+- [Qwen3.5-9B](qwen3.5-9b.md) — claw **0.1333**; coding-10 **rejected** (VRAM) on 8 GB
 - [Qwen3.6-35B-A3B](qwen3.6-35b-a3b.md)
 - [Qwen-AgentWorld-35B-A3B](qwen-agentworld-35b-a3b.md)
-- [Gemma-4-26B-A4B](gemma-4-26b-a4b.md)
-- [Ornith-1.0-9B](ornith-1.0-9b.md) — UD base; claw-full **0.6000** @ 65k; coding-10 **0.570** @ **32k**
-- [Ornith-1.0-35B](ornith-1.0-35b.md) — Q4_K_M (primary) + IQ3_M variant
+- [Gemma-4-26B-A4B](gemma-4-26b-a4b.md) — claw **0.1333** / coding **0.590** @ 65k
+- [Ornith-1.0-9B](ornith-1.0-9b.md) — UD claw **0.6000** / coding **0.570**; MTP claw **0.4667** / coding **0.580**
+- [Ornith-1.0-35B](ornith-1.0-35b.md) — Q4 claw **0.6000** / coding **0.580**; Q3 claw **0.4667** / coding **0.555**
 - [Ornith-1.0-35B IQ3_M](ornith-1.0-35b-iq3_m.md) — IQ3_M variant (rejected: slower than Q4_K_M)
 - [Laguna-XS-2.1](laguna-xs-2.1.md) — MoE 256×2.2B; **best claw-full 0.6667**; coding-10 **0.195**
 - [Bonsai-27B](bonsai-27b.md) — Q1_0; agentic @ 65k (131k VRAM-kill); Ternary Q2_0 rejected
 - [Ternary-Bonsai-27B](ternary-bonsai-27b.md) — **deleted** (10.6 t/s < floor; PrismML)
-- [LFM2.5-1.2B](lfm2.5-1.2b.md) — tiny dense; claw-full **0.6000** @ 166 t/s; coding-10 **0.350**
+- [LFM2.5-1.2B](lfm2.5-1.2b.md) — tiny dense; claw-full **0.6000** @ 166 t/s; coding-10 **0.350**; **Day** pick
 - [LFM2.5-8B-A1B](lfm2.5-8b-a1b.md) — MoE hybrid; ~174–184 t/s; full VRAM (`n-cpu-moe 0`); claw-full ≤0.20
-- [POCKET-35B](pocket-35b.md) — claw-full **0.6667** + coding **0.615** @ ~35 t/s / 3.7 GB
+- [POCKET-35B](pocket-35b.md) — claw-full **0.6667** + coding **0.615**; **Night** pick
 - [POCKET-26B](pocket-26b.md) — **GGUF deleted**; claw-full **0.2000** + coding **0.490** (historical)
 - [VITRIOL technique](vitriol-technique.md) — Codacus MoE-split strategy (`N_CPU_MOE=None` ≠ no offload in harness)
 
+Pareto frontier: [pareto-leaderboard.md](../discovery/pareto-leaderboard.md).  
 Claw-Eval ranks: [claw-eval-leaderboard.md](../discovery/claw-eval-leaderboard.md).  
 Coding-10 ranks: [coding-leaderboard.md](../discovery/coding-leaderboard.md).
 
