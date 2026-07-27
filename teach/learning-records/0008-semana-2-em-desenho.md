@@ -1,7 +1,7 @@
 # 0008. Publicar somente Módulo 0 e Semana 1
 
 - **Data:** 2026-07-22
-- **Status:** Aceito
+- **Status:** superseded by LR-0009 (S2D1 agora publicada; Dias 2–4 ainda fora)
 
 ## Contexto
 A Semana 2 ainda está sendo desenhada. Exibi-la como concluída criava uma promessa incorreta e misturava rascunhos ao progresso real do aluno.

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
@@ -13,26 +13,144 @@
       padding: 1.2rem;
       margin: 1.5rem 0;
     }
-    .slider-group {
+    .sampler-sim .prompt-row {
       margin-bottom: 1rem;
+    }
+    .sampler-sim .prompt-row label {
+      font-family: var(--sans);
+      font-weight: 600;
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 0.35rem;
+    }
+    .sampler-sim .prompt-row input[type="text"] {
+      width: 100%;
+      padding: 0.55rem 0.7rem;
+      font: 1rem var(--font);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+    .slider-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.85rem 1.1rem;
+      margin-bottom: 1.1rem;
     }
     .slider-group label {
       font-family: var(--sans);
       font-weight: 600;
       display: flex;
       justify-content: space-between;
-      font-size: 0.9rem;
-      margin-bottom: 0.3rem;
+      font-size: 0.82rem;
+      margin-bottom: 0.25rem;
+      gap: 0.5rem;
     }
     .slider-group input[type="range"] {
       width: 100%;
     }
-    .profile-box {
-      background: var(--bg);
-      border-left: 3px solid var(--accent);
-      padding: 0.85rem 1rem;
-      border-radius: 0 4px 4px 0;
+    .menu-panel, .orders-panel {
       margin-top: 1rem;
+    }
+    .menu-panel h3, .orders-panel h3 {
+      margin: 0 0 0.55rem;
+      font-size: 0.95rem;
+    }
+    .menu-list {
+      display: grid;
+      gap: 0.35rem;
+      max-height: 16rem;
+      overflow-y: auto;
+      padding: 0.65rem;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+    .menu-row {
+      display: grid;
+      grid-template-columns: 6.5rem 1fr 3.2rem;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: var(--sans);
+      font-size: 0.82rem;
+    }
+    .menu-row .bar-track {
+      height: 0.65rem;
+      background: #e7e5e4;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .menu-row .bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+    }
+    .menu-row.cut {
+      opacity: 0.35;
+      text-decoration: line-through;
+    }
+    .orders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.65rem;
+    }
+    .order-card {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.75rem;
+      min-height: 5.5rem;
+    }
+    .order-card .eyebrow {
+      font-family: var(--sans);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 0.35rem;
+    }
+    .order-card .phrase {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .order-card .picked {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .sim-actions {
+      margin-top: 0.85rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .sim-actions button {
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      padding: 0.45rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .sim-hint {
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0.65rem 0 0;
+    }
+    .pipe {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 0.85rem 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      white-space: nowrap;
+      margin: 0.65rem 0 0.5rem;
+      line-height: 1.45;
     }
   </style>
 </head>
@@ -40,82 +158,326 @@
   <div class="wrap">
     <header class="site">
       <p class="eyebrow">Semana 2 · Dia 1 · Qualidade e Amostragem</p>
-      <h1>Parâmetros de Qualidade — Otimizando Respostas</h1>
+      <h1>Como a IA escolhe a próxima palavra</h1>
       <p class="lede">
-        Na Semana 1 ajustamos o motor para rodar o modelo o mais rápido possível (TPS). Hoje aprendemos a controlar a <strong>amostragem (sampling)</strong>: como fazer a IA alternar entre respostas exatas para código/matemática e respostas criativas para escrita.
+        Semana 1 = velocidade. Hoje = <strong>como o texto sai</strong>:
+        temperatura, filtros da lista e freios contra repetição.
+        Você aprende a ler o card do modelo e preencher
+        <code>SAMPLER_DEFAULTS</code> no <code>config.py</code>.
       </p>
       <p class="navlinks">
         <a href="s1d4-usecase-fluxo-zero.html">← Semana 1</a>
         <a href="../index.html">Guia</a>
-        <a href="s2d2-skills-mcps.html">Dia 2 →</a>
+        <a href="../reference/glossario.html">Glossário</a>
       </p>
     </header>
 
-    <aside class="draft-banner"><strong>Semana 2 em construção.</strong> Este rascunho não entra no progresso do curso e pode mudar enquanto o currículo é desenhado. Volte ao <a href="../index.html">guia publicado</a>.</aside>
+    <section class="lesson-meta" aria-label="Resumo da aula">
+      <p><strong>Resultado:</strong><br />Explicar cada controle e escolher um perfil (código vs conversa vs criativo).</p>
+      <p><strong>Duração:</strong><br />25–35 minutos.</p>
+      <p><strong>Pré-requisito:</strong><br />Semana 1 (skills no Dia 4; API local ajuda na prática real).</p>
+    </section>
 
-    <h2>1. Como a IA escolhe a próxima palavra (Amostragem)</h2>
+    <h2>1. Amostragem = pedir o próximo prato</h2>
     <p>
-      Para cada palavra/token gerado, a IA não decide imediatamente uma única resposta. Ela calcula uma lista de probabilidade contendo milhares de palavras candidatas. Os <strong>parâmetros de amostragem</strong> filtram essa lista e determinam qual candidata será escolhida.
+      Imagine um restaurante com um cardápio gigante: milhares de pratos.
+      A cada passo, a IA não “inventa do nada” — ela escolhe <strong>o próximo prato</strong>
+      (a próxima palavra) a partir desse cardápio.
+      Cada prato tem uma <strong>nota de chance</strong>: quanto o garçom recomenda agora
+      (“esse parece o certo neste momento”).
     </p>
-
-    <h2>2. Os 4 Parâmetros de Qualidade Principais</h2>
-    <dl>
-      <dt>Temperatura (<code>--temp</code>)</dt>
-      <dd>Controla a aleatoriedade. Em <code>0.0</code>, a IA escolhe sempre a palavra #1 mais provável (100% determinístico). Conforme a temperatura sobe (ex.: <code>0.8</code> ou <code>1.2</code>), escolhas menos prováveis ganham chance, aumentando a criatividade.</dd>
-
-      <dt>Top-P (Nucleus Sampling / <code>--top-p</code>)</dt>
-      <dd>Filtra o "núcleo" das melhores opções. Um <code>top-p 0.9</code> considera apenas as palavras cujas probabilidades somadas atingem 90%, descartando os 10% de palavras mais estranhas ou fora de contexto.</dd>
-
-      <dt>Top-K (<code>--top-k</code>)</dt>
-      <dd>Limita a escolha estritamente às K palavras mais prováveis (ex.: <code>top-k 40</code> ignora qualquer palavra abaixo da 40ª posição).</dd>
-
-      <dt>Penalidade de Repetição (<code>--repeat-penalty</code>)</dt>
-      <dd>Impede que a IA entre em loops infinitos repetindo a mesma frase. Um valor como <code>1.1</code> penaliza levemente tokens recém-usados, forçando o modelo a diversificar o vocabulário.</dd>
-    </dl>
-
-    <h2>3. Simulador Interativo de Amostragem</h2>
-    <p>Mova os seletores abaixo para entender o comportamento do modelo em tempo real:</p>
-
-    <div class="sampler-sim">
-      <div class="slider-group">
-        <label for="temp-range">
-          <span>Temperatura (<code>--temp</code>):</span>
-          <span id="temp-val">0.7</span>
-        </label>
-        <input type="range" id="temp-range" min="0.0" max="1.5" step="0.1" value="0.7" />
-      </div>
-
-      <div class="slider-group">
-        <label for="topp-range">
-          <span>Top-P (<code>--top-p</code>):</span>
-          <span id="topp-val">0.9</span>
-        </label>
-        <input type="range" id="topp-range" min="0.1" max="1.0" step="0.05" value="0.9" />
-      </div>
-
-      <div class="slider-group">
-        <label for="rep-range">
-          <span>Penalidade de Repetição (<code>--repeat-penalty</code>):</span>
-          <span id="rep-val">1.1</span>
-        </label>
-        <input type="range" id="rep-range" min="1.0" max="1.5" step="0.05" value="1.1" />
-      </div>
-
-      <div class="profile-box" id="profile-output">
-        <!-- Preenchido via JS -->
-      </div>
+    <p>
+      <strong>Amostragem</strong> é o ritual completo da mesa:
+      (1) o garçom aplica regras do tipo “não peça de novo o que você acabou de comer”,
+      (2) encurta o cardápio,
+      (3) você decide o quanto ousar,
+      (4) sorteia um prato entre os que sobraram.
+    </p>
+    <div class="note">
+      <p style="margin:0">Ordem típica no motor (no restaurante: freios → cardápio curto → ousadia → pedido):</p>
+      <code class="pipe">penalties → top_k → top_p → min_p → temperature → sorteio</code>
+      <p style="margin:0.5rem 0 0">Fonte: <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/cli/README.md">llama.cpp CLI — Sampling params</a>.</p>
     </div>
 
-    <h2>Prática (Validação do Dia 1)</h2>
-    <p class="note">Quiz: Controle de Amostragem e Parâmetros de Qualidade.</p>
+    <h2>2. Sete controles (sempre no restaurante)</h2>
+    <dl>
+      <dt>Temperatura (<code>--temp</code> / <code>TEMP</code>) — ousadia do cliente</dt>
+      <dd>
+        É o quanto <strong>você</strong> ousa na hora de pedir, depois que o cardápio já foi encurtado.
+        <br />
+        <strong>Temperatura baixa:</strong> você quase sempre pede o prato #1 da lista
+        (modo “sempre a favorita”). Resposta mais precisa — bom para código e matemática.
+        Em <code>0</code>, é literalmente “só o favorito”.
+        <br />
+        <strong>Temperatura alta:</strong> você arrisca pratos menos óbvios entre os que ainda estão no cardápio.
+        Mais criativo e aleatório — bom para brainstorm; ruim se o texto começar a delirar.
+        <br />
+        Em muitos motores, <code>1.0</code> é o ponto neutro — não é “desligado”.
+        <br /><em>Porém:</em> cliente muito “sempre a favorita” pode pedir o <strong>mesmo caminho
+        de pratos</strong> de novo e de novo. Aí entra a penalidade de repetição.
+      </dd>
+
+      <dt>Top-K — “só os K pratos do topo” (<code>--top-k</code> / <code>TOP_K</code>)</dt>
+      <dd>
+        O garçom corta o cardápio por <strong>quantidade fixa</strong>.
+        Se <code>K = 40</code>, ele só traz os 40 pratos mais recomendados agora.
+        O 41º, mesmo quase tão bom quanto o 40º, nem chega à mesa.
+        <br />
+        <em>Exemplo:</em> a frase vai em “O gato subiu no…” e os pratos-candidatos são palavras.
+        As favoritas: “telhado”, “muro”, “sofá”. Com Top-K = 3, só esses três competem.
+        “helicóptero” (lá no fundo do cardápio) nem aparece.
+        <br />
+        <strong>K menor</strong> = cardápio mais estreito (mais seguro, menos surpresa).
+        <strong>K maior</strong> = mais pratos na mesa (mais variação, mais risco de escolha estranha).
+        No llama.cpp, <code>0</code> = o garçom não limita por quantidade.
+      </dd>
+
+      <dt>Top-P — “só a fatia boa do cardápio” (<code>--top-p</code> / <code>TOP_P</code>)</dt>
+      <dd>
+        Em vez de contar “os 40 pratos”, o garçom junta os melhores até cobrir uma
+        <strong>fatia da popularidade total</strong> da noite.
+        Ex.: <code>0.9</code> = vai somando recomendações até chegar a 90%; o resto do cardápio
+        (a cauda fraca) fica na cozinha.
+        <br />
+        <em>Noite segura:</em> “telhado” 70%, “muro” 20%, “sofá” 5%, resto 5%.
+        Com Top-P = 0.9, bastam “telhado” + “muro”. Cardápio curto sozinho.
+        <br />
+        <em>Noite indecisa:</em> vários pratos com ~10% cada. Para fechar 90%, o garçom
+        precisa trazer muitos pratos — cardápio largo.
+        <br />
+        Ou seja: quando há um favorito claro, o Top-P encolhe a mesa; quando ninguém manda,
+        a mesa fica cheia. <code>1.0</code> = traz a fatia inteira (filtro desligado).
+      </dd>
+
+      <dt>Min-P — “nada fraco demais vs o prato #1” (<code>--min-p</code> / <code>MIN_P</code>)</dt>
+      <dd>
+        Aqui o garçom não conta pratos nem fatia fixa. Ele olha o <strong>prato líder</strong>
+        (o #1 da noite) e pergunta: “este outro está ridiculamente atrás do líder?”
+        <br />
+        Regra prática: se o líder tem chance X, só ficam pratos com chance ≥ <code>Min-P × X</code>.
+        Ex.: líder 50% e Min-P = 0.1 → corte em 5%. Abaixo de 5% volta para a cozinha.
+        <br />
+        <em>Líder dominante</em> (ex. 80%): o corte sobe (0.1 × 80% = 8%). Poucos pratos na mesa —
+        a conversa permanece coerente mesmo se o cliente estiver ousado (temperatura alta).
+        <br />
+        <em>Líder fraco</em> (ex. 20%): o corte desce (0.1 × 20% = 2%). Mais pratos entram —
+        dá para variar sem abrir espaço para opções absurdas.
+        <br />
+        É o filtro que melhor acompanha a “confiança do restaurante” naquela hora.
+        <code>0.0</code> = desligado.
+      </dd>
+
+      <dt>Penalidade de repetição (<code>--repeat-penalty</code> / <code>REPEAT_PENALTY</code>) — “não peça de novo o que acabou de sair”</dt>
+      <dd>
+        O garçom olha os <em>pratos recentes</em> da mesa e desencoraja repetir o mesmo.
+        <code>1.0</code> = regra desligada. Se a mesa entra em loop
+        (o mesmo prato de novo e de novo), suba um pouco (<code>1.05</code>… <code>1.1</code>).
+        Evite &gt; 1.2 — o restaurante começa a forçar variedade estranha.
+        <br />
+        <em>Em código:</em> nomes de variáveis são pratos que <strong>precisam</strong> voltar ao pedido.
+        Com temperatura baixa para programar, a penalidade costuma ficar em <code>1.0</code>
+        a menos que haja loop de verdade.
+      </dd>
+
+      <dt>Penalidade de presença (<code>--presence-penalty</code> / <code>PRESENCE_PENALTY</code>) — “já pediu isso alguma vez hoje?”</dt>
+      <dd>
+        Se aquele prato <strong>já apareceu pelo menos uma vez</strong> na conversa da mesa,
+        leva uma multa fixa — não importa se saiu 1 ou 20 vezes.
+        Empurra o restaurante a sugerir pratos novos (anti-“ficar no mesmo tema”).
+        <code>0.0</code> = desligada. Use leve se o texto “não sai do mesmo assunto”.
+      </dd>
+
+      <dt>Penalidade de frequência (<code>--frequency-penalty</code> / <code>FREQUENCY_PENALTY</code>) — “quanto mais pediu, mais o garçom desencoraja”</dt>
+      <dd>
+        Aqui a multa <strong>cresce com a contagem</strong>: pediu três vezes → freio mais forte
+        do que pediu uma vez. Menos “também… também… também…” no texto.
+        <code>0.0</code> / <code>None</code> = desligada neste repositório.
+      </dd>
+    </dl>
+
+    <div class="note">
+      <strong>Mapa rápido do restaurante:</strong>
+      Top-K = “só os K do topo” ·
+      Top-P = “só até fechar a fatia P da popularidade” ·
+      Min-P = “só quem não está muito atrás do prato #1” ·
+      Temperatura = ousadia do cliente no pedido ·
+      Penalidades = freios contra pedir o mesmo de novo.
+      Os três primeiros encurtam o cardápio <em>antes</em> da temperatura decidir o quanto ousar.
+    </div>
+
+    <div class="note">
+      <strong>Como a mesa se comporta na prática:</strong>
+      cliente cauteloso (temperatura baixa) → pratos previsíveis, mas pode repetir o mesmo caminho →
+      ligue/ajuste a <em>penalidade de repetição</em>.
+      Cliente ousado (temperatura alta) → mais criativo, mas pode delirar →
+      aperte Top-P / Min-P (cardápio das loucuras some da mesa).
+    </div>
+
+    <h2>3. Três perfis práticos</h2>
+    <table>
+      <thead>
+        <tr><th>Perfil</th><th>Temperatura</th><th>Filtros</th><th>Penalidades</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Código / matemática</td>
+          <td>baixa (≈ 0–0.3)</td>
+          <td>fatia / Min-P mais apertados</td>
+          <td>repetição ≈ 1.0 (off), salvo loop</td>
+        </tr>
+        <tr>
+          <td>Agente / conversa</td>
+          <td>média (o card do modelo manda)</td>
+          <td>seguir “Recommended settings”</td>
+          <td>só se houver eco</td>
+        </tr>
+        <tr>
+          <td>Brainstorm / prosa</td>
+          <td>mais alta</td>
+          <td>Min-P um pouco mais frouxo</td>
+          <td>presença/frequência leves se ecoar</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3b. Onde isso mora no <code>config.py</code></h2>
+    <p>
+      No <a href="s1d2-llamacpp-flags-tps.html">Semana 1 · Dia 2</a> você já usou
+      <code>autoresearch/core/config.py</code> para velocidade: o bloco
+      <code>ENGINE_DEFAULTS</code> (contexto, KV, threads…).
+    </p>
+    <p>
+      No <strong>mesmo arquivo</strong> existe outro bloco:
+      <code>SAMPLER_DEFAULTS</code> — temperatura, Top-K, Top-P, Min-P e as penalidades.
+      Motor = como o restaurante roda rápido. Sampler = como a mesa escolhe o próximo prato.
+    </p>
+    <pre>SAMPLER_DEFAULTS = {
+    'TEMP': 0.7,
+    'TOP_P': 0.95,
+    'TOP_K': 40,
+    'MIN_P': 0.05,
+    'REPEAT_PENALTY': 1.0,
+    'PRESENCE_PENALTY': 0.0,
+    'FREQUENCY_PENALTY': None,
+}</pre>
+    <p class="note">
+      Antes do primeiro teste sério com um modelo, copie o § Recommended settings do
+      card em <code>docs/models/</code> para esse bloco (perfil código <em>ou</em> agente).
+      Se o card indicar outra temperatura, use a do card.
+    </p>
+
+    <h2>4. Simulador do restaurante</h2>
+    <p>
+      Um input (o começo da frase). O <strong>cardápio</strong> muda com Top-K, Top-P, Min-P, penalidades
+      <em>e</em> temperatura (as barras achatam quando a ousadia sobe).
+      Os <strong>três pedidos</strong> são três sorteios: temperatura <code>0</code> → os três iguais;
+      temperatura alta → mais chance de divergir (o favorito ainda ganha com mais frequência — use “Sortear de novo”).
+    </p>
+
+    <div class="sampler-sim">
+      <div class="prompt-row">
+        <label for="sim-prompt">Frase (o pedido começa assim):</label>
+        <input type="text" id="sim-prompt" value="O gato subiu no" autocomplete="off" />
+      </div>
+
+      <div class="slider-grid">
+        <div class="slider-group">
+          <label for="temp-range"><span>Temperatura · ousadia</span><span id="temp-val">0.7</span></label>
+          <input type="range" id="temp-range" min="0.0" max="2.0" step="0.1" value="0.7" />
+        </div>
+        <div class="slider-group">
+          <label for="topk-range"><span>Top-K · só os K do topo</span><span id="topk-val">8</span></label>
+          <input type="range" id="topk-range" min="0" max="12" step="1" value="8" />
+        </div>
+        <div class="slider-group">
+          <label for="topp-range"><span>Top-P · fatia da popularidade</span><span id="topp-val">0.90</span></label>
+          <input type="range" id="topp-range" min="0.1" max="1.0" step="0.05" value="0.90" />
+        </div>
+        <div class="slider-group">
+          <label for="minp-range"><span>Min-P · vs o prato #1</span><span id="minp-val">0.05</span></label>
+          <input type="range" id="minp-range" min="0.0" max="0.25" step="0.01" value="0.05" />
+        </div>
+        <div class="slider-group">
+          <label for="rep-range"><span>Pen. de repetição</span><span id="rep-val">1.00</span></label>
+          <input type="range" id="rep-range" min="1.0" max="1.3" step="0.05" value="1.0" />
+        </div>
+        <div class="slider-group">
+          <label for="pres-range"><span>Pen. de presença</span><span id="pres-val">0.00</span></label>
+          <input type="range" id="pres-range" min="0.0" max="1.0" step="0.05" value="0.0" />
+        </div>
+        <div class="slider-group">
+          <label for="freq-range"><span>Pen. de frequência</span><span id="freq-val">0.00</span></label>
+          <input type="range" id="freq-range" min="0.0" max="1.0" step="0.05" value="0.0" />
+        </div>
+      </div>
+
+      <div class="menu-panel">
+        <h3>Cardápio na mesa (<span id="menu-count">0</span> pratos) — % depois da ousadia</h3>
+        <div class="menu-list" id="menu-list" aria-live="polite"></div>
+      </div>
+
+      <div class="orders-panel">
+        <h3>Três pedidos (três sorteios)</h3>
+        <div class="orders-grid">
+          <div class="order-card">
+            <p class="eyebrow">Pedido 1</p>
+            <p class="phrase" id="order-1"></p>
+          </div>
+          <div class="order-card">
+            <p class="eyebrow">Pedido 2</p>
+            <p class="phrase" id="order-2"></p>
+          </div>
+          <div class="order-card">
+            <p class="eyebrow">Pedido 3</p>
+            <p class="phrase" id="order-3"></p>
+          </div>
+        </div>
+        <div class="sim-actions">
+          <button type="button" id="reshuffle-btn">Sortear de novo</button>
+        </div>
+        <p class="sim-hint" id="sim-hint"></p>
+      </div>
+
+      <pre id="config-preview" style="margin:1rem 0 0; white-space:pre-wrap;"></pre>
+    </div>
+
+    <section class="practice" data-practice data-lesson="s2d1">
+      <h2>Missão prática</h2>
+
+      <h3>Rota do restaurante</h3>
+      <ol>
+        <li><strong>Cliente cauteloso:</strong> temperatura em <code>0</code>. Os três pedidos devem ser a mesma palavra. Anote qual.</li>
+        <li><strong>Cliente ousado:</strong> temperatura em <code>2.0</code>. Olhe as barras do cardápio (mais planas). Aperte <em>Sortear de novo</em> 2–3 vezes e anote se apareceu algum prato que não era o favorito.</li>
+        <li><strong>Garçom enxuga a mesa:</strong> volte a temperatura para <code>0.7</code>, ponha Top-K em <code>3</code>. Conte quantos pratos ficaram “na mesa” vs “fora”.</li>
+        <li><strong>Fatia vs líder:</strong> Top-K em off (<code>0</code>), Top-P em <code>0.5</code> — cardápio encolhe pela fatia. Depois Top-P em <code>1.0</code> e Min-P em <code>0.15</code> — sobram só os perto do #1.</li>
+        <li><strong>Freio de repetição:</strong> na frase, deixe “O gato subiu no”. Suba presença ou frequência e veja <code>gato</code> / <code>subiu</code> caírem no cardápio.</li>
+      </ol>
+
+      <h3>Rota no Baseline</h3>
+      <p>Mesmo arquivo da Semana 1 · Dia 2 — agora o bloco de amostragem, não o de velocidade.</p>
+      <ol>
+        <li>Abra <code>autoresearch/core/config.py</code> e localize <code>ENGINE_DEFAULTS</code> (já conhecido) e <code>SAMPLER_DEFAULTS</code> (novo).</li>
+        <li>Abra um card em <code>docs/models/</code> · § <strong>Recommended settings</strong> (perfil código <em>ou</em> agente).</li>
+        <li>Preencha <code>SAMPLER_DEFAULTS</code> com TEMP / TOP_P / TOP_K / MIN_P / penalidades do card.</li>
+        <li>Confira se as chaves batem com o bloco gerado no simulador.</li>
+      </ol>
+
+      <div class="practice-actions">
+        <button type="button" data-practice-mode="real" aria-pressed="false">Preenchi SAMPLER_DEFAULTS no config.py</button>
+        <button type="button" data-practice-mode="simulated" aria-pressed="false">Fiz os 5 passos no restaurante</button>
+      </div>
+      <p class="practice-status" data-practice-feedback role="status"></p>
+    </section>
+
+    <h2>Quiz de validação</h2>
 
     <div class="quiz" data-quiz data-lesson="s2d1-q1"
          data-answer-hash="7f97bd2cfdbbe7f08bd94a6a7e2b2dc8f55982fcd6517978b5e72dace11646d7"
-         data-ok="Correto! Temperatura 0.0 garante respostas 100% consistentes e sem invenções para código e matemática."
-         data-bad="Para tarefas exatas como código ou matemática, a temperatura ideal é 0.0 (determinística).">
+         data-ok="Correto! Temperatura 0.0 (ou bem baixa) favorece respostas estáveis para código e matemática."
+         data-bad="Para código ou matemática, a temperatura ideal é baixa / 0.0 (modo preciso).">
       <p class="q">Qual configuração de Temperatura é recomendada para gerar código de programação ou resolver cálculos exatos?</p>
       <div class="choices">
-        <button type="button" data-choice="A">Temperatura 0.0 (modo determinístico / exato)</button>
+        <button type="button" data-choice="A">Temperatura 0.0 (modo preciso / exato)</button>
         <button type="button" data-choice="B">Temperatura 1.5 (máxima aleatoriedade)</button>
         <button type="button" data-choice="C">Temperatura 5.0 (poética)</button>
         <button type="button" data-choice="D">Qualquer temperatura ativada no Git</button>
@@ -137,64 +499,50 @@
       <p class="feedback" data-feedback></p>
     </div>
 
-    <h2>Próximo</h2>
-    <p><a href="s2d2-skills-mcps.html">Dia 2 — Skills e MCPs</a></p>
+    <div class="quiz" data-quiz data-lesson="s2d1-q3"
+         data-answer-hash="acf71bd9a3237db9d15ef610b7f99ce3a93c553205aa13724a9248d858982660"
+         data-ok="Certo! Min-P corta opções fracas em relação à palavra líder — o filtro muda com a confiança da IA."
+         data-bad="Min-P compara cada opção com a líder (a #1). Top-P junta uma fatia da chance total.">
+      <p class="q">O que o Min-P faz de diferente do Top-P?</p>
+      <div class="choices">
+        <button type="button" data-choice="A">Soma chances até um limiar fixo, como o Top-P</button>
+        <button type="button" data-choice="B">Mantém exatamente K palavras, sem olhar a chance</button>
+        <button type="button" data-choice="C">Corta palavras fracas demais em relação à líder</button>
+        <button type="button" data-choice="D">Move camadas densas da GPU para a memória RAM</button>
+      </div>
+      <p class="feedback" data-feedback></p>
+    </div>
 
+    <div class="quiz" data-quiz data-lesson="s2d1-q4"
+         data-answer-hash="3be6636df649355bb12eb976a7e6259fe243c5e18a9ce03433f157866ed1069a"
+         data-ok="Exato: presença = multa fixa se já apareceu; frequência = multa cresce com a contagem."
+         data-bad="Presença multa uma vez se já saiu; frequência escala com quantas vezes apareceu.">
+      <p class="q">Qual diferença entre penalidade de presença e penalidade de frequência?</p>
+      <div class="choices">
+        <button type="button" data-choice="A">Presença multa fixa se já saiu; frequência cresce com a contagem</button>
+        <button type="button" data-choice="B">Frequência multa fixa se já saiu; presença cresce com a contagem</button>
+        <button type="button" data-choice="C">Presença e frequência são só apelidos iguais do Top-P</button>
+        <button type="button" data-choice="D">Presença e frequência controlam camadas enviadas à GPU</button>
+      </div>
+      <p class="feedback" data-feedback></p>
+    </div>
+
+    <h2>Próximo</h2>
+    <p>Marque a aula no <a href="../index.html">Guia</a> depois do quiz + prática.</p>
+    <p class="source-note">
+      <strong>Fonte:</strong>
+      <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/cli/README.md">llama.cpp — Sampling params</a>
+      ·
+      <a href="https://smcleod.net/2025/04/llm-sampling-parameters-guide/">LLM Sampling Parameters Guide (Sam McLeod)</a>
+      ·
+      <a href="../reference/glossario.html">Glossário</a>.
+    </p>
     <footer class="site">
-      <p><strong>Workshop AILOCAL Essentials · Semana 2 · Qualidade e Amostragem.</strong></p>
+      <p>Ficou alguma dúvida? Pergunte ao tutor.</p>
     </footer>
   </div>
 
-  <script>
-    (function() {
-      const tempRange = document.getElementById('temp-range');
-      const toppRange = document.getElementById('topp-range');
-      const repRange = document.getElementById('rep-range');
-      
-      const tempVal = document.getElementById('temp-val');
-      const toppVal = document.getElementById('topp-val');
-      const repVal = document.getElementById('rep-val');
-      const profileOut = document.getElementById('profile-output');
-
-      function updateSim() {
-        const temp = parseFloat(tempRange.value);
-        const topp = parseFloat(toppRange.value);
-        const rep = parseFloat(repRange.value);
-
-        tempVal.textContent = temp.toFixed(1);
-        toppVal.textContent = topp.toFixed(2);
-        repVal.textContent = rep.toFixed(2);
-
-        let modeName = "";
-        let desc = "";
-
-        if (temp === 0.0) {
-          modeName = "🎯 Modo Exato / Código & Matemática";
-          desc = "A IA escolhe estritamente os tokens de maior probabilidade. Respostas 100% previsíveis, perfeitas para programação, lógica e extração de dados.";
-        } else if (temp <= 0.5) {
-          modeName = "📘 Modo Técnico / Artigo";
-          desc = "Respostas focadas e formais com baixíssima variação. Excelente para resumos precisos e tradução literal.";
-        } else if (temp <= 0.9) {
-          modeName = "💬 Modo Conversa Equilibrada (Padrão)";
-          desc = "O equilíbrio ideal para assistentes gerais: mantém o contexto correto com fluência natural e respostas variadas.";
-        } else {
-          modeName = "🎨 Modo Brainstorming & Escrita Criativa";
-          desc = "Alta aleatoriedade. A IA explora palavras incomuns. Excelente para criar nomes, poemas ou enredos de ficção.";
-        }
-
-        profileOut.innerHTML = `
-          <p style="margin:0 0 0.3rem"><strong>${modeName}</strong></p>
-          <p style="margin:0"><em>${desc}</em></p>
-        `;
-      }
-
-      tempRange.addEventListener('input', updateSim);
-      toppRange.addEventListener('input', updateSim);
-      repRange.addEventListener('input', updateSim);
-
-      updateSim();
-    })();
-  </script>
+  <script src="../assets/sampler-sim.js"></script>
   <script src="../assets/progress.js"></script>
   <script src="../assets/quiz.js"></script>
 </body>
