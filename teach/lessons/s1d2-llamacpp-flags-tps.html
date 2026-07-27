@@ -41,19 +41,18 @@
         <tr><td>Baseline</td><td>Painéis do app</td><td><code>autoresearch/core/config.py</code>, sem flags temporárias</td></tr>
       </tbody>
     </table>
-    <p>Cola de flags (HTML, funciona em <code>file://</code>): <a href="../reference/llamacpp-flags.html">reference/llamacpp-flags.html</a>.</p>
+    <p>Flags e significados: <a href="../reference/glossario.html">glossário</a> (seção Flags llama.cpp).</p>
 
     <h2>Ajustar performance (foco na Semana 1)</h2>
     <ul>
       <li><code>MODEL</code> — basename do GGUF dentro do armazenamento local.</li>
-      <li><code>CTX_SIZE</code> — começa em 131072; o aluno pode reduzir até 2048 para trocar contexto por velocidade/memória.</li>
+      <li><code>CTX_SIZE</code> — começa em 131072; você pode reduzir até 2048 para trocar contexto por velocidade/memória.</li>
       <li><code>KV_CACHE_K</code> / <code>KV_CACHE_V</code> — compressão do contexto.</li>
       <li><code>BATCH_SIZE</code> / <code>UBATCH_SIZE</code> — lotes de processamento.</li>
       <li><code>FLASH_ATTN</code> — permanece <code>on</code>.</li>
     </ul>
     <div class="note">
-      Ainda não é aula de ajuste de criatividade (temperatura). Isso é Semana 2 (qualidade).
-      Hoje o foco é a IA responder rápido e de forma estável no seu computador.
+      Hoje o foco é velocidade (TPS) e estabilidade. Temperatura e outros controles de texto ficam para a próxima etapa.
     </div>
 
     <h2>Gerador de Baseline local</h2>
@@ -137,7 +136,7 @@
          data-answer-hash="58fc2d60f785b5e282d0c202eb04d43bb666d8e661a748a8e727509a6cfe39a4"
          data-ok="Certo! config.py é a única superfície mutável do Baseline local."
          data-bad="O Baseline local é configurado em autoresearch/core/config.py, sem sopa de flags.">
-      <p class="q">Onde o aluno deve ajustar os parâmetros do Baseline local?</p>
+      <p class="q">Onde você deve ajustar os parâmetros do Baseline local?</p>
       <div class="choices">
         <button type="button" data-choice="A">No arquivo fixo program.md</button>
         <button type="button" data-choice="B">No arquivo local autoresearch/core/config.py</button>
@@ -163,7 +162,7 @@
 
     <h2>Próximo</h2>
     <p><a href="s1d3-moe-maior-que-a-vram.html">Dia 3 — MoE maior que a VRAM</a></p>
-    <p class="source-note"><strong>Fontes oficiais opcionais:</strong> <a href="https://github.com/ggml-org/llama.cpp">llama.cpp</a> e <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md">llama-server</a>.</p>
+    <p class="source-note"><strong>Fontes:</strong> <a href="https://github.com/ggml-org/llama.cpp">llama.cpp</a> e <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md">llama-server</a>.</p>
     <footer class="site"><p>Ficou alguma dúvida? Pergunte ao tutor.</p></footer>
   </div>
   <script src="../assets/progress.js"></script>

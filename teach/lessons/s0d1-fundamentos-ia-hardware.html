@@ -44,7 +44,7 @@
 <body>
   <div class="wrap">
     <header class="site">
-      <p class="eyebrow">Módulo 0 · Fundação Conceitual · Do Zero Absoluto</p>
+      <p class="eyebrow">Módulo 0 · Fundação</p>
       <h1>Como funcionam as IAs e o Hardware do seu PC</h1>
       <p class="lede">
         Antes de baixar qualquer programa ou modelo, entenda o que acontece por trás dos panos: como uma IA "pensa", por que a memória da placa de vídeo (VRAM) é o fator mais valioso, e como rodar modelos 100% locais sem depender de servidores na nuvem.
@@ -114,7 +114,7 @@
           '#dbeafe', '#dcfce7', '#fef9c3', '#fae8ff', '#ffe4e6', '#e0e7ff', '#ccfbf1'
         ];
 
-        // Simulação didática de BPE tokenizer para PT-BR / Llama / Qwen
+        // Tokenizador simulado (aproximação BPE PT-BR)
         function tokenizeSim(text) {
           if (!text) return [];
           const tokens = [];
@@ -270,12 +270,11 @@
     </section>
 
     <h2>Quiz de validação</h2>
-    <p class="note">Quiz de fixação: Conceitos de IA, Hardware e Quantização.</p>
 
     <div class="quiz" data-quiz data-lesson="s0d1-q1"
          data-answer-hash="c39dc1c8bb3d06ec870c7b98df34ef4e7e7a6bb083a82ca2b2a31963009b6dba"
          data-ok="Exato! Os pesos do modelo são o arquivo estático com o conhecimento aprendido."
-         data-bad="Lembre-se: os pesos do modelo são o arquivo salvo no disco rígido.">
+         data-bad="Os pesos do modelo são o arquivo salvo no disco rígido.">
       <p class="q">O que representam os "pesos" de um modelo de IA local (arquivo .gguf)?</p>
       <div class="choices">
         <button type="button" data-choice="A">O arquivo estático no disco com as conexões matemáticas aprendidas no treinamento</button>
@@ -321,7 +320,7 @@
       Depois: <a href="../index.html">voltar ao Guia</a>.
     </p>
 
-    <p class="source-note"><strong>Fonte oficial opcional:</strong> <a href="https://huggingface.co/docs/tokenizers/main/index">tokenização no Hugging Face</a> e <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/quantize/README.md">quantização no llama.cpp</a>.</p>
+    <p class="source-note"><strong>Fontes:</strong> <a href="https://huggingface.co/docs/tokenizers/main/index">tokenização no Hugging Face</a> e <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/quantize/README.md">quantização no llama.cpp</a>.</p>
 
     <footer class="site">
       <p><strong>Workshop AILOCAL Essentials · Módulo 0.</strong> Ficou alguma dúvida? Pergunte ao tutor.</p>

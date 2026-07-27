@@ -12,17 +12,17 @@
       <p class="eyebrow">Referência · Terminologia do curso</p>
       <h1>Glossário</h1>
       <p class="lede">
-        Definições curtas usadas em todas as lições. Em caso de dúvida, esta página manda — não o marketing do Hugging Face.
+        Definições curtas usadas em todas as lições. Em caso de dúvida, esta página manda.
       </p>
       <p class="navlinks">
         <a href="../index.html">Guia</a>
-        <a href="llamacpp-flags.html">Flags llama.cpp</a>
-        <a href="inference-cheat-sheet.html">Inferência</a>
       </p>
     </header>
 
     <h2>Peças do sistema</h2>
     <dl>
+      <dt>Inferência</dt>
+      <dd>Gerar texto com pesos já treinados (congelados). Não atualiza o modelo. Este curso é só inferência.</dd>
       <dt>Motor</dt>
       <dd>Programa que carrega os pesos e gera tokens (ex.: <code>llama-server</code>). Não é o arquivo do modelo.</dd>
       <dt>Modelo</dt>
@@ -32,41 +32,77 @@
       <dt>GGUF</dt>
       <dd>Formato de arquivo de modelo para motores tipo llama.cpp.</dd>
       <dt>Draft / MTP</dt>
-      <dd>Arquivo auxiliar de especulação (fora do escopo da Semana 1 de TPS básico).</dd>
+      <dd>Arquivo ou trilha auxiliar de especulação (fora do escopo básico de TPS).</dd>
     </dl>
 
     <h2>Memória e velocidade</h2>
     <dl>
       <dt>VRAM</dt>
-      <dd>Memória da GPU. Pesos + KV competem por ela. Dense deve caber na VRAM física neste curso; MoE pode offload (Dia 3).</dd>
+      <dd>Memória da GPU. Pesos + KV competem por ela. Dense deve caber na VRAM física neste curso; MoE pode offload (Semana 1 · Dia 3).</dd>
       <dt>RAM</dt>
       <dd>Memória do sistema (CPU). Offload de especialistas MoE pode usar RAM — não é “free speed”.</dd>
       <dt>KV / contexto</dt>
       <dd>Memória do histórico da conversa. Mais <code>-c</code> → mais KV → mais memória.</dd>
       <dt>TPS</dt>
-      <dd>Tokens por segundo — métrica de velocidade da Semana 1. Não mede “inteligência”.</dd>
+      <dd>Tokens por segundo — métrica de velocidade. Não mede “inteligência”.</dd>
       <dt>Offload</dt>
       <dd>Colocar parte do modelo fora da VRAM (CPU/RAM). Em dense: evitar. Em MoE: ferramenta do Dia 3.</dd>
       <dt>OOM</dt>
       <dd>Out of Memory — VRAM (ou RAM) esgotada. Em denso, corte contexto/KV, remova draft ou escolha GGUF menor; não force spill.</dd>
     </dl>
 
-    <h2>API e uso</h2>
+    <h2>API, agente e amostragem</h2>
     <dl>
       <dt>API local</dt>
       <dd>Servidor HTTP na sua máquina (ex.: <code>127.0.0.1:18080</code>), em geral compatível com o formato OpenAI.</dd>
       <dt>Harness</dt>
       <dd>Cliente que fala com a API: script, app, agente ou IDE.</dd>
+      <dt>Skill</dt>
+      <dd>Pacote de instruções (<code>SKILL.md</code>) que ensina o agente a seguir um fluxo. Catálogo: <a href="https://skills.sh/">skills.sh</a>. Semana 1 · Dia 4.</dd>
+      <dt>Skill local vs global</dt>
+      <dd>Local = projeto (padrão do <code>skills add</code>). Global = conta do usuário (<code>-g</code>), vale em qualquer projeto.</dd>
       <dt>Amostragem</dt>
-      <dd>Como o motor escolhe o próximo token (temperatura, top-k…). Semana 2 — qualidade, não TPS.</dd>
+      <dd>Escolher a próxima palavra como pedir o próximo prato: freios → cardápio curto → ousadia → sorteio. Semana 2 · Dia 1. Ordem no motor: penalties → top_k → top_p → min_p → temperature → sorteio.</dd>
+      <dt>Temperatura (<code>TEMP</code>)</dt>
+      <dd>Ousadia do cliente. Maior = mais criativa; menor = mais precisa. <code>0</code> ≈ só o favorito.</dd>
+      <dt>Top-K (<code>TOP_K</code>)</dt>
+      <dd>Só os K pratos do topo. Desligar: <code>0</code>.</dd>
+      <dt>Top-P (<code>TOP_P</code>)</dt>
+      <dd>Só até fechar a fatia P da popularidade. Desligar: <code>1.0</code>.</dd>
+      <dt>Min-P (<code>MIN_P</code>)</dt>
+      <dd>Nada fraco demais vs o prato #1. Desligar: <code>0.0</code>.</dd>
+      <dt>Penalidades (repeat / presence / frequency)</dt>
+      <dd>
+        Freios da mesa. Repetição (<code>REPEAT_PENALTY</code>, off <code>1.0</code>) = o que acabou de sair;
+        presença (<code>PRESENCE_PENALTY</code>, off <code>0</code>) = já pediu ≥1 vez;
+        frequência (<code>FREQUENCY_PENALTY</code>, off <code>0</code>) = quanto mais pediu, mais freio.
+      </dd>
       <dt>MCP</dt>
-      <dd>Model Context Protocol — protocolo para o agente usar ferramentas externas (Semana 2).</dd>
+      <dd>Model Context Protocol — protocolo para o agente usar ferramentas externas (Semana 2 · Dia 2+; skills já no S1D4).</dd>
       <dt>Hook / gate</dt>
-      <dd>Automação ou portão que bloqueia ações perigosas / Trial inválido (Semana 2).</dd>
+      <dd>Automação ou portão que bloqueia ações perigosas / Trial inválido (Semana 2 · Dias 2+).</dd>
     </dl>
 
-    <h2>Flags que você vai digitar</h2>
-    <p>Cola rápida: <a href="llamacpp-flags.html">reference/llamacpp-flags.html</a>.</p>
+    <h2>Flags llama.cpp (velocidade)</h2>
+    <table>
+      <thead><tr><th>Flag</th><th>Significado</th><th>Dica</th></tr></thead>
+      <tbody>
+        <tr><td><code>-m</code></td><td>Caminho do GGUF</td><td>Arquivo em <code>models/…</code></td></tr>
+        <tr><td><code>-ngl</code></td><td>Camadas na GPU</td><td>Denso: <code>99</code> e o GGUF deve caber na VRAM física</td></tr>
+        <tr><td><code>-t</code></td><td>Threads CPU</td><td>Útil em CPU-only ou MoE</td></tr>
+        <tr><td><code>-c</code></td><td>Contexto (tokens)</td><td>Maior = mais KV = mais VRAM</td></tr>
+        <tr><td><code>-fa on</code></td><td>Flash attention</td><td>Costuma ajudar TPS na GPU</td></tr>
+        <tr><td><code>-ctk</code> / <code>-ctv</code></td><td>Tipo do KV</td><td>Quantizar KV libera VRAM</td></tr>
+        <tr><td><code>-b</code> / <code>-ub</code></td><td>Batch</td><td>Afinar throughput</td></tr>
+        <tr><td><code>--host</code> / <code>--port</code></td><td>Bind do server</td><td>Padrão do helper: <code>127.0.0.1:18080</code></td></tr>
+        <tr><td><code>--n-cpu-moe</code></td><td>Especialistas MoE na CPU</td><td>Só MoE (Semana 1 · Dia 3)</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      Baseline em <code>autoresearch/core/config.py</code>. Subir server:
+      <code>scripts\serve-config.py serve</code>. Validar:
+      <code>scripts\verify_setup.py --port 18080</code>. Detalhe nas aulas S1D2 e S1D3.
+    </p>
 
     <footer class="site">
       <p><a href="../index.html">← Voltar ao Guia</a></p>

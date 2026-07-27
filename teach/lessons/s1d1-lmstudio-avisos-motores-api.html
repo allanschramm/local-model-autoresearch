@@ -9,12 +9,12 @@
 <body>
   <div class="wrap">
     <header class="site">
-      <p class="eyebrow">Semana 1 · Dia 1 · Performance bruta (não qualidade)</p>
+      <p class="eyebrow">Semana 1 · Dia 1 · Performance</p>
       <h1>Motores, baixar modelos e API local</h1>
       <p class="lede">
-        <strong>No Dia 1 compreendemos o fluxo basico da IA local</strong>:
+        <strong>No Dia 1 o fluxo básico da IA local</strong>:
         motor → modelo → servidor API → aplicativo/harness. A partir do <strong>Dia 2</strong> entramos neste repositório
-        com llama.cpp. TPS alto vem nos dias seguintes; aqui ainda não julgamos “qual modelo é mais inteligente”.
+        com llama.cpp. O foco desta semana é velocidade (TPS).
       </p>
       <p class="navlinks">
         <a href="s0d2-troubleshooting-erros-comuns.html">← Módulo 0</a>
@@ -42,7 +42,7 @@
       <dt>KV / contexto</dt>
       <dd>Memória do histórico da conversa. Mais contexto = mais KV = mais memória.</dd>
       <dt>TPS</dt>
-      <dd>Tokens por segundo — métrica de velocidade nesta semana de performance.</dd>
+      <dd>Tokens por segundo — métrica de velocidade desta semana.</dd>
       <dt>API / harness</dt>
       <dd>API local (estilo OpenAI) em <code>127.0.0.1</code>; harness = script, app ou agente que se comunica com essa API.</dd>
     </dl>
@@ -79,14 +79,14 @@
     </table>
     <div class="note">
       Dia 2 não é “outra IA”. É o mesmo contrato (motor → GGUF → API) com flags que você controla no terminal.
-      Cola de flags: <a href="../reference/llamacpp-flags.html">reference/llamacpp-flags.html</a>.
+      Detalhe no <a href="../reference/glossario.html">glossário</a>.
     </div>
 
     <h2>3. Onde baixar e como escolher (foco em performance)</h2>
     <ul>
       <li><strong>Onde:</strong> Hugging Face Hub — repositórios <code>*-GGUF</code> / arquivos <code>.gguf</code>. No fluxo deste repo, preferimos a CLI <code>hf</code>.</li>
       <li><strong>Como escolher:</strong> cabe na VRAM? Quant mais baixo → menos VRAM, tipicamente mais TPS. Ignore modelos gigantes se você tem 8&nbsp;GB de VRAM.</li>
-      <li>Não escolha por marketing de benchmark de qualidade nesta semana.</li>
+      <li>Priorize caber na GPU e velocidade — não o ranking de “quem é o mais inteligente”.</li>
     </ul>
 
     <h2>4. Usar o modelo via API (qualquer aplicativo)</h2>
@@ -109,12 +109,11 @@
     </section>
 
     <h2>Quiz de validação</h2>
-    <p class="note">Quiz: Conceitos fundamentais de motores, modelos e API local para rodar IA no seu computador.</p>
 
     <div class="quiz" data-quiz data-lesson="s1d1-q1"
          data-answer-hash="84cde295236204ede714014ad12725ada9e652a977eacb7d8a9fd54464acc97c"
          data-ok="Exato! O motor é o aplicativo que executa os arquivos do modelo na sua máquina."
-         data-bad="Lembre-se: o motor é o programa de execução; o modelo são os dados salvos em arquivo.">
+         data-bad="O motor é o programa de execução; o modelo são os dados salvos em arquivo.">
       <p class="q">O que é um motor de inferência de IA local?</p>
       <div class="choices">
         <button type="button" data-choice="A">É o programa (software) que carrega o modelo e gera as respostas no seu computador</button>
@@ -159,10 +158,10 @@
       <a href="s1d2-llamacpp-flags-tps.html">abrir Dia 2</a>.
     </p>
 
-    <p class="source-note"><strong>Fonte oficial opcional:</strong> <a href="https://lmstudio.ai/docs/developer/core/server">LM Studio como servidor local</a>.</p>
+    <p class="source-note"><strong>Fonte:</strong> <a href="https://lmstudio.ai/docs/developer/core/server">LM Studio como servidor local</a>.</p>
 
     <footer class="site">
-      <p><strong>Professor = a aula + este material.</strong> Ficou alguma dúvida? Pergunte ao tutor.</p>
+      <p>Ficou alguma dúvida? Pergunte ao tutor.</p>
     </footer>
   </div>
   <script src="../assets/progress.js"></script>
