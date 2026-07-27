@@ -55,6 +55,12 @@
       "skillPath": "skills/personal/edit-article/SKILL.md",
       "computedHash": "db56e5af37c1d91ca8516c40ceb0f108332e7290ab1b65bdae5a089a64271431"
     },
+    "excalidraw-diagram-generator": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/excalidraw-diagram-generator/SKILL.md",
+      "computedHash": "68af7d099a9e6fd2a94b4e1219b8b7820e09ebe4a8c2a636358d3f5188219e51"
+    },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",
       "sourceType": "github",
