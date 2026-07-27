@@ -1,7 +1,7 @@
 # Missão: Workshop AILOCAL Essentials
 
 ## Por que existe
-Ensinar qualquer pessoa a **rodar IA Local no próprio computador com alto desempenho**. Módulo 0 e Semana 1 formam a jornada publicada; a Semana 2 está em desenho curricular.
+Ensinar qualquer pessoa a **rodar IA Local no próprio computador com alto desempenho**. Módulo 0, Semana 1 e Semana 2 · Dia 1 (samplers) formam a jornada publicada; Dias 2–4 da Semana 2 seguem em desenho.
 
 ## Como é o sucesso
 ### Módulo 0 — Fundação Conceitual do Zero (para leigos)
@@ -11,25 +11,24 @@ Ensinar qualquer pessoa a **rodar IA Local no próprio computador com alto desem
 - O milagre da Quantização (GGUF Q4 vs Q8 - analogia com compressão de imagem)
 - Calculadora interativa de compatibilidade de VRAM
 
-### Semana 1 — Desempenho bruto (escopo fechado)
+### Semana 1 — Desempenho + skills (escopo fechado)
 - Mini-glossário Dia 1 (motor, modelo, quant, VRAM, KV, TPS, API/harness) — simplificado para leigos
 - Distinguir **motor de inferência** vs **modelo** vs **quant**
 - Baixar e escolher modelos GGUF focando no suporte da GPU (heurística de velocidade)
 - Usar o modelo via **API local compatível com OpenAI** em qualquer aplicativo
 - No Dia 2+: praticar o fluxo com **llama.cpp** e **ajustar parâmetros** para TPS (velocidade)
 - No Dia 3: rodar **modelos MoE maiores que a memória de vídeo** (offload) no llama.cpp
-- No Dia 4: executar um **caso de uso prático** com planejamento → tarefas → IA local
+- No Dia 4: **skills** — achar em [skills.sh](https://skills.sh/), instalar (projeto vs global), fluxo Matt Pocock (`grill-with-docs` → `to-tickets` → `implement` com modelo local → `code-review` com modelo normal)
 
-### Semana 2 — Qualidade (em construção, não publicada)
-- Parâmetros de geração (temperatura, top-k, repetição)
-- Skills / MCPs para desenvolvedores
-- Ambientes isolados (sandbox), automações (hooks) e portões de qualidade (gates)
-- Caso de uso final completo
+### Semana 2 — Qualidade
+- **Dia 1 (publicado):** parâmetros de geração — temperatura, top-k, top-p, min-p, repeat / presence / frequency; semear `SAMPLER_DEFAULTS` do card
+- Dias 2–4 (em construção): MCPs / ferramentas; sandbox / hooks / gates; caso de uso final
 
 ## Regras e Restrições
 - Material em **pt-BR** simples e didático para leigos
 - Experiência 100% local: o aluno estuda clonando o repo e utilizando o tutor de IA (`/teach`) ou abrindo `teach/index.html` no navegador local (sem portal/servidor remoto)
-- Semana 1: **apenas desempenho / velocidade (TPS)** — sem avaliação de inteligência ou treinamento de modelos
+- Semana 1 Dias 1–3: **desempenho / velocidade (TPS)** — sem avaliação de inteligência ou treinamento
+- Semana 1 Dia 4: skills + fluxo agente; `implement` no modelo local; `code-review` pode usar modelo normal (nuvem) de propósito
 - Quizzes: gabarito com hash de segurança; opções simples em pt-BR sem menção ao LM Studio
 - Progresso no guia: Concluir exige quiz e prática; a rota simulada conta, mas fica sinalizada como prática real pendente
 - O foco do repositório é capacitar qualquer pessoa a rodar IA local do zero em sua própria máquina
@@ -38,4 +37,4 @@ Ensinar qualquer pessoa a **rodar IA Local no próprio computador com alto desem
 - Avaliar "qual modelo é mais inteligente"
 - Treinamento ou fine-tuning de modelos
 - Decodificação especulativa avançada
-- Dependência da nuvem como solução principal
+- Substituir o fluxo local por nuvem como caminho principal (exceção didática: review no Dia 4)

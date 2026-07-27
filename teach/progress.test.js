@@ -26,17 +26,18 @@ function loadProgress(initial = {}) {
   return context.TeachProgress;
 }
 
-test("published journey ends after the six Module 0 and Week 1 lessons", () => {
+test("published journey includes Module 0, Week 1, and Week 2 Day 1", () => {
   const progress = loadProgress();
 
   assert.deepEqual(
     Array.from(progress.LESSON_ORDER, (lesson) => lesson.id),
-    ["s0d1", "s0d2", "s1d1", "s1d2", "s1d3", "s1d4"],
+    ["s0d1", "s0d2", "s1d1", "s1d2", "s1d3", "s1d4", "s2d1"],
   );
   assert.equal(
     progress.getNextLesson(["s0d1", "s0d2", "s1d1", "s1d2", "s1d3", "s1d4", "s2d1"]),
     null,
   );
+  assert.equal(progress.isPublishedLesson("s2d1"), true);
 });
 
 test("lesson readiness requires quizzes and either practice route", () => {
@@ -53,13 +54,20 @@ test("lesson readiness requires quizzes and either practice route", () => {
   assert.equal(progress.getPracticeMode("s0d2"), "real");
 });
 
-test("legacy Week 2 state remains stored but never enters the published journey", () => {
+test("Week 2 Day 1 readiness needs all four quizzes plus practice", () => {
   const progress = loadProgress({
-    teach_practice_pass_v1: JSON.stringify({ s2d1: "simulated" }),
+    teach_quiz_pass_v1: JSON.stringify(["s2d1-q1", "s2d1-q2", "s2d1-q3"]),
   });
 
-  assert.equal(progress.getPracticeMode("s2d1"), "simulated");
-  assert.equal(progress.isPublishedLesson("s2d1"), false);
   assert.equal(progress.isLessonReady("s2d1"), false);
-  assert.equal(progress.getNextLesson(["s2d1"]), progress.LESSON_ORDER[0]);
+  progress.markQuizPassed("s2d1-q4");
+  progress.markPractice("s2d1", "simulated");
+  assert.equal(progress.isLessonReady("s2d1"), true);
+});
+
+test("unpublished Week 2 drafts stay out of LESSON_ORDER", () => {
+  const progress = loadProgress();
+  assert.equal(progress.isPublishedLesson("s2d2"), false);
+  assert.equal(progress.isPublishedLesson("s2d3"), false);
+  assert.equal(progress.isPublishedLesson("s2d4"), false);
 });

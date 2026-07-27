@@ -1,7 +1,7 @@
 # Teach — Course Materials
 
 ## Purpose
-Course materials to teach anyone to run local AI from scratch. Módulo 0 and Semana 1 are published; Semana 2 is curriculum work in progress.
+Course materials to teach anyone to run local AI from scratch. Módulo 0, Semana 1 (incl. Dia 4 skills), and Semana 2 · Dia 1 (samplers) are published; Semana 2 Dias 2–4 remain curriculum drafts.
 
 ## Ownership
 Course operator / instructors. Not part of the autotuning runtime loop.
@@ -9,17 +9,19 @@ Course operator / instructors. Not part of the autotuning runtime loop.
 ## Local Contracts
 - Purpose of repo course: Workshop AILOCAL Essentials (teach anyone to run local AI from scratch).
 - Módulo 0: Conceptual foundations for absolute beginners (AI basics, Cloud vs Local, CPU/GPU/VRAM, Quantization, interactive VRAM calculator).
-- Semana 1 scope locked: TPS / performance only — no model-quality scoring.
-- Semana 2 is unpublished curriculum work. Its four HTML drafts remain visible as “Em construção”, outside progress and next-lesson routing.
+- Semana 1 Dias 1–3: TPS / performance — no model-quality scoring.
+- Semana 1 Dia 4: agent skills (`skills.sh`, project vs global, Matt Pocock chain). `implement` uses local model; `code-review` may use a normal (cloud) model — intentional hybrid.
+- Semana 2 · Dia 1 published (sampling / `SAMPLER_DEFAULTS`). Dias 2–4 stay “Em construção”, outside progress until published. S2D2 draft pivots to MCP (skills already in S1D4).
 - Student workflow: 100% local inside git checkout. Entrypoints: (1) Agent mode via `/teach` skill in CLI/IDE, (2) Browser mode via local `teach/index.html`.
 - Lesson HTML nav: always link `../index.html` as **Guia**; prev/next lesson HTML only. Never link `MISSION.md` / `CURRICULUM.md` from student-facing HTML (`file://` shows raw markdown).
-- Student references stay HTML under `reference/` (glossário, flags). Prefer those over `docs/*.md` links in lesson bodies.
+- Student-facing HTML surface: `index.html` + `reference/glossario.html` + the 10 lessons under `lessons/` (S0D1–S0D2, S1D1–S1D4, S2D1–S2D4). No extra cheat-sheet pages. Prefer glossary over `docs/*.md` links in lesson bodies.
 - Guia CTA: `index.html` “Próximo passo” uses `TeachProgress.getNextLesson` (first incomplete in curriculum order).
 - Onboarding step 5 (`verify_setup.py`) is optional until a local server listens on the selected port; the repository server helper defaults to 18080.
 - Student CLI tools: `scripts/check_hardware.py` (GPU/VRAM recommender) and `scripts/verify_setup.py` (server health & TPS benchmark).
 - Agent guidance: During `/teach` sessions, agent acts as interactive tutor. Follow 5-step onboarding: (1) Check/install Python, (2) Create `venv`, (3) Install `requirements.txt`, (4) Run `check_hardware.py`, (5) Run `verify_setup.py`. Then proceed to Module 0.
+- **Leigo voice (esp. Semana 2):** Portuguese name first; English flag in parentheses. Explain effect (“maior = mais criativo”), not formulas. Chain related knobs. No logit/softmax/“guloso”. No meta asides in student HTML (why English names, “for beginners”, etc.).
 - Quizzes: hashed answers only (`assets/QUIZ-HASH.md`); options simplified in pt-BR for beginners (no LM Studio references in quizzes).
-- **Completion gate:** each published lesson requires its quiz plus a practice check (`assets/progress.js`; localStorage keys `teach_quiz_pass_v1` and `teach_practice_pass_v1`). Simulated practice counts as completion but remains labeled until replaced by real practice. Preserve draft Semana 2 state but ignore it in published progress.
+- **Completion gate:** each published lesson requires its quiz plus a practice check (`assets/progress.js`; localStorage keys `teach_quiz_pass_v1` and `teach_practice_pass_v1`). Simulated practice counts as completion but remains labeled until replaced by real practice. Preserve draft Semana 2 Dias 2–4 state but ignore them in published progress.
 - Dense GGUF guidance must require the model to fit physical VRAM; never recommend partial dense offload/shared-memory spill. Expert offload is MoE-only.
 - No GGUFs, results, or run logs in this tree.
 
@@ -32,8 +34,9 @@ Course operator / instructors. Not part of the autotuning runtime loop.
 - Open `index.html` or lesson HTML in a browser; click quizzes (client-side hash check).
 - Confirm “Concluir” stays locked until quiz and practice pass; simulated practice shows its pending-real-practice label.
 - Confirm lesson headers link to `index.html` (Guia) and prev/next HTML lessons — no `.md` in student nav.
+- Run `node --test teach/progress.test.js` after changing `LESSON_ORDER` / quiz maps.
 
 ## Child DOX Index
-- [GLOSSARY.md](GLOSSARY.md) — Canonical terms (HTML: `reference/glossario.html`).
-- [reference/llamacpp-flags.html](reference/llamacpp-flags.html) — Student flag cheat sheet (`file://`).
+- [GLOSSARY.md](GLOSSARY.md) — Canonical terms (HTML: `reference/glossario.html` only).
+- [assets/sampler-sim.js](assets/sampler-sim.js) — Interactive restaurant sampler embedded in S2D1 (not a standalone page).
 - (otherwise flat under `teach/`)

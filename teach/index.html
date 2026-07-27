@@ -116,14 +116,13 @@
       </p>
       <p class="navlinks">
         <a href="reference/glossario.html">Glossário</a>
-        <a href="reference/llamacpp-flags.html">Flags llama.cpp</a>
       </p>
     </header>
 
     <div class="progress-card">
       <div style="display: flex; justify-content: space-between; align-items: center; font-family: var(--sans);">
         <strong>Seu Progresso Global:</strong>
-        <span id="progress-text" style="font-weight: bold; color: var(--accent);">0 de 6 lições (0%)</span>
+        <span id="progress-text" style="font-weight: bold; color: var(--accent);">0 de 7 lições (0%)</span>
       </div>
       <div class="progress-bar-bg">
         <div class="progress-bar-fill" id="progress-fill"></div>
@@ -234,8 +233,8 @@
 
         <div class="lesson-card" data-lesson-id="s1d4">
           <div class="lesson-info">
-            <h3><a href="lessons/s1d4-usecase-fluxo-zero.html">Semana 1 · Dia 4 — Caso de Uso Prático: Do Zero à Execução</a></h3>
-            <p>Fluxo de trabalho real: planejar o objetivo → dividir em tarefas → executar no servidor local.</p>
+            <h3><a href="lessons/s1d4-usecase-fluxo-zero.html">Semana 1 · Dia 4 — Skills (skills.sh + Matt Pocock)</a></h3>
+            <p>Achar e instalar skills (projeto vs global). Fluxo: grill-with-docs → to-tickets → implement local → code-review.</p>
           </div>
           <div class="lesson-action">
             <button type="button" class="check-btn" data-target="s1d4">Concluir</button>
@@ -244,23 +243,24 @@
       </div>
     </div>
 
-    <!-- Semana 2: visível como roadmap, fora da trilha publicada -->
+    <!-- Semana 2: Dia 1 publicado; Dias 2–4 ainda em desenho -->
     <div class="module-section">
-      <h2>Semana 2 — Em construção</h2>
-      <p class="note">O currículo ainda está sendo desenhado. Estes temas não entram no progresso nem no próximo passo.</p>
+      <h2>Semana 2 — Qualidade (Dia 1 publicado)</h2>
       <div class="lesson-grid">
-        <div class="lesson-card draft">
+        <div class="lesson-card" data-lesson-id="s2d1">
           <div class="lesson-info">
-            <h3>Semana 2 · Dia 1 — Parâmetros de Qualidade e Amostragem</h3>
-            <p>Temperatura, Top-P, Top-K e Penalidade de Repetição. Inclui Simulador Interativo de Criatividade vs Determinismo.</p>
+            <h3><a href="lessons/s2d1-parametros-qualidade.html">Semana 2 · Dia 1 — Samplers (Temperatura, Top-K/P, Min-P, Penalidades)</a></h3>
+            <p>Como a IA escolhe o próximo token. Simulador + cola em <code>SAMPLER_DEFAULTS</code>.</p>
           </div>
-          <span class="status-pill">Em construção</span>
+          <div class="lesson-action">
+            <button type="button" class="check-btn" data-target="s2d1">Concluir</button>
+          </div>
         </div>
 
         <div class="lesson-card draft">
           <div class="lesson-info">
-            <h3>Semana 2 · Dia 2 — Skills e MCPs (Model Context Protocol)</h3>
-            <p>Expandindo o modelo local com ferramentas para ler arquivos, pesquisar na web e utilizar extensões.</p>
+            <h3>Semana 2 · Dia 2 — MCPs (ferramentas externas)</h3>
+            <p>Depois das skills (S1D4): Model Context Protocol e servidores de ferramentas. Em construção.</p>
           </div>
           <span class="status-pill">Em construção</span>
         </div>
@@ -578,13 +578,13 @@
         },
         {
           lesson: "s1d4",
-          q: "Qual sequência fecha um fluxo útil com IA local?",
+          q: "No fluxo Matt Pocock desta aula, qual combinação está certa?",
           opts: [
-            { text: "Planejar tarefas, executar localmente e validar o resultado", correct: true },
-            { text: "Executar primeiro, ignorar erros e planejar no final", correct: false },
-            { text: "Treinar pesos, publicar dados e evitar qualquer validação", correct: false }
+            { text: "implement com modelo local; code-review com modelo normal", correct: true },
+            { text: "code-review antes de grill-with-docs, só na nuvem", correct: false },
+            { text: "Instalar skills só com -g e nunca no projeto", correct: false }
           ],
-          explain: "Correto! Um fluxo confiável começa com objetivo e tarefas claras, executa localmente e valida a saída."
+          explain: "Correto! Local escreve (implement); modelo normal revisa (code-review). Skills do projeto sem -g."
         }
       ];
 
