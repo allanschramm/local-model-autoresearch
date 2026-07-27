@@ -39,4 +39,5 @@ Course operator / instructors. Not part of the autotuning runtime loop.
 ## Child DOX Index
 - [GLOSSARY.md](GLOSSARY.md) — Canonical terms (HTML: `reference/glossario.html` only).
 - [assets/sampler-sim.js](assets/sampler-sim.js) — Interactive restaurant sampler embedded in S2D1 (not a standalone page).
+- [assets/diagrams/s2d1-amostragem-restaurante.excalidraw](assets/diagrams/s2d1-amostragem-restaurante.excalidraw) — Instructor theory board for S2D1: vertical scroll, restaurant metaphor only (no config/code).
 - (otherwise flat under `teach/`)
