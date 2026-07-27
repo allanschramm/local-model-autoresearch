@@ -3,34 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>S1 Dia 4 — Manual de Implementação de IA Local & Recap</title>
+  <title>S1 Dia 4 — Skills: do catálogo ao fluxo Matt Pocock</title>
   <link rel="stylesheet" href="../assets/lesson.css" />
   <style>
-    .recap-box {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 1.2rem;
-      margin: 1.5rem 0;
-    }
-    .recap-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1rem;
-      margin-top: 0.75rem;
-    }
-    .recap-item {
-      background: var(--bg);
-      border-left: 3px solid var(--accent);
-      padding: 0.8rem;
-      border-radius: 0 4px 4px 0;
-      font-size: 0.9rem;
-    }
-    .recap-item h4 {
-      margin: 0 0 0.3rem 0;
-      font-family: var(--sans);
-      color: var(--ink);
-    }
     .step-card {
       background: var(--card);
       border: 1px solid var(--line);
@@ -51,211 +26,276 @@
       display: inline-block;
       margin-bottom: 0.4rem;
     }
+    .chain {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0 1.5rem;
+    }
+    .chain-step {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.9rem;
+    }
+    .chain-step strong {
+      display: block;
+      font-family: var(--sans);
+      margin-bottom: 0.25rem;
+      color: var(--ink);
+    }
+    .scope-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0 1.5rem;
+    }
+    .scope-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 1rem 1.1rem;
+    }
+    .scope-card h3 {
+      margin: 0 0 0.4rem 0;
+      font-family: var(--sans);
+      font-size: 1rem;
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header class="site">
-      <p class="eyebrow">Semana 1 · Dia 4 · Consolidação & Produção</p>
-      <h1>Manual de Implementação de Soluções de IA & Recap</h1>
+      <p class="eyebrow">Semana 1 · Dia 4 · Skills no fluxo de trabalho</p>
+      <h1>Skills: achar, instalar e usar o pacote do Matt Pocock</h1>
       <p class="lede">
-        O guia definitivo para sair do zero: consolidação dos conceitos essenciais e o passo a passo para conectar seu aplicativo ao servidor de IA local com máxima velocidade.
+        Com a API local no ar, o próximo salto é dar <strong>receitas prontas</strong> ao agente:
+        skills. Hoje: catálogo em <code>skills.sh</code>, instalação local vs global, e o fluxo
+        <code>grill-with-docs</code> → <code>to-tickets</code> → <code>implement</code> → <code>code-review</code>.
       </p>
       <p class="navlinks">
         <a href="s1d3-moe-maior-que-a-vram.html">← Dia 3</a>
         <a href="../index.html">Guia</a>
+        <a href="s2d1-parametros-qualidade.html">Semana 2 →</a>
       </p>
     </header>
 
     <section class="lesson-meta" aria-label="Resumo da aula">
-      <p><strong>Resultado:</strong><br />Planejar, executar e validar um fluxo pela API local.</p>
-      <p><strong>Duração:</strong><br />20–30 minutos.</p>
-      <p><strong>Pré-requisito:</strong><br />Semana 1 · Dias 1–3.</p>
+      <p><strong>Resultado:</strong><br />Instalar skills e rodar o fluxo Matt Pocock (planejar → tickets → código → review).</p>
+      <p><strong>Duração:</strong><br />25–40 minutos.</p>
+      <p><strong>Pré-requisito:</strong><br />Semana 1 · Dias 1–3 (API local ajuda no <code>implement</code>).</p>
     </section>
 
-    <h2>1. O Recap Consolidado dos Primeiros Dias</h2>
-    <p>Antes de integrar sua aplicação, revise a fundação técnica construída no curso:</p>
+    <h2>1. O que é uma Skill?</h2>
+    <p>
+      Uma <strong>skill</strong> é um pacote curto de instruções (quase sempre um arquivo
+      <code>SKILL.md</code>) que ensina o agente a seguir um fluxo: perguntar certo, quebrar
+      trabalho em tickets, implementar, revisar. Sem skill, o agente improvisa. Com skill, ele
+      segue o mesmo roteiro toda vez.
+    </p>
 
-    <div class="recap-box">
-      <div class="recap-grid">
-        <div class="recap-item">
-          <h4>🧠 Anatomia da IA</h4>
-          <p>Modelos são arquivos estáticos (<code>.gguf</code>). A conversa vive na <strong>Janela de Contexto</strong> e o texto é fatiado em <strong>tokens</strong> numerados.</p>
-        </div>
-        <div class="recap-item">
-          <h4>⚡ VRAM vs RAM</h4>
-          <p>Denso deve caber inteiro na VRAM física. Em MoE, <strong>N_CPU_MOE</strong> mantém especialistas na CPU/RAM.</p>
-        </div>
-        <div class="recap-item">
-          <h4>📉 Quantização (GGUF)</h4>
-          <p>Reduz a precisão (ex.: <code>Q4_K_M</code>) e a memória necessária, com perda mensurável que depende do modelo.</p>
-        </div>
-        <div class="recap-item">
-          <h4>🛠️ Resolução de Erros</h4>
-          <p>OOM denso se resolve reduzindo contexto/KV, removendo draft ou escolhendo GGUF menor. Não derrame camadas na RAM.</p>
-        </div>
+    <h2>2. Achar skills em skills.sh</h2>
+    <ol>
+      <li>Abra <a href="https://skills.sh/">https://skills.sh/</a> no navegador.</li>
+      <li>Busque por autor, tema ou nome (ex.: <code>mattpocock</code>, <code>grill-with-docs</code>).</li>
+      <li>Na página da skill, copie o comando de instalação — ou use o CLI:
+        <pre>npx skills find
+npx skills find grill --owner mattpocock</pre>
+      </li>
+    </ol>
+    <p>
+      Pacote foco desta aula:
+      <a href="https://skills.sh/mattpocock/skills">mattpocock/skills</a>
+      (também no GitHub: <a href="https://github.com/mattpocock/skills">mattpocock/skills</a>).
+    </p>
+
+    <h2>3. Instalar</h2>
+    <p>No terminal, na pasta do projeto (ou em qualquer lugar se for instalação global):</p>
+    <pre>npx skills add mattpocock/skills --skill grill-with-docs
+npx skills add mattpocock/skills --skill to-tickets
+npx skills add mattpocock/skills --skill implement
+npx skills add mattpocock/skills --skill code-review</pre>
+    <p>Ou o pacote inteiro (quando quiser o kit completo):</p>
+    <pre>npx skills add mattpocock/skills --all</pre>
+    <p>Listar o que já está instalado:</p>
+    <pre>npx skills list
+npx skills list -g</pre>
+
+    <h2>4. Local (projeto) vs global (usuário)</h2>
+    <div class="scope-grid">
+      <div class="scope-card">
+        <h3>Local — projeto</h3>
+        <p style="margin:0;font-size:0.92rem;">
+          Padrão do <code>skills add</code> <strong>sem</strong> <code>-g</code>.
+          A skill fica neste repositório (pastas tipo <code>.agents/skills/</code>,
+          <code>.claude/skills/</code>, lock em <code>skills-lock.json</code>).
+          Todo o time do projeto vê as mesmas receitas.
+        </p>
+      </div>
+      <div class="scope-card">
+        <h3>Global — usuário</h3>
+        <p style="margin:0;font-size:0.92rem;">
+          Use <code>-g</code> / <code>--global</code>. A skill fica na sua conta do sistema e
+          aparece em <strong>qualquer</strong> projeto. Bom para preferências pessoais;
+          ruim se o colega do repo não tiver a mesma skill.
+        </p>
+      </div>
+    </div>
+    <pre># projeto (compartilha com o repo)
+npx skills add mattpocock/skills --skill implement
+
+# só na sua máquina / todos os projetos
+npx skills add mattpocock/skills --skill implement -g</pre>
+
+    <h2>5. Fluxo Matt Pocock (cadeia principal)</h2>
+    <p>Ordem que fecha o ciclo sem pular etapas:</p>
+    <div class="chain">
+      <div class="chain-step">
+        <strong>1. grill-with-docs</strong>
+        Entrevista dura sobre o plano. Afia vocabulário e decisões; pode gravar glossário/ADRs.
+      </div>
+      <div class="chain-step">
+        <strong>2. to-tickets</strong>
+        Quebra o plano em tickets verticais (fatias demosáveis) com dependências claras.
+      </div>
+      <div class="chain-step">
+        <strong>3. implement</strong>
+        Constrói o que os tickets pedem (ideal com testes). Neste curso: <strong>modelo local</strong>.
+      </div>
+      <div class="chain-step">
+        <strong>4. code-review</strong>
+        Revisa o diff em dois eixos (padrão do repo + fidelidade ao pedido). Aqui: <strong>modelo normal (nuvem)</strong>.
       </div>
     </div>
 
-    <h2>2. Manual de Implementação em 4 Passos</h2>
-
     <div class="step-card">
-      <span class="step-badge">Passo 1</span>
-      <h3 style="margin:0 0 0.5rem 0;">Escolher o Modelo Ideal para seu Hardware</h3>
-      <p style="margin:0 0 0.5rem 0; font-size:0.92rem;">
-        Garanta que modelo, contexto e KV caibam na VRAM física. Use <code>scripts/check_hardware.py</code> como ponto de partida e confirme no model card.
+      <span class="step-badge">grill-with-docs</span>
+      <h3 style="margin:0 0 0.5rem 0;">Afiando o plano antes do código</h3>
+      <p style="margin:0;font-size:0.92rem;">
+        Digite <code>/grill-with-docs</code> e descreva a ideia. O agente pergunta <em>uma coisa por vez</em>
+        até o plano ficar sólido. Só depois vá para tickets.
       </p>
     </div>
 
     <div class="step-card">
-      <span class="step-badge">Passo 2</span>
-      <h3 style="margin:0 0 0.5rem 0;">Iniciar o Servidor de API Local</h3>
-      <p style="margin:0 0 0.5rem 0; font-size:0.92rem;">
-        Ajuste <code>autoresearch/core/config.py</code> e use o helper canônico do repositório:
-      </p>
-      <pre style="margin:0.5rem 0 0 0;">.\venv\Scripts\python.exe scripts\serve-config.py print-cmd
-.\venv\Scripts\python.exe scripts\serve-config.py serve</pre>
-    </div>
-
-    <div class="step-card">
-      <span class="step-badge">Passo 3</span>
-      <h3 style="margin:0 0 0.5rem 0;">Conectar seu Código ao Servidor Local</h3>
-      <p style="margin:0 0 0.5rem 0; font-size:0.92rem;">
-        O helper expõe uma API HTTP compatível em <code>http://127.0.0.1:18080/v1/chat/completions</code>. Qualquer script ou app pode enviar requisições JSON simples.
+      <span class="step-badge">to-tickets</span>
+      <h3 style="margin:0 0 0.5rem 0;">Plano vira fatias executáveis</h3>
+      <p style="margin:0;font-size:0.92rem;">
+        Com o plano afiado, <code>/to-tickets</code> gera tickets pequenos e completos
+        (não “só o banco” ou “só a UI”). Cada ticket diz o que bloqueia o próximo.
       </p>
     </div>
 
     <div class="step-card">
-      <span class="step-badge">Passo 4</span>
-      <h3 style="margin:0 0 0.5rem 0;">Validar Velocidade e Ajustar Desempenho</h3>
-      <p style="margin:0 0 0.5rem 0; font-size:0.92rem;">
-        Rode <code>.\venv\Scripts\python.exe scripts\verify_setup.py --port 18080</code>. Se o TPS estiver baixo, reduza contexto/KV ou escolha um denso menor; não reduza camadas para usar RAM compartilhada.
+      <span class="step-badge">implement · modelo local</span>
+      <h3 style="margin:0 0 0.5rem 0;">Código com a IA da sua máquina</h3>
+      <p style="margin:0;font-size:0.92rem;">
+        <code>/implement</code> no ticket escolhido, com o agente apontado para o
+        <strong>modelo local</strong> (API dos Dias 1–3). Privacidade, custo zero por token,
+        e prática real do que você já sintonizou em TPS.
       </p>
     </div>
 
-    <h2>3. Gerador Interativo de Script de Conexão Python</h2>
-    <p>Ajuste os parâmetros abaixo para gerar o código Python nativo pronto para conversar com a sua IA local sem precisar de bibliotecas externas pesadas:</p>
-
-    <div style="background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1.2rem; margin: 1.25rem 0;">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-        <div>
-          <label style="font-family: var(--sans); font-weight: 600; display: block; font-size: 0.9rem; margin-bottom: 0.3rem;">URL do Servidor Local:</label>
-          <input type="text" id="py-url" value="http://127.0.0.1:18080/v1/chat/completions" style="width: 100%; padding: 0.4rem; font-family: var(--mono); font-size: 0.85rem; border: 1px solid var(--line); border-radius: 4px;" />
-        </div>
-        <div>
-          <label style="font-family: var(--sans); font-weight: 600; display: block; font-size: 0.9rem; margin-bottom: 0.3rem;">Pergunta / Prompt:</label>
-          <input type="text" id="py-prompt" value="Resuma em 3 tópicos os benefícios de usar IA local." style="width: 100%; padding: 0.4rem; font-family: var(--sans); font-size: 0.9rem; border: 1px solid var(--line); border-radius: 4px;" />
-        </div>
-      </div>
-
-      <label style="font-family: var(--sans); font-weight: 600; display: block; font-size: 0.9rem; margin-bottom: 0.3rem;">Código Python Gerado (Pronto para copiar e rodar):</label>
-      <pre style="margin: 0 0 0.75rem 0; white-space: pre-wrap;" id="py-code"></pre>
-      <button type="button" id="copy-py-btn" style="font-family: var(--sans); padding: 0.4rem 0.8rem; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Copiar Código Python</button>
-      <span id="copy-py-status" style="font-family: var(--sans); font-size: 0.85rem; margin-left: 0.5rem; color: var(--right);"></span>
+    <div class="step-card">
+      <span class="step-badge">code-review · modelo normal</span>
+      <h3 style="margin:0 0 0.5rem 0;">Review com modelo mais forte</h3>
+      <p style="margin:0;font-size:0.92rem;">
+        Depois do código, <code>/code-review</code> com um <strong>modelo normal (não local)</strong>.
+        Dois olhares em paralelo: padrões do repositório e se o resultado bate com o pedido.
+        Local escreve; review “de fora” pega cheiro que o autor local pode deixar passar.
+      </p>
     </div>
+
+    <h2>6. Mini-roteiro da aula (ao vivo)</h2>
+    <ol>
+      <li>Abrir <code>skills.sh</code> e achar <code>mattpocock/skills</code>.</li>
+      <li>Instalar as quatro skills no <strong>projeto</strong> (sem <code>-g</code>).</li>
+      <li>Rodar <code>/grill-with-docs</code> numa ideia pequena do aluno.</li>
+      <li>Rodar <code>/to-tickets</code> a partir do plano.</li>
+      <li>Pegar um ticket e <code>/implement</code> com modelo local.</li>
+      <li>Fechar com <code>/code-review</code> em modelo normal.</li>
+    </ol>
 
     <section class="practice" data-practice data-lesson="s1d4">
       <h2>Missão prática</h2>
-      <p><strong>Rota real:</strong> defina um objetivo, divida-o em tarefas, execute uma chamada pela API local e valide a resposta. <strong>Rota simulada:</strong> gere o cliente acima e percorra uma resposta fornecida pelo tutor.</p>
+      <p>
+        <strong>Rota real:</strong> instale as quatro skills no projeto, rode
+        <code>grill-with-docs</code> → <code>to-tickets</code> → um
+        <code>implement</code> local → <code>code-review</code> em modelo normal.
+        <strong>Rota simulada:</strong> descreva (no chat do tutor) a diferença
+        local vs global e a ordem das quatro skills, sem instalar.
+      </p>
       <div class="practice-actions">
-        <button type="button" data-practice-mode="real" aria-pressed="false">Validei um fluxo real</button>
+        <button type="button" data-practice-mode="real" aria-pressed="false">Validei o fluxo real</button>
         <button type="button" data-practice-mode="simulated" aria-pressed="false">Concluí o fluxo simulado</button>
       </div>
       <p class="practice-status" data-practice-feedback role="status"></p>
     </section>
 
     <h2>Quiz de validação</h2>
-    <p class="note">Quiz de consolidação da Semana 1: Arquitetura, planejamento e desempenho.</p>
+    <p class="note">Skills, escopo de instalação e ordem do fluxo Matt Pocock.</p>
 
     <div class="quiz" data-quiz data-lesson="s1d4-q1"
          data-answer-hash="2611a1c17cfa2d9c7f58d5a718c683f1e474f94beda473ea33249406b03523d7"
-         data-ok="Perfeito! Primeiro você planeja, divide em etapas pequenas e depois coloca a IA local para executar."
-         data-bad="A boa prática é primeiro planejar, quebrar em tarefas menores e depois rodar com a IA.">
-      <p class="q">Qual é a ordem ideal de passos ao construir uma solução prática com IA local?</p>
+         data-ok="Isso! Sem -g a skill fica no projeto; com -g fica só na sua conta de usuário."
+         data-bad="Lembre: instalação padrão = projeto. Flag -g = global (usuário).">
+      <p class="q">Qual a diferença entre instalar uma skill no projeto e instalar com <code>-g</code>?</p>
       <div class="choices">
-        <button type="button" data-choice="A">Começar treinando a IA do zero e publicar na internet antes de testar</button>
-        <button type="button" data-choice="B">Planejar o objetivo → dividir o problema em tarefas simples → executar usando a IA local</button>
-        <button type="button" data-choice="C">Avaliar respostas sem ter o servidor de IA rodando no computador</button>
-        <button type="button" data-choice="D">Tentar fazer tudo de uma vez sem planejar nada</button>
+        <button type="button" data-choice="A">Ambas gravam a skill só na nuvem do GitHub, nunca no disco</button>
+        <button type="button" data-choice="B">Sem <code>-g</code> a skill fica no projeto; com <code>-g</code> fica global na sua conta de usuário</button>
+        <button type="button" data-choice="C"><code>-g</code> deixa a skill mais rápida em tokens por segundo</button>
+        <button type="button" data-choice="D">Projeto e global são a mesma pasta; a flag não muda nada</button>
       </div>
       <p class="feedback" data-feedback></p>
     </div>
 
     <div class="quiz" data-quiz data-lesson="s1d4-q2"
-         data-answer-hash="cbef8a9643cf1be98b72f357ac1ed74d8140dfe21e9ee383be1cf6d606a27a18"
-         data-ok="Isso! Ajuste as opções de velocidade e uso de memória para manter seu trabalho ágil e fluido."
-         data-bad="Se a IA estiver lenta, volte aos ajustes de desempenho (memória e flags) para deixá-la veloz.">
-      <p class="q">Se durante o trabalho prático você perceber que a IA local está muito lenta, o que deve fazer?</p>
+         data-answer-hash="c66a448f09baef21d334d9db46f69c6e9e2c3f4479adafe625f8b036bdaafb3e"
+         data-ok="Perfeito! Afiou o plano → tickets → implementou local → review com modelo normal."
+         data-bad="Ordem da aula: grill-with-docs → to-tickets → implement (local) → code-review (modelo normal).">
+      <p class="q">Qual sequência bate com o fluxo desta aula?</p>
       <div class="choices">
-        <button type="button" data-choice="A">Reajustar as configurações de memória e velocidade da IA local para recuperar o desempenho</button>
-        <button type="button" data-choice="B">Ignorar o problema e continuar trabalhando com travamentos</button>
-        <button type="button" data-choice="C">Começar a criar um modelo novo do zero</button>
-        <button type="button" data-choice="D">Desinstalar todo o sistema operacional</button>
+        <button type="button" data-choice="A"><code>code-review</code> → <code>implement</code> → <code>to-tickets</code> → <code>grill-with-docs</code></button>
+        <button type="button" data-choice="B"><code>grill-with-docs</code> → <code>to-tickets</code> → <code>implement</code> (local) → <code>code-review</code> (modelo normal)</button>
+        <button type="button" data-choice="C"><code>to-tickets</code> → pular o plano → treinar pesos do zero</button>
+        <button type="button" data-choice="D">Só <code>implement</code>, sem plano nem review</button>
+      </div>
+      <p class="feedback" data-feedback></p>
+    </div>
+
+    <div class="quiz" data-quiz data-lesson="s1d4-q3"
+         data-answer-hash="6867c3d4059715d598bbf535247c9e78fad84adc832f7f25485cc279fa84242e"
+         data-ok="Exato! Local escreve o código; o modelo normal faz o review."
+         data-bad="Nesta aula: implement = modelo local; code-review = modelo normal (não local).">
+      <p class="q">Nesta aula, qual combinação de modelos está correta?</p>
+      <div class="choices">
+        <button type="button" data-choice="A"><code>implement</code> e <code>code-review</code> só na nuvem; o local não entra</button>
+        <button type="button" data-choice="B"><code>implement</code> com modelo local; <code>code-review</code> com modelo normal</button>
+        <button type="button" data-choice="C">Os dois passos só com modelo local, sem review externo</button>
+        <button type="button" data-choice="D"><code>grill-with-docs</code> exige treinar um GGUF novo</button>
       </div>
       <p class="feedback" data-feedback></p>
     </div>
 
     <h2>Conclusão da Semana 1</h2>
     <p>
-      Você concluiu a trilha publicada. Volte ao <a href="../index.html">Guia</a> para revisar o progresso e o Flash Quiz. A Semana 2 permanece em construção.
+      Você fechou desempenho (Dias 1–3) e o primeiro fluxo de agente com skills (Dia 4).
+      Volte ao <a href="../index.html">Guia</a> para a Semana 2 · Dia 1 (amostragem) ou revise o Flash Quiz.
     </p>
 
-    <p class="source-note"><strong>Fonte oficial opcional:</strong> <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md">API compatível do llama-server</a>.</p>
+    <p class="source-note">
+      <strong>Fontes:</strong>
+      <a href="https://skills.sh/">skills.sh</a> ·
+      <a href="https://github.com/mattpocock/skills">mattpocock/skills</a> ·
+      <a href="https://www.skills.sh/mattpocock/skills/grill-with-docs">grill-with-docs</a>
+    </p>
 
     <footer class="site">
       <p><strong>Workshop AILOCAL Essentials · Semana 1 concluída.</strong> Ficou alguma dúvida? Pergunte ao tutor.</p>
     </footer>
   </div>
 
-  <script>
-    (function() {
-      const urlInput = document.getElementById('py-url');
-      const promptInput = document.getElementById('py-prompt');
-      const codeOutput = document.getElementById('py-code');
-      const copyBtn = document.getElementById('copy-py-btn');
-      const copyStatus = document.getElementById('copy-py-status');
-
-      function updatePyCode() {
-      const url = urlInput.value || 'http://127.0.0.1:18080/v1/chat/completions';
-        const prompt = promptInput.value || 'Sua pergunta aqui';
-
-        codeOutput.textContent = `import urllib.request
-import json
-
-url = "${url}"
-payload = {
-    "model": "local-model",
-    "messages": [
-        {"role": "user", "content": "${prompt}"}
-    ],
-    "temperature": 0.7
-}
-
-data = json.dumps(payload).encode('utf-8')
-req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
-
-try:
-    with urllib.request.urlopen(req) as response:
-        res = json.loads(response.read().decode())
-        answer = res['choices'][0]['message']['content']
-        print("Resposta da IA Local:\\n", answer)
-except Exception as e:
-    print("Erro ao conectar na API local:", e)`;
-      }
-
-      urlInput.addEventListener('input', updatePyCode);
-      promptInput.addEventListener('input', updatePyCode);
-
-      copyBtn.addEventListener('click', function() {
-        navigator.clipboard.writeText(codeOutput.textContent).then(() => {
-          copyStatus.textContent = 'Código copiado!';
-          setTimeout(() => { copyStatus.textContent = ''; }, 2000);
-        });
-      });
-
-      updatePyCode();
-    })();
-  </script>
   <script src="../assets/progress.js"></script>
   <script src="../assets/quiz.js"></script>
 </body>

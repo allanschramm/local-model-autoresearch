@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>S2 Dia 2 — Skills e MCPs (Ferramentas Externas)</title>
+  <title>S2 Dia 2 — MCPs (Ferramentas Externas)</title>
   <link rel="stylesheet" href="../assets/lesson.css" />
   <style>
     .mcp-card {
@@ -23,9 +23,11 @@
   <div class="wrap">
     <header class="site">
       <p class="eyebrow">Semana 2 · Dia 2 · Qualidade e Ferramentas</p>
-      <h1>Skills e MCPs — Expandindo o Modelo Local</h1>
+      <h1>MCPs — Ferramentas Externas no Agente</h1>
       <p class="lede">
-        Um LLM por si só apenas prevê palavras. Para se tornar um verdadeiro assistente, ele precisa de <strong>ferramentas</strong> para ler arquivos, buscar na web e executar comandos. Hoje aprendemos o padrão <strong>MCP (Model Context Protocol)</strong> e a estrutura de <strong>Skills</strong>.
+        Skills (receitas de fluxo) você já viu no Semana 1 · Dia 4. Hoje o foco é o
+        <strong>MCP (Model Context Protocol)</strong>: como o agente fala com ferramentas e dados
+        fora do chat (arquivos, APIs, bancos).
       </p>
       <p class="navlinks">
         <a href="s2d1-parametros-qualidade.html">← Dia 1</a>
@@ -51,9 +53,11 @@
       </ul>
     </div>
 
-    <h2>2. O que são Skills (Habilidades)?</h2>
+    <h2>2. Skills (lembrete do S1D4)</h2>
     <p>
-      Uma <strong>Skill</strong> é um pacote de instruções estruturadas (geralmente em formato <code>SKILL.md</code>) que ensina a IA como desempenhar um papel específico ou seguir um fluxo detalhado (ex: fazer Code Review, diagnosticar bugs ou criar gráficos).
+      Uma <strong>Skill</strong> é um pacote de instruções (<code>SKILL.md</code>) que ensina a IA
+      a seguir um fluxo (ex.: <code>grill-with-docs</code>, <code>implement</code>).
+      Catálogo e instalação: Semana 1 · Dia 4. Aqui o novo pedaço é o MCP.
     </p>
 
     <h2>3. Prática (Validação do Dia 2)</h2>

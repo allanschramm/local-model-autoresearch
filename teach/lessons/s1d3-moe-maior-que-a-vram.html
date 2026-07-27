@@ -43,7 +43,7 @@
 
     <h3>Simulador 1: O Roteador de Especialistas em Ação</h3>
     <p>Escolha um tipo de pergunta para ver o Roteador ativando apenas 2 de 8 especialistas em tempo real:</p>
-    <p class="note">Analogia didática: especialistas reais não têm nomes fixos como “matemática” ou “tradução”; o roteador aprende padrões numéricos.</p>
+    <p class="note">Os nomes no simulador são só rótulos. No modelo real, os especialistas não têm títulos fixos como “matemática” ou “tradução”; o roteador aprende padrões numéricos.</p>
 
     <div style="background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1.2rem; margin: 1.25rem 0;">
       <label style="font-family: var(--sans); font-weight: 600; display: block; font-size: 0.9rem; margin-bottom: 0.5rem;">Escolha o assunto da pergunta:</label>
@@ -198,21 +198,21 @@
 
     <div class="quiz" data-quiz data-lesson="s1d3-q2"
          data-answer-hash="795d7cf91e9a0ff829581f62005225930988ce20a579c2cffe1f3bc6f7152e8f"
-         data-ok="Isso aí! O essencial é entender como adaptar o tamanho e a distribuição do modelo à sua máquina."
-         data-bad="O objetivo é aprender a adaptar o modelo para rodar de forma fluida no seu próprio computador.">
-      <p class="q">Para quem está aprendendo a rodar IA local do zero, qual é o conceito principal desta lição?</p>
+         data-ok="Certo! Offload MoE divide especialistas entre GPU e CPU/RAM para caber no hardware."
+         data-bad="O ponto central: usar offload de especialistas MoE para adaptar o modelo à VRAM/RAM da máquina.">
+      <p class="q">Qual é o ponto central do offload em modelos MoE?</p>
       <div class="choices">
         <button type="button" data-choice="A">Memorizar todos os nomes secretos de todos os motores do mercado</button>
         <button type="button" data-choice="B">Saber escrever artigos científicos sobre redes neurais</button>
-        <button type="button" data-choice="C">Aprender a configurar a criatividade da IA antes da velocidade</button>
-        <button type="button" data-choice="D">Entender como dividir o modelo (offload) para adaptar a IA ao hardware da sua máquina</button>
+        <button type="button" data-choice="C">Configurar a criatividade da IA antes da velocidade</button>
+        <button type="button" data-choice="D">Dividir o modelo (offload) para adaptar a IA ao hardware da máquina</button>
       </div>
       <p class="feedback" data-feedback></p>
     </div>
 
     <h2>Próximo</h2>
-    <p><a href="s1d4-usecase-fluxo-zero.html">Dia 4 — Caso de uso do zero</a></p>
-    <p class="source-note"><strong>Fontes oficiais opcionais:</strong> <a href="https://github.com/Randozart/VITRIOL">VITRIOL</a> e <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md">opções <code>--n-cpu-moe</code> do llama-server</a>.</p>
+    <p><a href="s1d4-usecase-fluxo-zero.html">Dia 4 — Skills (Matt Pocock)</a></p>
+    <p class="source-note"><strong>Fontes:</strong> <a href="https://github.com/Randozart/VITRIOL">VITRIOL</a> e <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md">opções <code>--n-cpu-moe</code> do llama-server</a>.</p>
     <footer class="site"><p>Ficou alguma dúvida? Pergunte ao tutor.</p></footer>
   </div>
   <script src="../assets/progress.js"></script>
