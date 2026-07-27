@@ -33,7 +33,12 @@ hf download unsloth/Qwen3.5-9B-GGUF Qwen3.5-9B-UD-Q4_K_XL.gguf --local-dir model
 
 Special dirs stay as-is: `--local-dir models/draft` for MTP/DFlash drafts; `--local-dir models/vision` for mmproj.
 
+## Aliases (`model-up`)
+
+**Local only — never commit.** Per-user `aliases/<name>/config.yaml`, optional `aliases/INDEX.md` / `REMOVED.md` for your launcher notes. Tracked docs carry **model** scores and Pareto picks (GGUF basename), not which alias name you use.
+
 ## Do not
 
 - Drop main GGUFs in `models/` root (LM Studio will not list them).
 - Put drafts under `publisher/model` unless you also update `SPEC_DRAFT_MODEL` paths.
+- Commit alias names, ports, or personal `config.yaml` into the repo.

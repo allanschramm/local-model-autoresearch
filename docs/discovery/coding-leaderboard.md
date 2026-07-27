@@ -19,7 +19,7 @@ Claw-Eval full is the agentic axis — see [claw-eval-leaderboard.md](claw-eval-
 | 5 | `Ornith-1.0-35B-UD-Q4_K_XL` | **0.5800** | 0.40 | 0.90 | 0.80 | 0.10 | **65k** | same session; claw-full **0.6000** |
 | 5 | `Ornith-1.0-9B-MTP-Q4_K_M` | **0.5800** | 0.40 | 0.80 | 0.90 | 0.10 | **32k** | MTP n=4; claw-full 0.4667 |
 | 7 | `ornith-1.0-9b-Q4_K_M` (legacy) | **0.5800** | 0.40 | 0.80 | 0.90 | 0.10 | 131k | Older filename/quant |
-| 8 | `Ornith-1.0-9B-UD-Q4_K_XL` | **0.5700** | 0.40 | 0.90 | 0.70 | 0.20 | **32k** | Alias `ornith-9b`; LCB patched† |
+| 8 | `Ornith-1.0-9B-UD-Q4_K_XL` | **0.5700** | 0.40 | 0.90 | 0.70 | 0.20 | **32k** | LCB patched†; claw @ 65k |
 | 9 | `gemma-4-12B-it-qat-UD-Q4_K_XL` | **0.5650** | 0.40 | 0.80 | 0.90 | 0.00 | 131k | Historical KEEP; GGUF may be gone |
 | 10 | `Ornith-1.0-35B-UD-Q3_K_XL` | **0.5550** | 0.40 | 0.90 | 0.70 | 0.10 | **65k** | Q3 A/B vs Q4; claw-full **0.4667** |
 | 10 | `gemma-4-E4B-it-qat-UD-Q4_K_XL` | **0.5550** | — | — | — | — | **65k** | draft-mtp; claw-full 0.3333 |
@@ -51,7 +51,7 @@ Claw-Eval full is the agentic axis — see [claw-eval-leaderboard.md](claw-eval-
 
 | Job | Prefer |
 | :--- | :--- |
-| Agentic / tools | **POCKET-35B** / `laguna-xs` → `lfm2.5-1.2b` / `ornith-9b` |
+| Agentic / tools | **POCKET-35B** → **Ornith-9B-UD** / **Ornith-9B-MTP** (Laguna GGUF deleted; scores kept) |
 | Direct coding preflight | Mythos → **POCKET-35B** → Ornith-9B/35B-Q4 @ fit ctx → LFM only if need speed |
 | Balanced (agentic + coding) | **POCKET-35B** (claw 0.67 + coding 0.62) |
 | Day supervised | **Ornith-9B-MTP** ([pareto](pareto-leaderboard.md) / ADR 0008); UD if `DAY_IQ_RATIO=0.8` |

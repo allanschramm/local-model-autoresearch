@@ -74,15 +74,31 @@ See [pareto-leaderboard.md](../discovery/pareto-leaderboard.md), [pareto-selecti
 * Dense Qwen3.5-9B: historical “128k ran” was **without MTP** / light Autoloop load; not comparable to coding-10.
 * Preflight VRAM underestimate on dense 65k coding (7584 est → 7931 peak).
 
+## SSD cleanup (2026-07-27, rounds 1+2)
+
+GGUF/draft/mmproj deleted from disk; **scores and model cards kept** in repo. Alias dirs removed locally only (not tracked).
+
+| GGUF removed | Why |
+| :--- | :--- |
+| `Qwen3.5-9B-UD-Q4_K_XL.gguf` + draft/mmproj | coding-10 VRAM rejected |
+| `Ornith-1.0-35B-UD-Q3_K_XL.gguf` | Q4 wins A/B (claw 0.60 vs 0.47) |
+| `Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf` + draft/mmproj | dominated on front |
+| `Laguna-XS-2.1-Q3_K_XL.gguf` | coding min 0.195 |
+| `LFM2.5-8B-A1B-Q4_K_M.gguf` | weak agentic vs faster peers |
+| `Bonsai-27B-Q1_0.gguf` + dspark draft | dominated |
+| `Qwythos-9B-Claude-Mythos-5-1M-MTP.Q4_K_M.gguf` | weaker than non-MTP Mythos |
+| `Qwythos-9B-v2-Q4_K_M.gguf` + mmproj | Mythos non-MTP covers coding |
+| `nanbeige4.2-3b-Q4_K_M.gguf` | dominated; needs `llama.cpp-nanbeige42` fork |
+| `gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf` (lmstudio copy) + draft/mmproj | agentic 0.1333 |
+
+**Still on disk (day-to-day):** `POCKET-35B-Q3_K_M`, `Ornith-9B-MTP`, `Ornith-9B-UD`, `Ornith-35B-UD-Q4`, `Qwythos-9B-Claude-Mythos-5-1M` (non-MTP), optional `LFM2.5-1.2B`, `gemma-4-E4B`.
+
 ## Docs updated
 
 * ADR 0007 then **0008** + CONTEXT / AGENTS Day wording  
 * Cards: `ornith-1.0-35b`, `ornith-1.0-9b`, `gemma-4-26b-a4b`, `qwen3.5-9b`  
 * Leaderboards: claw, coding, **pareto** + selection method note  
-* Alias INDEX notes  
 
 ## Follow-ups
 
-* SSD cleanup pass using Pareto + rejected list (user-driven).  
-* Optional: alias `ornith-35b-q3xl` if keeping Q3 on disk for A/B.
 * Wire `DAY_IQ_RATIO` into any future automated Day picker (docs-first today).

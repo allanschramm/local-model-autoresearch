@@ -10,6 +10,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 ## Local Contracts
 - **Read-mostly**: discovery docs are guides for users to follow. Code under `autoresearch/` is the loop surface.
 - **No model-specific claims**: docs reference model families (e.g. "Qwen3.6 MoE") not private paths or single-user hardcoded values.
+- **No alias registry in repo**: `model-up` alias names, ports, and `models/aliases/*/config.yaml` are machine-local (`/models/` gitignored). Tracked docs use GGUF basenames + benchmark scores only.
 - **No external-source citations in technique claims**: methodology names allowed (Zellinger framework), but no HF/Unsloth/blog URLs in technique descriptions.
 
 ## Work Guidance

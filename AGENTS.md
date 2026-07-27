@@ -137,6 +137,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - **Dense = no shared-memory offload**: Never partially offload dense GGUFs (layers to CPU / Windows shared GPU memory). That path freezes the whole PC. Only MoE may use expert offload (`--n-cpu-moe` / VITRIOL). Dense must fit in **physical** VRAM (cut `CTX_SIZE` / KV quant / drop draft) or reject the Trial — never “spill and hope”.
 - **MoE initial `N_CPU_MOE`**: Baseline `None` → harness auto-sets `--n-cpu-moe` to GGUF `block_count` (full expert CPU offload). Set `0` only when the MoE fits physical VRAM (full GPU). Explicit `N>0` remains a manual override.
 - **Virtual environment execution**: ALWAYS use the project's dedicated virtual environment (`.\venv\Scripts\python.exe` / `.\venv\Scripts\pytest.exe` on Windows, `./venv/bin/python` on Linux/macOS) for all python scripts, tests, and tool commands. NEVER run system-global `python` or `pip`, and NEVER install packages globally.
+- **Never commit alias registry**: `model-up` alias names, ports, and `models/aliases/*/config.yaml` are machine-local (`/models/` gitignored). Tracked docs use GGUF basenames + benchmark scores only — not which alias the user runs.
 - **Upstream/vendor trees are read-only**: Never modify `llama.cpp/` (only remaining submodule), nor local vendor checkouts `claw-eval/`, `llama.cpp-nanbeige42/`, `llama.cpp-prismml/`. UTF-8 / Windows mock issues → `PYTHONUTF8=1` (or harness-owned env injection), never patch upstream files.
 
 ## Child DOX Index
