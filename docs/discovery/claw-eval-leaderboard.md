@@ -4,7 +4,7 @@
 
 Hardware: RTX 4060 **8 GB**, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp` CUDA unless a card says otherwise.
 
-Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (historical Autoloop pollution — TPS leaked into score). Global frontier: [pareto-leaderboard.md](pareto-leaderboard.md).
+Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (historical Autoloop pollution — TPS leaked into score). Global frontier: [pareto-leaderboard.md](pareto-leaderboard.md). Leaderboard text is a view of TSV — never drop a measured GGUF because it is weak or deleted.
 
 ## Claw-Eval full (n=15) — ranked KEEP / best discards
 
@@ -14,6 +14,7 @@ Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (hist
 | 1 | `Laguna-XS-2.1-Q3_K_XL.gguf` | **0.6667** | 37.2 | 3.6 GB | 65k | [2026-07-24](../sessions/2026-07-24-claw-full-smoke-high.md); coding **0.195**; GGUF deleted 2026-07-27 |
 | 3 | `Ornith-1.0-9B-UD-Q4_K_XL.gguf` | **0.6000** | 42.1 | 7.5 GB | 65k | coding **0.570** @ 32k |
 | 3 | `Ornith-1.0-35B-UD-Q4_K_XL.gguf` | **0.6000** | 25.7 | 4.9 GB | 65k | `n-cpu-moe 40`; coding **0.580** @ 65k |
+| 3 | `Kwaipilot_KAT-Coder-V2.5-Dev-IQ4_XS.gguf` | **0.6000** | 30.2 | 3.4 GB | 65k | [2026-07-27](../sessions/2026-07-27-kat-coder-v2.5-dev-pipeline.md); coding **0.640** |
 | 3 | `LFM2.5-1.2B-Instruct-Q8_0.gguf` | **0.6000** | 166.4 | 3.7 GB | 65k f16 | [top-TPS](../sessions/2026-07-24-claw-full-top-tps.md); coding min fails ADR 0008 Day IQ band |
 | 6 | `Qwythos-9B-v2-MTP-Q4_K_M.gguf` | **0.5333** | 34.5 | 7.9 GB | 131k | GGUF may be missing |
 | 7 | `Bonsai-27B-Q1_0.gguf` | **0.4667** | 40.2 | 6.5 GB | **65k** | 131k VRAM-kill mid-agentic; GGUF deleted 2026-07-27 |
@@ -35,7 +36,7 @@ Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (hist
 | Score | Models (examples) |
 | :---: | :--- |
 | **1.00** | Laguna-XS only (so far) |
-| **0.80** | **POCKET-35B Q3_K_M**, LFM2.5-1.2B @ **65k f16**, Bonsai@131k smoke, Ornith-9B, Ornith-35B, some Qwythos |
+| **0.80** | **POCKET-35B Q3_K_M**, **KAT-Coder IQ4_XS**, LFM2.5-1.2B @ **65k f16**, Bonsai@131k smoke, Ornith-9B, Ornith-35B, some Qwythos |
 | **≤0.40** | Prefer sibling / skip full queue unless curious (e.g. LFM2.5-8B-A1B **0.20** → full ≤0.20; Ornith-9B-MTP quick 0.40 → full **0.4667**) |
 
 Smoke ≠ Val Score: Laguna quick 1.00 → full 0.67; Bonsai quick 0.80 → full 0.47; LFM2.5-1.2B quick 0.80 → full **0.60**; LFM2.5-8B quick 0.20 → full 0.13–0.20.
@@ -61,9 +62,10 @@ Across Laguna / Ornith / Bonsai full runs:
 
 1. **`POCKET-35B-Q3_K_M`** — ties Laguna agentic + far stronger coding (Night / balanced).
 2. **`Laguna-XS-2.1-Q3_K_XL`** — ties best agentic; weak coding (GGUF deleted; scores kept).
-3. **`Ornith-1.0-9B-MTP-Q4_K_M`** — Day pick ADR 0008 (~64 t/s, IQ band).
-4. **`Ornith-1.0-9B-UD-Q4_K_XL`** / **`Ornith-1.0-35B-UD-Q4_K_XL`** — agentic 0.6000; Q4 beats Q3 on 35B.
-5. **`Bonsai-27B-Q1_0`** — usable but weaker full; keep ctx 65k (GGUF deleted; scores kept).
+3. **`Kwaipilot_KAT-Coder-V2.5-Dev-IQ4_XS`** — agentic 0.6000 + coding **0.640** (ties Mythos coding).
+4. **`Ornith-1.0-9B-MTP-Q4_K_M`** — Day pick ADR 0008 (~64 t/s, IQ band).
+5. **`Ornith-1.0-9B-UD-Q4_K_XL`** / **`Ornith-1.0-35B-UD-Q4_K_XL`** — agentic 0.6000; Q4 beats Q3 on 35B.
+6. **`Bonsai-27B-Q1_0`** — usable but weaker full; keep ctx 65k (GGUF deleted; scores kept).
 
 Skip for agentic: **`LFM2.5-8B-A1B`**, **`gemma-4-26B-A4B`**, **`Qwen3.5-9B`** (full ≤0.20 / 0.13).
 
