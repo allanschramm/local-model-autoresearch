@@ -1,12 +1,12 @@
 # Session 2026-06-19 (parte 3) — whichllm outputs + coding benchmarks
 
 ## Origem
-Allan descobriu a ferramenta `uvx whichllm@latest` e rodou duas vezes no mesmo dia com resultados diferentes. Salvos verbatim abaixo.
+Session used `uvx whichllm@latest` e rodou duas vezes no mesmo dia com resultados diferentes. Salvos verbatim abaixo.
 
 ## Output 1 (15:31 BRT) — primeiro snapshot
 
 ```
-user@DESKTOP:~$ uvx whichllm@latest
+user@host:~$ uvx whichllm@latest
 
 ╭─────────────────────────────────────────────────── Hardware Info ────────────────────────────────────────────────────╮
 │ GPU 0: NVIDIA GeForce RTX 4060 — 8.0 GB (budget 7.5 GB) (CC 8.9, CUDA 13.3) — BW: 272 GB/s                           │
@@ -45,7 +45,7 @@ user@DESKTOP:~$ uvx whichllm@latest
 ## Output 2 (15:36 BRT) — segundo snapshot, ~5min depois
 
 ```
-user@DESKTOP:~$ uvx whichllm@latest
+user@host:~$ uvx whichllm@latest
 
 ╭─────────────────────────────────────────────────── Hardware Info ────────────────────────────────────────────────────╮
 │ GPU 0: NVIDIA GeForce RTX 4060 — 8.0 GB (budget 7.5 GB) (CC 8.9, CUDA 13.3) — BW: 272 GB/s                           │
@@ -109,7 +109,7 @@ user@DESKTOP:~$ uvx whichllm@latest
 whichllm **NÃO é determinístico entre runs** — a saída muda em ~5min. Provavelmente o backend tem snapshot flutuante ou score varia. Significa:
 - Ranking do whichllm **NÃO é referência confiável** de qualidade.
 - "Score" da whichllm não corresponde a benchmarks reais de coding (veja comparação abaixo).
-- O número `? tok/s` é low-confidence — sem chance de bater 36.8 Gemma-4 ou 39.9 Qwen3-30B-A3B com VITRIOL no hardware de Allan.
+- O número `? tok/s` é low-confidence — sem chance de bater 36.8 Gemma-4 ou 39.9 Qwen3-30B-A3B com VITRIOL on this rig.
 
 ## Comparação com coding benchmarks reais (não whichllm)
 
@@ -132,7 +132,7 @@ Cruzei os modelos da lista com dados de Artificial Analysis, SWE-bench leaderboa
 
 1. **whichllm ranking ≠ coding ranking.** Gemma-4-26B-A4B é #1 no whichllm mas é a pior em coding (17.4% SWE-bench). Inversão completa de prioridade pra uso coding.
 
-2. **Qwen3.6-27B** (whichllm #10) é o melhor coding open-source viável no hardware de Allan. Dense, Apache 2.0, multimodal. Tem versão MTP-GGUF.
+2. **Qwen3.6-27B** (whichllm #10) é o melhor coding open-source viável on this rig. Dense, Apache 2.0, multimodal. Tem versão MTP-GGUF.
 
 3. **Qwen3.6-35B-A3B** (nosso atual, NÃO está no whichllm) é #2 em coding. Mesma geração Qwen3.6 mas MoE.
 
@@ -150,5 +150,5 @@ Baixar `Qwen3.6-27B-MTP-GGUF` (variante MTP-GGUF do Qwen3.6-27B, mesma arquitetu
 
 ## Pendência
 - [ ] Adicionar `whichllm` aos tools conhecidos (já documentado aqui).
-- [ ] Criar alias placeholder `qwen3.6-27b-mtp` quando Allan for baixar o GGUF.
+- [ ] Optional: download + Trial MTP GGUF for Qwen3.6-27B if pursuing that candidate.
 - [ ] Comparar resultados empíricos locais (TPS medido) com as projeções whichllm `? tok/s`.

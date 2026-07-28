@@ -61,6 +61,6 @@ Harness printed `DISCARD` on coding-10 because `Current Score` compared coding c
 
 ## Decisions
 
-- Quant pick: **Q3_K_M** (not publisher Q2_K) — GPU + VITRIOL, file under 20 GB.
+- Quant pick: **Q3_K_M** (not publisher Q2_K) — GPU + VITRIOL; ~16.8 GB GGUF.
 - No TPS autoloop this session — 35 t/s already above floor; quality gates first.
-- Card + leaderboards updated; alias `model-up` not created yet.
+- Card + leaderboards updated.

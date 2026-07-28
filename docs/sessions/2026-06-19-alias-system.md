@@ -1,70 +1,57 @@
-# Session 2026-06-19 (parte 2) — Alias System + Launcher
+# Session 2026-06-19 (part 2) — Alias System + Launcher
 
 ## Goal
-Allan pediu um launcher global pra subir o modelo sem navegar até o projeto. Requisito: `qwen-up` em qualquer terminal WSL, fecha terminal, server segue rodando. Pra plugar em Pi Agent / Hermes Agent (harness OpenAI-compatible).
+Global launcher so any WSL terminal can start a configured local server without `cd` into the repo. Detached process; OpenAI-compatible endpoint for agent harnesses.
 
-## Decisão de design
+## Design decision
 
-Tentativa #1 (rejeitada): navegar até `models/aliases/<name>/` + rodar script local. Allan explicitamente rejeitou: "Não quero ter que navegar até o projeto nem nada do tipo".
+Rejected: navigate to `models/aliases/<name>/` and run a local script.
 
-Decisão final: launcher Python único em `~/.local/bin/qwen-up`, lê `models/aliases/<name>/config.yaml` (path absoluto hardcoded no script — não depende de CWD).
+Chosen: single launcher on PATH (e.g. `~/.local/bin/model-up` / historical `qwen-up`), reads `models/aliases/<name>/config.yaml` via a resolved absolute path (not CWD-dependent). Alias YAML stays machine-local under gitignored `models/`.
 
-## Arquivos criados
+## Files created (shape)
 
-| Path | Função |
+| Path | Role |
 |---|---|
-| `~/.local/bin/qwen-up` | Launcher Python, global PATH, ~6.6 KB. Detach via `subprocess.Popen(start_new_session=True)`. |
-| `models/aliases/qwen3.6-35b-mtp-baseline/config.yaml` | Alias do baseline atual (22.5 tok/s, sem flag MTP). |
-| `models/aliases/INDEX.md` | Tabela de todos aliases. |
-| `.agents/skills/local-model-alias/SKILL.md` | Skill Mavis pra criar novos aliases. |
+| PATH launcher script | Python; detach via `subprocess.Popen(start_new_session=True)` |
+| `models/aliases/<name>/config.yaml` | Per-recipe flags + model basename (local) |
+| Skill under `.agents/skills/local-model-alias/` | How to add a new alias |
 
-## Subcomandos
+## Subcommands
 
 ```bash
-qwen-up                # sobe default (primeiro do INDEX ou o DEFAULT_ALIAS hardcoded)
-qwen-up <name>         # sobe alias específico
-qwen-up list           # lista todos
-qwen-up status         # PID + alias + port + health
-qwen-up stop           # mata
+model-up                # default alias
+model-up <name>         # named alias
+model-up list
+model-up status
+model-up stop
 ```
 
-## Validação
+## Validation
 
-Testes feitos nesta sessão:
+1. `list` returned configured aliases.
+2. Default start → server ready on loopback OpenAI port.
+3. New shell `status` → process still alive after prior shell exit.
+4. `curl POST /v1/chat/completions` → OK.
+5. `stop` → clean kill + PID file removed.
 
-1. `qwen-up list` (login shell) → listou 1 alias corretamente.
-2. `qwen-up` (start default) → PID 91623, OK ready at http://127.0.0.1:18080.
-3. `qwen-up status` (nova WSL session) → server ainda vivo, prova de que sobreviveu ao exit do shell anterior.
-4. `curl POST /v1/chat/completions` → resposta OK, model name `qwen3.6-35b-mtp-baseline` registrado.
-5. `qwen-up stop` → killed clean, PID file removed.
+Bugs fixed during validation:
+- YAML flag string must be `shlex.split()` into argv for llama-server.
+- `status` must split `/proc/PID/cmdline` on `\0`, not spaces.
 
-Bug encontrado e corrigido durante validação:
-- `--ctx-size 8192` no YAML era string única → argumento inválido pro llama-server. Fix: `shlex.split()` no launcher pra quebrar cada flag string em args separadas.
-- `qwen-up status` lia `/proc/PID/cmdline` com split em espaço, mas cmdline usa null bytes. Fix: split em `\0`.
+## Errors
 
-## Erro M3 corrigido
+Non-login `bash -c` lacks `~/.local/bin` on PATH — use `bash -lc` or interactive shell.
 
-Tentativa #1 falhou: qwen-up retornou "command not found" via `wsl -d Ubuntu-24.04 -- bash -c "qwen-up list"`. Causa: bash não-login não sourcea `.bashrc`, então PATH não tinha `~/.local/bin`. Corrigido usando `bash -lc`. Em terminal interativo (caso real do Allan) o PATH é sourced normalmente — funciona sem flag.
+## Thinking mode note
 
-## Comportamento do thinking mode
+Qwen3.6 defaults may fill `max_tokens` with reasoning and leave `content` empty. Raise `max_tokens` or set `--chat-template-kwargs '{"enable_thinking": false}'` in alias `flags:`.
 
-Qwen3.6 com defaults gera `<reasoning_content>` separado de `content`. 30 tokens de max_tokens foram todos consumidos pelo thinking, `content` ficou vazio. Allan precisa ou aumentar `max_tokens` (>200) ou setar `--chat-template-kwargs '{"enable_thinking": false}'` (vai em `flags:` do alias).
+## Agent harness integration (shape)
 
-## Integração com Pi/Hermes
+Point any OpenAI-compatible client at `http://127.0.0.1:<port>/v1` with the model id registered by the server.
 
-```yaml
-# Pi Agent ~/.pi/agent/models.json ou Hermes config
-{
-  "providers": {
-    "llama-cpp": {
-      "baseUrl": "http://127.0.0.1:18080/v1",
-      "models": [{"id": "qwen3.6-35b-mtp-baseline"}]
-    }
-  }
-}
-```
+## Follow-ups
 
-## Pendente (próximo passo)
-
-- Allan decide se quer adicionar `enable_thinking: false` por default nos flags do alias (UX melhor pra harness).
-- Próximo teste LLM: criar alias `qwen3.6-35b-mtp-active` com `--spec-type mtp` ligado e medir.
+- Optional default `enable_thinking: false` for harness UX.
+- Optional MTP-on alias (`--spec-type mtp`) as a separate Trial recipe.

@@ -1,10 +1,10 @@
 # Session 2026-06-19 (parte 5) — whichllm source code deep dive
 
 ## Origem
-Allan pediu pra usar `gh` CLI pra extrair info do repo `Andyyyy64/whichllm` e cruzar com benchmarks de coding. **Análise READ-ONLY** do código fonte via GitHub API. Resultado salvo aqui.
+Session used `gh` CLI pra extrair info do repo `Andyyyy64/whichllm` e cruzar com benchmarks de coding. **Análise READ-ONLY** do código fonte via GitHub API. Resultado salvo aqui.
 
 ## Repo metadata
-- **Autor**: Andyyyy64 (= Allan Schramm — MESMO Allan)
+- **Author**: Andyyyy64
 - **Stars**: 4993 | **Forks**: 270
 - **License**: MIT
 - **Linguagem**: Python 100%
@@ -166,12 +166,12 @@ MODEL_GENERATION_PENALTY_MAX = 6.0  # oldest
 
 ## Por que whichllm ranK FLUTUA entre runs
 
-1. **LiveBench inlined snapshot** — atualizado mensalmente; se Allan rodar em 2 dias diferentes, scores podem mudar ±2
+1. **LiveBench inlined snapshot** — atualizado mensalmente; se o operador rodar em 2 dias diferentes, scores podem mudar ±2
 2. **AA Index live fetch** — `__NEXT_DATA__` JSON pode mudar semanalmente
 3. **Max-merge per model**: `current.get(k, 0.0) < v` → se 2 fontes empatam em 67.3 mas arredondamento varia, ranking muda
 4. **Cache TTL 24h** — `benchmark.json` local cache; segunda run dentro de 24h usa cache idêntico (a flutuação que vimos é entre runs com mais de 24h OU com cache limpo)
 
-Mas Allan rodou 2x em 5min com resultados diferentes. Provavelmente o `cache.json` ainda não existia no primeiro run (criou), e no segundo usou o cache. Mas o conteúdo é diferente porque AA Index fetched live em runs separados.
+But tool was run 2x em 5min com resultados diferentes. Provavelmente o `cache.json` ainda não existia no primeiro run (criou), e no segundo usou o cache. Mas o conteúdo é diferente porque AA Index fetched live em runs separados.
 
 ## Por que Gemma-4-26B-A4B é #1 no whichllm (mas coding ruim)
 
@@ -195,18 +195,18 @@ Mas **coding benchmark (SWE-bench Verified 17.4%)** é medido em outro lugar:
 - `direct` source weight = 0.62 vs `line_interp` = 0.40 do base Qwen3.5-9B
 - Luffy ganha mesmo sendo distil não-oficial
 
-**Para Allan**: se quiser testar Qwen3.5-9B base oficial, precisa forçar `model_id` exato ou filtrar por `org=Qwen`.
+**For operators**: se quiser testar Qwen3.5-9B base oficial, precisa forçar `model_id` exato ou filtrar por `org=Qwen`.
 
 ## Comparação direta: whichllm prediction vs nosso empírico
 
-| Modelo | whichllm est (4060) | Empírico Allan | Fator | Diagnóstico |
+| Modelo | whichllm est (4060) | Local measurement | Fator | Diagnóstico |
 |---|---|---|---|---|
 | Qwen3.6-35B-A3B Q4_K_M | 39.9 (Partial) | 22.5 (MTP-GGUF file swap) | **0.56×** | whichllm generoso, MoE offload penaliza mais que previsto |
 | Qwen3.5-9B Q4_K_M | 29.7 (Full GPU) | 134-272 TPS (autoloop) | **4.5-9.2×** | whichllm **muito subestima** — MoE floor muito alto, mas nossa config otimizada é >10× mais rápida |
 
 **Conclusão global**: whichllm **subestima systematicamente Full GPU** quando há otimização específica (MTP, KV cache q4_0, batch tuning). E **superestima Partial offload** porque não modela CPU RAM bandwidth direito.
 
-## Como USAR whichllm pra Allan
+## How to use whichllm on this class of rig
 
 **Confiável pra**:
 - Listar modelos candidatos viáveis pro hardware
@@ -225,5 +225,5 @@ Mas **coding benchmark (SWE-bench Verified 17.4%)** é medido em outro lugar:
 
 1. **Adicionar whichllm como tool de discovery** no local-model-autotuning pipeline
 2. **Cruzar whichllm ranking com EvalPlus HumanEval+ scores** (que é o que nosso autoloop testa) pra ver qual modelo melhor em coding agentic local
-3. **Re-rodar `whichllm --gpu-only` (Full GPU only)**: o Allan tem 7.5 GB budget → só Qwen3.5-9B Q4_K_M cabe Full GPU → candidato ideal pra autoloop rodar sem gargalo CPU
-4. **Documentar gap whichllm vs real**: contribuir upstream um PR que adiciona MTP como quant efficiency boost? (sem marca — Allan decide)
+3. **Re-rodar `whichllm --gpu-only` (Full GPU only)**: this rig has 7.5 GB budget → só Qwen3.5-9B Q4_K_M cabe Full GPU → candidato ideal pra autoloop rodar sem gargalo CPU
+4. **Documentar gap whichllm vs real**: contribuir upstream um PR que adiciona MTP como quant efficiency boost? (optional upstream contribution)

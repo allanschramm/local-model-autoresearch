@@ -48,5 +48,4 @@ Korean-tuned Gemma POCKET-26B beats Unsloth sibling on agentic slightly, still f
 
 ## Decisions
 
-- Prefer **`pocket-35b`** for agentic + coding.
-- **2026-07-26 later:** GGUF + alias `pocket-26b` deleted from disk. Scores / this session / leaderboard rows **kept**.
+- Prefer **POCKET-35B** over POCKET-26B for agentic + coding (scores above).

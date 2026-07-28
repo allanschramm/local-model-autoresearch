@@ -19,7 +19,8 @@ Validate all dense (non-MoE, non-MTP) GGUF models in `models/` with a consistent
 ### Excluded (not dense)
 - `models/*-MTP-*.gguf` — speculative draft models
 - `models/mtp-gemma-4-12B-it.gguf` — speculative draft
-- `models/MTP/`, `models/DFLASH/`, `models/aliases/` — subdirs (draft, MoE flash-attn, launcher configs)
+- `models/MTP/`, `models/DFLASH/` — draft / flash-attn layout dirs (not dense main GGUFs)
+- launcher alias configs (machine-local under `models/`) — excluded from this dense matrix
 - `ornith-1.0-35b-*` — MoE architecture
 - `deepreinforce-ai_Ornith-1.0-35B-IQ3_M.gguf` — MoE architecture
 

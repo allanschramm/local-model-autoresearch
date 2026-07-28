@@ -44,5 +44,5 @@ Harness `DISCARD` on Bonsai coding vs prior claw KEEP — ignore; coding axis se
 
 ## Decisions
 
-- Prefer **POCKET** for agentic + coding on this rig.
-- Keep Bonsai only if disk/TPS-first short chat matters more than quality.
+- Prefer **POCKET-35B** for agentic + coding on this rig (higher claw + coding; lower peak VRAM).
+- Bonsai remains a higher-TPS / lower-quality point on the same axes.

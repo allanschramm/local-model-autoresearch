@@ -3,7 +3,7 @@
 ## Goal
 1. Validate `Nanbeige/Nanbeige4.2-3B` for local inference (Looped Transformer).
 2. Build arch fork `Nanbeige/llama.cpp` branch `nanbeige42` (upstream cannot load `NanbeigeForCausalLM`).
-3. Measure KV / batch TPS matrix on RTX 4060 8GB; lock Baseline + `model-up` alias.
+3. Measure KV / batch TPS matrix on RTX 4060 8GB; lock Baseline recipe.
 
 ## Hardware
 - GPU: RTX 4060 (8 GB VRAM, CUDA 8.9)
@@ -13,7 +13,6 @@
 
 ## Related
 - Model card: [nanbeige4.2-3b.md](../models/nanbeige4.2-3b.md)
-- Alias: `models/aliases/nanbeige4.2-3b/config.yaml` (`llama_cpp_root: llama.cpp-nanbeige42`)
 - Toolset: [llamacpp-toolset.md](../llamacpp-toolset.md) (local arch forks)
 
 ---
@@ -62,7 +61,7 @@ llama.cpp-nanbeige42/build-cuda/bin/llama-bench.exe \
 ### Learnings
 - **KV type barely moves TG** (~54.7 → ~56). Ceiling is looped-arch compute (`num_loops=2` ≈ 2× FLOPs vs same-size dense).
 - **f16 KV wins PP** and edges TG; preferred over q4/q8 for this model on 8 GB.
-- **Alias sweet spot:** `f16` + `b512/ub256` (best PP/TG balance). Peak tg128 was `f16 b1024/ub512` at 56.00 — not worth the PP trade for daily use.
+- **Baseline sweet spot:** `f16` + `b512/ub256` (best PP/TG balance). Peak tg128 was `f16 b1024/ub512` at 56.00 — not worth the PP trade for daily use.
 - Dense: no shared-memory / layer offload. `VRAM_LIMIT_MB=7900`, `CTX_SIZE=32768`.
 
 ### Claw-Eval full (same session window)
@@ -71,10 +70,9 @@ llama.cpp-nanbeige42/build-cuda/bin/llama-bench.exe \
 
 ---
 
-## Side findings (alias / champion audit — ephemeral scripts, not kept)
+## Side findings (champion audit — ephemeral scripts, not kept)
 
 - Best dense **agentic_full keep** in `results.tsv`: `Qwythos-9B-v2-MTP-Q4_K_M.gguf` **0.5333** @ 34.5 t/s — Hub lacked a useful CUDA MTP GGUF for v2 at the time (MLX-only common). Non-MTP `Qwythos-9B-v2-Q4_K_M.gguf` was the available sibling.
-- Several `models/aliases/*` entries were stale vs available GGUFs; cleanup deferred.
 
 ---
 
@@ -87,6 +85,6 @@ llama.cpp-nanbeige42/build-cuda/bin/llama-bench.exe \
 
 ## Decisions
 1. Keep fork at `llama.cpp-nanbeige42/` (not submodule).
-2. Baseline + alias: KV **f16**, batch **512/256**, ctx **32768**, reasoning **on**, temp **1.0** (agentic).
-3. `model-up` gained optional `llama_cpp_root` so aliases can pin arch forks.
-4. Session evidence lives here; delete ad-hoc `.scratch/nanbeige-tps-matrix.md` after promote.
+2. Baseline: KV **f16**, batch **512/256**, ctx **32768**, reasoning **on**, temp **1.0** (agentic).
+3. `model-up` gained optional `llama_cpp_root` so local launchers can pin arch forks.
+4. Session evidence lives here; promote numbers to card / discovery — do not leave ad-hoc scratch notes as source of truth.

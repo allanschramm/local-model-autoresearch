@@ -57,7 +57,7 @@ vs Q4_K_XL: worse agentic (0.47 vs 0.60), slightly worse coding (0.555 vs 0.580)
 | 32k + MTP n=4 | VRAM kill **7913 > 7900** mid HumanEval |
 | 65k, no MTP | VRAM kill **7931 > 7900** mid HumanEval (preflight est 7584 MB) |
 
-Claw-full @ 32k+MTP still fits (~7.5 GB) because tool calls are short; long codegen does not. Agent **0.1333**. SSD delete candidate.
+Claw-full @ 32k+MTP still fits (~7.5 GB) because tool calls are short; long codegen does not. Agent **0.1333**. Coding axis incomplete (VRAM rejected).
 
 ### Pareto lenses (ADR 0008)
 
@@ -73,23 +73,6 @@ See [pareto-leaderboard.md](../discovery/pareto-leaderboard.md), [pareto-selecti
 * Day = speed-band then IQ selected LFM 1.2B (~half Night IQ) → ADR 0008 (IQ ε-band then max TPS).
 * Dense Qwen3.5-9B: historical “128k ran” was **without MTP** / light Autoloop load; not comparable to coding-10.
 * Preflight VRAM underestimate on dense 65k coding (7584 est → 7931 peak).
-
-## SSD cleanup (2026-07-27, rounds 1+2)
-
-GGUF/draft/mmproj deleted from disk; **scores and model cards kept** in repo. Alias dirs removed locally only (not tracked).
-
-| GGUF removed | Why |
-| :--- | :--- |
-| `Qwen3.5-9B-UD-Q4_K_XL.gguf` + draft/mmproj | coding-10 VRAM rejected |
-| `Ornith-1.0-35B-UD-Q3_K_XL.gguf` | Q4 wins A/B (claw 0.60 vs 0.47) |
-| `Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf` + draft/mmproj | dominated on front |
-| `Laguna-XS-2.1-Q3_K_XL.gguf` | coding min 0.195 |
-| `LFM2.5-8B-A1B-Q4_K_M.gguf` | weak agentic vs faster peers |
-| `Bonsai-27B-Q1_0.gguf` + dspark draft | dominated |
-| `Qwythos-9B-Claude-Mythos-5-1M-MTP.Q4_K_M.gguf` | weaker than non-MTP Mythos |
-| `Qwythos-9B-v2-Q4_K_M.gguf` + mmproj | Mythos non-MTP covers coding |
-| `nanbeige4.2-3b-Q4_K_M.gguf` | dominated; needs `llama.cpp-nanbeige42` fork |
-| `gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf` (lmstudio copy) + draft/mmproj | agentic 0.1333 |
 
 ## Docs updated
 

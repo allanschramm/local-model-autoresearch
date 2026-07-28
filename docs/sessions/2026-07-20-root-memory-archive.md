@@ -4,7 +4,7 @@
 Preserve empirical notes formerly kept in root `MEMORY.md` before deleting that file. Canonical runtime history remains `results.tsv`. Stale project-context / Val Score weight claims from MEMORY were **not** copied (superseded by Claw-Eval agentic-first Search — see ADR 0004).
 
 ## Hardware
-RTX 4060 8GB (operator notes from original MEMORY).
+RTX 4060 8GB (notes from original MEMORY archive).
 
 ## Setup
 N/A — archival pass, not a new Trial session.

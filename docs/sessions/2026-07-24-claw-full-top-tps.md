@@ -49,7 +49,7 @@ One Trial at a time (shared GPU + port 18080).
 
 ## Decisions
 
-* LFM 1.2B @ 65k f16 joins Ornith tier on Val Score (**0.6000**) with ~4× TPS — keep as speed+agentic candidate.
+* LFM 1.2B @ 65k f16 joins Ornith tier on Val Score (**0.6000**) with ~4× TPS — strong speed+agentic Pareto candidate.
 * LFM 8B not preferred for agentic (full ≤0.20) despite top TPS.
 * Gemma E4B full 0.3333 below Mythos historical discard note; speed Baseline stays valid, agentic prefer Laguna/Ornith/LFM-1.2B.
 

@@ -1,8 +1,8 @@
-# Session Log: Small-model TPS matrix + MTP inventory (2026-07-20)
+# Session Log: Small-model TPS matrix + MTP packaging (2026-07-20)
 
 ## Goal
-1. Inventory which local small models have MTP (embedded `nextn` vs external draft vs Hub-only).
-2. Download missing CUDA GGUF MTP quants via `hf`.
+1. Classify MTP packaging for candidate small GGUFs (`nextn` embedded vs external draft vs Hub-only).
+2. Download missing CUDA GGUF MTP quants via `hf` as needed for the matrix.
 3. Measure pure generation TPS (`llama-cli`, `-n 512`) base vs MTP. No Claw-Eval, no coding bench.
 
 ## Hardware
@@ -18,10 +18,10 @@
 
 ---
 
-## Learnings (operator gold)
+## Learnings (method)
 
 ### L1 — Two MTP packaging forms (do not confuse)
-| Form | Where tensors live | How to enable | Local examples |
+| Form | Where tensors live | How to enable | Examples measured |
 |---|---|---|---|
 | **Embedded `nextn`** | Inside main GGUF (`blk.N.nextn.*`, `*.nextn_predict_layers`) | `--spec-type draft-mtp --spec-draft-n-max N` **without** `--spec-draft-model` | `Qwen3.5-9B-UD-Q4_K_XL.gguf`, Ornith/Mythos `*-MTP*.gguf` |
 | **External draft (assistant)** | Separate small GGUF (`gemma4-assistant.*`) | `--spec-type draft-mtp --spec-draft-model draft/... --spec-draft-n-max N` | `draft/mtp-gemma-4-E4B-it.gguf` paired with Gemma main |
@@ -35,14 +35,14 @@ Scan ASCII metadata (first ~8–32 MB is enough for keys):
 - Hit `gemma4-assistant` → Gemma assistant draft (external).
 - Neither → no MTP in that file (need Hub MTP quant or separate draft).
 
-### L3 — Hub inventory (models that lacked local MTP)
-| Local base | Local MTP? | Hub CUDA GGUF MTP | Chosen download |
+### L3 — Hub MTP availability (candidates in this matrix)
+| Base GGUF | MTP in file? | Hub CUDA GGUF MTP | Downloaded for measure |
 |---|---|---|---|
 | Ornith-1.0-9B UD | no | **yes** — `protoLabsAI/Ornith-1.0-9B-MTP-GGUF` | `Ornith-1.0-9B-MTP-Q4_K_M.gguf` (~5.4 GB) |
 | Mythos 5-1M | no | **yes** — `mradermacher/Qwythos-9B-Claude-Mythos-5-1M-MTP-GGUF` | `...-MTP.Q4_K_M.gguf` (~5.4 GB) |
 | Qwythos-9B-v2 | no | **no** useful CUDA GGUF (MLX-only MTP) | skip |
-| Gemma E4B | draft already local | many assistant MTP GGUFs | reuse `draft/mtp-gemma-4-E4B-it.gguf` |
-| Qwen3.5-9B | embedded already | n/a | reuse local UD |
+| Gemma E4B | draft already used | many assistant MTP GGUFs | reuse `draft/mtp-gemma-4-E4B-it.gguf` |
+| Qwen3.5-9B | embedded already | n/a | reuse UD |
 
 Download rule: `hf download <repo> <file> --local-dir models/<publisher>/<model>` (nested for LM Studio). Config/harness use basename; `resolve_model_path` finds the file. Drafts: `--local-dir models/draft`. UTF-8 / quiet if Windows charmap breaks on ✓.
 
@@ -101,12 +101,12 @@ None on the 9 TPS trials. All `OK`.
 
 ## Decisions
 - Left `config.py` Baseline on winner: Gemma-E4B + `draft-mtp` + `SPEC_DRAFT_N_MAX=4` + draft path `draft/mtp-gemma-4-E4B-it.gguf`.
-- Durable operator guide: [docs/discovery/small-model-mtp-tps.md](../discovery/small-model-mtp-tps.md).
+- Durable guide: [docs/discovery/small-model-mtp-tps.md](../discovery/small-model-mtp-tps.md).
 - Model cards updated with matrix numbers + MTP packaging truth.
-- Prefer Ornith MTP GGUF over UD when speed matters; keep Mythos on non-MTP for now.
+- Prefer Ornith MTP GGUF over UD when speed matters; Mythos non-MTP scored better than Mythos MTP in this matrix.
 
 ## Cross-links
-- Operator guide: [docs/discovery/small-model-mtp-tps.md](../discovery/small-model-mtp-tps.md)
+- Guide: [docs/discovery/small-model-mtp-tps.md](../discovery/small-model-mtp-tps.md)
 - Formats: [docs/discovery/speculative-decoding-formats.md](../discovery/speculative-decoding-formats.md)
 - Smoke how-to: [docs/discovery/mtp-baseline-guide.md](../discovery/mtp-baseline-guide.md)
 - Model cards: [gemma-4-e4b](../models/gemma-4-e4b.md), [qwen3.5-9b](../models/qwen3.5-9b.md), [ornith-1.0-9b](../models/ornith-1.0-9b.md), [mythos](../models/qwythos-9b-claude-mythos-5-1m.md)
