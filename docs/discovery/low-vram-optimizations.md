@@ -46,8 +46,9 @@ The Key-Value (KV) cache grows linearly with context size and batch size. At 65k
 
 For MoE models (like Qwen3.6-35B-A3B or Gemma-4 26B-A4B), you do not need to keep all weights in VRAM since only a fraction of experts are active for any given token.
 
-*   **Expert Offloading:** Keep the model's attention heads and routing layers on the GPU, while offloading the heavy experts to CPU RAM using `--n-cpu-moe <N>` (e.g. `--n-cpu-moe 30` or `40`).
-*   **Trade-off:** This allows 35B models to fit comfortably in 8 GB VRAM, but you must **disable speculative decoding** to avoid CPU-GPU roundtrip synchronization bottlenecks (as documented in our benchmark guide).
+*   **Expert offload (this repo / upstream llama.cpp):** Keep attention + routing on the GPU; force routed experts to CPU RAM with `--n-cpu-moe <N>` (often `N = block_count`). Harness: `N_CPU_MOE=None` → auto full offload. Detail: [vitriol-technique.md](../models/vitriol-technique.md) Path A.
+*   **Trade-off:** 35B-class MoE fits in 8 GB VRAM; speculative decoding + heavy CPU experts can sync-stall — validate per model ([local-models-low-vram-configs.md](./local-models-low-vram-configs.md)).
+*   **Not our default:** Randozart/VITRIOL keeps experts in page-locked host RAM and runs MoE matmuls on the **GPU over PCIe DMA** (custom fork). Useful ideas (PCIe width, pin-vs-`n-cpu-moe`, MTP N sweeps) are absorbed in the technique note; Search stays on official `llama.cpp`.
 
 ---
 

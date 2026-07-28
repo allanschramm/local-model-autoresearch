@@ -137,8 +137,9 @@ When the user requests a durable behavior change, record it here or in the relev
 - **Every requested Trial edits `config.py` first**: For each user-requested test/run, set the Baseline in `config.py` (then invoke harness). Never pass the experiment knobs as CLI flags.
 - **No ad-hoc eval scripts**: Do not invent one-off Python/`python -c` Trial loops. Hooks deny them. Use harness CLIs only.
 - **Portable agent hard-gates only**: Ship Cursor/Claude project hooks in-repo so any clone benefits. Do **not** require OS ACL (`icacls`), chmod lockdowns, or enterprise managed hooks for normal users (including non-devs).
-- **Dense = no shared-memory offload**: Never partially offload dense GGUFs (layers to CPU / Windows shared GPU memory). That path freezes the whole PC. Only MoE may use expert offload (`--n-cpu-moe` / VITRIOL). Dense must fit in **physical** VRAM (cut `CTX_SIZE` / KV quant / drop draft) or reject the Trial — never “spill and hope”.
+- **Dense = no shared-memory offload**: Never partially offload dense GGUFs (layers to CPU / Windows shared GPU memory). That path freezes the whole PC. Only MoE may use expert offload (`--n-cpu-moe`). Dense must fit in **physical** VRAM (cut `CTX_SIZE` / KV quant / drop draft) or reject the Trial — never “spill and hope”.
 - **MoE initial `N_CPU_MOE`**: Baseline `None` → harness auto-sets `--n-cpu-moe` to GGUF `block_count` (full expert CPU offload). Set `0` only when the MoE fits physical VRAM (full GPU). Explicit `N>0` remains a manual override.
+- **Upstream llama.cpp for speed**: Search / Trials maximize TPS on **official** `llama.cpp` (submodule). Arch forks only when the GGUF needs them (Nanbeige, PrismML, …). Do **not** switch the harness to Randozart/VITRIOL DMA; that fork is documented for future operators in [docs/models/vitriol-technique.md](docs/models/vitriol-technique.md). Model-card “VITRIOL split” means stock `--n-cpu-moe`, not the fork.
 - **Virtual environment execution**: ALWAYS use the project's dedicated virtual environment (`.\venv\Scripts\python.exe` / `.\venv\Scripts\pytest.exe` on Windows, `./venv/bin/python` on Linux/macOS) for all python scripts, tests, and tool commands. NEVER run system-global `python` or `pip`, and NEVER install packages globally.
 - **Never commit alias registry**: `model-up` alias names, ports, and `models/aliases/*/config.yaml` are machine-local (`/models/` gitignored). Tracked docs use GGUF basenames + benchmark scores only — not which alias the user runs.
 - **Upstream/vendor trees are read-only**: Never modify `llama.cpp/` (only remaining submodule), nor local vendor checkouts `claw-eval/`, `llama.cpp-nanbeige42/`, `llama.cpp-prismml/`. UTF-8 / Windows mock issues → `PYTHONUTF8=1` (or harness-owned env injection), never patch upstream files.
@@ -161,9 +162,10 @@ When the user requests a durable behavior change, record it here or in the relev
 - [tests/AGENTS.md](tests/AGENTS.md) — Unit and integration test suite.
 - [teach/AGENTS.md](teach/AGENTS.md) — Course materials (M0 + S1 TPS + S2D1 samplers; S2D2–4 drafts); Dia 1 LM Studio, Dia 2+ this repo.
 - External sources (**agent read-only — never edit**):
-  - [llama.cpp/](llama.cpp/) — upstream runtime (**git submodule**).
-  - [claw-eval/](claw-eval/) — Claw-Eval harness (**local vendor tree**, gitignored; not a submodule).
-  - `llama.cpp-nanbeige42/`, `llama.cpp-prismml/` — arch forks (**local vendor trees**, gitignored).
+ - [llama.cpp/](llama.cpp/) — upstream runtime (**git submodule**).
+ - [claw-eval/](claw-eval/) — Claw-Eval harness (**local vendor tree**, gitignored; not a submodule).
+ - `llama.cpp-nanbeige42/`, `llama.cpp-prismml/` — arch forks (**local vendor trees**, gitignored).
+ - `VITRIOL/` — Randozart MoE DMA study clone (**gitignored**; not a Trial engine). See [docs/models/vitriol-technique.md](docs/models/vitriol-technique.md).
 - [docs/agents/](docs/agents/) — Matt Pocock engineering-skills config (issue tracker, triage labels, domain docs).
 
 ## Agent skills

@@ -75,6 +75,7 @@ run_nexus_only.py
 /claw-eval/
 /llama.cpp-nanbeige42/
 /llama.cpp-prismml/
+/VITRIOL/
 
 # Local mutable Baseline (seed from config.py.example)
 autoresearch/core/config.py

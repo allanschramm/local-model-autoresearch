@@ -1,58 +1,123 @@
-# VITRIOL — MoE-on-small-VRAM technique
+# MoE on small VRAM — stock `--n-cpu-moe` vs Randozart/VITRIOL
 
-- **YouTube Video:** https://www.youtube.com/watch?v=ZwNCsUTNWOA (Codacus on Qwen 3.6 35B-A3B on i5-12th + 16GB RAM + GTX 1070 8GB → 18 tok/s, 132k ctx).
-- **GitHub Repository:** https://github.com/Randozart/VITRIOL (Codacus/Randozart official repository).
+**Repo policy:** Search / Trials / Day-Night stay on **upstream `llama.cpp`** (submodule), except models that need an **arch fork** (`llama.cpp-nanbeige42`, `llama.cpp-prismml`, …). The Randozart [VITRIOL](https://github.com/Randozart/VITRIOL) fork is **study material only** — not a harness Baseline, not a Trial engine.
 
-## Core insight
-For MoE models, you don't put the whole model on the GPU. You put **attention + shared expert + routing** on the GPU, and the **256 routed experts stay in CPU/RAM**. Per-token active compute is small (3-4B), so the CPU bottleneck is acceptable.
+Local clone (gitignored): `VITRIOL/` — optional; re-clone from GitHub if missing.
 
-## The 2-knob split
+## Naming (read this first)
+
+| Name in our docs | What it actually is |
+|---|---|
+| **“VITRIOL split”** / MoE offload (model cards §) | Upstream flags: `--n-gpu-layers` + `--n-cpu-moe N`. Experts **compute on CPU**. |
+| **Randozart/VITRIOL** | Custom ggml host buffer (`mmap` → `mlock` → `cudaHostRegister`) + patched `llama-server`. Experts stay in page-locked RAM; **GPU** matmuls over **PCIe DMA**. Optional Chimera (CUDA MoE + Vulkan dense). |
+
+Same product goal (big MoE on ≤8 GB). Opposite compute path. Do not treat Codacus YouTube flags as “running VITRIOL.”
+
+- YouTube (Codacus, stock-style flags): https://www.youtube.com/watch?v=ZwNCsUTNWOA  
+- Upstream project: https://github.com/Randozart/VITRIOL (studied 2026-07-28 @ `576ef69`)
+
+---
+
+## Path A — what this repo runs (upstream llama.cpp)
+
+### Core insight
+MoE activates few experts per token. Put **attention + shared + routing** on GPU; keep **routed experts** in CPU/RAM via `--n-cpu-moe`. Active compute is small; CPU bottleneck often acceptable on a strong desktop CPU.
+
+### The 2-knob split
 
 ```
--ncmoe 40            # --n-cpu-moe 40 — ALL 40 layers' MoE experts on CPU
--ngl 99              # --n-gpu-layers 99 — max attention+shared on GPU
--cache-type-k q4_0   # K cache quantized to 4-bit
--cache-type-v q4_0   # V cache quantized to 4-bit
--c 132000            # --ctx-size 132k (Codacus pushed to 132k, tried 64k first)
+-ncmoe 40            # --n-cpu-moe 40 — MoE experts of first N layers on CPU
+-ngl 99              # --n-gpu-layers 99 — max attention/shared on GPU
+-cache-type-k q4_0   # K (and usually V) KV quant — measure quality
+-c <CTX_SIZE>        # Baseline CTX_SIZE (user-configured; code floor 2048)
 ```
 
-The 2 flags compose:
-- `--n-gpu-layers N` decides attention/shared layers on GPU (N=99 = as many as fit)
-- `--n-cpu-moe N` decides which layers' MoE experts are forced to CPU
+- `--n-gpu-layers N` — how much non-expert path sits on GPU  
+- `--n-cpu-moe N` — how many layers force MoE experts to CPU (`N = block_count` ⇒ all experts CPU)
 
-For a 40-layer MoE, `--n-cpu-moe 40` keeps all experts on CPU. Lower N = move some experts to GPU (eats VRAM, may or may not help speed — needs testing).
+### Harness default
+`N_CPU_MOE=None` → `ServerIntent.from_config` reads GGUF `block_count` → `--n-cpu-moe {block_count}`.  
+`N_CPU_MOE=0` only when MoE fits **physical** VRAM. Explicit `N>0` overrides. Dense: never partial offload / Windows shared-memory spill.
 
-## Harness default (auto block_count)
+### Preflight
+`estimate_vram_mb` must receive `n_cpu_moe`. Without it, estimator charges full GGUF to VRAM and falsely rejects 14–20 GB MoE on 8 GB. Offload fraction ≈ `min(1, N / block_count)`.
 
-Initial Baseline for MoE that does **not** fit full GPU: leave `N_CPU_MOE=None`. `ServerIntent.from_config` reads GGUF `*.block_count` and passes `--n-cpu-moe {block_count}` (same intent as Codacus “all experts on CPU”). Set `N_CPU_MOE=0` only when the MoE fits physical VRAM. Explicit `N>0` overrides. The old `--override-tensor .*exps.*=CPU` path is gone.
+### Architecture class
+MoE vs dense = GGUF metadata only (`expert_count > 1` or arch name contains `moe`). No filename heuristics.
 
-## Preflight note (harness)
-`estimate_vram_mb` / VRAM preflight **must** pass `n_cpu_moe`. Without it, the estimator charges the full GGUF size to VRAM and falsely rejects 14–20 GB MoE files on 8 GB cards. With `--n-cpu-moe N>0`, weight charge shrinks toward non-expert footprint (~28% of file when N equals GGUF `block_count`). Offload fraction is `min(1, N / block_count)`; fallback divisor is 32 only when GGUF arch is unreadable.
+### When it helps
+- Helps: large MoE (35B+ total, ≤~5B active) on ≤16 GB VRAM with a decent CPU.  
+- Skip / set `0`: MoE that already fits physical VRAM (e.g. LFM2.5-8B-A1B).  
+- Dense: never use as a “spill” strategy.
 
-`N_CPU_MOE=0` (full GPU) is allowed only when preflight says the MoE fits physical VRAM. If it does not, the Trial is `MODEL_REJECTED` with an explicit full-GPU message — set `N_CPU_MOE=None` for auto `block_count` offload. Do not rely on Windows shared-memory spill.
+### Our rig vs Codacus-style stock numbers
 
-## Architecture class
-MoE vs dense is decided by **GGUF metadata** (`autoresearch/core/model_arch.py`: `expert_count > 1` or arch name contains `moe`). Filename tokens are not used. Model cards under `docs/models/` must document the same class.
-
-## When does it help vs not?
-- Helps: large MoE models (35B+ total, ≤5B active) on ≤16GB VRAM rigs.
-- Doesn't help: small dense models, or when you have enough VRAM to fit the full active path.
-- Trade-off: lower tok/s than full-GPU, but **infinite context** if you have SSD offload.
-
-## Codacus result vs ours
-| | Codacus | Nosso rig |
+| | Codacus (video) | This rig (upstream) |
 |---|---|---|
-| CPU | i5-12th gen | i5/i7 12th+ (WSL) |
-| RAM | 16 GB | 16 GB |
-| GPU | GTX 1070 8GB | RTX 4060 8GB |
-| Result | 18 tok/s @ 132k ctx | Qwen3.6 35B: **22.15 t/s** @ 65k ctx (`--n-cpu-moe 40`). Gemma-4 26B: **19.00 t/s** @ 65k ctx (`--n-cpu-moe 30`). |
-| Floor | nosso `TPS_FLOOR` default é 20 (Baseline `config.py`) | Qwen3.6 35B passa o floor (22.15 t/s). Gemma-4 26B chega muito perto (19.00 t/s) — baixe `TPS_FLOOR` pra MoE se precisar. |
+| GPU | GTX 1070 8 GB | RTX 4060 8 GB |
+| Path | stock-ish flags | `--n-cpu-moe` = `block_count` |
+| Example | ~18 t/s @ ~132k (claim) | Qwen3.6-35B ~22 t/s @ 65k; Ornith-35B / Laguna similar band |
 
-## Related flags (from our llama-server build)
-- `--n-cpu-moe-draft N` / `-ncmoed` — same for MTP draft model
-- `--no-mmap` — force full model into RAM (Codacus skipped, we have 16GB so would OOM)
-- `--spec-type draft-mtp` — MTP speculative decoding (standard/upstream llama.cpp)
+Exact rows: `results.tsv` + model cards. `TPS_FLOOR` default 20 — lower for heavy MoE if needed.
+
+### Upstream knobs still worth hill-climbing
+- `--n-cpu-moe` sweep (partial vs full) — VRAM ↔ TPS trade  
+- KV quant (`cache-type-k/v`) — measure; do not cargo-cult VITRIOL’s “V must be f16” onto stock without a Trial  
+- MTP / `--spec-type draft-mtp` — on **this** path, speculative + heavy CPU experts can **hurt** (sync); validate per model (see `local-models-low-vram-configs.md`)  
+- `--n-cpu-moe-draft` when draft is MoE  
+- Fit-first: `N_CPU_MOE=0` when preflight says full GPU fits  
+
+---
+
+## Path B — Randozart/VITRIOL (fork; optional future experiment)
+
+**Not wired into `benchmark_search` / `autoloop`.** For operators who later want to try GPU-over-PCIe experts on Linux (or a Windows port of the DMA path).
+
+### Mechanism (compressed)
+1. Custom ggml CUDA buffer type: anonymous `mmap` → `MADV_HUGEPAGE` → `mlock` → `cudaHostRegister`  
+2. `is_host=true` so scheduler keeps expert tensors in host; `MUL_MAT_ID` fast paths (MMQ/MMVQ) read `src0->data` over PCIe DMA  
+3. Dense / attention may stay VRAM or, in **Chimera**, move to Vulkan via `VK_EXT_external_memory_host`  
+4. Needs `CAP_IPC_LOCK` on the server binary (`vitriol setup`) so `mlock` works  
+
+CPU is mostly orchestrator — weak/old CPUs (no AVX2) can still run; **PCIe width/bandwidth** dominates.
+
+### Claimed peak (their hardware, not ours)
+GTX 1070 Ti, PCIe 3.0 **x16**, ~15 GB RAM, Linux: Qwen3.6-35B IQ2_M + Chimera + MTP N=2 + pin 8 → **~23.3 t/s** (their 2026-05-22 server note). Mellum2-12B-A2.5B Q4_K_M → **~27.1 t/s**. Removing a second GPU that forced **x8** was their largest single win (~5.7 → ~9 t/s before Chimera).
+
+### Ideas worth remembering on *upstream* (no fork)
+
+| VITRIOL finding | Transfer to official llama.cpp? |
+|---|---|
+| PCIe x16 vs x8 kills streaming-expert throughput | Yes if ever measuring host↔GPU weight traffic; less critical for pure CPU-expert `--n-cpu-moe`, still matters for any DMA/spill |
+| Pin first N expert layers in VRAM | Upstream has no `--pin-layers`; closest = lower `--n-cpu-moe` so late layers’ experts stay GPU |
+| Chimera CUDA+Vulkan | Fork-only |
+| Predictive expert prefetch / LRU VRAM expert pool | Fork-only today; watch upstream PRs (they cite ggml PRs #11397, #6387, #11571 lineage) |
+| MTP N=2 often best; larger N wastes drafts if accept≈1/N | Yes — sweep `--spec-draft-n-max` on MTP GGUFs |
+| MTP “flat” on some Pascal sweeps | Hardware-specific; always measure on this rig |
+| `--cache-type-v` q4/q8 “corrupts” under VITRIOL | **Their** stack; do not assume for upstream — Trial both |
+| Secondary GPU dropping primary to x8 | Hardware hygiene for any PCIe-bound path |
+| Memory shim / Hebbian SQLite | App-layer, orthogonal to Search harness |
+| Kernel module / ALKA SSD→GPU | Experimental; out of scope |
+
+### Platform notes (from their README)
+- **Linux + NVIDIA:** verified path  
+- **Windows + NVIDIA:** `cudaHostRegister` “likely”; CLI is bash — needs a wrapper; untested by them  
+- **Apple unified memory / Intel SYCL:** little or no benefit  
+- Requires their **pinned submodule** (`llama.cpp` branch `vitriol-mellum2`), not our submodule  
+
+### If someone tries it later
+1. Clone recursive: `https://github.com/Randozart/VITRIOL`  
+2. Build their `llama.cpp` with CUDA (+ optional Vulkan for Chimera)  
+3. `./vitriol setup` then `./vitriol config` / `run` / `serve`  
+4. Keep results **offline** — do not mix fork TPS into Pareto rows without labeling engine = VITRIOL fork  
+5. Compare A/B against the **same** GGUF on upstream `--n-cpu-moe` on this rig before changing policy  
+
+---
 
 ## See also
-- [Qwen3.6-35B-A3B model card](qwen3.6-35b-a3b.md) — o modelo que Codacus testou (35B total / 3B active)
-- [Gemma-4-26B-A4B model card](gemma-4-26b-a4b.md) — mesma técnica, active params um pouco maior (4B), testado no nosso rig (commit `2bd795b`: HumanEval 0.533, TPS 13-18)
+- [Qwen3.6-35B-A3B](qwen3.6-35b-a3b.md) — Codacus demo model family  
+- [Gemma-4-26B-A4B](gemma-4-26b-a4b.md) — same stock split, `n-cpu-moe 30`  
+- [low-vram-optimizations.md](../discovery/low-vram-optimizations.md) — MoE + anti-paging  
+- [local-models-low-vram-configs.md](../discovery/local-models-low-vram-configs.md) — per-family 8 GB recipes  
+- [inference-engines-landscape.md](../discovery/inference-engines-landscape.md) — where forks sit vs default  
+)

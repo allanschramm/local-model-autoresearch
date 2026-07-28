@@ -105,7 +105,7 @@ MoE models exceed the 8 GB physical VRAM limit. However, because they only activ
 
 #### 1. Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf
 *   **Path:** [Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf](file:///D:/Dev/Nexus-System/local-model-autotuning/models/lmstudio-community/qwen3.6-35b-a3b-gguf/Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf)
-*   **VRAM Strategy:** Offloads 100% of routed experts to CPU, placing only the attention mechanism, shared experts, and routing layers on GPU (**VITRIOL technique**).
+*   **VRAM Strategy:** Offloads 100% of routed experts to CPU, placing only the attention mechanism, shared experts, and routing layers on GPU (stock `--n-cpu-moe`; see [vitriol-technique.md](../models/vitriol-technique.md) Path A).
 *   **Optimal Flags:**
     ```bash
     -ngl 99 --n-cpu-moe 40 -c 65536 -fa on -ctk q4_0 -ctv q4_0 --spec-type none
@@ -117,7 +117,7 @@ MoE models exceed the 8 GB physical VRAM limit. However, because they only activ
 
 #### 2. Ornith-1.0-35B-UD-Q4_K_XL.gguf
 *   **Path:** `models/local/Ornith-1.0-35B-UD-Q4_K_XL/Ornith-1.0-35B-UD-Q4_K_XL.gguf` (or nested publisher layout)
-*   **VRAM Strategy:** MoE VITRIOL — offload experts for all layers (`block_count=40`).
+*   **VRAM Strategy:** MoE expert CPU offload for all layers (`block_count=40`).
 *   **Optimal Flags:**
     ```bash
     -ngl 99 --n-cpu-moe 40 -c 65536 -fa on -ctk q4_0 -ctv q4_0 --spec-type none -b 1024 -ub 256

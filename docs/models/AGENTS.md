@@ -28,7 +28,7 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 3. **Hardware requirements** — Unsloth's published table for the quant row we chose + warnings (CUDA version, offload, OOM risk).
 4. **Recommended settings** — sampling params by job when the publisher splits them (e.g. thinking/general vs precise coding vs instruct). Include TEMP / TOP_P / TOP_K / MIN_P / presence / repeat. Agents **must seed** `SAMPLER_DEFAULTS` from this section before the first Trial — do not leave the template defaults. Cite Unsloth/HF.
 5. **MTP section** — does THIS GGUF contain MTP tensors? If not, where do we get MTP from? Which flags? Plus a `verified from our common/arg.cpp` note so we don't re-introduce the `draft-mtp` bug.
-6. **VITRIOL split** — the Codacus 2-knob MoE strategy: `--n-gpu-layers` + `--n-cpu-moe N`. Cite the YouTube source.
+6. **MoE split (“VITRIOL split”)** — stock 2-knob: `--n-gpu-layers` + `--n-cpu-moe N` (experts on **CPU**). Section title kept for card continuity. Not the Randozart DMA fork — see [`vitriol-technique.md`](./vitriol-technique.md).
 7. **Our config baseline (TBD)** — concrete flag values to start from. Mark TBD until we run.
 8. **Sources / Verification** — URL + extraction date for every external claim. Note if truncation occurred.
 9. **Open questions** — bulleted list of TBDs with what we need to resolve them.
@@ -71,4 +71,4 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 - [`kat-coder-v2.5-dev.md`](./kat-coder-v2.5-dev.md) — KAT IQ4_XS; claw **0.6000** + coding **0.640**.
 - [`pocket-35b.md`](./pocket-35b.md) — POCKET-35B Q3_K_M; claw **0.6667** + coding **0.615**; Night pick.
 - [`pocket-26b.md`](./pocket-26b.md) — POCKET-26B **deleted**; historical claw **0.2000** / coding **0.490**.
-- [`vitriol-technique.md`](./vitriol-technique.md) — Codacus VITRIOL technique note (2-knob MoE offload strategy).
+- [`vitriol-technique.md`](./vitriol-technique.md) — stock `--n-cpu-moe` path + absorbed notes from Randozart/VITRIOL (fork = study only).

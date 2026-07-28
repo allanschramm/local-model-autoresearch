@@ -37,7 +37,7 @@ Cards:
 - [LFM2.5-8B-A1B](lfm2.5-8b-a1b.md) — claw ≤0.20 / coding **0.365**
 - [POCKET-35B](pocket-35b.md) — claw **0.6667** + coding **0.615**; **Night** pick
 - [POCKET-26B](pocket-26b.md) — claw **0.2000** + coding **0.490** (historical)
-- [VITRIOL technique](vitriol-technique.md) — Codacus MoE-split strategy (`N_CPU_MOE=None` ≠ no offload in harness)
+- [VITRIOL technique](vitriol-technique.md) — stock MoE `--n-cpu-moe` + study notes on Randozart DMA fork (not Trial engine)
 
 Pareto frontier: [pareto-leaderboard.md](../discovery/pareto-leaderboard.md).  
 Claw-Eval ranks: [claw-eval-leaderboard.md](../discovery/claw-eval-leaderboard.md).  

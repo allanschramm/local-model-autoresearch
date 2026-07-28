@@ -50,7 +50,8 @@ This guide surveys the primary inference engines, analyzing their memory manager
 ### 5. llama.cpp (Cross-Platform & Edge Execution)
 - **Core Mechanism**: Pure C/C++ engine utilizing custom GGUF quantization formats (Q4_K_M, IQ3_XS, etc.).
 - **Hardware Agnostic**: Runs across x86 CPU (AVX2/AVX-512/AMX), ARM (NEON), Apple Silicon (Metal), NVIDIA (CUDA), AMD (HIP), and Vulkan.
-- **Local Autotuning Target**: The core backend engine integrated into `local-model-autotuning` via `llama-server` and `llama-cli`.
+- **Local Autotuning Target**: The core backend engine integrated into `local-model-autotuning` via `llama-server` and `llama-cli`. Default Search path is **upstream** `llama.cpp` (MoE: `--n-cpu-moe`). Arch forks only when required by the GGUF.
+- **Related fork (not default):** [Randozart/VITRIOL](https://github.com/Randozart/VITRIOL) — page-locked host experts + GPU PCIe DMA (+ optional Chimera CUDA/Vulkan). Study notes: [vitriol-technique.md](../models/vitriol-technique.md).
 
 ### 6. Colibrì (Streaming MoE Runtime)
 - **Core Mechanism**: Specialized zero-dependency single-file C runtime (`c/glm.c`) designed for 700B+ MoE models (GLM-5.2).
