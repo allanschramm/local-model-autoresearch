@@ -35,8 +35,16 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from autoresearch.core.llama_runner import IS_WINDOWS, _binary_candidates
+from autoresearch.core.llama_runner import (
+    IS_WINDOWS,
+    _binary_candidates,
+    preflight_host_memory,
+    preflight_vram,
+    resolve_model_path,
+    resolve_vram_limit_mb,
+)
 CONFIG = REPO_ROOT / "autoresearch" / "core" / "config.py"
+MODELS_DIR = REPO_ROOT / "models"
 STATE_DIR = (
     Path(os.environ["LOCALAPPDATA"]) / "local-model-autoresearch"
     if IS_WINDOWS and os.environ.get("LOCALAPPDATA")
@@ -268,8 +276,56 @@ def cmd_stop() -> int:
     return 0
 
 
+def _preflight_or_exit(cfg: dict) -> None:
+    """Reject oversized Baseline before spawning llama-server."""
+    from autoresearch.core.model_arch import resolve_n_cpu_moe
+
+    model = cfg.get("MODEL")
+    if not model:
+        return
+    model_path = resolve_model_path(MODELS_DIR, str(model))
+    ctx = int(cfg.get("CTX_SIZE", 131072))
+    kv_k = cfg.get("KV_CACHE_K") or cfg.get("KV_CACHE", "q4_0")
+    kv_v = cfg.get("KV_CACHE_V") or cfg.get("KV_CACHE", "q4_0")
+    draft = cfg.get("SPEC_DRAFT_MODEL")
+    draft_path = resolve_model_path(MODELS_DIR, draft) if draft else None
+    n_cpu_moe, _ = resolve_n_cpu_moe(model_path, cfg.get("N_CPU_MOE"))
+    vram_limit = resolve_vram_limit_mb(cfg.get("VRAM_LIMIT_MB"))
+
+    ok_v, est_v, reason_v = preflight_vram(
+        model_path,
+        ctx,
+        kv_cache_k=kv_k,
+        kv_cache_v=kv_v,
+        draft_path=draft_path,
+        vram_limit_mb=vram_limit,
+        n_cpu_moe=n_cpu_moe,
+    )
+    if not ok_v:
+        print(f"ERROR: {reason_v}", file=sys.stderr)
+        print(f"  est={est_v:.0f}MB limit={vram_limit:.0f}MB — cut CTX/KV/model or raise VRAM_LIMIT_MB", file=sys.stderr)
+        sys.exit(2)
+
+    ok_h, est_h, budget_h, reason_h = preflight_host_memory(
+        model_path,
+        ctx,
+        kv_cache_k=kv_k,
+        kv_cache_v=kv_v,
+        draft_path=draft_path,
+        headroom_mb=cfg.get("HOST_MEMORY_HEADROOM_MB"),
+    )
+    if not ok_h:
+        print(f"ERROR: {reason_h}", file=sys.stderr)
+        print(
+            f"  est={est_h:.0f}MB budget={budget_h:.0f}MB — pick a smaller GGUF or lower CTX_SIZE",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
 def cmd_serve() -> int:
     cfg = parse_config(CONFIG)
+    _preflight_or_exit(cfg)
     args, host, port, alias = build_args(cfg)
 
     if is_listening(host, port):

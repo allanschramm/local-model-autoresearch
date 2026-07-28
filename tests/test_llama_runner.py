@@ -396,6 +396,82 @@ class TestLlamaRunner(unittest.TestCase):
             self.assertTrue(ok, reason)
             self.assertLessEqual(est, 7900.0)
 
+    def test_estimate_host_memory_ignores_n_cpu_moe(self):
+        from autoresearch.core.llama_runner import estimate_host_memory_mb, estimate_vram_mb
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "moe.gguf"
+            model.write_bytes(b"x")
+            size = 10 * 1024 * 1024 * 1024
+            with patch("pathlib.Path.stat", return_value=MagicMock(st_size=size)):
+                host = estimate_host_memory_mb(model, 2048, "q4_0", "q4_0")
+                vram_full = estimate_vram_mb(model, 2048, "q4_0", "q4_0")
+                vram_off = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=32)
+            self.assertAlmostEqual(host, vram_full, places=1)
+            self.assertGreater(host, vram_off * 1.5)
+
+    def test_preflight_host_rejects_12gb_on_16gb_unified(self):
+        from autoresearch.core.llama_runner import preflight_host_memory
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "big.gguf"
+            model.write_bytes(b"x")
+            size = 12 * 1024 * 1024 * 1024
+            with patch("pathlib.Path.stat", return_value=MagicMock(st_size=size)):
+                ok, est, budget, reason = preflight_host_memory(
+                    model,
+                    2048,
+                    kv_cache_k="q4_0",
+                    kv_cache_v="q4_0",
+                    ram_mb=16384.0,
+                    unified=True,
+                )
+            self.assertFalse(ok)
+            self.assertIn("HOST_MEMORY_PREFLIGHT", reason)
+            self.assertLess(budget, 12000.0)
+            self.assertGreater(est, budget)
+
+    def test_preflight_host_passes_when_under_budget(self):
+        from autoresearch.core.llama_runner import preflight_host_memory
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "small.gguf"
+            model.write_bytes(b"x")
+            size = 2 * 1024 * 1024 * 1024
+            with patch("pathlib.Path.stat", return_value=MagicMock(st_size=size)):
+                ok, est, budget, reason = preflight_host_memory(
+                    model,
+                    2048,
+                    kv_cache_k="q4_0",
+                    kv_cache_v="q4_0",
+                    ram_mb=16384.0,
+                    unified=True,
+                )
+            self.assertTrue(ok, reason)
+            self.assertEqual(reason, "")
+            self.assertLessEqual(est, budget)
+
+    def test_preflight_host_fail_closed_unified_unknown_ram(self):
+        from autoresearch.core.llama_runner import preflight_host_memory
+        with patch("autoresearch.core.hardware.detect_host_ram_mb", return_value=None):
+            ok, est, budget, reason = preflight_host_memory(
+                Path("models/non-existent.gguf"),
+                2048,
+                ram_mb=None,
+                unified=True,
+            )
+        self.assertFalse(ok)
+        self.assertIn("ram_unknown", reason)
+
+    def test_preflight_host_discrete_unknown_ram_passes(self):
+        from autoresearch.core.llama_runner import preflight_host_memory
+        with patch("autoresearch.core.hardware.detect_host_ram_mb", return_value=None):
+            ok, est, budget, reason = preflight_host_memory(
+                Path("models/non-existent.gguf"),
+                2048,
+                ram_mb=None,
+                unified=False,
+            )
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
+
     def test_estimate_vram_offload_uses_gguf_block_count(self):
         from autoresearch.core.llama_runner import estimate_vram_mb
         with tempfile.TemporaryDirectory() as tmp:

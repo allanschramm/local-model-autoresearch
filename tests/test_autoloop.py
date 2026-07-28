@@ -55,8 +55,9 @@ class TestAutoLoop(unittest.TestCase):
         self.assertNotIn("CTX_SIZE", autoloop.SEARCH_SPACE)
         self.assertIn("CTX_SIZE", autoloop.PASSTHROUGH_PARAMS)
 
+    @patch("autoloop.preflight_host_ok", return_value=True)
     @patch("autoloop.estimate_vram_mb")
-    def test_preflight_vram_ok(self, mock_estimate):
+    def test_preflight_vram_ok(self, mock_estimate, _host):
         mock_estimate.return_value = 5000.0
         cfg = {"MODEL": "m.gguf", "CTX_SIZE": 131072, "KV_CACHE_K": "q4_0"}
 
@@ -64,8 +65,9 @@ class TestAutoLoop(unittest.TestCase):
         self.assertFalse(autoloop.preflight_vram_ok(cfg, 4000.0))
         self.assertTrue(autoloop.preflight_vram_ok(cfg, None))
 
+    @patch("autoloop.preflight_host_ok", return_value=True)
     @patch("autoloop.estimate_vram_mb")
-    def test_preflight_vram_ok_fallback(self, mock_estimate):
+    def test_preflight_vram_ok_fallback(self, mock_estimate, _host):
         """KV_CACHE_K/V not set → falls back to KV_CACHE then q4_0."""
         mock_estimate.return_value = 5000.0
         cfg = {"MODEL": "m.gguf", "CTX_SIZE": 131072, "KV_CACHE": "q8_0"}

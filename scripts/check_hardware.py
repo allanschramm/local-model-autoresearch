@@ -8,157 +8,32 @@ detectado; nunca sugerir partial dense offload.
 
 from __future__ import annotations
 
-import platform
-import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
+# Repo root on path when run as scripts/check_hardware.py
+_REPO = Path(__file__).resolve().parent.parent
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
 
-MEMORY_CLASS_UNIFIED = "unified_memory"
-MEMORY_CLASS_DISCRETE = "discrete_gpu"
+from autoresearch.core.hardware import (
+    MEMORY_CLASS_DISCRETE,
+    MEMORY_CLASS_UNIFIED,
+    classify_memory_class,
+    get_system_info,
+    model_pool_gb,
+)
 
-
-def classify_memory_class(*, has_cuda: bool, has_metal: bool = False) -> str:
-    """Discrete only when NVIDIA CUDA VRAM is present; else one shared host pool.
-
-    ``has_metal`` is accepted for call-site clarity (Darwin) but does not change
-    the class: without CUDA, the host is always ``unified_memory``.
-    """
-    del has_metal  # API clarity only
-    if has_cuda:
-        return MEMORY_CLASS_DISCRETE
-    return MEMORY_CLASS_UNIFIED
-
-
-def model_pool_gb(info: dict[str, Any]) -> float:
-    """Reported capacity GB: dedicated VRAM, or total unified RAM (not a safe fill target)."""
-    if info.get("memory_class") == MEMORY_CLASS_DISCRETE:
-        return float(info.get("vram_gb") or 0.0)
-    return float(info.get("ram_gb") or 0.0)
-
-
-def _detect_ram_gb() -> float:
-    try:
-        import psutil
-
-        return round(psutil.virtual_memory().total / (1024**3), 1)
-    except ImportError:
-        pass
-
-    system = sys.platform
-    if system == "win32":
-        try:
-            res = subprocess.run(
-                ["wmic", "computersystem", "get", "TotalPhysicalMemory"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            lines = [line.strip() for line in res.stdout.splitlines() if line.strip().isdigit()]
-            if lines:
-                return round(int(lines[0]) / (1024**3), 1)
-        except Exception:
-            pass
-        return 0.0
-
-    if system == "darwin":
-        try:
-            res = subprocess.run(
-                ["sysctl", "-n", "hw.memsize"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            raw = (res.stdout or "").strip()
-            if raw.isdigit():
-                return round(int(raw) / (1024**3), 1)
-        except Exception:
-            pass
-        return 0.0
-
-    # Linux / other POSIX
-    try:
-        with open("/proc/meminfo", encoding="utf-8") as fh:
-            for line in fh:
-                if line.startswith("MemTotal:"):
-                    parts = line.split()
-                    # MemTotal is in kB
-                    return round(int(parts[1]) / (1024**2), 1)
-    except Exception:
-        pass
-    return 0.0
-
-
-def _detect_nvidia() -> tuple[str | None, float, bool]:
-    try:
-        res = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=name,memory.total",
-                "--format=csv,noheader,nounits",
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if res.returncode == 0 and res.stdout.strip():
-            line = res.stdout.strip().splitlines()[0]
-            parts = [p.strip() for p in line.split(",")]
-            if len(parts) >= 2:
-                return parts[0], round(float(parts[1]) / 1024.0, 1), True
-    except Exception:
-        pass
-    return None, 0.0, False
-
-
-def _detect_apple_metal() -> tuple[bool, str | None]:
-    """On macOS, Metal is the GPU backend (Intel + Apple Silicon)."""
-    if sys.platform != "darwin":
-        return False, None
-    chip = None
-    try:
-        res = subprocess.run(
-            ["sysctl", "-n", "machdep.cpu.brand_string"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        brand = (res.stdout or "").strip()
-        if brand:
-            chip = brand
-    except Exception:
-        pass
-    machine = platform.machine().lower()
-    if not chip:
-        chip = f"macOS ({machine})"
-    return True, chip
-
-
-def get_system_info() -> dict[str, Any]:
-    ram_gb = _detect_ram_gb()
-    gpu_name, vram_gb, has_cuda = _detect_nvidia()
-    has_metal, chip = _detect_apple_metal()
-
-    if has_cuda and gpu_name:
-        display_gpu = gpu_name
-    elif has_metal:
-        display_gpu = "Apple / macOS (Metal)"
-    else:
-        display_gpu = "Não detectada (CPU)"
-
-    memory_class = classify_memory_class(has_cuda=has_cuda, has_metal=has_metal)
-
-    return {
-        "ram_gb": ram_gb,
-        "vram_gb": vram_gb if has_cuda else 0.0,
-        "gpu_name": display_gpu,
-        "has_cuda": has_cuda,
-        "has_metal": has_metal,
-        "memory_class": memory_class,
-        "chip": chip,
-        "platform": sys.platform,
-        "detection_complete": ram_gb > 0.0 and (has_cuda or has_metal or ram_gb > 0.0),
-    }
+# Re-export for tests that import from scripts.check_hardware
+__all__ = [
+    "MEMORY_CLASS_DISCRETE",
+    "MEMORY_CLASS_UNIFIED",
+    "classify_memory_class",
+    "generate_recommendations",
+    "get_system_info",
+    "model_pool_gb",
+]
 
 
 def generate_recommendations(info: dict[str, Any]) -> None:

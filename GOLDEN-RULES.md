@@ -17,6 +17,7 @@
 
 *   **Detect hardware first**: Before recommending or downloading a GGUF, run `scripts/check_hardware.py` (Win/macOS/Linux). Read `memory_class`: `discrete_gpu` (NVIDIA VRAM) vs `unified_memory` (Apple Silicon / no discrete NVIDIA — one RAM pool shared with the OS). Explain and confirm with the user. Do not download blind if detection is incomplete — guide manual checks (`nvidia-smi`, About This Mac / `sysctl`, Task Manager).
 *   **whichllm / llmfit ≠ fit authority**: Treat them as candidate lists. On unified memory they may over-rank large models. Discard picks that would leave too little OS/IDE headroom (e.g. ~12 GB GGUF on 16 GB unified) — do not treat total RAM as a fill target.
+*   **Host-memory preflight (hard gate)**: Before `llama-server` / validation / autoloop Trial, `estimate_host_memory_mb` (full GGUF + draft + KV + overhead, **no** MoE shrink) must fit `RAM − headroom`. Unified headroom = `max(6144, 0.20×RAM)` MiB; discrete = `max(4096, 0.15×RAM)`. Override via `HOST_MEMORY_HEADROOM_MB` / `AUTORESEARCH_HOST_HEADROOM_MB`. Fail closed on unified if RAM unknown. Rejects as `HOST_MEMORY_PREFLIGHT` / `MODEL_REJECTED` — even if an agent ignores docs.
 *   **Dense = physical pool only**: Never partially offload dense GGUFs (layers → CPU / Windows shared GPU memory). That path freezes the PC. Dense must fit **physical VRAM** (discrete) or the **unified RAM pool with OS headroom** (Mac/UMA). Cut `CTX_SIZE` / KV quant / drop draft or reject. Only MoE may use `--n-cpu-moe` / VITRIOL.
 *   **Pre-flight Estimation**: `estimate_vram_mb` (weights + optional draft file + KV + overhead) runs before `llama-cli` / `llama-server`. Skip/reject any config with estimate `> VRAM_LIMIT_MB` (default 7900 on 8GB). Override via `ENGINE_DEFAULTS['VRAM_LIMIT_MB']` or `AUTORESEARCH_VRAM_LIMIT_MB`.
 *   **Runtime NVML kill (dense)**: While `llama-server` runs, the VRAM sampler kills the process if `used_mb > VRAM_LIMIT_MB` and records `VRAM_LIMIT_EXCEEDED` — belt-and-suspenders when the estimate undercounts.
@@ -49,7 +50,7 @@
 
 Every Trial runs hard gates that prove the rig can load the model, then smoke validation:
 
-0. **Arch + VRAM (before any bench):** classify GGUF dense vs MoE, resolve `--n-cpu-moe` (`None` → auto `block_count` for MoE), VRAM preflight. MoE `N_CPU_MOE=0` over physical VRAM → `MODEL_REJECTED` (set `None` for auto offload).
+0. **Arch + VRAM + host (before any bench):** classify GGUF dense vs MoE, resolve `--n-cpu-moe` (`None` → auto `block_count` for MoE), VRAM preflight, then host-memory preflight (full GGUF, no MoE shrink). MoE `N_CPU_MOE=0` over physical VRAM → `MODEL_REJECTED` (set `None` for auto offload). Host over budget → `HOST_MEMORY_PREFLIGHT` / `MODEL_REJECTED`.
 1. **llama-bench speed check** (`prompt=512`, `gen=128`, 3 repeats). If `tg_tps < TPS Floor` (Baseline `TPS_FLOOR`, default 20.0), Trial FAILs immediately — no server spin-up, no agentic eval.
 2. **Claw-Eval quick smoke**. Reports local tool-use score under the config — not just fast garbage. **No score floor**: low smoke scores are recorded, not rejected. Only the TPS Floor rejects.
 

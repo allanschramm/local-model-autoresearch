@@ -16,7 +16,7 @@ import signal
 from pathlib import Path
 from typing import Any
 
-from autoresearch.core.llama_runner import resolve_model_path, estimate_vram_mb
+from autoresearch.core.llama_runner import resolve_model_path, estimate_vram_mb, preflight_host_memory
 from autoresearch.core.model_arch import resolve_n_cpu_moe
 from autoresearch.core.config import (
     ENGINE_DEFAULTS,
@@ -203,10 +203,7 @@ def trial_config(cfg: dict[str, Any], defaults: dict[str, Any], include_ppl: boo
 
 
 def preflight_vram_ok(cfg: dict[str, Any], vram_limit: float | None) -> bool:
-    """Estimate VRAM for a config (incl. draft) and return True if it fits budget."""
-    if vram_limit is None:
-        return True
-
+    """Estimate VRAM + host memory; return True if both gates pass."""
     model = cfg.get("MODEL", "g4-opt-it-Q4_K_M.gguf")
     ctx = cfg.get("CTX_SIZE", 131072)
     kv_k = cfg.get("KV_CACHE_K") or cfg.get("KV_CACHE", "q4_0")
@@ -218,17 +215,46 @@ def preflight_vram_ok(cfg: dict[str, Any], vram_limit: float | None) -> bool:
     draft = cfg.get("SPEC_DRAFT_MODEL")
     draft_path = resolve_model_path(MODELS_DIR, draft) if draft else None
     model_path = resolve_model_path(MODELS_DIR, model)
-    n_cpu_moe, _ = resolve_n_cpu_moe(model_path, cfg.get("N_CPU_MOE"))
-    # Prefer module-level estimate_vram_mb so tests can patch autoloop.estimate_vram_mb.
-    est = estimate_vram_mb(
+
+    if vram_limit is not None:
+        n_cpu_moe, _ = resolve_n_cpu_moe(model_path, cfg.get("N_CPU_MOE"))
+        # Prefer module-level estimate_vram_mb so tests can patch autoloop.estimate_vram_mb.
+        est = estimate_vram_mb(
+            model_path,
+            ctx,
+            kv_k,
+            kv_v,
+            draft_path=draft_path,
+            n_cpu_moe=n_cpu_moe,
+        )
+        if est > vram_limit:
+            return False
+    return preflight_host_ok(cfg)
+
+
+def preflight_host_ok(cfg: dict[str, Any]) -> bool:
+    """Host-memory gate (full GGUF, no MoE shrink). Fail closed on unified if RAM unknown."""
+    model = cfg.get("MODEL", "g4-opt-it-Q4_K_M.gguf")
+    ctx = cfg.get("CTX_SIZE", 131072)
+    kv_k = cfg.get("KV_CACHE_K") or cfg.get("KV_CACHE", "q4_0")
+    kv_v = cfg.get("KV_CACHE_V") or cfg.get("KV_CACHE", "q4_0")
+    if not kv_k:
+        kv_k = "q4_0"
+    if not kv_v:
+        kv_v = "q4_0"
+    draft = cfg.get("SPEC_DRAFT_MODEL")
+    draft_path = resolve_model_path(MODELS_DIR, draft) if draft else None
+    model_path = resolve_model_path(MODELS_DIR, model)
+    headroom = cfg.get("HOST_MEMORY_HEADROOM_MB", ENGINE_DEFAULTS.get("HOST_MEMORY_HEADROOM_MB"))
+    ok, _, _, _ = preflight_host_memory(
         model_path,
         ctx,
-        kv_k,
-        kv_v,
+        kv_cache_k=kv_k,
+        kv_cache_v=kv_v,
         draft_path=draft_path,
-        n_cpu_moe=n_cpu_moe,
+        headroom_mb=headroom,
     )
-    return est <= vram_limit
+    return ok
 
 
 def _available_gguf_names(models_dir: Path) -> list[str]:

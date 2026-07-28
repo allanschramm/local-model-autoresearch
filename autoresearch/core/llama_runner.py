@@ -371,6 +371,155 @@ def preflight_vram_for_intent(
     )
 
 
+def _kv_est_mb(
+    ctx_size: int,
+    kv_cache_k: str | None = None,
+    kv_cache_v: str | None = None,
+    base_kv_cache: str = "q4_0",
+) -> float:
+    try:
+        c_size = int(ctx_size)
+    except Exception:
+        c_size = 16384
+    base_kv = base_kv_cache if base_kv_cache is not None else "q4_0"
+    k_type = kv_cache_k if kv_cache_k is not None else base_kv
+    v_type = kv_cache_v if kv_cache_v is not None else base_kv
+
+    def get_quant_factor(q_type: Any) -> float:
+        if q_type is None or not isinstance(q_type, str):
+            return VRAM_DEFAULT_QUANT_FACTOR
+        q = q_type.lower()
+        for key, factor in VRAM_QUANT_FACTORS.items():
+            if key in q:
+                return factor
+        return VRAM_DEFAULT_QUANT_FACTOR
+
+    kf = get_quant_factor(k_type)
+    vf = get_quant_factor(v_type)
+    kv_base_mb = c_size * VRAM_KB_PER_TOKEN_F16 / 1024.0
+    return (kv_base_mb / 2.0) * kf + (kv_base_mb / 2.0) * vf
+
+
+def estimate_host_memory_mb(
+    model_path: Path,
+    ctx_size: int,
+    kv_cache_k: str | None = None,
+    kv_cache_v: str | None = None,
+    base_kv_cache: str = "q4_0",
+    draft_path: Path | str | None = None,
+) -> float:
+    """Full GGUF + draft + KV + overhead. Never shrinks for MoE CPU offload."""
+    try:
+        model_size_mb = model_path.stat().st_size / (1024 * 1024)
+    except Exception:
+        model_size_mb = 4000.0
+
+    draft_mb = 0.0
+    if draft_path:
+        try:
+            draft_mb = Path(draft_path).stat().st_size / (1024 * 1024)
+        except Exception:
+            draft_mb = 0.0
+
+    kv_est_mb = _kv_est_mb(
+        ctx_size,
+        kv_cache_k=kv_cache_k,
+        kv_cache_v=kv_cache_v,
+        base_kv_cache=base_kv_cache,
+    )
+    return model_size_mb + draft_mb + kv_est_mb + VRAM_OVERHEAD_MB
+
+
+def preflight_host_memory(
+    model_path: Path,
+    ctx_size: int,
+    kv_cache_k: str | None = None,
+    kv_cache_v: str | None = None,
+    draft_path: Path | str | None = None,
+    headroom_mb: float | int | None = None,
+    ram_mb: float | None = None,
+    unified: bool | None = None,
+) -> tuple[bool, float, float, str]:
+    """Return (ok, estimate_mb, budget_mb, reason).
+
+    Fail closed on unified hosts when RAM cannot be detected.
+    On discrete NVIDIA with unknown RAM: warn via empty reason and pass (VRAM gate remains).
+    """
+    from autoresearch.core.hardware import (
+        MEMORY_CLASS_DISCRETE,
+        MEMORY_CLASS_UNIFIED,
+        detect_host_ram_mb,
+        host_memory_budget_mb,
+        is_unified_memory_host,
+        resolve_host_headroom_mb,
+    )
+
+    if unified is None:
+        unified = is_unified_memory_host()
+    mem_class = MEMORY_CLASS_UNIFIED if unified else MEMORY_CLASS_DISCRETE
+
+    if ram_mb is None:
+        ram_mb = detect_host_ram_mb()
+
+    est = estimate_host_memory_mb(
+        model_path,
+        ctx_size,
+        kv_cache_k=kv_cache_k,
+        kv_cache_v=kv_cache_v,
+        draft_path=draft_path,
+    )
+
+    if ram_mb is None or ram_mb <= 0:
+        if unified:
+            return (
+                False,
+                est,
+                0.0,
+                f"HOST_MEMORY_PREFLIGHT ram_unknown class={mem_class} est={est:.0f}MB",
+            )
+        return True, est, 0.0, ""
+
+    budget = host_memory_budget_mb(ram_mb, unified=unified, headroom_mb=headroom_mb)
+    if budget is None:
+        if unified:
+            return (
+                False,
+                est,
+                0.0,
+                f"HOST_MEMORY_PREFLIGHT ram_unknown class={mem_class} est={est:.0f}MB",
+            )
+        return True, est, 0.0, ""
+
+    headroom = resolve_host_headroom_mb(ram_mb, unified=unified, override_mb=headroom_mb)
+    if est > budget:
+        return (
+            False,
+            est,
+            budget,
+            (
+                f"HOST_MEMORY_PREFLIGHT est={est:.0f}MB > budget={budget:.0f}MB "
+                f"(ram={ram_mb:.0f} headroom={headroom:.0f} class={mem_class})"
+            ),
+        )
+    return True, est, budget, ""
+
+
+def preflight_host_memory_for_intent(
+    intent: "ServerIntent",
+    headroom_mb: float | int | None = None,
+) -> tuple[bool, float, float, str]:
+    if headroom_mb is None:
+        headroom_mb = config.DEFAULTS.get("HOST_MEMORY_HEADROOM_MB")
+    return preflight_host_memory(
+        intent.model_path,
+        intent.ctx_size,
+        kv_cache_k=intent.kv_cache_k or intent.kv_cache,
+        kv_cache_v=intent.kv_cache_v or intent.kv_cache,
+        draft_path=intent.spec_draft_model,
+        headroom_mb=headroom_mb,
+    )
+
+
 LLAMA_BENCH_CANDIDATES = _binary_candidates("llama-bench")
 
 

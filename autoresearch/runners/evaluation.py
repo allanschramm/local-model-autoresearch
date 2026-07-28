@@ -21,6 +21,7 @@ from autoresearch.core.llama_runner import (
     ConfigError,
     estimate_vram_mb,
     preflight_vram_for_intent,
+    preflight_host_memory_for_intent,
     resolve_vram_limit_mb,
 )
 from autoresearch.core.model_arch import gguf_block_count, gguf_is_moe
@@ -333,6 +334,20 @@ class ExperimentRunner:
             res.status = f"FAIL: {reason}"
             res.outcome = TrialOutcome.MODEL_REJECTED
             res.diagnostic = reason
+            res.peak_vram_gb = est_vram / 1024.0
+            return res
+
+        ok_host, est_host, budget_host, host_reason = preflight_host_memory_for_intent(
+            intent,
+            headroom_mb=norm.get("host_memory_headroom_mb", norm.get("HOST_MEMORY_HEADROOM_MB")),
+        )
+        print(
+            f"  [host-preflight] est={est_host:.0f}MB budget={budget_host:.0f}MB ok={ok_host}"
+        )
+        if not ok_host:
+            res.status = f"FAIL: {host_reason}"
+            res.outcome = TrialOutcome.MODEL_REJECTED
+            res.diagnostic = host_reason
             res.peak_vram_gb = est_vram / 1024.0
             return res
 

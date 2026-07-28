@@ -195,10 +195,11 @@ class TestRun(unittest.TestCase):
         self.assertEqual(res["val_score"], 0.4)
         self.assertNotEqual(res["outcome"], "MODEL_REJECTED")
 
+    @patch("autoresearch.runners.evaluation.preflight_host_memory_for_intent", return_value=(True, 1000.0, 8000.0, ""))
     @patch("autoresearch.runners.evaluation.preflight_vram_for_intent", return_value=(True, 1000.0, ""))
     @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=17.0)
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
-    def test_default_tps_floor_rejects_moe_speed(self, mock_runner, mock_bench, _mock_vram):
+    def test_default_tps_floor_rejects_moe_speed(self, mock_runner, mock_bench, _mock_vram, _mock_host):
         """TPS Floor 20 rejects 17 t/s (typical MoE on 8GB)."""
         res = run.run_evaluation(
             {
@@ -215,10 +216,11 @@ class TestRun(unittest.TestCase):
         self.assertEqual(res["outcome"], "MODEL_REJECTED")
         mock_runner.assert_not_called()
 
+    @patch("autoresearch.runners.evaluation.preflight_host_memory_for_intent", return_value=(True, 1000.0, 8000.0, ""))
     @patch("autoresearch.runners.evaluation.preflight_vram_for_intent", return_value=(True, 1000.0, ""))
     @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=17.0)
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
-    def test_config_tps_floor_allows_moe_speed(self, mock_runner, mock_bench, _mock_vram):
+    def test_config_tps_floor_allows_moe_speed(self, mock_runner, mock_bench, _mock_vram, _mock_host):
         """Baseline TPS_FLOOR=15 keeps 17 t/s MoE Trials alive."""
         mock_runner.return_value.__enter__.return_value = MagicMock(
             port=18080, peak_vram_mb=4000, vram_killed=False
@@ -244,10 +246,11 @@ class TestRun(unittest.TestCase):
         self.assertEqual(res["bench_tg_tps"], 17.0)
         mock_runner.assert_called_once()
 
+    @patch("autoresearch.runners.evaluation.preflight_host_memory_for_intent", return_value=(True, 1000.0, 8000.0, ""))
     @patch("autoresearch.runners.evaluation.preflight_vram_for_intent", return_value=(True, 1000.0, ""))
     @patch("autoresearch.runners.evaluation.run_llama_perplexity_validation", return_value=5.0)
     @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=17.0)
-    def test_post_bench_score_zero_uses_tps_floor(self, mock_bench, mock_ppl, _mock_vram):
+    def test_post_bench_score_zero_uses_tps_floor(self, mock_bench, mock_ppl, _mock_vram, _mock_host):
         """Perplexity-only path must zero score with Baseline TPS_FLOOR, not hardcode 20."""
         res = run.run_evaluation(
             {
@@ -267,9 +270,10 @@ class TestRun(unittest.TestCase):
         self.assertGreater(res["val_score"], 0.0)
         mock_ppl.assert_called_once()
 
+    @patch("autoresearch.runners.evaluation.preflight_host_memory_for_intent", return_value=(True, 1000.0, 8000.0, ""))
     @patch("autoresearch.runners.evaluation.preflight_vram_for_intent", return_value=(True, 1000.0, ""))
     @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=16.0)
-    def test_custom_tps_floor_rejects_below_floor(self, mock_bench, _mock_vram):
+    def test_custom_tps_floor_rejects_below_floor(self, mock_bench, _mock_vram, _mock_host):
         """Custom TPS_FLOOR=18 rejects 16 t/s at the bench gate."""
         res = run.run_evaluation(
             {
