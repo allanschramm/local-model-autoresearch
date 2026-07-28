@@ -30,7 +30,7 @@ Durable documentation for this repo: model cards, technique notes, architecture 
 ## Verification
 - Each model card must pass: filename matches index entry, "Sources / Verification" section has URLs + dates, GGUF metadata matches local file (`general.name`, `block_count`).
 - Each ADR must have: status, date, context, decision, consequences.
-- Each session log must capture: who ran what, on which hardware, with which config, measured numbers, decisions taken, errors encountered.
+- Each session log must capture: who ran what, on which hardware, with which config, measured numbers, decisions taken, errors encountered — without machine inventory, absolute user paths, alias registry, or operator PII (see `docs/sessions/AGENTS.md`).
 - Each user-facing guide must be: runnable, hardware-agnostic (or explicitly parameterized), and link to relevant session logs for evidence.
 - No dead links to internal files (run a sanity grep on `[...](...)` before commit).
 

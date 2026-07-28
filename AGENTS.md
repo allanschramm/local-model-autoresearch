@@ -123,7 +123,7 @@ Default section order:
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
 - **`results.tsv` is ground truth**: Measured Trial rows beat docs, memory, and heuristics. Leaderboards / Day-Night ranks / “incomplete” claims must be derived from TSV (or explicitly marked missing in TSV). Never omit a measured model because it is weak, deleted from disk, dominated, or “not worth keeping” — data stays valuable; docs are a secondary view of that data.
-- **Tracked docs = scores + basenames only**: Do not write which GGUFs are present, kept, or deleted on this machine into tracked docs or session logs.
+- **Tracked docs = scores + basenames only**: Do not write which GGUFs are present, kept, or deleted on this machine into tracked docs or session logs. Machine-private notes (disk lists, alias registry, absolute paths, identity) live under gitignored `private/` (see `private/README.md` locally).
 - **Quants are distinct Trials**: Different GGUF basenames = different points (e.g. deepreinforce `ornith-1.0-9b-Q4_K_M` ≠ Unsloth `Ornith-1.0-9B-UD-Q4_K_XL`; MTP ≠ non-MTP). Do not call non-UD “legacy” or skip claw/coding because a sibling quant already has a complete vector.
 - **Seed sampler from the model card before Trials**: Before the first Trial on a model, copy publisher-recommended sampling (TEMP / TOP_P / TOP_K / MIN_P / penalties) from `docs/models/<card>.md` § Recommended settings into `SAMPLER_DEFAULTS`. Pick the profile for the job — agentic/general vs coding (they often differ). Do not start Search with the template `TEMP=0.4` when the card says otherwise. Engine knobs may still hill-climb after; sampler stays at recommended until an explicit quality pass.
 - **Fair testing across models**: Always keep exactly 10 tasks per dataset for direct-coding evaluations (never 5 tasks) to guarantee fair model comparisons. Claw-Eval quick smoke (5 tasks) is exempt — it is observational smoke, not a cross-model score.
@@ -155,6 +155,7 @@ When the user requests a durable behavior change, record it here or in the relev
   - [docs/adr/AGENTS.md](docs/adr/AGENTS.md) — Architecture decision records contract + index (ADRs 0001–0008).
   - [docs/discovery/AGENTS.md](docs/discovery/AGENTS.md) — User-facing guides: model selection, good-enough speed path, whichllm/llmfit, quantization, agent onboarding, MTP/TPS, inference engines.
   - [docs/sessions/AGENTS.md](docs/sessions/AGENTS.md) — Empirical session logs (reproducibility evidence).
+- `private/` — **gitignored** operator archive (pre-scrub session snapshots, disk/alias notes). Not a Child DOX; local only.
  - [docs/architecture.html](docs/architecture.html) — Interactive architecture diagram.
  - [docs/llamacpp-toolset.md](docs/llamacpp-toolset.md) — llama.cpp binary reference (build, bench, server, quantize).
 - [scripts/AGENTS.md](scripts/AGENTS.md) — Operator scripts (setup, monitoring, server daemon).

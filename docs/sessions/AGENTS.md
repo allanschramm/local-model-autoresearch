@@ -11,8 +11,11 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - **One file per session or per significant sub-iteration of a session.** Don't merge multiple sessions.
 - **Verbatim tool outputs** are preferred over paraphrased summaries. The point is reproducibility.
 - **Errors and corrections are first-class.** When an approach was wrong, log it explicitly so future operators don't repeat.
-- **Operator-specific paths** (absolute checkout paths) are not acceptable in `docs/discovery/` or `docs/models/`. Session logs may cite repo-relative paths for reproducibility.
-- **Do not edit a session log after the session is complete** except to fix typos. Add a follow-up file instead.
+- **No absolute user/checkout paths** (`C:\Users\…`, `/mnt/c/Users/…`). Use repo-relative paths.
+- **No machine inventory.** Do not record which GGUFs/aliases are present, kept, or deleted on disk. Scores + GGUF basenames only (root AGENTS). Alias names/ports stay out — use basenames in tables.
+- **No operator PII.** No personal names, hostnames, or identity links. Say "operator" / "this rig" if a person must be referenced.
+- **Private leftovers** (disk lists, alias registry, absolute paths, identity) belong under gitignored `private/sessions/` — not in tracked logs.
+- **Do not edit a session log after the session is complete** except to fix typos or scrub contract violations above. Add a follow-up file for new work.
 - **No external-source URLs in technique claims** (per `docs/models/` rules — methodology names allowed, citations not).
 
 ## Work Guidance
