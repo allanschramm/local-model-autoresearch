@@ -2,6 +2,18 @@
 
 End-to-end workflow: **find models that fit your rig, filter for coding quality, run the autoloop on the Pareto-optimal pick.**
 
+## Step 0 — Detect local hardware (`check_hardware`)
+
+```bash
+# Windows
+.\venv\Scripts\python.exe scripts\check_hardware.py
+
+# macOS / Linux
+./venv/bin/python scripts/check_hardware.py
+```
+
+Read `memory_class`: **`discrete_gpu`** (NVIDIA VRAM) vs **`unified_memory`** (Apple Silicon / no discrete NVIDIA — one RAM pool shared with the OS). Note the **model pool** GB. Explain and confirm with the user **before** any download. This script is the local fit authority.
+
 ## Step 1 — Find candidates with `whichllm` or `llmfit`
 
 ```bash
@@ -15,6 +27,8 @@ llmfit plan "qwen 3.5 9b"
 ```
 
 Auto-detects GPU/CPU/RAM. Outputs a ranked list and memory footprint breakdown. See [`whichllm-reference.md`](./whichllm-reference.md) and [`llmfit-reference.md`](./llmfit-reference.md) for full CLI docs.
+
+**On unified memory (Mac / UMA laptops):** whichllm and llmfit may treat system RAM as full “VRAM” and rank models that will freeze or reboot the machine. Keep their output as a **candidate list**, then **drop anything that would consume most of the unified RAM** (leave clear headroom for OS/IDE — e.g. reject ~12 GB GGUF on 16 GB Mac even though 12 < 16).
 
 Key flags for this workflow:
 
@@ -109,10 +123,11 @@ The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on keep, and app
 
 ## Quick checklist
 
-- [ ] `uvx whichllm@latest` or `llmfit` — shortlist of viable models
+- [ ] `scripts/check_hardware.py` — memory class + pool; explain/confirm with user
+- [ ] `uvx whichllm@latest` or `llmfit` — shortlist of candidates (filter by Step 0 pool)
 - [ ] Cross-reference SWE-bench Verified / Aider for each
 - [ ] Plot Pareto frontier on tok/s vs coding-quality axes
-- [ ] Pick the Pareto-optimal point matching your preference
+- [ ] Pick the Pareto-optimal point matching your preference **and** local pool
 - [ ] Download GGUF, place in models/, set `MODEL` in config.py
 - [ ] Set `AUTORESEARCH_LLAMA_CPP_ROOT` if using a non-upstream llama.cpp fork
 - [ ] Smoke: `benchmark_search.py --validation`
@@ -122,11 +137,13 @@ The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on keep, and app
 
 ## Common pitfalls
 
+0. **Trusting whichllm/llmfit fit on unified memory** — On Mac / UMA they may recommend ~12 GB GGUFs for 16 GB unified RAM. Always run `check_hardware` first and discard oversized picks.
 1. **Picking by whichllm score alone** — Gemma-4-26B-A4B ranks top but is bad at coding agents.
 2. **Picking the densest model that fits** — Qwen3.6-27B fits partial but is slower than the MoE alternative.
 3. **Trying to autotune every candidate** — 24h × 1 model beats 8h × 3 models (each gets a full search).
 4. **Wrong `AUTORESEARCH_LLAMA_CPP_ROOT`** — autoloop silently fails to find llama-server.
-5. **Not watching VRAM at startup** — use `--vram-limit-mb=7500` (or whatever your budget) to skip configs that would OOM.
+5. **Not watching VRAM at startup** — use Baseline `VRAM_LIMIT_MB` (or whatever your budget) to skip configs that would OOM.
+6. **Downloading before hardware is known** — agents must not `hf download` or run validation until pool is detected and explained.
 
 ## Related docs
 

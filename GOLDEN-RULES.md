@@ -15,7 +15,9 @@
 
 ## 2. VRAM Safety & Hardware Failsafes
 
-*   **Dense = physical VRAM only**: Never partially offload dense GGUFs (layers → CPU / Windows shared GPU memory). That path freezes the PC. Dense must fit physical VRAM (cut `CTX_SIZE` / KV quant / drop draft) or the Trial is rejected. Only MoE may use `--n-cpu-moe` / VITRIOL.
+*   **Detect hardware first**: Before recommending or downloading a GGUF, run `scripts/check_hardware.py` (Win/macOS/Linux). Read `memory_class`: `discrete_gpu` (NVIDIA VRAM) vs `unified_memory` (Apple Silicon / no discrete NVIDIA — one RAM pool shared with the OS). Explain and confirm with the user. Do not download blind if detection is incomplete — guide manual checks (`nvidia-smi`, About This Mac / `sysctl`, Task Manager).
+*   **whichllm / llmfit ≠ fit authority**: Treat them as candidate lists. On unified memory they may over-rank large models. Discard picks that would leave too little OS/IDE headroom (e.g. ~12 GB GGUF on 16 GB unified) — do not treat total RAM as a fill target.
+*   **Dense = physical pool only**: Never partially offload dense GGUFs (layers → CPU / Windows shared GPU memory). That path freezes the PC. Dense must fit **physical VRAM** (discrete) or the **unified RAM pool with OS headroom** (Mac/UMA). Cut `CTX_SIZE` / KV quant / drop draft or reject. Only MoE may use `--n-cpu-moe` / VITRIOL.
 *   **Pre-flight Estimation**: `estimate_vram_mb` (weights + optional draft file + KV + overhead) runs before `llama-cli` / `llama-server`. Skip/reject any config with estimate `> VRAM_LIMIT_MB` (default 7900 on 8GB). Override via `ENGINE_DEFAULTS['VRAM_LIMIT_MB']` or `AUTORESEARCH_VRAM_LIMIT_MB`.
 *   **Runtime NVML kill (dense)**: While `llama-server` runs, the VRAM sampler kills the process if `used_mb > VRAM_LIMIT_MB` and records `VRAM_LIMIT_EXCEEDED` — belt-and-suspenders when the estimate undercounts.
 *   **TPS Floor**: User-set in Baseline `ENGINE_DEFAULTS['TPS_FLOOR']` (default **20.0**). Below this, `val_score` is zeroed / Trial rejects. MoE on 8GB often needs **15–18** — lower the floor per model; do not hardcode in harness.

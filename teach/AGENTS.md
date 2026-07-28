@@ -17,13 +17,14 @@ Course operator / instructors. Not part of the autotuning runtime loop.
 - Student-facing HTML surface: `index.html` + `reference/glossario.html` + the 10 lessons under `lessons/` (S0D1–S0D2, S1D1–S1D4, S2D1–S2D4). No extra cheat-sheet pages. Prefer glossary over `docs/*.md` links in lesson bodies.
 - Guia CTA: `index.html` “Próximo passo” uses `TeachProgress.getNextLesson` (first incomplete in curriculum order).
 - Onboarding step 5 (`verify_setup.py`) is optional until a local server listens on the selected port; the repository server helper defaults to 18080.
-- Student CLI tools: `scripts/check_hardware.py` (GPU/VRAM recommender) and `scripts/verify_setup.py` (server health & TPS benchmark).
+- Student CLI tools: `scripts/check_hardware.py` (cross-OS hardware + model-pool recommender) and `scripts/verify_setup.py` (server health & TPS benchmark).
 - Agent guidance: During `/teach` sessions, agent acts as interactive tutor. Follow 5-step onboarding: (1) Check/install Python, (2) Create `venv`, (3) Install `requirements.txt`, (4) Run `check_hardware.py`, (5) Run `verify_setup.py`. Then proceed to Module 0.
+- **Hardware before download (hard gate):** After step 4, read `check_hardware` output (`discrete_gpu` vs `unified_memory`, RAM/VRAM). Explain in pt-BR (unified = one pool shared with OS/IDE/browser). Confirm numbers. **Forbidden** until that is done: `hf download`, whichllm/llmfit “just download #1”, `benchmark_search` / validation with a large GGUF. whichllm/llmfit = candidates only; on unified RAM reject picks that would consume most of the pool (e.g. ~12 GB on 16 GB). If detection incomplete, guide manual checks — never download blind.
 - **Leigo voice (esp. Semana 2):** Portuguese name first; English flag in parentheses. Explain effect (“maior = mais criativo”), not formulas. Chain related knobs. No logit/softmax/“guloso”.
 - **Zero meta no HTML do aluno:** NUNCA vazar para a aula pensamentos, decisões de currículo, “o que cortamos”, “hoje o foco é X porque já vimos Y”, scaffolding de conversa agente↔instrutor, ou justificativas de design. Só conteúdo que o aluno precisa aprender. Contraste de conceitos (ex. skill vs MCP) OK se ensina; agenda/planejamento interno NÃO.
 - Quizzes: hashed answers only (`assets/QUIZ-HASH.md`); options simplified in pt-BR for beginners (no LM Studio references in quizzes).
 - **Completion gate:** each published lesson requires its quiz plus a practice check (`assets/progress.js`; localStorage keys `teach_quiz_pass_v1` and `teach_practice_pass_v1`). Simulated practice counts as completion but remains labeled until replaced by real practice. Preserve draft Semana 2 Dias 2–4 state but ignore them in published progress.
-- Dense GGUF guidance must require the model to fit physical VRAM; never recommend partial dense offload/shared-memory spill. Expert offload is MoE-only.
+- Dense GGUF guidance: fit **physical VRAM** on discrete NVIDIA, or the **unified RAM pool** (with OS headroom) on Mac/UMA; never recommend partial dense offload/shared-memory spill. Expert offload is MoE-only.
 - No GGUFs, results, or run logs in this tree.
 
 ## Work Guidance
@@ -42,4 +43,5 @@ Course operator / instructors. Not part of the autotuning runtime loop.
 - [assets/sampler-sim.js](assets/sampler-sim.js) — Interactive restaurant sampler embedded in S2D1 (not a standalone page).
 - [assets/mcp-sim.js](assets/mcp-sim.js) — Kitchen-bench MCP utensil toggle embedded in S2D2 (not a standalone page).
 - [assets/diagrams/s2d1-amostragem-restaurante.excalidraw](assets/diagrams/s2d1-amostragem-restaurante.excalidraw) — Instructor theory board for S2D1: vertical scroll, restaurant metaphor only (no config/code).
+- [assets/diagrams/s2d2-mcp-cozinha.excalidraw](assets/diagrams/s2d2-mcp-cozinha.excalidraw) — Instructor theory board for S2D2: vertical scroll, kitchen metaphor only (skill=receita, MCP=utensílio; no config/code).
 - (otherwise flat under `teach/`)

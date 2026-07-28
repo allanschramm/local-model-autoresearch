@@ -5,6 +5,10 @@ Hardware-aware LLM finder. Auto-detects GPU/CPU/RAM, ranks models by fit and qua
 **Version:** 0.5.12  
 **Install:** `uvx whichllm@latest` (requires `uv`/`uvx`)
 
+## Unified memory warning (Mac / UMA / no discrete NVIDIA)
+
+whichllm may treat system RAM as full GPU VRAM on Apple Silicon and other unified-memory rigs, and rank models that are **too large** (freeze/reboot risk). **Always** run `scripts/check_hardware.py` first and treat whichllm output as a **candidate list**. Discard any model whose footprint exceeds the local pool (leave headroom for OS/IDE). whichllm is **not** final fit authority on `unified_memory`.
+
 ## Global Options
 
 | Flag | Short | Description |

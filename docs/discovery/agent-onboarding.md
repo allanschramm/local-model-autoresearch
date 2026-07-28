@@ -13,6 +13,7 @@ Bootstrap context for agents working on this repo.
 | `autoresearch/benchmarks/benchmark_coding.py` | Evaluates coding capabilities via LCB, HE+, MBPP+, and BigCodeBench. |
 | `results.tsv` | Tab-separated database recording trial history. |
 | `scripts/rank_results.py` | Rank models from TSV (Pareto / Day / Night / claw / coding). **Use this for rankings — no temp scripts.** |
+| `scripts/check_hardware.py` | Cross-OS hardware diagnose (Win/macOS/Linux). Local fit authority before downloads. |
 
 ## Local Rules
 
@@ -21,10 +22,24 @@ Bootstrap context for agents working on this repo.
 3. **No Pushing**: Never push results or config tweaks to remote branches. Keep all benchmark runs offline.
 4. **Sampler seed**: Before first Trial on a model, copy Recommended settings from `docs/models/<card>.md` into `SAMPLER_DEFAULTS` (agentic/general vs coding). Do not start from template `TEMP=0.4` when the card differs.
 5. **DOX Framework**: Read the `AGENTS.md` hierarchy path to any file before touching it.
+6. **Hardware before download (students / new clones)**: Run `scripts/check_hardware.py` first. Explain `discrete_gpu` vs `unified_memory` in plain language. Confirm RAM/VRAM/pool with the user. **Never** `hf download` or run `benchmark_search --validation` with a large GGUF before that. whichllm/llmfit are candidates only — reject oversized #1 on unified RAM (e.g. ~12 GB model on 16 GB Mac). If detection is incomplete, guide About This Mac / `sysctl`, Task Manager, or `nvidia-smi`.
+
+## Student / first-day checklist
+
+1. Run `check_hardware.py` → read memory class + pool
+2. Explain to the user (pt-BR if teaching) what unified vs dedicated means for *their* numbers
+3. Confirm numbers
+4. Optional: whichllm/llmfit for candidates — filter by detected pool
+5. Only then download GGUF / `serve-config` / `verify_setup`
+6. Do **not** jump to claw validation with an oversized model
 
 ## Essential Commands
 
 ```bash
+# Hardware diagnose (Win / macOS / Linux) — before any model download
+.\venv\Scripts\python.exe scripts\check_hardware.py
+# ./venv/bin/python scripts/check_hardware.py
+
 # Setup check
 bash scripts/setup-check.sh
 

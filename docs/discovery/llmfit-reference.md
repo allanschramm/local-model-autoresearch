@@ -2,6 +2,10 @@
 
 Rust-based hardware-aware LLM sizing and discovery CLI/TUI tool ([AlexsJones/llmfit](https://github.com/AlexsJones/llmfit)). Auto-detects GPU, CPU, and RAM to determine which models and quants fit on your hardware across local and provider ecosystems.
 
+## Unified memory warning (Mac / UMA / no discrete NVIDIA)
+
+Like whichllm, llmfit can over-estimate what fits when RAM and GPU share one pool. Run `scripts/check_hardware.py` first; use llmfit for **candidates**, then keep only models that fit the detected pool with OS headroom. llmfit is **not** final fit authority on `unified_memory`.
+
 **Repository:** [https://github.com/AlexsJones/llmfit](https://github.com/AlexsJones/llmfit)  
 **Install Methods:**
 - **Cargo (Rust):** `cargo install llmfit`

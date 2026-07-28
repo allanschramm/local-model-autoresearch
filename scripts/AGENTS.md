@@ -17,7 +17,7 @@ Repository operators and developers.
 ## Work Guidance
 - Use `serve-config.py` as the preferred CLI helper to start/stop the llama-server daemon based on the mutable Baseline in `config.py`.
 - Use `build-llamacpp.py` (`python scripts/build-llamacpp.py --cpu` or `--cuda`) to build runtime binaries for local inference.
-- Use `check_hardware.py` to diagnose local GPU/VRAM/RAM and give conservative GGUF/context guidance. Dense models must fit physical VRAM and use full GPU placement; never suggest partial dense offload.
+- Use `check_hardware.py` to diagnose hardware on **Windows, macOS, and Linux**: RAM, NVIDIA VRAM (`discrete_gpu`) or unified memory / no discrete NVIDIA (`unified_memory`, including Apple Silicon Metal). Report memory class + model pool; give conservative GGUF/context guidance. Dense must fit the detected pool (VRAM or unified RAM with OS headroom); Metal uses `-ngl 99`, true CPU-only uses `-ngl 0`; never suggest partial dense offload. Agents treat this script as local fit authority over whichllm/llmfit rankings.
 - Use `verify_setup.py` to validate local API server health and benchmark real-time TPS. Its default port matches `serve-config.py` (18080).
 - Use `lcb_only.py` to re-measure LiveCodeBench (10 tasks) against current Baseline — gambiarra when coding HE/MBPP/BC already logged but LCB cache failed.
 - Use `rank_results.py` to print Pareto / Day / Night / claw / coding rankings from `results.tsv`. Agents must use this CLI for model rankings — no ad-hoc temp filter scripts.
