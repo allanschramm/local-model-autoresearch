@@ -55,12 +55,12 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 - [`bonsai-27b.md`](./bonsai-27b.md) — Bonsai 27B model card.
 - [`laguna-xs-2.1.md`](./laguna-xs-2.1.md) — Laguna-XS-2.1 MoE; best claw-full (0.6667); weak coding (0.195).
 - [`ternary-bonsai-27b.md`](./ternary-bonsai-27b.md) — Ternary Q2_0 (rejected/deleted; PrismML; ~10.6 t/s).
-- [`lfm2.5-1.2b.md`](./lfm2.5-1.2b.md) — LFM2.5-1.2B dense; claw-full 0.6000; coding 0.350 @ 65k f16.
+- [`lfm2.5-1.2b.md`](./lfm2.5-1.2b.md) — LFM2.5-1.2B; claw 0.6000 / coding 0.350.
 - [`lfm2.5-8b-a1b.md`](./lfm2.5-8b-a1b.md) — LFM2.5-8B-A1B MoE hybrid (`lfm2moe`); full VRAM `n-cpu-moe 0`.
 - [`gemma-4-12b.md`](./gemma-4-12b.md) — Gemma 4 12B model card.
 - [`gemma-4-26b-a4b.md`](./gemma-4-26b-a4b.md) — Gemma 4 26B A4B; claw 0.1333 / coding 0.590 @ 65k.
 - [`gemma-4-e4b.md`](./gemma-4-e4b.md) — Gemma 4 E4B model card.
-- [`ornith-1.0-9b.md`](./ornith-1.0-9b.md) — Ornith 1.0 9B; claw-full 0.6000 @ 65k; coding 0.570 (UD) / 0.580 (MTP) @ 32k.
+- [`ornith-1.0-9b.md`](./ornith-1.0-9b.md) — UD / MTP / deepreinforce Q4_K_M are separate Trials (coding 0.580 on deepreinforce basename; claw pending for that id).
 - [`ornith-1.0-35b.md`](./ornith-1.0-35b.md) — Ornith 1.0 35B; Q4 claw 0.6000 / coding 0.580; Q3 claw 0.4667 / coding 0.555.
 - [`ornith-1.0-35b-iq3_m.md`](./ornith-1.0-35b-iq3_m.md) — Ornith 1.0 35B IQ3_M quant model card.
 - [`qwen-agentworld-35b-a3b.md`](./qwen-agentworld-35b-a3b.md) — Qwen AgentWorld 35B A3B model card.
@@ -68,6 +68,7 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 - [`qwen3.6-35b-a3b.md`](./qwen3.6-35b-a3b.md) — Qwen 3.6 35B A3B model card.
 - [`qwythos-9b-claude-mythos-5-1m.md`](./qwythos-9b-claude-mythos-5-1m.md) — Qwythos 9B Claude Mythos model card.
 - [`nanbeige4.2-3b.md`](./nanbeige4.2-3b.md) — Nanbeige4.2-3B looped dense (arch fork required).
-- [`pocket-35b.md`](./pocket-35b.md) — POCKET-35B Q3_K_M; claw-full **0.6667** + coding **0.615** @ ~35 t/s.
+- [`kat-coder-v2.5-dev.md`](./kat-coder-v2.5-dev.md) — KAT IQ4_XS; claw **0.6000** + coding **0.640**.
+- [`pocket-35b.md`](./pocket-35b.md) — POCKET-35B Q3_K_M; claw **0.6667** + coding **0.615**; Night pick.
 - [`pocket-26b.md`](./pocket-26b.md) — POCKET-26B **deleted**; historical claw **0.2000** / coding **0.490**.
 - [`vitriol-technique.md`](./vitriol-technique.md) — Codacus VITRIOL technique note (2-knob MoE offload strategy).

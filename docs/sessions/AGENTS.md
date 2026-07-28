@@ -11,7 +11,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - **One file per session or per significant sub-iteration of a session.** Don't merge multiple sessions.
 - **Verbatim tool outputs** are preferred over paraphrased summaries. The point is reproducibility.
 - **Errors and corrections are first-class.** When an approach was wrong, log it explicitly so future operators don't repeat.
-- **Operator-specific paths** (historical session references) are acceptable here because session logs are operator-specific. They are NOT acceptable in `docs/discovery/` or `docs/models/` (user-facing).
+- **Operator-specific paths** (absolute checkout paths) are not acceptable in `docs/discovery/` or `docs/models/`. Session logs may cite repo-relative paths for reproducibility.
 - **Do not edit a session log after the session is complete** except to fix typos. Add a follow-up file instead.
 - **No external-source URLs in technique claims** (per `docs/models/` rules — methodology names allowed, citations not).
 
@@ -53,3 +53,4 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - [`2026-07-26-bonsai-coding-vs-pocket.md`](./2026-07-26-bonsai-coding-vs-pocket.md) — Bonsai coding-10 0.455 vs POCKET 0.615.
 - [`2026-07-26-pocket-26b-pipeline.md`](./2026-07-26-pocket-26b-pipeline.md) — POCKET-26B Q4_K_M; claw-full 0.20 / coding 0.49.
 - [`2026-07-27-incomplete-vectors-pareto.md`](./2026-07-27-incomplete-vectors-pareto.md) — complete incomplete vectors; Ornith Q3 A/B; Day ADR 0008; Qwen coding reject.
+- [`2026-07-27-kat-coder-v2.5-dev-pipeline.md`](./2026-07-27-kat-coder-v2.5-dev-pipeline.md) — KAT-Coder IQ4_XS; claw-full 0.6000 / coding 0.640.
