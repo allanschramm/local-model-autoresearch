@@ -51,6 +51,6 @@ Siga os 5 passos abaixo no terminal conforme o seu sistema operacional para prep
 | Slot | Foco | Lição HTML | Status |
 |---|---|---|---|
 | **Dia 1** | Samplers: temp, top-k/p, min-p, penalidades + simulador | [s2d1](lessons/s2d1-parametros-qualidade.html) | **Publicado** |
-| **Dia 2** | MCPs e ferramentas externas (skills já no S1D4) | [s2d2](lessons/s2d2-skills-mcps.html) | Em construção |
+| **Dia 2** | MCP (utensílios extras / plug-and-play) + Context7; skills = receitas no S1D4 | [s2d2](lessons/s2d2-mcp-ferramentas.html) | **Publicado** |
 | **Dia 3** | Sandbox, hooks e gates | [s2d3](lessons/s2d3-sandbox-hooks-gates.html) | Em construção |
 | **Dia 4** | Caso de uso final integrado | [s2d4](lessons/s2d4-usecase-completo.html) | Em construção |

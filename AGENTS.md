@@ -128,6 +128,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - **Seed sampler from the model card before Trials**: Before the first Trial on a model, copy publisher-recommended sampling (TEMP / TOP_P / TOP_K / MIN_P / penalties) from `docs/models/<card>.md` § Recommended settings into `SAMPLER_DEFAULTS`. Pick the profile for the job — agentic/general vs coding (they often differ). Do not start Search with the template `TEMP=0.4` when the card says otherwise. Engine knobs may still hill-climb after; sampler stays at recommended until an explicit quality pass.
 - **Fair testing across models**: Always keep exactly 10 tasks per dataset for direct-coding evaluations (never 5 tasks) to guarantee fair model comparisons. Claw-Eval quick smoke (5 tasks) is exempt — it is observational smoke, not a cross-model score.
 - **README language**: README.md must always be in pt-BR. Agent-facing docs (docs/, AGENTS.md, GOLDEN-RULES.md, CONTEXT.md, program.md) stay in English.
+- **Teach HTML = zero meta leak**: Never put conversation thoughts, curriculum decisions (“hoje o foco…”, “já vimos X então Y”), or design justifications into student-facing lesson HTML. Only teachable content. Full rule: [teach/AGENTS.md](teach/AGENTS.md).
 - **Agentic coding migration**: HumanEval+/MBPP+/LiveCodeBench/BigCodeBench are the coding Objective Vector axis (10 tasks/dataset). Prefer long-horizon agentic targets for future coding-agent quality once adapters exist; Claw full remains the agentic axis today.
 - **Pareto Search (ADR 0006 + 0008)**: Keep surface is a Pareto Set on configured `CTX_SIZE` × TPS × agentic (Claw full) × coding (coding-10). Neighbors stay per model; global front ranks models for a hardware+budget. Day/Night are selection lenses (Day → IQ band `min(ag,cod) ≥ DAY_IQ_RATIO × IQ_best` then max TPS, default ratio 0.75 — [ADR 0008](docs/adr/0008-day-iq-epsilon-then-tps.md); Night → `CTX ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`). Status: `on_front` | `dominated` | `incomplete` | `rejected`. See [CONTEXT.md](CONTEXT.md), [docs/adr/0006-pareto-frontier-search.md](docs/adr/0006-pareto-frontier-search.md), [docs/discovery/pareto-selection.md](docs/discovery/pareto-selection.md).
 - **Agentic + coding axes**: Claw-Eval full = agentic axis; Claw quick = smoke. Direct-coding uses exactly 10 tasks per dataset and is the coding axis (required for a complete Objective Vector / `on_front`).
@@ -160,7 +161,7 @@ When the user requests a durable behavior change, record it here or in the relev
  - [docs/llamacpp-toolset.md](docs/llamacpp-toolset.md) — llama.cpp binary reference (build, bench, server, quantize).
 - [scripts/AGENTS.md](scripts/AGENTS.md) — Operator scripts (setup, monitoring, server daemon).
 - [tests/AGENTS.md](tests/AGENTS.md) — Unit and integration test suite.
-- [teach/AGENTS.md](teach/AGENTS.md) — Course materials (M0 + S1 TPS + S2D1 samplers; S2D2–4 drafts); Dia 1 LM Studio, Dia 2+ this repo.
+- [teach/AGENTS.md](teach/AGENTS.md) — Course materials (M0 + S1 TPS + S2D1 samplers + S2D2 MCP; S2D3–4 drafts); Dia 1 LM Studio, Dia 2+ this repo.
 - External sources (**agent read-only — never edit**):
  - [llama.cpp/](llama.cpp/) — upstream runtime (**git submodule**).
  - [claw-eval/](claw-eval/) — Claw-Eval harness (**local vendor tree**, gitignored; not a submodule).

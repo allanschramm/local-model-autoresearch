@@ -16,7 +16,7 @@
     s1d3: ["s1d3-q1", "s1d3-q2"],
     s1d4: ["s1d4-q1", "s1d4-q2", "s1d4-q3"],
     s2d1: ["s2d1-q1", "s2d1-q2", "s2d1-q3", "s2d1-q4"],
-    s2d2: ["s2d2-q1", "s2d2-q2"],
+    s2d2: ["s2d2-q1", "s2d2-q2", "s2d2-q3", "s2d2-q4"],
     s2d3: ["s2d3-q1", "s2d3-q2"],
     s2d4: ["s2d4-q1", "s2d4-q2"],
   };
@@ -57,6 +57,11 @@
       id: "s2d1",
       href: "lessons/s2d1-parametros-qualidade.html",
       title: "Semana 2 · Dia 1 — Samplers / qualidade",
+    },
+    {
+      id: "s2d2",
+      href: "lessons/s2d2-mcp-ferramentas.html",
+      title: "Semana 2 · Dia 2 — MCP (plug-and-play)",
     },
   ];
 

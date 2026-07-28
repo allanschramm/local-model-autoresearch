@@ -50,6 +50,12 @@ Memória esgotada. Em denso, cortar contexto/KV, remover draft ou escolher GGUF 
 **Amostragem (sampling)**:
 Escolher a próxima palavra (restaurante). Ordem no motor: penalties → top_k → top_p → min_p → temperature → sorteio. Semana 2 · Dia 1.
 
+**MCP**:
+Encaixe plug-and-play de utensílios extras pro agente (cozinheiro). O harness já tem faca/panela; MCP adiciona ferramentas de fora (docs, APIs…). Semana 2 · Dia 2. Skill = receita (S1D4).
+
+**Context7**:
+Utensílio MCP: manual atualizado (docs por versão) das bibliotecas. Hands-on S2D2 (Cursor / Claude Code).
+
 **Temperatura / Top-K / Top-P / Min-P / penalidades**:
 Ver tabela e defs no HTML do glossário (valores de “desligar” inclusos).
 

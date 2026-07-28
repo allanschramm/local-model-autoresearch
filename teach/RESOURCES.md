@@ -30,13 +30,21 @@
 - [LLM Sampling Parameters Guide — Sam McLeod](https://smcleod.net/2025/04/llm-sampling-parameters-guide/)
   Guia prático alinhado a llama.cpp (defaults, presence vs frequency, troubleshooting). Use for: intução e perfis.
 - Cards/sampling em `docs/models/` — Use for: semear `SAMPLER_DEFAULTS` do publisher (prática real S2D1).
-- Docs MCP (quando a aula S2D2 fixar links) — TBD; skills já cobertos no S1D4.
+- [What is MCP?](https://modelcontextprotocol.io/docs/getting-started/intro)
+  Definição oficial (USB-C para apps de IA). Use for: S2D2 conceito.
+- [Context7 (Upstash)](https://github.com/upstash/context7)
+  Servidor MCP de documentação por versão. Use for: S2D2 prática.
+- [Context7 — all clients](https://context7.com/docs/resources/all-clients)
+  JSON Cursor + `claude mcp add`. Use for: instalação S2D2.
+- [context7.com/dashboard](https://context7.com/dashboard)
+  API key. Use for: rate limit na aula ao vivo.
 
 ## Sabedoria (comunidades)
 - [r/LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/) — relatos de VRAM/TPS (filtrar marketing).
 - [llama.cpp Discussions](https://github.com/ggml-org/llama.cpp/discussions) — flags e builds.
+- [Upstash Discord](https://upstash.com/discord) — Context7 / MCP clients.
 
 ## Lacunas
 - Link canónico LM Studio “Local Server” pode mudar de URL — validar na véspera do Dia 1.
 - Motor “surpresa” do Dia 3: não documentar até o operador revelar.
-- Semana 2 live: Dias 2–4 em aberto; Dia 1 (samplers) publicado.
+- Semana 2 live: Dias 3–4 em aberto; Dias 1–2 (samplers + MCP) publicados.

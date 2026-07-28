@@ -1,7 +1,7 @@
 # Missão: Workshop AILOCAL Essentials
 
 ## Por que existe
-Ensinar qualquer pessoa a **rodar IA Local no próprio computador com alto desempenho**. Módulo 0, Semana 1 e Semana 2 · Dia 1 (samplers) formam a jornada publicada; Dias 2–4 da Semana 2 seguem em desenho.
+Ensinar qualquer pessoa a **rodar IA Local no próprio computador com alto desempenho**. Módulo 0, Semana 1 e Semana 2 · Dias 1–2 (samplers + MCP/Context7) formam a jornada publicada; Dias 3–4 da Semana 2 seguem em desenho.
 
 ## Como é o sucesso
 ### Módulo 0 — Fundação Conceitual do Zero (para leigos)
@@ -22,7 +22,8 @@ Ensinar qualquer pessoa a **rodar IA Local no próprio computador com alto desem
 
 ### Semana 2 — Qualidade
 - **Dia 1 (publicado):** parâmetros de geração — temperatura, top-k, top-p, min-p, repeat / presence / frequency; semear `SAMPLER_DEFAULTS` do card
-- Dias 2–4 (em construção): MCPs / ferramentas; sandbox / hooks / gates; caso de uso final
+- **Dia 2 (publicado):** MCP (utensílios extras / plug-and-play) + Context7; skills = receitas no S1D4
+- Dias 3–4 (em construção): sandbox / hooks / gates; caso de uso final
 
 ## Regras e Restrições
 - Material em **pt-BR** simples e didático para leigos
