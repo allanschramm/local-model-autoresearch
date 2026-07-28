@@ -73,8 +73,8 @@ llama.cpp-nanbeige42/build-cuda/bin/llama-bench.exe \
 
 ## Side findings (alias / champion audit — ephemeral scripts, not kept)
 
-- Best dense **agentic_full keep** in `results.tsv`: `Qwythos-9B-v2-MTP-Q4_K_M.gguf` **0.5333** @ 34.5 t/s — **GGUF missing on disk**; Hub has no useful CUDA MTP GGUF for v2 (MLX-only). Local non-MTP `Qwythos-9B-v2-Q4_K_M.gguf` present.
-- Several `models/aliases/*` entries point at GGUFs no longer on disk; INDEX lists duplicates / stale scores. Cleanup deferred (promote champion blocked on re-acquire).
+- Best dense **agentic_full keep** in `results.tsv`: `Qwythos-9B-v2-MTP-Q4_K_M.gguf` **0.5333** @ 34.5 t/s — Hub lacked a useful CUDA MTP GGUF for v2 at the time (MLX-only common). Non-MTP `Qwythos-9B-v2-Q4_K_M.gguf` was the available sibling.
+- Several `models/aliases/*` entries were stale vs available GGUFs; cleanup deferred.
 
 ---
 

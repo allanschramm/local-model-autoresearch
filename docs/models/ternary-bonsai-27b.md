@@ -1,4 +1,4 @@
-# Ternary-Bonsai-27B-Q2_0 — Model Card (Local, **not kept on disk**)
+# Ternary-Bonsai-27B-Q2_0 — Model Card (Local, historical / rejected)
 
 **Status:** **REJECTED / deleted from `models/`** (2026-07-23). Doc kept for future re-acquire decisions.
 **Source:** PrismML Bonsai family (Q2_0 ternary pack). Related: [bonsai-27b.md](bonsai-27b.md) (Q1_0 keep).

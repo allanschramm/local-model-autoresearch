@@ -5,7 +5,7 @@
 1. Build global Pareto ranking from `results.tsv` (ctx × TPS × agentic × coding).
 2. Fix bad Day picks (max TPS → LFM 8B; speed-band → LFM 1.2B half-IQ).
 3. Land **ADR 0008**: Day = IQ ε-band then max TPS; Night maximin unchanged.
-4. Complete incomplete vectors still on disk; document failures.
+4. Complete incomplete Objective Vectors; document failures.
 5. Treat distinct quants as separate Trials (Q3 ≠ Q4).
 
 ## Hardware
@@ -90,8 +90,6 @@ GGUF/draft/mmproj deleted from disk; **scores and model cards kept** in repo. Al
 | `Qwythos-9B-v2-Q4_K_M.gguf` + mmproj | Mythos non-MTP covers coding |
 | `nanbeige4.2-3b-Q4_K_M.gguf` | dominated; needs `llama.cpp-nanbeige42` fork |
 | `gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf` (lmstudio copy) + draft/mmproj | agentic 0.1333 |
-
-**Still on disk (day-to-day):** `POCKET-35B-Q3_K_M`, `Ornith-9B-MTP`, `Ornith-9B-UD`, `Ornith-35B-UD-Q4`, `Qwythos-9B-Claude-Mythos-5-1M` (non-MTP), optional `LFM2.5-1.2B`, `gemma-4-E4B`.
 
 ## Docs updated
 

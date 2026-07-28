@@ -1,4 +1,4 @@
-# POCKET-26B — Model Card (Local, **not kept on disk**)
+# POCKET-26B — Model Card (Local, historical)
 
 **Status:** **DELETED from `models/` + alias removed** (2026-07-26). Doc + `results.tsv` rows kept.  
 **Source repo:** https://huggingface.co/FINAL-Bench/POCKET-26B-GGUF  

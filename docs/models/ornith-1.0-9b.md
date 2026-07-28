@@ -1,11 +1,15 @@
 # Ornith-1.0-9B — Model Card (Local)
 
-**Source repo:** https://huggingface.co/unsloth/Ornith-1.0-9B-GGUF
-**Unsloth docs:** https://unsloth.ai/docs/models/qwen35 (model uses Qwen 3.5 architecture)
-**License:** Apache-2.0
-**Local file:** `models/Ornith-1.0-9B-UD-Q4_K_XL.gguf` (5.98 GB) (previously `models/ornith-1.0-9b-Q4_K_M.gguf`)
-**Family:** Ornith (based on Qwen 3.5 architecture)
-**Quantization:** `UD-Q4_K_XL` (Unsloth Dynamic Q4_K_XL)
+**Source (Unsloth UD):** https://huggingface.co/unsloth/Ornith-1.0-9B-GGUF  
+**Source (deepreinforce official):** https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B-GGUF  
+**Unsloth docs:** https://unsloth.ai/docs/models/qwen35 (model uses Qwen 3.5 architecture)  
+**License:** Apache-2.0 / upstream as published  
+**GGUF basenames (separate Trials):**  
+- `Ornith-1.0-9B-UD-Q4_K_XL.gguf` — Unsloth Dynamic  
+- `Ornith-1.0-9B-MTP-Q4_K_M.gguf` — MTP pack  
+- `ornith-1.0-9b-Q4_K_M.gguf` — deepreinforce official Q4_K_M (coding-10 **0.5800** in TSV; claw-full still missing for this basename)  
+**Family:** Ornith (deepreinforce-ai; Qwen 3.5 architecture)  
+**Quantizations:** Unsloth `UD-Q4_K_XL` ≠ deepreinforce `Q4_K_M` ≠ MTP pack — each is its own Objective Vector.
 
 ## Architecture (from GGUF metadata, verified via gguf lib)
 - Causal LM (hybrid Attention + SSM)
@@ -51,7 +55,8 @@ Since the model is ~5.6 GB and we have 8 GB of VRAM, we can run with maximum GPU
 - Quality/coding baselines historically used non-MTP UD — keep separate if comparing scores to older runs.
 
 ## Older verified baseline (2026-06-26, non-MTP)
-- `MODEL = 'ornith-1.0-9b-Q4_K_M.gguf'` (superseded filename; now `Ornith-1.0-9B-UD-Q4_K_XL.gguf`)
+- `MODEL = 'ornith-1.0-9b-Q4_K_M.gguf'` — deepreinforce official Q4_K_M (separate Trial from UD/MTP)
+- Day/Night picks on this front use Unsloth UD / MTP basenames when those vectors are complete — see Pareto leaderboard
 - `CTX_SIZE = 131072`
 - `KV_CACHE = 'q4_0'`
 - `NGL = 99`
