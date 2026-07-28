@@ -5,6 +5,13 @@ Global **Pareto Set** on this hardware budget: maximize **ctx × TPS × agentic 
 Hardware: RTX 4060 **8 GB**, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.  
 Ground truth: `results.tsv`. TPS axis = claw-full `bench_tg` when available. Complete vector = claw-full **and** coding-10 (exact 10 tasks/dataset).
 
+Recompute live (do not invent temp scripts):
+
+```bash
+.\venv\Scripts\python.exe scripts\rank_results.py
+.\venv\Scripts\python.exe scripts\rank_results.py --day-iq-ratio 0.8
+```
+
 ## Usage Profile picks (ADR 0008)
 
 | Lens | Rule | Pick (this front) |

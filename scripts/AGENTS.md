@@ -20,13 +20,16 @@ Repository operators and developers.
 - Use `check_hardware.py` to diagnose local GPU/VRAM/RAM and give conservative GGUF/context guidance. Dense models must fit physical VRAM and use full GPU placement; never suggest partial dense offload.
 - Use `verify_setup.py` to validate local API server health and benchmark real-time TPS. Its default port matches `serve-config.py` (18080).
 - Use `lcb_only.py` to re-measure LiveCodeBench (10 tasks) against current Baseline — gambiarra when coding HE/MBPP/BC already logged but LCB cache failed.
+- Use `rank_results.py` to print Pareto / Day / Night / claw / coding rankings from `results.tsv`. Agents must use this CLI for model rankings — no ad-hoc temp filter scripts.
 - Maintain helper commands documented in README.md.
 
 ## Verification
 - Test script changes locally by executing them.
+- `rank_results.py`: `.\venv\Scripts\python.exe -m pytest tests/test_rank_results.py`
 - Ensure `bash scripts/setup-check.sh` passes before declaring environment readiness.
 
 ## Child DOX Index
 - [hooks/block-adhoc-eval.ps1](hooks/block-adhoc-eval.ps1) — shell hard-gate.
 - [hooks/block-gate-tamper.ps1](hooks/block-gate-tamper.ps1) — gate-file hard-gate.
 - [lcb_only.py](lcb_only.py) — LCB-only remeasure helper (`scripts/lcb_only.py`).
+- [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0008).

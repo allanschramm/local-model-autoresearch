@@ -96,6 +96,7 @@ Este repositório inclui uma jornada publicada de 6 aulas em HTML (Módulo 0 + S
 | `autoresearch/benchmarks/*` | Lógica de avaliação | **Não** |
 | `program.md` | Protocolo do Search | **Não** |
 | `results.tsv` | Métricas dos trials | **Só append** |
+| `scripts/rank_results.py` | Ranking Pareto / Day / Night a partir do TSV | **Não** (só lê) |
 
 ### Val Score
 
@@ -207,7 +208,7 @@ Se preferir fazer na mão:
 2. Se ainda não tiver: `cp autoresearch/core/config.py.example autoresearch/core/config.py`
 3. Ajuste o Baseline em `autoresearch/core/config.py` (`MODEL` = basename do GGUF)
 4. Rode `python3 benchmark_search.py --desc "sua hipótese"` (sem flag soup)
-5. Cheque `results.tsv` pelos resultados
+5. Cheque `results.tsv` pelos resultados (ou `.\venv\Scripts\python.exe scripts\rank_results.py` pro ranking Pareto/Day/Night)
 6. Keep se o Val Score melhorou, reverte o `config.py` caso contrário
 
 ---
