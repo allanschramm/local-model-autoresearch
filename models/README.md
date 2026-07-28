@@ -35,7 +35,7 @@ Special dirs stay as-is: `--local-dir models/draft` for MTP/DFlash drafts; `--lo
 
 ## Aliases (`model-up`)
 
-**Local only — never commit.** Per-user `aliases/<name>/config.yaml`, optional `aliases/INDEX.md` / `REMOVED.md` for your launcher notes. Tracked docs carry **model** scores and Pareto picks (GGUF basename), not which alias name you use.
+**Local only — never commit.** Per-user `aliases/<name>/config.yaml`, optional `aliases/INDEX.md` / `REMOVED.md` for launcher notes, plus root `models/REMOVED.md` for SSD keep/delete inventory. Tracked docs carry **model** scores and Pareto picks (GGUF basename), not which alias name you use or what is on disk.
 
 ## Do not
 

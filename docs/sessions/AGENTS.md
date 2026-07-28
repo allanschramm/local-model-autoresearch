@@ -14,7 +14,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - **No absolute user/checkout paths** (`C:\Users\…`, `/mnt/c/Users/…`). Use repo-relative paths.
 - **No machine inventory.** Do not record which GGUFs/aliases are present, kept, or deleted on disk. Scores + GGUF basenames only (root AGENTS). Alias names/ports stay out — use basenames in tables.
 - **No operator PII.** No personal names, hostnames, or identity links. Say "operator" / "this rig" if a person must be referenced.
-- **Private leftovers** (disk lists, alias registry, absolute paths, identity) belong under gitignored `private/sessions/` — not in tracked logs.
+- **Private leftovers** (disk lists, alias registry, absolute paths, identity) go into existing gitignored `models/` notes (`REMOVED.md`, `aliases/REMOVED.md`) — never duplicate session files there.
 - **Do not edit a session log after the session is complete** except to fix typos or scrub contract violations above. Add a follow-up file for new work.
 - **No external-source URLs in technique claims** (per `docs/models/` rules — methodology names allowed, citations not).
 

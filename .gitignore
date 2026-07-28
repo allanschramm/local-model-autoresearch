@@ -71,9 +71,6 @@ run_nexus_only.py
 # Models folder is entirely local/offline
 /models/
 
-# Operator-private notes (disk inventory, alias registry, PII, absolute paths)
-/private/
-
 # Local vendor trees (not git submodules — keep on disk, do not commit)
 /claw-eval/
 /llama.cpp-nanbeige42/
