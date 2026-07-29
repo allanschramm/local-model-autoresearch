@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>S2 Dia 3 — Sandboxes, Hooks e Gates (Segurança)</title>
+  <title>S2 Dia 3 — Guardrails: Allow, Deny e Hooks</title>
   <link rel="stylesheet" href="../assets/lesson.css" />
   <style>
     .gate-box {
@@ -13,87 +13,549 @@
       border-radius: 0 6px 6px 0;
       margin: 1.2rem 0;
     }
+    .wall-pipe {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 0.85rem 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 0.65rem 0 0.5rem;
+      line-height: 1.45;
+    }
+    .gr-sim {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 1.2rem;
+      margin: 1.5rem 0;
+    }
+    .gr-sim h3 { margin: 0 0 0.55rem; font-size: 0.95rem; }
+    .gr-toggles {
+      display: grid;
+      gap: 0.45rem;
+      margin: 0.75rem 0 1rem;
+    }
+    .gr-toggles label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      padding: 0.55rem 0.7rem;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .gr-toggles input { margin-top: 0.2rem; }
+    .gr-badge {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      margin: 0 0 0.45rem;
+    }
+    .gr-badge.ok { background: #dcfce7; color: var(--right); }
+    .gr-badge.warn { background: #fee2e2; color: var(--wrong); }
+    #gr-attempt-list {
+      list-style: none;
+      margin: 0.75rem 0 0;
+      padding: 0;
+      display: grid;
+      gap: 0.45rem;
+    }
+    .gr-row {
+      display: grid;
+      gap: 0.2rem;
+      font-family: var(--sans);
+      font-size: 0.86rem;
+      padding: 0.55rem 0.7rem;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+    }
+    .gr-row.ok { border-color: #86efac; }
+    .gr-row.blocked { border-color: #fca5a5; }
+    .gr-row.ask { border-color: #fcd34d; }
+    .gr-cmd { font-weight: 600; }
+    .gr-res { color: var(--muted); font-size: 0.82rem; }
+    .two-col {
+      display: grid;
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+    @media (min-width: 560px) {
+      .two-col { grid-template-columns: 1fr 1fr; }
+    }
+    .wall-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0.9rem 1rem;
+    }
+    .wall-card h3 { margin-top: 0; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header class="site">
       <p class="eyebrow">Semana 2 · Dia 3 · Automação e Segurança</p>
-      <h1>Sandboxes, Hooks e Portões de Segurança (Gates)</h1>
+      <h1>Guardrails — Allow, Deny e Hooks</h1>
       <p class="lede">
-        Dar autonomia a um agente de IA exige proteção. Hoje aprendemos a criar um ambiente seguro onde a IA pode executar código sem risco de danificar arquivos do sistema ou enviar alterações indesejadas.
+        Na prática o agente vira uma fila de <strong>tools</strong>: ler arquivo, editar, terminal.
+        <strong>Guardrail</strong> é o segurança da <strong>boate</strong> — lista da casa,
+        checagem na porta, comanda na saída. Sem isso, cada comando vira “Permitir?”
+        e logo você só aperta Enter. Mesma ideia no <strong>Cursor</strong> e no
+        <strong>Claude Code</strong>.
       </p>
       <p class="navlinks">
         <a href="s2d2-mcp-ferramentas.html">← Dia 2</a>
         <a href="../index.html">Guia</a>
-        <a href="s2d4-usecase-completo.html">Dia 4 →</a>
+        <a href="../reference/glossario.html">Glossário</a>
       </p>
     </header>
 
-    <aside class="draft-banner"><strong>Semana 2 em construção.</strong> Este rascunho não entra no progresso do curso e pode mudar enquanto o currículo é desenhado. Volte ao <a href="../index.html">guia publicado</a>.</aside>
+    <section class="lesson-meta" aria-label="Resumo da aula">
+      <p><strong>Resultado:</strong><br />Configurar Allow/Deny e hooks pré/pós no Cursor e no Claude Code; abrir o Claude só com as tools que você quer.</p>
+      <p><strong>Duração:</strong><br />35–50 minutos (conceito + simulador + um teste real).</p>
+      <p><strong>Pré-requisito:</strong><br />Cursor e/ou Claude Code. Semana 2 · Dia 2 (MCP) ajuda, mas não é obrigatório.</p>
+    </section>
 
-    <h2>1. O Conceito de Sandbox (Ambiente Isolado)</h2>
+    <h2>1. A boate do agente</h2>
     <p>
-      Um <strong>Sandbox</strong> restringe o acesso do agente de IA apenas ao diretório do projeto atual. Ele impede que o modelo navegue livremente pelo seu disco rígido (ex: <code>C:\Windows</code> ou <code>/etc/</code>) ou execute comandos nocivos no terminal do sistema.
+      O agente não fica só digitando texto. Ele chama <strong>tools</strong>:
+      abrir arquivo, editar, rodar comando, usar MCP. Isso acelera o trabalho —
+      e também pode apagar pasta, vazar <code>.env</code> ou instalar coisa errada.
+    </p>
+    <p>
+      Sem guardrail, o harness fica perguntando “Permitir?” o tempo todo.
+      No começo você lê. Depois cansa e aperta Enter. Isso tem nome:
+      <strong>fadiga de aprovação</strong>.
+    </p>
+    <p>
+      Com guardrail, a regra vem <em>antes</em>. Allow = passa sem perguntar.
+      Deny = nem tenta. Pre-hook = ainda dá para barrar na porta.
+      Post-hook = depois que já rodou, só anota (não desfaz o que aconteceu).
+    </p>
+    <table>
+      <thead>
+        <tr><th>Boate</th><th>Agente</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Quem está na fila</td>
+          <td>Tool querendo rodar</td>
+        </tr>
+        <tr>
+          <td>Lista da casa</td>
+          <td>Deny / Allow</td>
+        </tr>
+        <tr>
+          <td>Checagem na porta</td>
+          <td>Pre-hook</td>
+        </tr>
+        <tr>
+          <td>“Posso entrar?”</td>
+          <td>Ask (o harness pede confirmação)</td>
+        </tr>
+        <tr>
+          <td>Comanda na saída</td>
+          <td>Post-hook</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Na prática</h3>
+    <ul>
+      <li>Comandos seguros (<code>git status</code>, ler <code>src/</code>) podem entrar sozinhos (Allow).
+        O perigoso continua pedindo confirmação — ou fica de fora (Deny / Pre-hook).</li>
+      <li>Escrever no chat “não leia o <code>.env</code>” o modelo pode ignorar.
+        Deny ou hook o harness <em>aplica</em>.</li>
+      <li>Se o Pre-hook sair com código <code>2</code>, o erro volta pro agente e ele pode mudar o plano
+        (ex.: “npm bloqueado, use bun”).</li>
+      <li>Lista no repo (<code>settings.json</code>, hooks) = todo mundo no clone usa a mesma regra.</li>
+      <li>No Windows a caixa de areia (sandbox) é fraca ou inexistente no Claude;
+        no Cursor sem WSL2 quase não protege arquivo. Guardrail continua valendo.</li>
+      <li>Post-hook deixa rastro do que passou — ajuda a ajustar a lista depois.</li>
+    </ul>
+
+    <h3>Passo a passo na porta</h3>
+    <ol>
+      <li>O agente pede algo (ex.: rodar um comando).</li>
+      <li><strong>Deny:</strong> se estiver bloqueado, para. Não roda.</li>
+      <li><strong>Pre-hook:</strong> se existir script, ele inspeciona. Pode barrar e devolver erro.</li>
+      <li><strong>Allow</strong> → roda sem perguntar. Senão → <strong>Ask</strong> (pede confirmação).</li>
+      <li>A tool roda.</li>
+      <li><strong>Post-hook:</strong> se existir, só registra ou avisa — já aconteceu.</li>
+    </ol>
+    <p class="note">
+      No Claude Code a ordem é <strong>deny → ask → allow</strong>:
+      a primeira regra que bater decide. Não é pedido no chat; é regra do harness.
+      Fonte:
+      <a href="https://code.claude.com/docs/en/permissions">Configure permissions</a>.
     </p>
 
-    <h2>2. Pre-Tool Hooks (Gatilhos de Pré-Execução)</h2>
+    <h2>2. Sandbox — a caixa de areia</h2>
     <p>
-      Os <strong>Hooks</strong> são verificações automáticas disparadas <em>antes</em> de uma ferramenta ser executada. Se o agente tentar rodar um comando perigoso, o hook intercepta e bloqueia a ação imediatamente.
+      <strong>Sandbox</strong> em inglês é a caixa de areia do parquinho:
+      brinca dentro; fora da borda, acabou. No agente, a “borda” é o sistema operacional
+      (arquivos e rede). Em geral o projeto fica dentro. Chaves SSH, pastas do sistema,
+      domínio que você não liberou — ficam fora, e o SO pode bloquear.
+    </p>
+    <p>
+      No Windows a história muda conforme o harness:
+    </p>
+    <table>
+      <thead>
+        <tr><th></th><th>Claude Code</th><th>Cursor</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>macOS</td>
+          <td>Sim — Seatbelt; <code>/sandbox</code>, modo auto-allow</td>
+          <td>Sim — Seatbelt</td>
+        </tr>
+        <tr>
+          <td>Linux</td>
+          <td>Sim — Bubblewrap (+ socat)</td>
+          <td>Sim — Landlock + seccomp (kernel recente)</td>
+        </tr>
+        <tr>
+          <td>Windows</td>
+          <td>No Windows puro, não. Precisa rodar o Claude <em>no WSL2</em>.</td>
+          <td>Com WSL2 fica perto do Linux. Sem WSL2, quase não protege arquivo — no máximo mexe um pouco na rede.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      No Windows, no dia a dia, foque em guardrail
+      (Allow / Deny / hooks) — com ou sem sandbox.
+    </p>
+    <p class="note">
+      Fontes:
+      <a href="https://code.claude.com/docs/en/sandboxing">Claude — sandboxed Bash</a>
+      ·
+      <a href="https://cursor.com/docs/agent/security/run-modes">Cursor — Run modes</a>
+      ·
+      <a href="https://cursor.com/blog/agent-sandboxing">Cursor — agent sandboxing</a>.
     </p>
 
-    <div class="gate-box">
-      <h3>🛡️ Exemplo Prático de Hard Gate neste Repositório</h3>
-      <p>Neste projeto, existem dois scripts de proteção em <code>scripts/hooks/</code>:</p>
-      <ul>
-        <li><code>block-adhoc-eval.ps1</code>: Bloqueia a execução de comandos fora do terminal permitido.</li>
-        <li><code>block-gate-tamper.ps1</code>: Impede que o agente modifique ou apague os próprios arquivos de segurança.</li>
-      </ul>
+    <h2>3. Allow e Deny — a lista da casa</h2>
+    <table>
+      <thead>
+        <tr><th>Regra</th><th>Efeito</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Allow</strong> (permitir)</td>
+          <td>Essa tool / padrão roda <em>sem</em> perguntar de novo.</td>
+        </tr>
+        <tr>
+          <td><strong>Deny</strong> (negar)</td>
+          <td>Bloqueia. Só o nome da tool (ex. <code>Bash</code>) pode tirar a tool da sessão; com padrão (ex. <code>Bash(rm *)</code>) barra só o que combina.</td>
+        </tr>
+        <tr>
+          <td><strong>Ask</strong> (perguntar)</td>
+          <td>Sempre pede confirmação para aquele padrão (Claude Code).</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="two-col">
+      <div class="wall-card">
+        <h3>Claude Code</h3>
+        <p style="margin:0;font-size:0.92rem">
+          Arquivo: <code>.claude/settings.json</code> (projeto) ou
+          <code>~/.claude/settings.json</code> (usuário).<br />
+          UI: comando <code>/permissions</code>.
+        </p>
+<pre style="margin:0.65rem 0 0;font-size:0.78rem">{
+  "permissions": {
+    "allow": ["Bash(git status *)", "Read"],
+    "deny": ["Read(.env)", "Read(.env.*)", "Bash(rm *)"]
+  }
+}</pre>
+        <p style="margin:0.5rem 0 0;font-size:0.82rem;color:var(--muted)">
+          Docs:
+          <a href="https://code.claude.com/docs/en/permissions">Configure permissions</a>,
+          <a href="https://code.claude.com/docs/en/settings">Settings</a>.
+        </p>
+      </div>
+      <div class="wall-card">
+        <h3>Cursor</h3>
+        <p style="margin:0;font-size:0.92rem">
+          <strong>IDE:</strong> lista de comandos/MCP permitidos em
+          <code>.cursor/permissions.json</code> (e Settings → Agents → Run Mode).<br />
+          <strong>CLI do Cursor:</strong> allow/deny em
+          <code>.cursor/cli.json</code> / <code>~/.cursor/cli-config.json</code>.
+        </p>
+<pre style="margin:0.65rem 0 0;font-size:0.78rem">{
+  "permissions": {
+    "allow": ["Shell(git)", "Shell(npm)"],
+    "deny": ["Shell(rm)", "Read(.env*)"]
+  }
+}</pre>
+        <p style="margin:0.5rem 0 0;font-size:0.82rem;color:var(--muted)">
+          Docs:
+          <a href="https://cursor.com/docs/reference/permissions">permissions.json</a>,
+          <a href="https://cursor.com/docs/cli/reference/permissions">CLI permissions</a>.
+        </p>
+      </div>
     </div>
 
-    <h2>3. Portões de Qualidade (Quality Gates)</h2>
+    <h2>4. Hooks — porta e saída</h2>
     <p>
-      Um <strong>Gate</strong> é um critério de aceitação que a IA deve satisfazer antes que uma alteração seja finalizada. Exemplo: "O código modificado passou em 100% dos testes do <code>pytest</code>?" Se falhar, a alteração é descartada.
+      Allow e Deny são a lista. Hook é script: dá para decidir com lógica
+      (olhar o comando, o caminho do arquivo…).
+    </p>
+    <ul>
+      <li><strong>Pre-tool</strong> — antes de rodar. Pode bloquear.
+        Claude: <code>PreToolUse</code>. Cursor: <code>preToolUse</code>
+        (shell também tem <code>beforeShellExecution</code>).</li>
+      <li><strong>Post-tool</strong> — depois que já rodou. Serve para registrar ou avisar.
+        Claude: <code>PostToolUse</code>. Cursor: <code>postToolUse</code>.
+        Não desfaz o que a tool fez.</li>
+    </ul>
+
+    <div class="two-col">
+      <div class="wall-card">
+        <h3>Claude Code — PreToolUse</h3>
+<pre style="margin:0;font-size:0.75rem">{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Bash",
+      "hooks": [{
+        "type": "command",
+        "command": "powershell.exe -File scripts/hooks/check.ps1"
+      }]
+    }]
+  }
+}</pre>
+        <p style="margin:0.5rem 0 0;font-size:0.82rem">
+          Script lê JSON no stdin; pode devolver
+          <code>permissionDecision: "deny"</code> ou sair com código <code>2</code> para bloquear.
+          Fonte: <a href="https://code.claude.com/docs/en/hooks">Hooks</a>.
+        </p>
+      </div>
+      <div class="wall-card">
+        <h3>Cursor — preToolUse</h3>
+<pre style="margin:0;font-size:0.75rem">{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [{
+      "command": ".cursor/hooks/check.ps1",
+      "matcher": "Shell|Write"
+    }],
+    "postToolUse": [{
+      "command": ".cursor/hooks/audit.ps1"
+    }]
+  }
+}</pre>
+        <p style="margin:0.5rem 0 0;font-size:0.82rem">
+          Arquivo: <code>.cursor/hooks.json</code>. Saída JSON com
+          <code>permission: "deny"</code> (ou exit <code>2</code>).
+          Fonte: <a href="https://cursor.com/docs/hooks">Cursor Hooks</a>.
+        </p>
+      </div>
+    </div>
+
+    <div class="gate-box">
+      <h3>Exemplo neste repositório</h3>
+      <p>
+        Aqui no workshop já existem dois scripts em <code>scripts/hooks/</code>:
+      </p>
+      <ul>
+        <li><code>block-adhoc-eval.ps1</code> — barra Python/comandos fora da lista
+          (script solto, flag de teste na linha de comando em vez de editar o <code>config.py</code>…).</li>
+        <li><code>block-gate-tamper.ps1</code> — impede o agente de mexer nos arquivos
+          de segurança (hooks e settings).</li>
+      </ul>
+      <p style="margin-bottom:0">
+        No Claude Code: <code>.claude/settings.json</code> (Deny + Pre-hook).
+        No Cursor: <code>.cursor/hooks.json</code>, se o projeto trouxer esses arquivos.
+      </p>
+    </div>
+
+    <h2>5. Abrir o Claude só com as tools que você quer</h2>
+    <p>
+      Três flags. Não são a mesma coisa. Olhe no <code>claude --help</code>:
+    </p>
+    <table>
+      <thead>
+        <tr><th>Flag</th><th>O que faz</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>--tools</code></td>
+          <td><strong>Lista da sessão:</strong> só essas tools do Claude existem nesta sessão. <code>""</code> = nenhuma. Ex.: só ler e editar.</td>
+        </tr>
+        <tr>
+          <td><code>--allowedTools</code></td>
+          <td><strong>Sem perguntar:</strong> essas rodam sem prompt (as outras tools continuam existindo).</td>
+        </tr>
+        <tr>
+          <td><code>--disallowedTools</code></td>
+          <td><strong>Deny na CLI:</strong> só o nome (ex. <code>Edit</code>) remove a tool; com padrão (<code>Bash(rm *)</code>) bloqueia só o que combina.</td>
+        </tr>
+      </tbody>
+    </table>
+<pre># Só leitura + edição (sem Bash na sessão)
+claude --tools "Read,Edit"
+
+# Bash existe, mas git push fica negado; git status passa sem perguntar
+claude --allowedTools "Bash(git status *)" --disallowedTools "Bash(git push *)"
+
+# Sem tools do Claude (só texto)
+claude --tools ""</pre>
+    <p class="note">
+      <code>--tools</code> não corta MCP. Para negar MCP: <code>--disallowedTools "mcp__*"</code>
+      (ou carregar MCP só via <code>--mcp-config</code> + <code>--strict-mcp-config</code>).
+      Referência:
+      <a href="https://code.claude.com/docs/en/cli-reference">CLI reference</a>.
     </p>
 
-    <h2>4. Prática (Validação do Dia 3)</h2>
-    <p class="note">Quiz: Mecanismos de Proteção e Hooks.</p>
+    <h2>6. Simulador</h2>
+    <p>
+      Marque Deny, Allow, Pre-hook e Post-hook e veja o que acontece com quatro pedidos.
+    </p>
+
+    <div class="gr-sim" id="gr-sim">
+      <h3>Ativo agora</h3>
+      <div class="gr-toggles" role="group" aria-label="Camadas de guardrail">
+        <label>
+          <input type="checkbox" id="gr-deny" />
+          <span><strong>Deny</strong> — bloqueia <code>.env</code> e <code>rm</code></span>
+        </label>
+        <label>
+          <input type="checkbox" id="gr-allow" />
+          <span><strong>Allow</strong> — lê código e <code>ls</code> sem perguntar</span>
+        </label>
+        <label>
+          <input type="checkbox" id="gr-pre" />
+          <span><strong>Pre-hook</strong> — barra <code>rm -rf /</code> antes de rodar</span>
+        </label>
+        <label>
+          <input type="checkbox" id="gr-post" />
+          <span><strong>Post-hook</strong> — depois, só registra</span>
+        </label>
+      </div>
+      <span class="gr-badge" id="gr-mode-badge"></span>
+      <p id="gr-summary" style="margin:0 0 0.5rem;font-size:0.92rem;color:var(--muted)"></p>
+      <ul id="gr-attempt-list" aria-live="polite"></ul>
+    </div>
+
+    <section class="practice" data-practice data-lesson="s2d3">
+      <h2>Prática</h2>
+
+      <h3>No simulador</h3>
+      <ol>
+        <li>Nada marcado → tudo pede OK.</li>
+        <li>Só Deny → <code>.env</code> e <code>rm</code> bloqueados.</li>
+        <li>Deny + Allow + Pre-hook → o seguro passa; o perigoso para na lista ou no hook.</li>
+        <li>Com Post-hook: ele não impede — só age depois.</li>
+      </ol>
+
+      <h3>No Cursor ou no Claude Code (escolha uma)</h3>
+      <ol>
+        <li><strong>Claude Code:</strong> <code>/permissions</code> — coloque Deny em <code>Read(.env)</code> e peça para ler o <code>.env</code>.</li>
+        <li><strong>Claude CLI:</strong> <code>claude --tools "Read,Edit"</code> — confira se Bash some da sessão.</li>
+        <li><strong>Cursor:</strong> Settings → Agents → Run Mode / lista de permitidos, ou abra <code>.cursor/hooks.json</code> / <code>permissions.json</code> se o projeto tiver esses arquivos.</li>
+      </ol>
+
+      <div class="practice-actions">
+        <button type="button" data-practice-mode="real" aria-pressed="false">Testei Deny, /permissions ou claude --tools</button>
+        <button type="button" data-practice-mode="simulated" aria-pressed="false">Fiz as quatro combinações no simulador</button>
+      </div>
+      <p class="practice-status" data-practice-feedback role="status"></p>
+    </section>
+
+    <h2>Quiz</h2>
 
     <div class="quiz" data-quiz data-lesson="s2d3-q1"
-         data-answer-hash="aacd15839f8de9d677bd0e23d5381b5249d9277418fca26fbbcab86fb94970ce"
-         data-ok="Correto! Um Pre-Tool Hook intercepta e impede ações destrutivas antes da execução."
-         data-bad="O Hook de Pré-Execução valida permissões e bloqueia ações inseguras antes que sejam rodadas no SO.">
-      <p class="q">O que faz um Pre-Tool Hook em um ambiente de desenvolvimento com IA?</p>
+         data-answer-hash="5b9dbd42ba5af4cef797ded7513562070c3574cd47a7bbbac53f98ddb517f60d"
+         data-ok="Isso — Allow/Deny e hooks controlando o que a tool pode fazer."
+         data-bad="Guardrail limita ferramentas: permitir, negar ou inspecionar com hooks.">
+      <p class="q">O que são guardrails num agente de código?</p>
       <div class="choices">
-        <button type="button" data-choice="A">Intercepta e bloqueia um comando antes que ele seja executado caso desobedeça uma regra de segurança</button>
-        <button type="button" data-choice="B">Baixa uma nova versão do modelo automaticamente da internet</button>
-        <button type="button" data-choice="C">Aumentar a memória RAM do computador em 50%</button>
-        <button type="button" data-choice="D">Limpar o histórico do navegador após cada conversa</button>
+        <button type="button" data-choice="A">Um jeito de quantizar o GGUF para caber em metade da VRAM</button>
+        <button type="button" data-choice="B">Regras e hooks que permitem, negam ou inspecionam o uso de tools</button>
+        <button type="button" data-choice="C">Um botão que aumenta a temperatura só nas respostas longas</button>
+        <button type="button" data-choice="D">Um plugin que troca o modelo local por um modelo na nuvem</button>
       </div>
       <p class="feedback" data-feedback></p>
     </div>
 
     <div class="quiz" data-quiz data-lesson="s2d3-q2"
-         data-answer-hash="94bd7b7c821def5de78e0b6d165bc7493bf3eed2f93834aceb95c2b83c8ab112"
-         data-ok="Isso mesmo! O Sandbox isola a execução da IA no diretório do projeto, protegendo o resto do sistema."
-         data-bad="O Sandbox garante o isolamento seguro da execução de código da IA para não afetar o sistema operacional principal.">
-      <p class="q">Qual é a principal função de um Sandbox para execução de código da IA?</p>
+         data-answer-hash="14e0f87a89b83695ab28b4427acf366bcbf31508b6f492abbb9d7302c7befaa5"
+         data-ok="Certo: --tools limita a lista da sessão; --allowedTools só pula o prompt."
+         data-bad="--tools restringe quais tools existem; --allowedTools auto-aprova sem remover as outras.">
+      <p class="q">Qual a diferença útil entre <code>--tools</code> e <code>--allowedTools</code> no Claude CLI?</p>
       <div class="choices">
-        <button type="button" data-choice="A">Acelerar o tempo de download do arquivo GGUF</button>
-        <button type="button" data-choice="B">Restringir a IA ao diretório do projeto, evitando alterações indesejadas no sistema operacional</button>
-        <button type="button" data-choice="C">Conectar o computador do aluno diretamente à nuvem da OpenAI</button>
-        <button type="button" data-choice="D">Desligar a ventoinha da GPU quando a temperatura esquentar</button>
+        <button type="button" data-choice="A"><code>--tools</code> limita quais tools existem; <code>--allowedTools</code> só pula o prompt</button>
+        <button type="button" data-choice="B">As duas flags fazem exatamente a mesma coisa em qualquer sessão</button>
+        <button type="button" data-choice="C"><code>--allowedTools</code> apaga o modelo do disco; <code>--tools</code> só muda a cor do terminal</button>
+        <button type="button" data-choice="D"><code>--tools</code> só funciona no Windows; <code>--allowedTools</code> só no macOS</button>
+      </div>
+      <p class="feedback" data-feedback></p>
+    </div>
+
+    <div class="quiz" data-quiz data-lesson="s2d3-q3"
+         data-answer-hash="fa52fa96cdbbe76ab038b4b435d35f11b428eba46a561330b682b056992aaa1a"
+         data-ok="Exato: pré pode bloquear; pós só age depois que a tool já rodou."
+         data-bad="Pre-hook inspeciona antes (pode negar); post-hook roda depois do sucesso.">
+      <p class="q">Qual a diferença entre um hook pré-tool e um pós-tool?</p>
+      <div class="choices">
+        <button type="button" data-choice="A">Pré baixa o GGUF; pós compacta o arquivo de pesos no disco</button>
+        <button type="button" data-choice="B">Pré e pós são só nomes iguais para a mesma etapa do harness</button>
+        <button type="button" data-choice="C">Pré pode bloquear antes; pós só age depois que a tool já rodou</button>
+        <button type="button" data-choice="D">Pós bloqueia o comando; pré só escreve log depois do sucesso</button>
+      </div>
+      <p class="feedback" data-feedback></p>
+    </div>
+
+    <div class="quiz" data-quiz data-lesson="s2d3-q4"
+         data-answer-hash="bc70ef38d3fc9a5fdf6f85307cd38f40badc9ac6c24a285d281e296041151435"
+         data-ok="Certo: no Claude Code a ordem é deny → ask → allow."
+         data-bad="Deny ganha de ask e allow: a primeira regra que bater nessa ordem decide.">
+      <p class="q">No Claude Code, qual a ordem de avaliação das regras de permissão?</p>
+      <div class="choices">
+        <button type="button" data-choice="A">Allow primeiro, depois ask, e deny só no fim da lista</button>
+        <button type="button" data-choice="B">Deny primeiro, depois ask, depois allow</button>
+        <button type="button" data-choice="C">Só o Allow conta; Deny e Ask são ignorados pelo harness</button>
+        <button type="button" data-choice="D">A ordem muda a cada prompt conforme a temperatura do modelo</button>
       </div>
       <p class="feedback" data-feedback></p>
     </div>
 
     <h2>Próximo</h2>
-    <p><a href="s2d4-usecase-completo.html">Dia 4 — Caso de Uso Completo (Projeto Integrado)</a></p>
-
+    <p><a href="s2d4-usecase-completo.html">Dia 4 — Caso de Uso Completo</a></p>
+      <p class="source-note">
+      <strong>Fonte:</strong>
+      <a href="https://code.claude.com/docs/en/permissions">Claude — permissions</a>
+      ·
+      <a href="https://code.claude.com/docs/en/hooks">Claude — hooks</a>
+      ·
+      <a href="https://code.claude.com/docs/en/cli-reference">Claude — CLI</a>
+      ·
+      <a href="https://cursor.com/docs/hooks">Cursor — hooks</a>
+      ·
+      <a href="https://cursor.com/docs/reference/permissions">Cursor — permissions.json</a>
+      ·
+      <a href="https://cursor.com/docs/cli/reference/permissions">Cursor CLI — permissions</a>
+      ·
+      <a href="../reference/glossario.html">Glossário</a>.
+      Dúvida? Pergunte ao tutor.
+    </p>
     <footer class="site">
-      <p><strong>Workshop AILOCAL Essentials · Semana 2 · Automação e Segurança.</strong></p>
+      <p>Workshop AILOCAL Essentials · Semana 2 · Automação e Segurança.</p>
     </footer>
   </div>
+  <script src="../assets/guardrails-sim.js"></script>
   <script src="../assets/progress.js"></script>
   <script src="../assets/quiz.js"></script>
 </body>

@@ -56,6 +56,24 @@ Encaixe plug-and-play de utensílios extras pro agente (cozinheiro). O harness j
 **Context7**:
 Utensílio MCP: manual atualizado (docs por versão) das bibliotecas. Hands-on S2D2 (Cursor / Claude Code).
 
+**Sandbox (caixa de areia)**:
+Brinca à vontade dentro da borda; fora, o SO impede (arquivos + rede). Nome vem da caixa de areia de criança. Claude: Mac/Linux; no Windows só dentro do WSL2. Cursor: Mac/Linux; no Windows melhor com WSL2 — sem WSL2 quase não protege os arquivos do PC. Semana 2 · Dia 3.
+
+**Guardrail**:
+Lista da casa + segurança na porta das tools (Allow / Deny / Ask + hooks). Metáfora: boate. Cursor e Claude Code. Semana 2 · Dia 3.
+
+**Fadiga de aprovação**:
+Aprovar no reflexo (Enter) sem ler. Motivo dos guardrails. Semana 2 · Dia 3.
+
+**Allow / Deny / Ask**:
+Permitir sem prompt / bloquear / sempre perguntar. Claude: `permissions` em settings; ordem deny→ask→allow. Cursor IDE: lista de permitidos; Cursor CLI: `permissions.allow`/`deny`.
+
+**Hook (pré / pós)**:
+Script antes (pode bloquear) ou depois (registra / avisa) da tool. Claude: `PreToolUse` / `PostToolUse`. Cursor: `preToolUse` / `postToolUse`. Ex. repo: `scripts/hooks/`.
+
+**`--tools` / `--allowedTools` / `--disallowedTools`**:
+Claude CLI: lista da sessão / rodar sem perguntar / deny. Não confundir `--tools` com `--allowedTools`.
+
 **Temperatura / Top-K / Top-P / Min-P / penalidades**:
 Ver tabela e defs no HTML do glossário (valores de “desligar” inclusos).
 

@@ -81,8 +81,18 @@
       <dd>Plug-and-play de utensílios extras pro agente (cozinheiro). O harness já traz ferramentas; MCP adiciona mais (docs, APIs…). Semana 2 · Dia 2. Skill = receita (Semana 1 · Dia 4).</dd>
       <dt>Context7</dt>
       <dd>Utensílio MCP: manual atualizado de bibliotecas (docs por versão). Cursor / Claude Code.</dd>
-      <dt>Hook / gate</dt>
-      <dd>Automação ou portão que bloqueia ações perigosas / Trial inválido (Semana 2 · Dia 3+).</dd>
+      <dt>Sandbox (caixa de areia)</dt>
+      <dd>Brinca à vontade dentro da borda; fora, o SO impede (arquivos + rede). Claude: Mac/Linux; no Windows só dentro do WSL2. Cursor: Mac/Linux; no Windows melhor com WSL2 — sem WSL2 quase não protege os arquivos do PC. Semana 2 · Dia 3.</dd>
+      <dt>Guardrail</dt>
+      <dd>Lista da casa + segurança na porta das tools (Allow / Deny / Ask + hooks). Metáfora: boate. Cursor e Claude Code. Semana 2 · Dia 3.</dd>
+      <dt>Fadiga de aprovação</dt>
+      <dd>Aprovar no reflexo (Enter) sem ler. Motivo dos guardrails.</dd>
+      <dt>Allow / Deny / Ask</dt>
+      <dd>Permitir sem prompt / bloquear / sempre perguntar. Claude: ordem deny → ask → allow.</dd>
+      <dt>Hook (pré / pós)</dt>
+      <dd>Script antes (pode bloquear) ou depois (registra / avisa) da tool. Claude <code>PreToolUse</code>/<code>PostToolUse</code>; Cursor <code>preToolUse</code>/<code>postToolUse</code>.</dd>
+      <dt><code>--tools</code> / <code>--allowedTools</code> / <code>--disallowedTools</code></dt>
+      <dd>Claude CLI: lista da sessão / rodar sem perguntar / deny. Não misturar <code>--tools</code> com <code>--allowedTools</code>.</dd>
     </dl>
 
     <h2>Flags llama.cpp (velocidade)</h2>

@@ -17,7 +17,7 @@
     s1d4: ["s1d4-q1", "s1d4-q2", "s1d4-q3"],
     s2d1: ["s2d1-q1", "s2d1-q2", "s2d1-q3", "s2d1-q4"],
     s2d2: ["s2d2-q1", "s2d2-q2", "s2d2-q3", "s2d2-q4"],
-    s2d3: ["s2d3-q1", "s2d3-q2"],
+    s2d3: ["s2d3-q1", "s2d3-q2", "s2d3-q3", "s2d3-q4"],
     s2d4: ["s2d4-q1", "s2d4-q2"],
   };
 
@@ -62,6 +62,11 @@
       id: "s2d2",
       href: "lessons/s2d2-mcp-ferramentas.html",
       title: "Semana 2 · Dia 2 — MCP (plug-and-play)",
+    },
+    {
+      id: "s2d3",
+      href: "lessons/s2d3-sandbox-hooks-gates.html",
+      title: "Semana 2 · Dia 3 — Guardrails / Allow-Deny-Hooks",
     },
   ];
 

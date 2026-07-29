@@ -38,6 +38,26 @@
   JSON Cursor + `claude mcp add`. Use for: instalação S2D2.
 - [context7.com/dashboard](https://context7.com/dashboard)
   API key. Use for: rate limit na aula ao vivo.
+- [Anthropic — Claude Code sandboxing](https://www.anthropic.com/engineering/claude-code-sandboxing)
+  Fadiga de aprovação + isolamento/network (nota S2D3). Use for: contexto Mac/Linux.
+- [Claude Code docs — permissions](https://code.claude.com/docs/en/permissions)
+  Allow / Deny / Ask, ordem de avaliação. Use for: S2D3 núcleo.
+- [Claude Code docs — hooks](https://code.claude.com/docs/en/hooks)
+  PreToolUse / PostToolUse. Use for: S2D3 hooks.
+- [Claude Code docs — CLI reference](https://code.claude.com/docs/en/cli-reference)
+  `--tools`, `--allowedTools`, `--disallowedTools`. Use for: S2D3 CLI.
+- [Claude Code docs — sandboxed Bash](https://code.claude.com/docs/en/sandboxing)
+  Native Windows não; WSL2 sim. Use for: S2D3 nota sandbox Claude.
+- [Cursor — agent sandboxing (blog)](https://cursor.com/blog/agent-sandboxing)
+  Mac/Linux/Windows (Win via WSL2). Use for: S2D3 nota sandbox Cursor.
+- [Cursor — Run modes](https://cursor.com/docs/agent/security/run-modes)
+  Seatbelt / Landlock; sandbox + Auto-review. Use for: S2D3 nota Cursor.
+- [Cursor — Hooks](https://cursor.com/docs/hooks)
+  preToolUse / postToolUse. Use for: S2D3 Cursor.
+- [Cursor — permissions.json](https://cursor.com/docs/reference/permissions)
+  Listas de permitidos IDE / Run Mode. Use for: S2D3 Cursor IDE.
+- [Cursor CLI — permissions](https://cursor.com/docs/cli/reference/permissions)
+  allow/deny tokens. Use for: S2D3 Cursor CLI.
 
 ## Sabedoria (comunidades)
 - [r/LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/) — relatos de VRAM/TPS (filtrar marketing).
@@ -47,4 +67,4 @@
 ## Lacunas
 - Link canónico LM Studio “Local Server” pode mudar de URL — validar na véspera do Dia 1.
 - Motor “surpresa” do Dia 3: não documentar até o operador revelar.
-- Semana 2 live: Dias 3–4 em aberto; Dias 1–2 (samplers + MCP) publicados.
+- Semana 2 live: Dias 1–3 publicados; Dia 4 em aberto.
