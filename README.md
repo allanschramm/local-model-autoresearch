@@ -16,7 +16,7 @@ Abra seu agente de coding (Claude Code, Codex, Pi Agent, OpenCode) e cole:
 
 O agente vai:
 1. Detectar seu hardware (GPU/VRAM/RAM)
-2. Rodar `whichllm` ou `llmfit` pra listar candidatos e estimar o footprint de VRAM
+2. Rodar `llmfit` (ou `whichllm` como fallback opcional) pra listar candidatos e estimar o footprint de VRAM
 3. Cruzar com SWE-bench / Aider / LiveCodeBench
 4. Plotar Pareto frontier (tok/s vs qualidade)
 5. Semear e editar o Baseline (`cp autoresearch/core/config.py.example autoresearch/core/config.py`, depois definir `MODEL`)
@@ -26,21 +26,51 @@ O agente vai:
 
 ---
 
-## Pré-requisitos
+## Pré-requisitos e Instalação
 
-Instale **antes** de pedir pro agente:
+### 1. Ferramentas do Sistema
 
-| Dep | Comando | Por quê |
+Instale **antes** de configurar o projeto:
+
+| Dep | Comando / Instalação | Por quê |
 |---|---|---|
-| Python 3.11+ | `sudo apt install python3.11 python3.11-venv` | runtime do autoloop |
+| Python 3.11+ | `sudo apt install python3.11 python3.11-venv` (Linux) / Instalador oficial (Windows) | runtime do autoloop |
 | CUDA Toolkit | `nvidia-smi` + driver NVIDIA | llama.cpp precisa de `-DGGML_CUDA=ON` |
 | build-essential + cmake >= 3.14 | `sudo apt install build-essential cmake` | compilar llama.cpp |
-| uvx / whichllm | `pip install uv` | rodar `uvx whichllm@latest` |
-| llmfit | `cargo install llmfit` (ou `scoop install llmfit`) | dimensionamento de hardware e CLI/TUI Rust |
+| llmfit | `cargo install llmfit` (ou `scoop install llmfit`) | dimensionamento principal de hardware e CLI/TUI Rust |
+| uvx / whichllm | `pip install uv` | fallback opcional (`uvx whichllm@latest`) |
 | huggingface_hub[cli] | `pip install huggingface_hub[cli]` | baixar GGUFs |
-| deps do repo | `uv pip install --python ./venv/Scripts/python.exe -r requirements.txt` | harness (`gguf`, `evalplus`, `datasets`, …) |
+
+### 2. Criar Ambiente Virtual (venv) e Instalar Dependências
+
+No diretório raiz do repositório:
+
+#### Windows (PowerShell / CMD)
+```powershell
+# Criar a venv
+python -m venv venv
+
+# Instalar dependências com pip
+.\venv\Scripts\pip.exe install -r requirements.txt
+
+# (Opcional) Instalar dependências com uv (mais rápido)
+# uv pip install --python .\venv\Scripts\python.exe -r requirements.txt
+```
+
+#### Linux / macOS
+```bash
+# Criar a venv
+python3 -m venv venv
+
+# Instalar dependências com pip
+./venv/bin/pip install -r requirements.txt
+
+# (Opcional) Instalar dependências com uv (mais rápido)
+# uv pip install --python ./venv/bin/python -r requirements.txt
+```
 
 Depois clone e compile o `llama.cpp` (ver [seção Build](#build-do-llamacpp-com-cuda) abaixo).
+
 
 ### Baseline local (`config.py`)
 
