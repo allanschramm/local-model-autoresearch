@@ -1,14 +1,19 @@
 import unittest
+
 from autoresearch.core.search import SearchStrategy
 
-class TestSearchStrategy(unittest.TestCase):
 
+class TestSearchStrategy(unittest.TestCase):
     def test_is_improvement_simple_improvement(self):
         # Score improved
         strategy = SearchStrategy({}, use_pareto_tiebreaker=False)
         is_imp, reason = strategy.is_improvement(
-            baseline_score=0.70, baseline_tps=30.0, baseline_vram=4.0,
-            new_score=0.75, new_tps=30.0, new_vram=4.0
+            baseline_score=0.70,
+            baseline_tps=30.0,
+            baseline_vram=4.0,
+            new_score=0.75,
+            new_tps=30.0,
+            new_vram=4.0,
         )
         self.assertTrue(is_imp)
         self.assertIn("Score improved", reason)
@@ -17,8 +22,12 @@ class TestSearchStrategy(unittest.TestCase):
         # Score regressed/same without tiebreaker
         strategy = SearchStrategy({}, use_pareto_tiebreaker=False)
         is_imp, reason = strategy.is_improvement(
-            baseline_score=0.70, baseline_tps=30.0, baseline_vram=4.0,
-            new_score=0.70, new_tps=50.0, new_vram=2.0
+            baseline_score=0.70,
+            baseline_tps=30.0,
+            baseline_vram=4.0,
+            new_score=0.70,
+            new_tps=50.0,
+            new_vram=2.0,
         )
         self.assertFalse(is_imp)
 
@@ -26,8 +35,12 @@ class TestSearchStrategy(unittest.TestCase):
         # Score tied, TPS improved (> 5%)
         strategy = SearchStrategy({}, use_pareto_tiebreaker=True)
         is_imp, reason = strategy.is_improvement(
-            baseline_score=0.70, baseline_tps=30.0, baseline_vram=4.0,
-            new_score=0.70, new_tps=32.0, new_vram=4.0
+            baseline_score=0.70,
+            baseline_tps=30.0,
+            baseline_vram=4.0,
+            new_score=0.70,
+            new_tps=32.0,
+            new_vram=4.0,
         )
         self.assertTrue(is_imp)
         self.assertIn("TPS improved", reason)
@@ -36,8 +49,12 @@ class TestSearchStrategy(unittest.TestCase):
         # Score tied, TPS same, VRAM improved — but VRAM is no longer a tie-breaker
         strategy = SearchStrategy({}, use_pareto_tiebreaker=True)
         is_imp, reason = strategy.is_improvement(
-            baseline_score=0.70, baseline_tps=30.0, baseline_vram=4.0,
-            new_score=0.70, new_tps=29.0, new_vram=3.5
+            baseline_score=0.70,
+            baseline_tps=30.0,
+            baseline_vram=4.0,
+            new_score=0.70,
+            new_tps=29.0,
+            new_vram=3.5,
         )
         self.assertTrue(is_imp)
         self.assertIn("VRAM improved", reason)
@@ -46,19 +63,20 @@ class TestSearchStrategy(unittest.TestCase):
         # Score tied, TPS regressed heavily, VRAM improved (not enough for TPS drop)
         strategy = SearchStrategy({}, use_pareto_tiebreaker=True)
         is_imp, reason = strategy.is_improvement(
-            baseline_score=0.70, baseline_tps=30.0, baseline_vram=4.0,
-            new_score=0.70, new_tps=20.0, new_vram=3.5
+            baseline_score=0.70,
+            baseline_tps=30.0,
+            baseline_vram=4.0,
+            new_score=0.70,
+            new_tps=20.0,
+            new_vram=3.5,
         )
         self.assertFalse(is_imp)
 
     def test_random_restart(self):
-        search_space = {
-            "param1": [1, 2],
-            "param2": [10]
-        }
+        search_space = {"param1": [1, 2], "param2": [10]}
         strategy = SearchStrategy(search_space)
         current = {"param1": 1, "param2": 10}
-        
+
         # If we visit the current config, it should pick the other option
         visited = {strategy.get_config_key(current)}
         new_cfg = strategy.random_restart(visited, current)

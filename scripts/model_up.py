@@ -23,6 +23,7 @@ def _ensure_repo_root_on_sys_path() -> None:
 _ensure_repo_root_on_sys_path()
 
 from autoresearch.core.llama_runner import IS_WINDOWS, resolve_llama_server, resolve_model_path
+
 ALIASES_DIR = REPO_ROOT / "models" / "aliases"
 STATE_DIR = (
     Path(os.environ["LOCALAPPDATA"]) / "local-model-autoresearch"
@@ -314,7 +315,9 @@ def _read_state() -> RunningState | None:
     parts = raw.split("\t")
     try:
         if len(parts) == 1:
-            return RunningState(pid=int(parts[0]), name="", alias="", port=DEFAULT_PORT, host=DEFAULT_HOST)
+            return RunningState(
+                pid=int(parts[0]), name="", alias="", port=DEFAULT_PORT, host=DEFAULT_HOST
+            )
         return RunningState(
             pid=int(parts[0]),
             name=parts[1] if len(parts) > 1 else "",
@@ -457,4 +460,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

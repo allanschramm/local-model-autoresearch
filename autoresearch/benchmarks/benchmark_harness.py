@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
+
 
 @dataclass
 class BenchmarkResult:
@@ -11,4 +13,4 @@ class BenchmarkResult:
     val_pass4: float = 0.0
     avg_tps: float = 0.0
     total_seconds: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)

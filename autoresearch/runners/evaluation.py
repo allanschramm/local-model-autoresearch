@@ -4,7 +4,6 @@ Deep module extracted from run.py. One interface (run_trial), typed TrialResult,
 hides bench validation, server lifecycle, and metric computation behind the seam.
 """
 
-import json
 import subprocess
 import time
 from dataclasses import dataclass
@@ -12,25 +11,24 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Protocol
 
+from autoresearch.benchmarks.agentic_benchmarks import get_full_tier_tasks, get_quick_tier_tasks
+from autoresearch.benchmarks.agentic_runner import run_agentic_eval
+from autoresearch.benchmarks.benchmark_coding import run_benchmark as run_coding
+from autoresearch.core import config as core_config
+from autoresearch.core.llama_client import GenerationParams, LlamaClient
 from autoresearch.core.llama_runner import (
+    ConfigError,
     LlamaServerRunner,
     ServerIntent,
-    resolve_llama_bench,
+    estimate_vram_mb,
+    preflight_host_memory_for_intent,
+    preflight_vram_for_intent,
     resolve_llama_cli,
     resolve_llama_perplexity,
-    ConfigError,
-    estimate_vram_mb,
-    preflight_vram_for_intent,
-    preflight_host_memory_for_intent,
     resolve_vram_limit_mb,
 )
 from autoresearch.core.model_arch import gguf_block_count, gguf_is_moe
 from autoresearch.core.sglang_runner import SGLangServerRunner, run_sglang_bench_validation
-from autoresearch.core.llama_client import LlamaClient, GenerationParams
-from autoresearch.core import config as core_config
-from autoresearch.benchmarks.benchmark_coding import run_benchmark as run_coding
-from autoresearch.benchmarks.agentic_benchmarks import get_quick_tier_tasks, get_full_tier_tasks
-from autoresearch.benchmarks.agentic_runner import run_agentic_eval
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -107,7 +105,9 @@ class TrialOutcome(str, Enum):
 
 class AgenticBenchmarkAdapter(Protocol):
     def task_ids(self, tier: str) -> list[str]: ...
-    def run(self, client: LlamaClient, task_ids: list[str], gen_params: GenerationParams) -> dict: ...
+    def run(
+        self, client: LlamaClient, task_ids: list[str], gen_params: GenerationParams
+    ) -> dict: ...
 
 
 class ClawEvalAdapter:
@@ -126,6 +126,7 @@ class TrialResult:
 
     Every field has a safe default (0.0 or ""). Callers never need .get().
     """
+
     status: str = "OK"
     val_score: float = 0.0
     coding_val: float = 0.0
@@ -135,8 +136,8 @@ class TrialResult:
     mbpp_val: float = 0.0
     bigcode_val: float = 0.0
     swe_val: float = 0.0
-    agentic_val: float = 0.0    # Claw-Eval quick/full tier score
-    agentic_tier: str = ""       # "quick" or "full"
+    agentic_val: float = 0.0  # Claw-Eval quick/full tier score
+    agentic_tier: str = ""  # "quick" or "full"
     agentic_task_count: int = 0  # number of tasks evaluated
     avg_tps: float = 0.0
     peak_vram_gb: float = 0.0
@@ -174,17 +175,28 @@ def run_llama_bench_validation(
 
     cmd = [
         str(llama_cli),
-        "-m", str(model_path),
-        "-p", "Write a comprehensive, step-by-step tutorial explaining quantum computing, qubits, superposition, and entanglement, including a detailed Python simulation using NumPy.",
-        "-n", str(n_gen),
-        "-c", str(ctx_size),
-        "-t", str(threads),
-        "-ngl", str(ngl),
-        "-b", str(batch_size),
-        "-ub", str(ubatch_size),
-        "-fa", flash_attn,
-        "-ctk", cache_type_k,
-        "-ctv", cache_type_v,
+        "-m",
+        str(model_path),
+        "-p",
+        "Write a comprehensive, step-by-step tutorial explaining quantum computing, qubits, superposition, and entanglement, including a detailed Python simulation using NumPy.",
+        "-n",
+        str(n_gen),
+        "-c",
+        str(ctx_size),
+        "-t",
+        str(threads),
+        "-ngl",
+        str(ngl),
+        "-b",
+        str(batch_size),
+        "-ub",
+        str(ubatch_size),
+        "-fa",
+        flash_attn,
+        "-ctk",
+        cache_type_k,
+        "-ctv",
+        cache_type_v,
         "--no-mmap" if no_mmap else "--mmap",
         "--no-warmup",
         "--simple-io",
@@ -202,11 +214,16 @@ def run_llama_bench_validation(
 
     if spec_type_val is not None and spec_type_val.lower() != "none" and spec_draft_n_max > 0:
         cmd += [
-            "--spec-type", spec_type_val.lower(),
-            "--spec-draft-n-max", str(spec_draft_n_max),
-            "--spec-draft-type-k", cache_type_k,
-            "--spec-draft-type-v", cache_type_v,
-            "-ngld", str(ngl),
+            "--spec-type",
+            spec_type_val.lower(),
+            "--spec-draft-n-max",
+            str(spec_draft_n_max),
+            "--spec-draft-type-k",
+            cache_type_k,
+            "--spec-draft-type-v",
+            cache_type_v,
+            "-ngld",
+            str(ngl),
         ]
         if spec_draft_model:
             draft_path = Path(spec_draft_model)
@@ -220,12 +237,15 @@ def run_llama_bench_validation(
         raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
 
     import re
+
     match = re.search(r"Generation:\s*([\d\.]+)\s*t/s", result.stdout)
     if not match:
         match = re.search(r"Generation:\s*([\d\.]+)\s*t/s", result.stderr)
 
     if not match:
-        raise RuntimeError(f"llama-cli output did not contain Generation TPS metric: {result.stdout[:500]} {result.stderr[:500]}")
+        raise RuntimeError(
+            f"llama-cli output did not contain Generation TPS metric: {result.stdout[:500]} {result.stderr[:500]}"
+        )
 
     tg_tps = float(match.group(1))
     return tg_tps
@@ -249,17 +269,28 @@ def run_llama_perplexity_validation(
 
     cmd = [
         str(llama_ppl),
-        "-m", str(model_path),
-        "-f", str(text_file),
-        "-t", str(threads),
-        "-ngl", str(ngl),
-        "-b", str(batch_size),
-        "-ub", str(ubatch_size),
-        "-fa", flash_attn,
-        "-ctk", cache_type_k,
-        "-ctv", cache_type_v,
-        "-c", str(ctx_size),
-        "--chunks", str(chunks),
+        "-m",
+        str(model_path),
+        "-f",
+        str(text_file),
+        "-t",
+        str(threads),
+        "-ngl",
+        str(ngl),
+        "-b",
+        str(batch_size),
+        "-ub",
+        str(ubatch_size),
+        "-fa",
+        flash_attn,
+        "-ctk",
+        cache_type_k,
+        "-ctv",
+        cache_type_v,
+        "-c",
+        str(ctx_size),
+        "--chunks",
+        str(chunks),
     ]
 
     print(f"  [perplexity] {' '.join(str(a) for a in cmd)}")
@@ -268,6 +299,7 @@ def run_llama_perplexity_validation(
         raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
 
     import re
+
     full_output = (result.stdout or "") + "\n" + (result.stderr or "")
     match = re.search(r"Final estimate:\s*PPL\s*=\s*([0-9.]+)", full_output)
     if not match:
@@ -275,8 +307,10 @@ def run_llama_perplexity_validation(
         chunk_match = re.search(r"\[\d+\]\s*([0-9.]+)", full_output)
         if chunk_match:
             return float(chunk_match.group(1))
-        raise RuntimeError(f"Could not parse perplexity from output. stdout: {result.stdout[:200]}, stderr: {result.stderr[:200]}")
-    
+        raise RuntimeError(
+            f"Could not parse perplexity from output. stdout: {result.stdout[:200]}, stderr: {result.stderr[:200]}"
+        )
+
     return float(match.group(1))
 
 
@@ -341,9 +375,7 @@ class ExperimentRunner:
             intent,
             headroom_mb=norm.get("host_memory_headroom_mb", norm.get("HOST_MEMORY_HEADROOM_MB")),
         )
-        print(
-            f"  [host-preflight] est={est_host:.0f}MB budget={budget_host:.0f}MB ok={ok_host}"
-        )
+        print(f"  [host-preflight] est={est_host:.0f}MB budget={budget_host:.0f}MB ok={ok_host}")
         if not ok_host:
             res.status = f"FAIL: {host_reason}"
             res.outcome = TrialOutcome.MODEL_REJECTED
@@ -399,13 +431,17 @@ class ExperimentRunner:
                     print(f"  [bench] sglang.bench_one_batch tg {BENCH_N_GEN}: {bench_tg:.1f} t/s")
 
                     if bench_tg < bench_tts_threshold:
-                        print(f"  [FAIL] sglang bench tg {bench_tg:.1f} t/s below threshold {bench_tts_threshold:.1f}")
+                        print(
+                            f"  [FAIL] sglang bench tg {bench_tg:.1f} t/s below threshold {bench_tts_threshold:.1f}"
+                        )
                         res.status = f"FAIL: sglang bench tg {bench_tg:.1f} < threshold {bench_tts_threshold:.1f}"
                         res.outcome = TrialOutcome.MODEL_REJECTED
                         return res
 
                     if is_validation:
-                        print(f"  [OK] SGLang bench validation passed: tg {bench_tg:.1f} t/s >= {bench_tts_threshold:.1f}")
+                        print(
+                            f"  [OK] SGLang bench validation passed: tg {bench_tg:.1f} t/s >= {bench_tts_threshold:.1f}"
+                        )
                 except Exception as e:
                     print(f"  [FAIL] sglang bench error: {e}")
                     res.status = f"FAIL: sglang bench error: {str(e)[:50]}"
@@ -455,13 +491,19 @@ class ExperimentRunner:
                 print(f"  [bench] tg {BENCH_N_GEN}: {bench_tg:.1f} t/s")
 
                 if bench_tg < bench_tts_threshold:
-                    print(f"  [FAIL] llama-cli tg {bench_tg:.1f} t/s below threshold {bench_tts_threshold:.1f}")
-                    res.status = f"FAIL: bench tg {bench_tg:.1f} < threshold {bench_tts_threshold:.1f}"
+                    print(
+                        f"  [FAIL] llama-cli tg {bench_tg:.1f} t/s below threshold {bench_tts_threshold:.1f}"
+                    )
+                    res.status = (
+                        f"FAIL: bench tg {bench_tg:.1f} < threshold {bench_tts_threshold:.1f}"
+                    )
                     res.outcome = TrialOutcome.MODEL_REJECTED
                     return res
 
                 if is_validation:
-                    print(f"  [OK] Bench validation passed: tg {bench_tg:.1f} t/s >= {bench_tts_threshold:.1f}")
+                    print(
+                        f"  [OK] Bench validation passed: tg {bench_tg:.1f} t/s >= {bench_tts_threshold:.1f}"
+                    )
                     # Fall through to the configured agentic smoke validation.
 
         # ── Perplexity validation ────────────────────────────────────────
@@ -518,17 +560,20 @@ class ExperimentRunner:
                 res.val_score = res.avg_tps
             else:
                 res.val_score = 0.0
-            
+
             # Estimate peak VRAM from config since server wasn't started
             k_val = intent.kv_cache_k or intent.kv_cache
             v_val = intent.kv_cache_v or intent.kv_cache
-            res.peak_vram_gb = estimate_vram_mb(
-                intent.model_path,
-                intent.ctx_size,
-                k_val,
-                v_val,
-                draft_path=intent.spec_draft_model,
-            ) / 1024.0
+            res.peak_vram_gb = (
+                estimate_vram_mb(
+                    intent.model_path,
+                    intent.ctx_size,
+                    k_val,
+                    v_val,
+                    draft_path=intent.spec_draft_model,
+                )
+                / 1024.0
+            )
             res.elapsed_sec = time.time() - trial_start
             return res
 
@@ -580,7 +625,9 @@ class ExperimentRunner:
                 if agentic_quick or agentic_full:
                     for tier, task_ids in agentic_tiers:
                         n_tasks = len(task_ids)
-                        print(f"  [agentic:{tier}] {n_tasks} tasks selected (rule-based scoring, no LLM judge)")
+                        print(
+                            f"  [agentic:{tier}] {n_tasks} tasks selected (rule-based scoring, no LLM judge)"
+                        )
                         if n_tasks == 0:
                             raise FileNotFoundError(f"No Claw-Eval {tier} tasks found")
                         agentic_res = self.agentic_adapter.run(client, task_ids, gen_params)
@@ -631,7 +678,11 @@ class ExperimentRunner:
         except Exception as e:
             print(f"  [FAIL] Evaluation failed: {e}")
             res.status = f"FAIL: {str(e)[:50]}"
-            res.outcome = TrialOutcome.INFRA_ERROR if isinstance(e, (FileNotFoundError, OSError)) else TrialOutcome.CODE_ERROR
+            res.outcome = (
+                TrialOutcome.INFRA_ERROR
+                if isinstance(e, (FileNotFoundError, OSError))
+                else TrialOutcome.CODE_ERROR
+            )
             res.diagnostic = str(e)
             res.val_score = 0.0
         finally:

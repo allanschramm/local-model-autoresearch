@@ -10,19 +10,16 @@ from __future__ import annotations
 
 import json
 import os
-import re
-import signal
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any
 
 import yaml
 
-from autoresearch.core.llama_client import LlamaClient, GenerationParams
+from autoresearch.core.llama_client import GenerationParams, LlamaClient
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 
@@ -133,14 +130,18 @@ def _build_tool_defs(task: dict) -> list[dict]:
     """Convert task.yaml tool definitions to OpenAI tool format."""
     tools = []
     for tdef in task.get("tools", []):
-        tools.append({
-            "type": "function",
-            "function": {
-                "name": tdef["name"],
-                "description": tdef.get("description", ""),
-                "parameters": tdef.get("input_schema", {"type": "object", "properties": {}, "required": []}),
-            },
-        })
+        tools.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": tdef["name"],
+                    "description": tdef.get("description", ""),
+                    "parameters": tdef.get(
+                        "input_schema", {"type": "object", "properties": {}, "required": []}
+                    ),
+                },
+            }
+        )
     return tools
 
 
@@ -220,7 +221,7 @@ def run_agent_loop(
             with urllib.request.urlopen(req) as resp:
                 raw = json.loads(resp.read().decode())
         except Exception as e:
-            print(f"    [agent] turn {turn+1} request failed: {e}")
+            print(f"    [agent] turn {turn + 1} request failed: {e}")
             break
 
         choice = (raw.get("choices") or [{}])[0]
@@ -248,18 +249,22 @@ def run_agent_loop(
                 else:
                     result = {"error": f"Unknown tool: {tool_name}"}
 
-                all_tool_calls.append({
-                    "tool": tool_name,
-                    "arguments": args,
-                    "result": result,
-                    "turn": turn + 1,
-                })
+                all_tool_calls.append(
+                    {
+                        "tool": tool_name,
+                        "arguments": args,
+                        "result": result,
+                        "turn": turn + 1,
+                    }
+                )
 
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.get("id", f"call_{turn}"),
-                    "content": json.dumps(result),
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.get("id", f"call_{turn}"),
+                        "content": json.dumps(result),
+                    }
+                )
         else:
             # Model produced final answer
             messages.append({"role": "assistant", "content": content})
@@ -318,28 +323,36 @@ def score_task(
             min_calls = check.get("min_calls", 1)
             calls = sum(1 for tc in tool_calls if tc["tool"] == target_tool)
             passed = calls >= min_calls
-            details_parts.append(f"{name}: {'PASS' if passed else 'FAIL'} ({target_tool} called {calls}/{min_calls})")
+            details_parts.append(
+                f"{name}: {'PASS' if passed else 'FAIL'} ({target_tool} called {calls}/{min_calls})"
+            )
 
         elif check_type == "keywords_present":
             keywords = [str(kw) for kw in check.get("keywords", [])]
             text_lower = str(final_text or "").lower()
             found = [kw for kw in keywords if kw.lower() in text_lower]
             passed = len(found) > 0
-            details_parts.append(f"{name}: {'PASS' if passed else 'FAIL'} (keywords found: {found})")
+            details_parts.append(
+                f"{name}: {'PASS' if passed else 'FAIL'} (keywords found: {found})"
+            )
 
         elif check_type == "categories_present":
             categories = [str(cat) for cat in check.get("categories", [])]
             text_lower = str(final_text or "").lower()
             found = [cat for cat in categories if cat.lower() in text_lower]
             passed = len(found) >= len(categories) * 0.5  # at least half
-            details_parts.append(f"{name}: {'PASS' if passed else 'FAIL'} (categories: {found}/{categories})")
+            details_parts.append(
+                f"{name}: {'PASS' if passed else 'FAIL'} (categories: {found}/{categories})"
+            )
 
         elif check_type == "min_length":
             field = check.get("field", "final_text")
             min_len = check.get("min_length", 0)
             text = str(final_text or "") if field == "final_text" else ""
             passed = len(text) >= min_len
-            details_parts.append(f"{name}: {'PASS' if passed else 'FAIL'} (len={len(text)}/{min_len})")
+            details_parts.append(
+                f"{name}: {'PASS' if passed else 'FAIL'} (len={len(text)}/{min_len})"
+            )
 
         else:
             details_parts.append(f"{name}: SKIP (unknown check type: {check_type})")
@@ -384,7 +397,7 @@ def run_agentic_eval(
             results.append({"task_id": tid, "score": 0.0, "details": "missing"})
             continue
 
-        with open(yaml_path, "r", encoding="utf-8") as f:
+        with open(yaml_path, encoding="utf-8") as f:
             task = yaml.safe_load(f)
 
         task_best = 0.0
@@ -393,7 +406,9 @@ def run_agentic_eval(
         for trial in range(trials):
             with ServiceManager(task_dir, task) as svc:
                 final_text, tool_calls, elapsed = run_agent_loop(
-                    client, task, gen_params=gen,
+                    client,
+                    task,
+                    gen_params=gen,
                     max_turns=task.get("environment", {}).get("max_turns", 20),
                 )
                 scoring = score_task(task, final_text, tool_calls, task_dir)
@@ -405,7 +420,7 @@ def run_agentic_eval(
 
             status = "PASS" if scoring["score"] >= 0.5 else "FAIL"
             print(
-                f"  [agentic] {tid} trial{trial+1}: {status} "
+                f"  [agentic] {tid} trial{trial + 1}: {status} "
                 f"score={scoring['score']:.2f} calls={scoring['tool_calls_count']} "
                 f"({scoring['details']})"
             )
@@ -413,11 +428,13 @@ def run_agentic_eval(
         if task_best >= 0.5:
             passed += 1
 
-        results.append({
-            "task_id": tid,
-            "score": task_best,
-            "details": task_detail,
-        })
+        results.append(
+            {
+                "task_id": tid,
+                "score": task_best,
+                "details": task_detail,
+            }
+        )
 
     total = len(task_ids)
     overall = passed / total if total > 0 else 0.0

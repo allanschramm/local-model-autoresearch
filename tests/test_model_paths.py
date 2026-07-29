@@ -1,11 +1,10 @@
 """resolve_model_path: flat + nested (LM Studio) layout under models/."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from autoresearch.core.llama_runner import resolve_model_path, ServerIntent
+from autoresearch.core.llama_runner import ServerIntent, resolve_model_path
 
 
 def test_resolve_prefers_direct_relative_path(tmp_path: Path):

@@ -14,8 +14,8 @@ def test_model_up_parses_flags_and_builds_command(tmp_path, monkeypatch):
     alias_file.write_text(
         "\n".join(
             [
-                'alias: demo-model',
-                'model: models/demo.gguf',
+                "alias: demo-model",
+                "model: models/demo.gguf",
                 "port: 19090",
                 "host: 127.0.0.1",
                 "flags:",

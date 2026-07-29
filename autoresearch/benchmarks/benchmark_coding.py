@@ -22,20 +22,17 @@ import os
 import pickle
 import re
 import shutil
-import signal
 import subprocess
 import sys
-import tempfile
+import textwrap
 import time
 import zlib
-import textwrap
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 from abc import ABC, abstractmethod
+from pathlib import Path
 
-from autoresearch.core.llama_client import LlamaClient, GenerationParams
-from autoresearch.benchmarks.benchmark_harness import BenchmarkResult
 from autoresearch.benchmarks import bench_config
+from autoresearch.benchmarks.benchmark_harness import BenchmarkResult
+from autoresearch.core.llama_client import GenerationParams, LlamaClient
 
 ROOT_DIR = Path(__file__).resolve().parent
 DATA_DIR = ROOT_DIR.parent / "data" / "benchmark_cache"
@@ -87,7 +84,8 @@ def _run_subprocess(script: str, stdin_input: str | None = None) -> tuple[int, s
         result = subprocess.run(
             [sys.executable, "-c", script],
             input=stdin_input,
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
             timeout=30,
             env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         )
@@ -108,23 +106,28 @@ def _run_tests(code: str, test_code: str) -> bool:
 # Evalplus loaders (HumanEval+ / MBPP+)
 # ---------------------------------------------------------------------------
 
+
 def _load_problems(dataset: str) -> dict:
     """Load problem definitions from evalplus data."""
     try:
         if dataset == "humaneval":
             from evalplus.data import get_human_eval_plus
+
             return get_human_eval_plus()
         elif dataset == "mbpp":
             from evalplus.data import get_mbpp_plus
+
             return get_mbpp_plus()
     except ImportError:
         pass
     try:
         if dataset == "humaneval":
             from evalplus.data import get_human_eval
+
             return get_human_eval()
         elif dataset == "mbpp":
             from evalplus.data import get_mbpp
+
             return get_mbpp()
     except ImportError:
         print(f"  [CODING] Cannot load {dataset} problems — evalplus not installed.")
@@ -198,6 +201,7 @@ def _download_lcb_file(force: bool = False) -> Path:
         return target
     try:
         from huggingface_hub import hf_hub_download
+
         # download into HF cache, then copy to canonical name (no symlink —
         # Windows without Developer Mode raises WinError 1314 on symlink_to).
         src = hf_hub_download(
@@ -276,7 +280,7 @@ def _build_lcb_prompt(entry: dict) -> str:
         parts.append(f"\nStarter code:\n```python\n{starter}\n```")
     parts.append(
         "\nSolve this problem in Python. Read from standard input, write the answer to standard output. "
-        "If a function signature is provided, wrap the call in `if __name__ == \"__main__\": solve()` "
+        'If a function signature is provided, wrap the call in `if __name__ == "__main__": solve()` '
         "or invoke the class appropriately. Return ONLY the code, no explanations."
     )
     return "\n".join(p for p in parts if p).strip()
@@ -391,7 +395,7 @@ class EvalTask(ABC):
     """
 
     name: str = ""
-    weight: float = 0.0        # contribution to val_score (sum across tasks == 1.0)
+    weight: float = 0.0  # contribution to val_score (sum across tasks == 1.0)
     default_task_limit: int = 0  # 0 = load all
 
     @property
@@ -446,18 +450,21 @@ class _EvalplusTask(EvalTask):
 
 class HumanEvalTask(_EvalplusTask):
     """HumanEval+ (164 algorithmic problems, evalplus strict tests)."""
+
     name = "humaneval"
     weight = 0.25
 
 
 class MBPPTask(_EvalplusTask):
     """MBPP+ (974 entry-level problems, evalplus strict tests)."""
+
     name = "mbpp"
     weight = 0.25
 
 
 class LiveCodeBenchTask(EvalTask):
     """LiveCodeBench v6 — contamination-free competitive programming, sampled."""
+
     name = "lcb"
     weight = 0.35
     default_task_limit = 10
@@ -475,6 +482,7 @@ class LiveCodeBenchTask(EvalTask):
 
 class BigCodeBenchTask(EvalTask):
     """BigCodeBench Hard — 148 library-call tasks, sampled."""
+
     name = "bigcode"
     weight = 0.15
     default_task_limit = 10
@@ -493,6 +501,7 @@ class BigCodeBenchTask(EvalTask):
 # ---------------------------------------------------------------------------
 # Eval runner (single dataset, prompt -> code -> tests)
 # ---------------------------------------------------------------------------
+
 
 def run_coding_eval(
     client: LlamaClient,
@@ -546,7 +555,7 @@ def run_coding_eval(
 
         code = _strip_code(combined)
         if not code:
-            print(f"    {tid} FAIL (no code extracted) ({i+1}/{total})", flush=True)
+            print(f"    {tid} FAIL (no code extracted) ({i + 1}/{total})", flush=True)
             continue
 
         code = textwrap.dedent(code)
@@ -555,15 +564,15 @@ def run_coding_eval(
 
         if ok:
             passed += 1
-            print(f"    {tid} PASS ({i+1}/{total})", flush=True)
+            print(f"    {tid} PASS ({i + 1}/{total})", flush=True)
         else:
-            print(f"    {tid} FAIL ({i+1}/{total})", flush=True)
+            print(f"    {tid} FAIL ({i + 1}/{total})", flush=True)
 
     elapsed = time.time() - t_start
     pass_at_1 = passed / total if total > 0 else 0.0
     print(
         f"  [CODING] {task.name}: {passed}/{total} passed "
-        f"(pass@1={pass_at_1:.4f}) TPS={total_tokens/elapsed if elapsed > 0 else 0:.1f}",
+        f"(pass@1={pass_at_1:.4f}) TPS={total_tokens / elapsed if elapsed > 0 else 0:.1f}",
         flush=True,
     )
     return pass_at_1, total_tokens, elapsed
@@ -573,7 +582,10 @@ def run_coding_eval(
 # Unified benchmark
 # ---------------------------------------------------------------------------
 
-def run_benchmark(client: LlamaClient, gen_params: GenerationParams | None = None, **kwargs) -> BenchmarkResult:
+
+def run_benchmark(
+    client: LlamaClient, gen_params: GenerationParams | None = None, **kwargs
+) -> BenchmarkResult:
     """
     Unified entry point. Runs LCB, HE+, MBPP+, BigCodeBench Hard.
 
@@ -584,7 +596,9 @@ def run_benchmark(client: LlamaClient, gen_params: GenerationParams | None = Non
     """
     task_limit = kwargs.get("task_limit", 30)
     lcb_limit = kwargs.get("lcb_task_limit", getattr(bench_config, "LCB_TASK_LIMIT", 10))
-    bigcode_limit = kwargs.get("bigcode_task_limit", getattr(bench_config, "BIGCODE_TASK_LIMIT", 10))
+    bigcode_limit = kwargs.get(
+        "bigcode_task_limit", getattr(bench_config, "BIGCODE_TASK_LIMIT", 10)
+    )
 
     # ── Run each task ──────────────────────────────────────────────────
     specs: list[tuple[EvalTask, int]] = [
@@ -600,7 +614,10 @@ def run_benchmark(client: LlamaClient, gen_params: GenerationParams | None = Non
 
     for task, limit in specs:
         pass1, tokens, elapsed = run_coding_eval(
-            client, task, gen_params=gen_params, task_limit=limit,
+            client,
+            task,
+            gen_params=gen_params,
+            task_limit=limit,
         )
         passes[task.name] = pass1
         total_tokens += tokens
@@ -625,4 +642,3 @@ def run_benchmark(client: LlamaClient, gen_params: GenerationParams | None = Non
         avg_tps=round(avg_tps, 2),
         total_seconds=round(total_seconds, 2),
     )
-

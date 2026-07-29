@@ -1,4 +1,5 @@
 """rank_results.py — Pareto / Day / Night views over results.tsv."""
+
 from __future__ import annotations
 
 from scripts import rank_results as rr

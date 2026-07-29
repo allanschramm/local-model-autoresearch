@@ -1,16 +1,14 @@
+import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
 from pathlib import Path
 from types import SimpleNamespace
-import json
-import tempfile
+from unittest.mock import MagicMock, patch
+
 import autoloop
-from autoresearch.core import config as core_config
 from autoresearch.core.search import SearchStrategy
 
 
 class TestAutoLoop(unittest.TestCase):
-
     def setUp(self):
         self._state_dir = tempfile.TemporaryDirectory()
         temp_file = Path(self._state_dir.name) / "state.json"
@@ -137,35 +135,58 @@ class TestAutoLoop(unittest.TestCase):
         for n in neighbors:
             self.assertLessEqual(n.config["UBATCH_SIZE"], n.config["BATCH_SIZE"])
 
-
-
     # ── main() tests ───────────────────────────────────────────────
 
     def _make_trial_result(self, **overrides):
         """Factory for run_trial result namespace."""
         defaults = {
-            "val_score": 0.5, "avg_tps": 10.0, "peak_vram_gb": 2.0,
-            "swe_val": 0.3, "he_val": 0.4, "mbpp_val": 0.6,
-            "lcb_val": 0.5, "bigcode_val": 0.5,
+            "val_score": 0.5,
+            "avg_tps": 10.0,
+            "peak_vram_gb": 2.0,
+            "swe_val": 0.3,
+            "he_val": 0.4,
+            "mbpp_val": 0.6,
+            "lcb_val": 0.5,
+            "bigcode_val": 0.5,
         }
         defaults.update(overrides)
         return SimpleNamespace(**defaults)
 
     def _full_config(self, **overrides):
         cfg = {
-            "BATCH_SIZE": 1024, "CONT_BATCHING": True, "CTX_SIZE": 131072,
-            "FLASH_ATTN": "on", "KV_CACHE_K": "q4_0", "KV_CACHE_V": "q4_0",
-            "MIN_P": 0.0, "NO_MMAP": False, "PRESENCE_PENALTY": 0.0,
-            "REPEAT_PENALTY": 1.05, "SPEC_DRAFT_N_MAX": 0, "TEMP": 0.4,
-            "THREADS": 8, "THREADS_BATCH": 8, "TOP_K": 20, "TOP_P": 0.95,
+            "BATCH_SIZE": 1024,
+            "CONT_BATCHING": True,
+            "CTX_SIZE": 131072,
+            "FLASH_ATTN": "on",
+            "KV_CACHE_K": "q4_0",
+            "KV_CACHE_V": "q4_0",
+            "MIN_P": 0.0,
+            "NO_MMAP": False,
+            "PRESENCE_PENALTY": 0.0,
+            "REPEAT_PENALTY": 1.05,
+            "SPEC_DRAFT_N_MAX": 0,
+            "TEMP": 0.4,
+            "THREADS": 8,
+            "THREADS_BATCH": 8,
+            "TOP_K": 20,
+            "TOP_P": 0.95,
             "UBATCH_SIZE": 256,
-            "KV_CACHE": "q4_0", "MODEL": "test.gguf", "JINJA": False,
-            "REASONING_BUDGET": None, "REASONING_BUDGET_MESSAGE": None,
-            "REASONING": None, "SPEC_TYPE": None, "FREQUENCY_PENALTY": None,
-            "INCLUDE_CODING": True, "CODING_TASK_LIMIT": 10,
-            "INCLUDE_NEXUS": False, "INCLUDE_CLAW": False,
-            "INCLUDE_AGENTIC_QUICK": True, "INCLUDE_AGENTIC_FULL": True,
-            "N_CPU_MOE": 32, "VRAM_LIMIT_MB": 7900,
+            "KV_CACHE": "q4_0",
+            "MODEL": "test.gguf",
+            "JINJA": False,
+            "REASONING_BUDGET": None,
+            "REASONING_BUDGET_MESSAGE": None,
+            "REASONING": None,
+            "SPEC_TYPE": None,
+            "FREQUENCY_PENALTY": None,
+            "INCLUDE_CODING": True,
+            "CODING_TASK_LIMIT": 10,
+            "INCLUDE_NEXUS": False,
+            "INCLUDE_CLAW": False,
+            "INCLUDE_AGENTIC_QUICK": True,
+            "INCLUDE_AGENTIC_FULL": True,
+            "N_CPU_MOE": 32,
+            "VRAM_LIMIT_MB": 7900,
         }
         cfg.update(overrides)
         return cfg
@@ -178,8 +199,7 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.get_git_commit", return_value="abc123")
     @patch("autoloop.write_row")
     def test_main_single_round_no_neighbors(
-        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg,
-        mock_runner_cls, _mock_models
+        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg, mock_runner_cls, _mock_models
     ):
         """main() with --models flag (stdin non-tty fallback from baseline cfg)."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
@@ -205,14 +225,15 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.get_git_commit", return_value="abc123")
     @patch("autoloop.write_row")
     def test_autoloop_write_row_includes_throughput_and_flat_config(
-        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg,
-        mock_runner_cls, _mock_models
+        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg, mock_runner_cls, _mock_models
     ):
         """AutoLoop baseline row must pass tps/bench_tg and flat engine/sampler fields."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
         mock_runner = MagicMock()
         mock_runner.run_trial.return_value = self._make_trial_result(
-            avg_tps=47.7, bench_tg_tps=43.2, tps_source="llama-bench",
+            avg_tps=47.7,
+            bench_tg_tps=43.2,
+            tps_source="llama-bench",
         )
         mock_runner_cls.return_value = mock_runner
 
@@ -241,8 +262,7 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.get_git_commit", return_value="abc123")
     @patch("autoloop.write_row")
     def test_main_with_models_flag(
-        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg,
-        mock_runner_cls, _mock_models
+        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg, mock_runner_cls, _mock_models
     ):
         """--models flag with explicit model name."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
@@ -280,7 +300,9 @@ class TestAutoLoop(unittest.TestCase):
                             with patch.object(SearchStrategy, "random_restart", return_value=None):
                                 autoloop.main()
 
-    @patch("sys.argv", ["autoloop.py", "--reset-visited", "--max-rounds", "1", "--models", "test.gguf"])
+    @patch(
+        "sys.argv", ["autoloop.py", "--reset-visited", "--max-rounds", "1", "--models", "test.gguf"]
+    )
     @patch("autoloop.SearchState.reset")
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")
@@ -289,8 +311,14 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.get_git_commit", return_value="abc")
     @patch("autoloop.write_row")
     def test_main_reset_visited(
-        self, mock_write_row, mock_git, mock_update_baseline, mock_lcfg,
-        mock_runner_cls, _mock_models, mock_reset
+        self,
+        mock_write_row,
+        mock_git,
+        mock_update_baseline,
+        mock_lcfg,
+        mock_runner_cls,
+        _mock_models,
+        mock_reset,
     ):
         """--reset-visited clears visited keys in local state."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
@@ -315,8 +343,14 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.write_row")
     @patch("autoloop.estimate_vram_mb")
     def test_main_with_neighbor_improvement(
-        self, mock_vram, mock_write_row, mock_git, mock_wcfg, mock_lcfg,
-        mock_runner_cls, _mock_models
+        self,
+        mock_vram,
+        mock_write_row,
+        mock_git,
+        mock_wcfg,
+        mock_lcfg,
+        mock_runner_cls,
+        _mock_models,
     ):
         """Neighbor with better score → writes new config and breaks."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
@@ -348,8 +382,7 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.get_git_commit", return_value="abc")
     @patch("autoloop.write_row")
     def test_main_has_no_trial_budget(
-        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg,
-        mock_runner_cls, _mock_models
+        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg, mock_runner_cls, _mock_models
     ):
         """Trials run to completion without a budget override."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
@@ -373,8 +406,14 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.write_row")
     @patch("autoloop.estimate_vram_mb")
     def test_main_vram_skip(
-        self, mock_vram, mock_write_row, mock_git, mock_wcfg, mock_lcfg,
-        mock_runner_cls, _mock_models
+        self,
+        mock_vram,
+        mock_write_row,
+        mock_git,
+        mock_wcfg,
+        mock_lcfg,
+        mock_runner_cls,
+        _mock_models,
     ):
         """Neighbor exceeding VRAM limit gets skipped."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf", VRAM_LIMIT_MB=1)
@@ -396,7 +435,10 @@ class TestAutoLoop(unittest.TestCase):
         # Neighbor was skipped (vram over budget), but baseline still ran
         self.assertEqual(mock_runner.run_trial.call_count, 1)
 
-    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf", "--perplexity-val"])
+    @patch(
+        "sys.argv",
+        ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf", "--perplexity-val"],
+    )
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")
     @patch("autoloop.load_config")
@@ -405,18 +447,24 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.write_row")
     @patch("autoloop.estimate_vram_mb", return_value=0.0)
     def test_main_with_perplexity_validation(
-        self, mock_vram, mock_write_row, mock_git, mock_wcfg, mock_lcfg,
-        mock_runner_cls, _mock_models
+        self,
+        mock_vram,
+        mock_write_row,
+        mock_git,
+        mock_wcfg,
+        mock_lcfg,
+        mock_runner_cls,
+        _mock_models,
     ):
         """Main loop runs successfully with --perplexity-val active."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
         mock_runner = MagicMock()
-        
+
         # Mock result for baseline and neighbors
         base_res = self._make_trial_result()
         base_res.bench_ppl = 5.5
         base_res.val_score = 30.0
-        
+
         mock_runner.run_trial.return_value = base_res
         mock_runner_cls.return_value = mock_runner
 
@@ -437,27 +485,28 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.Path")
     def test_update_model_alias_success(self, mock_path_cls):
         import yaml
+
         with tempfile.TemporaryDirectory() as tmpdir:
             aliases_dir = Path(tmpdir) / "models" / "aliases"
             alias_dir = aliases_dir / "test-model"
             alias_dir.mkdir(parents=True)
-            
+
             yaml_path = alias_dir / "config.yaml"
             dummy_config = {
                 "alias": "test-model",
                 "model": "models/test-model-gguf",
                 "flags": ["--n-gpu-layers 42"],
-                "metrics": {"tps": 10.0}
+                "metrics": {"tps": 10.0},
             }
             with open(yaml_path, "w", encoding="utf-8") as f:
                 yaml.safe_dump(dummy_config, f)
-            
+
             # Setup path mock to return our temp dir
             mock_path = MagicMock()
             # Path(__file__) is resolved in autoloop.py, mock resolve().parent
             mock_path.resolve.return_value.parent = Path(tmpdir)
             mock_path_cls.return_value = mock_path
-            
+
             new_cfg = {
                 "THREADS": 4,
                 "BATCH_SIZE": 512,
@@ -465,10 +514,10 @@ class TestAutoLoop(unittest.TestCase):
                 "NO_MMAP": True,
             }
             autoloop.update_model_alias("test-model-v1.gguf", new_cfg, 25.5, "tps")
-            
-            with open(yaml_path, "r", encoding="utf-8") as f:
+
+            with open(yaml_path, encoding="utf-8") as f:
                 updated = yaml.safe_load(f)
-                
+
             self.assertEqual(updated["metrics"]["tps"], 25.5)
             self.assertIn("--threads 4", updated["flags"])
             self.assertIn("--n-gpu-layers 42", updated["flags"])
@@ -476,7 +525,9 @@ class TestAutoLoop(unittest.TestCase):
             self.assertIn("--no-mmap", updated["flags"])
             self.assertNotIn("--n-gpu-layers 99", updated["flags"])
 
-    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf", "--mode", "tps"])
+    @patch(
+        "sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf", "--mode", "tps"]
+    )
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")
     @patch("autoloop.load_config")
@@ -486,17 +537,24 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.estimate_vram_mb", return_value=0.0)
     @patch("autoloop.update_model_alias")
     def test_main_with_tps_mode(
-        self, mock_update_alias, mock_vram, mock_write_row, mock_git, mock_wcfg, mock_lcfg,
-        mock_runner_cls, _mock_models
+        self,
+        mock_update_alias,
+        mock_vram,
+        mock_write_row,
+        mock_git,
+        mock_wcfg,
+        mock_lcfg,
+        mock_runner_cls,
+        _mock_models,
     ):
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
         mock_runner = MagicMock()
         mock_runner.run_trial.return_value = self._make_trial_result()
         mock_runner_cls.return_value = mock_runner
-        
+
         with patch.object(SearchStrategy, "random_restart", return_value=None):
             autoloop.main()
-            
+
         self.assertGreaterEqual(mock_runner.run_trial.call_count, 1)
 
 

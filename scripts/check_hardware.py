@@ -67,11 +67,11 @@ def generate_recommendations(info: dict[str, Any]) -> None:
         return
 
     if memory_class == MEMORY_CLASS_DISCRETE:
-        print(f" * Classe de memória: discrete_gpu (VRAM dedicada)")
+        print(" * Classe de memória: discrete_gpu (VRAM dedicada)")
         print(f" * VRAM Dedicada: {vram} GB VRAM")
         print(f" * Capacidade reportada: {pool} GB (VRAM física — dense deve caber aqui)")
     else:
-        print(f" * Classe de memória: unified_memory (um pool = RAM)")
+        print(" * Classe de memória: unified_memory (um pool = RAM)")
         if has_metal:
             print(f" * Memória unificada (Metal): {ram} GB total (mesmo pool do sistema)")
         else:
@@ -127,9 +127,7 @@ def generate_recommendations(info: dict[str, Any]) -> None:
             ctx = "4096"
     else:
         tier = "Modo CPU / Sem GPU Dedicada (memória unificada = RAM)"
-        model = (
-            "GGUF pequeno adequado à RAM disponível, com folga para o sistema"
-        )
+        model = "GGUF pequeno adequado à RAM disponível, com folga para o sistema"
         ngl = "0 (Somente CPU)"
         ctx = "4096"
 

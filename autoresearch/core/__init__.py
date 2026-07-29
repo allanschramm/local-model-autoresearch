@@ -4,29 +4,29 @@ This is the contract boundary. Benchmarks consume this API and NEVER the reverse
 The running project MUST NOT import from autoresearch.benchmarks or autoresearch.runners.
 """
 
+from autoresearch.core.llama_client import (
+    GenerationParams,
+    LlamaClient,
+)
 from autoresearch.core.llama_runner import (
+    ROOT_DIR,
     LlamaServerRunner,
     ServerIntent,
-    ROOT_DIR,
     estimate_vram_mb,
     preflight_vram,
     preflight_vram_for_intent,
-    resolve_vram_limit_mb,
-    resolve_llama_server,
     resolve_llama_bench,
+    resolve_llama_server,
+    resolve_vram_limit_mb,
 )
 from autoresearch.core.model_arch import is_dense_model, is_moe_model
-from autoresearch.core.llama_client import (
-    LlamaClient,
-    GenerationParams,
+from autoresearch.core.search import (
+    Neighbor,
+    SearchStrategy,
 )
 from autoresearch.core.sglang_runner import (
     SGLangServerRunner,
     run_sglang_bench_validation,
-)
-from autoresearch.core.search import (
-    SearchStrategy,
-    Neighbor,
 )
 from autoresearch.core.state import (
     SearchState,

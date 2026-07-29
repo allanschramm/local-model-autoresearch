@@ -1,13 +1,14 @@
 import os
-import subprocess
-import time
-import requests
 import socket
+import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
-from autoresearch.core.llama_runner import ServerIntent, ROOT_DIR
+import requests
+
+from autoresearch.core.llama_runner import ROOT_DIR, ServerIntent
 
 IS_WINDOWS = os.name == "nt"
 REPO_ROOT = ROOT_DIR.parent.parent
@@ -23,9 +24,12 @@ def _popen_group_kwargs() -> dict[str, Any]:
 
 def _terminate_process_tree(proc: subprocess.Popen[str]) -> None:
     if IS_WINDOWS:
-        subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], capture_output=True, text=True)
+        subprocess.run(
+            ["taskkill", "/PID", str(proc.pid), "/T", "/F"], capture_output=True, text=True
+        )
         return
     import signal
+
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
     except ProcessLookupError:
@@ -34,6 +38,7 @@ def _terminate_process_tree(proc: subprocess.Popen[str]) -> None:
 
 def candidate_ports(preferred: int) -> list[int]:
     return list(dict.fromkeys((preferred, preferred + 1, preferred + 2, 18080, 28080)))
+
 
 def run_sglang_bench_validation(
     model_path: Path,
@@ -48,6 +53,7 @@ def run_sglang_bench_validation(
         vram_gb: float | None = None
         try:
             import torch
+
             if torch.cuda.is_available():
                 vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
         except Exception:
@@ -81,12 +87,18 @@ def run_sglang_bench_validation(
     print(f"  [bench] Running sglang.bench_one_batch for {model_path.name}")
     cmd = [
         str(SGLANG_PYTHON),
-        "-m", "sglang.bench_one_batch",
-        "--model-path", str(model_path),
-        "--batch-size", str(batch_size),
-        "--input-len", str(n_prompt),
-        "--output-len", str(n_gen),
-        "--dtype", "float16",
+        "-m",
+        "sglang.bench_one_batch",
+        "--model-path",
+        str(model_path),
+        "--batch-size",
+        str(batch_size),
+        "--input-len",
+        str(n_prompt),
+        "--output-len",
+        str(n_gen),
+        "--dtype",
+        "float16",
     ]
     if "GPTQ" in model_path.name.upper():
         cmd += ["--quantization", "gptq_marlin"]
@@ -120,33 +132,43 @@ def run_sglang_bench_validation(
     return tg_tps
 
 
-
 class SGLangServerRunner:
     def __init__(self, intent: ServerIntent, log_path: Path | None = None):
         self.intent = intent
         self.log_path = log_path
-        
+
         self.port: int | None = None
         self.peak_vram_mb: float = 0.0
-        
+
         self._server_proc: subprocess.Popen[str] | None = None
         self._server_log: Any = None
         self._stop_event = threading.Event()
-        
+
     def _build_cmd(self, target_port: int) -> list[str]:
-        print(f"  [SGLang] Directory detected. Using SGLang backend for {self.intent.model_path.name}")
+        print(
+            f"  [SGLang] Directory detected. Using SGLang backend for {self.intent.model_path.name}"
+        )
         cmd = [
             str(SGLANG_PYTHON),
-            "-m", "sglang.launch_server",
-            "--model-path", str(self.intent.model_path),
-            "--served-model-name", self.intent.model_path.name,
-            "--host", str(self.intent.host),
-            "--port", str(target_port),
-            "--context-length", str(self.intent.ctx_size),
-            "--mem-fraction-static", "0.8",
-            "--cpu-offload-gb", "12",
+            "-m",
+            "sglang.launch_server",
+            "--model-path",
+            str(self.intent.model_path),
+            "--served-model-name",
+            self.intent.model_path.name,
+            "--host",
+            str(self.intent.host),
+            "--port",
+            str(target_port),
+            "--context-length",
+            str(self.intent.ctx_size),
+            "--mem-fraction-static",
+            "0.8",
+            "--cpu-offload-gb",
+            "12",
             "--trust-remote-code",
-            "--dtype", "float16",
+            "--dtype",
+            "float16",
             "--disable-cuda-graph",
         ]
         if "GPTQ" in self.intent.model_path.name.upper():
@@ -178,13 +200,13 @@ class SGLangServerRunner:
         server_env["PATH"] = f"{sglang_bin}{os.pathsep}{server_env.get('PATH', '')}"
         server_env["SGLANG_MAMBA_CONV_DTYPE"] = "float16"
         server_env["SGLANG_MAMBA_SSM_DTYPE"] = "float16"
-        
+
         startup_tail: list[str] = []
         for port in candidate_ports(self.intent.port):
             cmd = self._build_cmd(port)
             if self.is_port_in_use(port):
                 continue
-            
+
             print(f"Starting server: {' '.join(cmd)}")
             self._server_proc = subprocess.Popen(
                 cmd,
@@ -196,11 +218,11 @@ class SGLangServerRunner:
             )
 
             ready = False
-            
+
             while True:
                 if self._server_proc.poll() is not None:
                     break
-                
+
                 try:
                     line = self._server_proc.stdout.readline()  # type: ignore
                     if line:
@@ -210,22 +232,25 @@ class SGLangServerRunner:
                         startup_tail.append(line.rstrip())
                         if len(startup_tail) > 20:
                             startup_tail.pop(0)
-                        
-                        if "Uvicorn running on" in line or "The server is fired up and ready to roll!" in line:
+
+                        if (
+                            "Uvicorn running on" in line
+                            or "The server is fired up and ready to roll!" in line
+                        ):
                             ready = True
                             break
                 except Exception:
                     pass
-                
+
                 if self.is_server_ready(port):
                     ready = True
                     break
-                    
+
                 time.sleep(0.5)
 
             if ready:
                 self.port = port
-                
+
                 def consume_output():
                     try:
                         for log_line in self._server_proc.stdout:  # type: ignore
@@ -234,10 +259,10 @@ class SGLangServerRunner:
                                 self._server_log.flush()
                     except Exception:
                         pass
-                
+
                 threading.Thread(target=consume_output, daemon=True).start()
                 return port
-                
+
             else:
                 if self._server_proc.poll() is None:
                     print(f"Failed to start on port {port}, trying next...")
@@ -253,15 +278,15 @@ class SGLangServerRunner:
 
     def stop(self) -> None:
         self._stop_event.set()
-        
+
         if self._server_proc and self._server_proc.poll() is None:
             _terminate_process_tree(self._server_proc)
-            
+
             try:
                 self._server_proc.wait()
             except subprocess.TimeoutExpired:
                 self._server_proc.kill()
-                
+
         if self._server_log and self._server_log != subprocess.DEVNULL:
             try:
                 self._server_log.close()

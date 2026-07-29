@@ -10,6 +10,7 @@ Usage (repo root):
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py --mode coding
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py --day-iq-ratio 0.8
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,9 +18,10 @@ import csv
 import json
 import re
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 _DESC_TPS_RE = re.compile(r"(?:bench_tg|TPS)=([0-9]+(?:\.[0-9]+)?)", re.IGNORECASE)
 _DESC_CTX_RE = re.compile(r"\bctx=([0-9]+)\b", re.IGNORECASE)
@@ -177,12 +179,18 @@ def build_vectors(
             tps = float(cod["tps"])
         else:
             tps = float(tps_fallback.get(model, 0.0))
-        ctx_candidates = [c for c in (
-            ag["ctx"] if ag else None,
-            cod["ctx"] if cod else None,
-        ) if c]
+        ctx_candidates = [
+            c
+            for c in (
+                ag["ctx"] if ag else None,
+                cod["ctx"] if cod else None,
+            )
+            if c
+        ]
         ctx = max(ctx_candidates) if ctx_candidates else 0
-        point = Point(model=model, ctx=ctx, tps=tps, agentic=max(agentic, 0.0), coding=max(coding, 0.0))
+        point = Point(
+            model=model, ctx=ctx, tps=tps, agentic=max(agentic, 0.0), coding=max(coding, 0.0)
+        )
         if ag and cod:
             complete.append(Point(model=model, ctx=ctx, tps=tps, agentic=agentic, coding=coding))
         else:
@@ -192,18 +200,8 @@ def build_vectors(
 
 def dominates(a: Point, b: Point) -> bool:
     """A dominates B on maximize axes ctx, TPS, agentic, coding."""
-    ge = (
-        a.ctx >= b.ctx
-        and a.tps >= b.tps
-        and a.agentic >= b.agentic
-        and a.coding >= b.coding
-    )
-    gt = (
-        a.ctx > b.ctx
-        or a.tps > b.tps
-        or a.agentic > b.agentic
-        or a.coding > b.coding
-    )
+    ge = a.ctx >= b.ctx and a.tps >= b.tps and a.agentic >= b.agentic and a.coding >= b.coding
+    gt = a.ctx > b.ctx or a.tps > b.tps or a.agentic > b.agentic or a.coding > b.coding
     return ge and gt
 
 
@@ -383,7 +381,9 @@ def format_report(
         day_rows = day_table(front, day_iq_ratio=day_iq_ratio)
         iq_best = max((p.iq_min for p in front), default=0.0)
         floor = day_iq_ratio * iq_best
-        lines.append(f"DAY  (min >= {day_iq_ratio:.2f}*IQ_best={iq_best:.4f} -> {floor:.4f})  pick=#1")
+        lines.append(
+            f"DAY  (min >= {day_iq_ratio:.2f}*IQ_best={iq_best:.4f} -> {floor:.4f})  pick=#1"
+        )
         lines.extend(_md_table(day_rows))
 
     if mode in ("pareto", "night", "all"):

@@ -1,21 +1,20 @@
-import unittest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
-import os
-import subprocess
 import tempfile
-from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent, resolve_llama_server
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 from autoresearch.core import llama_runner
+from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent, resolve_llama_server
+
 
 class TestLlamaRunner(unittest.TestCase):
-
     def setUp(self):
         self.intent = ServerIntent(
             model_path=Path("models/test-model.gguf"),
             ctx_size=2048,
             kv_cache="q4_0",
             flash_attn="on",
-            port=18080
+            port=18080,
         )
 
     def test_candidate_binary_includes_windows_release_exe(self):
@@ -49,7 +48,7 @@ class TestLlamaRunner(unittest.TestCase):
         mock_cuda.__str__.return_value = "/fake/cuda"
         mock_cuda.resolve.return_value = Path("/fake/cuda")
         mock_cuda.absolute.return_value = Path("/fake/cuda")
-        
+
         with patch("autoresearch.core.llama_runner.LLAMA_SERVER_CANDIDATES", (mock_cuda,)):
             path = resolve_llama_server()
             self.assertEqual(path, Path("/fake/cuda"))
@@ -57,7 +56,7 @@ class TestLlamaRunner(unittest.TestCase):
     def test_resolve_llama_server_not_found(self):
         mock_fail = MagicMock(spec=Path)
         mock_fail.exists.return_value = False
-        
+
         with patch("autoresearch.core.llama_runner.LLAMA_SERVER_CANDIDATES", (mock_fail,)):
             with self.assertRaises(FileNotFoundError):
                 resolve_llama_server()
@@ -78,7 +77,7 @@ class TestLlamaRunner(unittest.TestCase):
             model_path=Path("models/Gemma-MTP.gguf"),
             ctx_size=2048,
             kv_cache="q4_0",
-            flash_attn="on"
+            flash_attn="on",
         )
         runner = LlamaServerRunner(intent)
         cmd = runner._build_cmd(18080)
@@ -165,7 +164,7 @@ class TestLlamaRunner(unittest.TestCase):
             flash_attn="on",
             spec_type="draft-dflash",
             spec_draft_model="qwen35-9b-dflash-Q4_K_M.gguf",
-            spec_draft_n_max=2
+            spec_draft_n_max=2,
         )
         runner = LlamaServerRunner(intent)
         cmd = runner._build_cmd(18080)
@@ -185,11 +184,11 @@ class TestLlamaRunner(unittest.TestCase):
         mock_res.status = 200
         mock_res.__enter__.return_value = mock_res
         mock_urlopen.return_value = mock_res
-        
+
         runner = LlamaServerRunner(self.intent)
         runner._server_proc = MagicMock()
         runner._server_proc.poll.return_value = None
-        
+
         self.assertTrue(runner._wait_for_server(18080))
 
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
@@ -199,11 +198,11 @@ class TestLlamaRunner(unittest.TestCase):
     def test_wait_for_server_crash(self, _mock_sleep, mock_time, mock_urlopen, mock_resolve):
         mock_resolve.return_value = Path("/bin/llama-server")
         mock_urlopen.side_effect = Exception("Not ready")
-        
+
         runner = LlamaServerRunner(self.intent)
         runner._server_proc = MagicMock()
         runner._server_proc.poll.side_effect = [None, 1]
-        
+
         self.assertFalse(runner._wait_for_server(18080))
 
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
@@ -213,13 +212,13 @@ class TestLlamaRunner(unittest.TestCase):
     def test_wait_for_server_backoff(self, mock_sleep, mock_time, mock_urlopen, mock_resolve):
         mock_resolve.return_value = Path("/bin/llama-server")
         mock_urlopen.side_effect = Exception("Not ready")
-        
+
         runner = LlamaServerRunner(self.intent)
         runner._server_proc = MagicMock()
         runner._server_proc.poll.side_effect = [None, None, None, 1]
-        
+
         self.assertFalse(runner._wait_for_server(18080))
-        
+
         # Verify backoff values
         sleep_args = [args[0] for args, kwargs in mock_sleep.call_args_list]
         self.assertEqual(sleep_args, [0.05, 0.1, 0.2])
@@ -229,8 +228,9 @@ class TestLlamaRunner(unittest.TestCase):
     @patch("ctypes.CDLL")
     def test_vram_sampler(self, mock_cdll, mock_output, mock_resolve):
         import threading
+
         called_event = threading.Event()
-        
+
         def check_output_side_effect(*args, **kwargs):
             called_event.set()
             return "1000\n"
@@ -238,13 +238,13 @@ class TestLlamaRunner(unittest.TestCase):
         mock_cdll.side_effect = Exception("Mock NVML load failure")
         mock_resolve.return_value = Path("/bin/llama-server")
         mock_output.side_effect = check_output_side_effect
-        
+
         runner = LlamaServerRunner(self.intent)
         runner._start_vram_sampler()
-        
+
         # Robust event synchronization: wait until check_output gets called
         called_event.wait(5.0)
-            
+
         runner._stop_event.set()
         runner._vram_thread.join()
         self.assertGreaterEqual(runner.peak_vram_mb, 1000)
@@ -260,17 +260,17 @@ class TestLlamaRunner(unittest.TestCase):
             kv_cache_k="f16",
             kv_cache_v="q4_0",
             threads_batch=16,
-            spec_draft_n_max=2
+            spec_draft_n_max=2,
         )
         runner = LlamaServerRunner(intent)
         cmd = runner._build_cmd(18080)
-        
+
         # Verify Key/Value KV cache parameters
         self.assertIn("--cache-type-k", cmd)
         self.assertEqual(cmd[cmd.index("--cache-type-k") + 1], "f16")
         self.assertIn("--cache-type-v", cmd)
         self.assertEqual(cmd[cmd.index("--cache-type-v") + 1], "q4_0")
-        
+
         # Verify Threads Batch parameters
         self.assertIn("--threads-batch", cmd)
         self.assertEqual(cmd[cmd.index("--threads-batch") + 1], "16")
@@ -285,11 +285,11 @@ class TestLlamaRunner(unittest.TestCase):
             flash_attn="on",
             kv_cache_k="q8_0",
             kv_cache_v="q4_0",
-            spec_draft_n_max=3
+            spec_draft_n_max=3,
         )
         runner = LlamaServerRunner(intent)
         cmd = runner._build_cmd(18080)
-        
+
         # Verify MTP advanced spec settings
         self.assertIn("--spec-draft-n-max", cmd)
         self.assertEqual(cmd[cmd.index("--spec-draft-n-max") + 1], "3")
@@ -309,26 +309,30 @@ class TestLlamaRunner(unittest.TestCase):
             no_mmap=True,
             jinja=True,
             reasoning_budget=1024,
-            reasoning_budget_message="Thinking budget reached. Proceed to final answer now."
+            reasoning_budget_message="Thinking budget reached. Proceed to final answer now.",
         )
         runner = LlamaServerRunner(intent)
         cmd = runner._build_cmd(18080)
-        
+
         self.assertIn("--no-mmap", cmd)
         self.assertIn("--jinja", cmd)
         self.assertIn("--reasoning-budget", cmd)
         self.assertEqual(cmd[cmd.index("--reasoning-budget") + 1], "1024")
         self.assertIn("--reasoning-budget-message", cmd)
-        self.assertEqual(cmd[cmd.index("--reasoning-budget-message") + 1], "Thinking budget reached. Proceed to final answer now.")
+        self.assertEqual(
+            cmd[cmd.index("--reasoning-budget-message") + 1],
+            "Thinking budget reached. Proceed to final answer now.",
+        )
 
     def test_estimate_vram_mb(self):
         from autoresearch.core.llama_runner import (
-            estimate_vram_mb,
+            VRAM_DEFAULT_QUANT_FACTOR,
             VRAM_KB_PER_TOKEN_F16,
             VRAM_OVERHEAD_MB,
-            VRAM_DEFAULT_QUANT_FACTOR,
-            VRAM_QUANT_FACTORS
+            VRAM_QUANT_FACTORS,
+            estimate_vram_mb,
         )
+
         self.assertEqual(VRAM_KB_PER_TOKEN_F16, 80.0)
         self.assertEqual(VRAM_OVERHEAD_MB, 300.0)
         self.assertEqual(VRAM_DEFAULT_QUANT_FACTOR, 0.3)
@@ -337,17 +341,18 @@ class TestLlamaRunner(unittest.TestCase):
         # Test with 4 arguments (backward-compatibility check)
         v1 = estimate_vram_mb(Path("models/non-existent.gguf"), 2048, "q4_0", "q4_0")
         self.assertGreater(v1, 4000)
-        
+
         # Test with 5 arguments
         v2 = estimate_vram_mb(Path("models/non-existent.gguf"), 2048, "q4_0", "q4_0", "q4_0")
         self.assertEqual(v1, v2)
-        
+
         # Test default/none cache parameters
         v3 = estimate_vram_mb(Path("models/non-existent.gguf"), 2048)
         self.assertEqual(v1, v3)
 
     def test_estimate_vram_mb_includes_draft(self):
         from autoresearch.core.llama_runner import estimate_vram_mb
+
         with tempfile.TemporaryDirectory() as tmp:
             draft = Path(tmp) / "draft.gguf"
             draft.write_bytes(b"x" * (10 * 1024 * 1024))  # 10 MiB
@@ -359,6 +364,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_estimate_vram_mb_n_cpu_moe_shrinks_weight(self):
         from autoresearch.core.llama_runner import estimate_vram_mb
+
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "moe.gguf"
             model.write_bytes(b"x" * (10 * 1024 * 1024 * 1024))  # 10 GiB
@@ -369,6 +375,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_preflight_vram_rejects_over_limit(self):
         from autoresearch.core.llama_runner import preflight_vram
+
         ok, est, reason = preflight_vram(
             Path("models/non-existent.gguf"),
             131072,
@@ -382,6 +389,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_preflight_vram_passes_large_moe_with_n_cpu_moe(self):
         from autoresearch.core.llama_runner import preflight_vram
+
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "moe.gguf"
             model.write_bytes(b"x" * (14 * 1024 * 1024 * 1024))  # 14 GiB file
@@ -398,6 +406,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_estimate_host_memory_ignores_n_cpu_moe(self):
         from autoresearch.core.llama_runner import estimate_host_memory_mb, estimate_vram_mb
+
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "moe.gguf"
             model.write_bytes(b"x")
@@ -411,6 +420,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_preflight_host_rejects_12gb_on_16gb_unified(self):
         from autoresearch.core.llama_runner import preflight_host_memory
+
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "big.gguf"
             model.write_bytes(b"x")
@@ -431,6 +441,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_preflight_host_passes_when_under_budget(self):
         from autoresearch.core.llama_runner import preflight_host_memory
+
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "small.gguf"
             model.write_bytes(b"x")
@@ -450,6 +461,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_preflight_host_fail_closed_unified_unknown_ram(self):
         from autoresearch.core.llama_runner import preflight_host_memory
+
         with patch("autoresearch.core.hardware.detect_host_ram_mb", return_value=None):
             ok, est, budget, reason = preflight_host_memory(
                 Path("models/non-existent.gguf"),
@@ -462,6 +474,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_preflight_host_discrete_unknown_ram_passes(self):
         from autoresearch.core.llama_runner import preflight_host_memory
+
         with patch("autoresearch.core.hardware.detect_host_ram_mb", return_value=None):
             ok, est, budget, reason = preflight_host_memory(
                 Path("models/non-existent.gguf"),
@@ -474,6 +487,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_estimate_vram_offload_uses_gguf_block_count(self):
         from autoresearch.core.llama_runner import estimate_vram_mb
+
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "moe.gguf"
             model.write_bytes(b"x" * (10 * 1024 * 1024 * 1024))
@@ -484,78 +498,98 @@ class TestLlamaRunner(unittest.TestCase):
             self.assertLess(full, half)
 
     def test_estimate_vram_offload_falls_back_to_32_ref(self):
-        from autoresearch.core.llama_runner import estimate_vram_mb, VRAM_MOE_NON_EXPERT_FRAC
+        from autoresearch.core.llama_runner import VRAM_MOE_NON_EXPERT_FRAC, estimate_vram_mb
+
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "moe.gguf"
             model.write_bytes(b"x" * (10 * 1024 * 1024 * 1024))
-            with patch("autoresearch.core.llama_runner.gguf_is_moe", side_effect=RuntimeError("no arch")):
+            with patch(
+                "autoresearch.core.llama_runner.gguf_is_moe", side_effect=RuntimeError("no arch")
+            ):
                 # n=32 / fallback 32 → full expert offload → ~28% of file + kv + overhead
                 est = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=32)
             file_mb = 10 * 1024
-            self.assertAlmostEqual(est, file_mb * VRAM_MOE_NON_EXPERT_FRAC + 300.0 + (2048 * 80.0 / 1024.0) * 0.28, delta=50.0)
+            self.assertAlmostEqual(
+                est,
+                file_mb * VRAM_MOE_NON_EXPERT_FRAC + 300.0 + (2048 * 80.0 / 1024.0) * 0.28,
+                delta=50.0,
+            )
 
     def test_dense_n_cpu_moe_rejected(self):
-        from autoresearch.core.config import validate_config, ConfigError
+        from autoresearch.core.config import ConfigError, validate_config
+
         with self.assertRaises(ConfigError) as ctx:
-            validate_config({
-                "MODEL": "Bonsai-27B-Q1_0.gguf",
-                "CTX_SIZE": 65536,
-                "FLASH_ATTN": "on",
-                "BATCH_SIZE": 512,
-                "UBATCH_SIZE": 128,
-                "N_CPU_MOE": 32,
-            })
+            validate_config(
+                {
+                    "MODEL": "Bonsai-27B-Q1_0.gguf",
+                    "CTX_SIZE": 65536,
+                    "FLASH_ATTN": "on",
+                    "BATCH_SIZE": 512,
+                    "UBATCH_SIZE": 128,
+                    "N_CPU_MOE": 32,
+                }
+            )
         self.assertIn("MoE-only", str(ctx.exception))
 
     def test_moe_n_cpu_moe_allowed(self):
         from autoresearch.core.config import validate_config
+
         with patch("autoresearch.core.config.is_dense_model", return_value=False):
-            cfg = validate_config({
-                "MODEL": "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf",
-                "CTX_SIZE": 65536,
-                "FLASH_ATTN": "on",
-                "BATCH_SIZE": 512,
-                "UBATCH_SIZE": 128,
-                "N_CPU_MOE": 32,
-                "VRAM_LIMIT_MB": 7900,
-            })
+            cfg = validate_config(
+                {
+                    "MODEL": "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf",
+                    "CTX_SIZE": 65536,
+                    "FLASH_ATTN": "on",
+                    "BATCH_SIZE": 512,
+                    "UBATCH_SIZE": 128,
+                    "N_CPU_MOE": 32,
+                    "VRAM_LIMIT_MB": 7900,
+                }
+            )
         self.assertEqual(cfg["N_CPU_MOE"], 32)
 
     def test_ornith_moe_via_gguf_not_filename(self):
-        from autoresearch.core.config import validate_config
         from autoresearch.core import model_arch
+        from autoresearch.core.config import validate_config
+
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "Ornith-1.0-35B-UD-Q4_K_XL.gguf"
             model.touch()
             with patch.object(model_arch, "gguf_is_moe", return_value=True):
                 self.assertTrue(model_arch.is_moe_model(model.name, models_dir=Path(tmp)))
         with patch("autoresearch.core.config.is_dense_model", return_value=False):
-            cfg = validate_config({
-                "MODEL": "Ornith-1.0-35B-UD-Q4_K_XL.gguf",
-                "CTX_SIZE": 65536,
-                "FLASH_ATTN": "on",
-                "BATCH_SIZE": 512,
-                "UBATCH_SIZE": 128,
-                "N_CPU_MOE": 32,
-                "VRAM_LIMIT_MB": 7900,
-            })
+            cfg = validate_config(
+                {
+                    "MODEL": "Ornith-1.0-35B-UD-Q4_K_XL.gguf",
+                    "CTX_SIZE": 65536,
+                    "FLASH_ATTN": "on",
+                    "BATCH_SIZE": 512,
+                    "UBATCH_SIZE": 128,
+                    "N_CPU_MOE": 32,
+                    "VRAM_LIMIT_MB": 7900,
+                }
+            )
         self.assertEqual(cfg["N_CPU_MOE"], 32)
 
     def test_missing_gguf_treated_dense_for_n_cpu_moe(self):
-        from autoresearch.core.config import validate_config, ConfigError
+        from autoresearch.core.config import ConfigError, validate_config
+
         with self.assertRaises(ConfigError) as ctx:
-            validate_config({
-                "MODEL": "Totally-Fake-MoE-A3B.gguf",
-                "CTX_SIZE": 65536,
-                "FLASH_ATTN": "on",
-                "BATCH_SIZE": 512,
-                "UBATCH_SIZE": 128,
-                "N_CPU_MOE": 32,
-            })
+            validate_config(
+                {
+                    "MODEL": "Totally-Fake-MoE-A3B.gguf",
+                    "CTX_SIZE": 65536,
+                    "FLASH_ATTN": "on",
+                    "BATCH_SIZE": 512,
+                    "UBATCH_SIZE": 128,
+                    "N_CPU_MOE": 32,
+                }
+            )
         self.assertIn("MoE-only", str(ctx.exception))
 
     def test_resolve_n_cpu_moe_auto_block_count(self):
         from autoresearch.core import model_arch
+
         with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as tmp:
             path = Path(tmp.name)
         try:
@@ -568,6 +602,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_resolve_n_cpu_moe_explicit_and_dense(self):
         from autoresearch.core import model_arch
+
         with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as tmp:
             path = Path(tmp.name)
         try:
@@ -584,6 +619,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_resolve_n_cpu_moe_missing_file_skips_auto(self):
         from autoresearch.core import model_arch
+
         n, auto = model_arch.resolve_n_cpu_moe(Path("missing-moe.gguf"), None)
         self.assertIsNone(n)
         self.assertFalse(auto)
@@ -593,6 +629,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_resolve_n_cpu_moe_moe_without_block_count_fails(self):
         from autoresearch.core import model_arch
+
         with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as tmp:
             path = Path(tmp.name)
         try:
@@ -605,6 +642,7 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_resolve_n_cpu_moe_unreadable_file_fails_auto(self):
         from autoresearch.core import model_arch
+
         with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as tmp:
             path = Path(tmp.name)
         try:
@@ -617,13 +655,16 @@ class TestLlamaRunner(unittest.TestCase):
 
     def test_vram_sampler_kills_dense_over_limit(self):
         from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent
+
         intent = ServerIntent(
             model_path=Path("Bonsai-27B-Q1_0.gguf"),
             ctx_size=65536,
             kv_cache="q4_0",
             flash_attn="on",
         )
-        with patch("autoresearch.core.llama_runner.resolve_llama_server", return_value=Path("llama-server")):
+        with patch(
+            "autoresearch.core.llama_runner.resolve_llama_server", return_value=Path("llama-server")
+        ):
             runner = LlamaServerRunner(intent, vram_limit_mb=100.0)
         proc = MagicMock()
         runner._server_proc = proc
@@ -633,12 +674,14 @@ class TestLlamaRunner(unittest.TestCase):
                 runner._start_vram_sampler()
                 # Allow sampler thread to fire once
                 import time
+
                 time.sleep(0.35)
                 runner._stop_event.set()
                 if runner._vram_thread:
                     runner._vram_thread.join(timeout=1.0)
         self.assertTrue(runner.vram_killed)
         proc.kill.assert_called()
+
 
 if __name__ == "__main__":
     unittest.main()

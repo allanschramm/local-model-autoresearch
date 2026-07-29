@@ -10,11 +10,11 @@ fully local — no external API keys needed for grading.
 
 from __future__ import annotations
 
-import yaml
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import yaml
 
 # ── Root paths ────────────────────────────────────────────────────────────────
 
@@ -25,8 +25,8 @@ CLAW_TASKS_DIR = CLAW_EVAL_DIR / "tasks"
 
 # ── Tier constants ────────────────────────────────────────────────────────────
 
-QUICK_TASK_COUNT = 5   # ~5-minute smoke test
-FULL_TASK_COUNT = 15   # ~15-minute agentic quality gate
+QUICK_TASK_COUNT = 5  # ~5-minute smoke test
+FULL_TASK_COUNT = 15  # ~15-minute agentic quality gate
 
 
 # ── Spec dataclass ────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ def _load_task_yaml(task_dir: Path) -> dict[str, Any] | None:
     if not yaml_path.exists():
         return None
     try:
-        with open(yaml_path, "r", encoding="utf-8") as f:
+        with open(yaml_path, encoding="utf-8") as f:
             return yaml.safe_load(f)
     except Exception:
         return None

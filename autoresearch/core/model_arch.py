@@ -155,9 +155,7 @@ def resolve_n_cpu_moe(path: Path, n_cpu_moe: int | None) -> tuple[int | None, bo
     except Exception as exc:
         if n_cpu_moe is not None:
             return int(n_cpu_moe), False
-        raise ValueError(
-            f"cannot read GGUF architecture for auto N_CPU_MOE: {path}"
-        ) from exc
+        raise ValueError(f"cannot read GGUF architecture for auto N_CPU_MOE: {path}") from exc
 
     if not is_moe:
         return None, False

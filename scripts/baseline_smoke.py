@@ -4,6 +4,7 @@ Baseline smoke test: 1 run per model, ~5min budget.
 MTP for Qwen (has nextn_predict_layers), TurboQuant (turbo4) for both.
 Validates codebase works end-to-end.
 """
+
 import sys
 import time
 from pathlib import Path
@@ -26,10 +27,12 @@ def run_baseline(model: str) -> dict:
     # MTP only for Qwen (has nextn_predict_layers=1)
     has_mtp = "Qwen" in model
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"BASELINE SMOKE: {model}")
-    print(f"  MTP={'on' if has_mtp else 'N/A'}, KV=turbo4, budget={TRIAL_BUDGET}s, tasks={TASK_LIMIT}")
-    print(f"{'='*60}")
+    print(
+        f"  MTP={'on' if has_mtp else 'N/A'}, KV=turbo4, budget={TRIAL_BUDGET}s, tasks={TASK_LIMIT}"
+    )
+    print(f"{'=' * 60}")
 
     cfg = {
         "model": model,
@@ -73,16 +76,18 @@ if __name__ == "__main__":
     for model in MODELS:
         results[model] = run_baseline(model)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SMOKE TEST SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     all_ok = True
     for model, res in results.items():
         status = "PASS" if res["status"] == "OK" else "FAIL"
         if status == "FAIL":
             all_ok = False
         mtp = "MTP" if "Qwen" in model else "no-MTP"
-        print(f"  {status} | {model} | {mtp} | turbo4 | score={res['val_score']:.4f} | tps={res['avg_tps']:.1f}")
+        print(
+            f"  {status} | {model} | {mtp} | turbo4 | score={res['val_score']:.4f} | tps={res['avg_tps']:.1f}"
+        )
 
     if not all_ok:
         print("\nSome tests FAILED.")

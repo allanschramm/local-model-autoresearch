@@ -10,75 +10,102 @@ Stop with Ctrl+C (SIGINT). Visited memory persists in .autoresearch_state.json;
 Baseline persists in config.py; results in results.tsv.
 """
 
-import sys
 import json
 import signal
+import sys
 from pathlib import Path
 from typing import Any
 
-from autoresearch.core.llama_runner import resolve_model_path, estimate_vram_mb, preflight_host_memory
-from autoresearch.core.model_arch import resolve_n_cpu_moe
 from autoresearch.core.config import (
     ENGINE_DEFAULTS,
     SAMPLER_DEFAULTS,
 )
-from autoresearch.runners.run import get_git_commit, write_row, RESULTS_FILE, MODELS_DIR, tsv_fields_from_cfg
-from autoresearch.runners.evaluation import ExperimentRunner
-from autoresearch.runners.evaluation import TrialOutcome
+from autoresearch.core.llama_runner import (
+    estimate_vram_mb,
+    preflight_host_memory,
+    resolve_model_path,
+)
+from autoresearch.core.model_arch import resolve_n_cpu_moe
 from autoresearch.core.search import SearchStrategy
 from autoresearch.core.state import SearchState
+from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
+from autoresearch.runners.run import (
+    MODELS_DIR,
+    RESULTS_FILE,
+    get_git_commit,
+    tsv_fields_from_cfg,
+    write_row,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 
 # ── Search space: param_name → list of candidate values ──────────────────
 SEARCH_SPACE = {
-    "KV_CACHE_K":        ["q4_0", "q8_0", "turbo2", "turbo3", "turbo4", "f16"],
-    "KV_CACHE_V":        ["q4_0", "q8_0", "turbo2", "turbo3", "turbo4", "f16"],
-    "THREADS":           [6, 8, 12, 16],
-    "THREADS_BATCH":     [None, 8, 12, 16, 24],
-    "BATCH_SIZE":        [256, 512, 1024],
-    "UBATCH_SIZE":       [64, 128, 256, 512],
-    "SPEC_DRAFT_N_MAX":  [0, 1, 2, 3, 4],
-    "CONT_BATCHING":     [False, True],
-    "FLASH_ATTN":        ["on"],
-    "NO_MMAP":           [False, True],
-    "TEMP":              [0.0, 0.2, 0.4, 0.6, 0.7, 1.0],
-    "TOP_P":             [None, 0.8, 0.9, 0.95],
-    "TOP_K":             [None, 20, 40, 64],
-    "MIN_P":             [None, 0.0, 0.02, 0.05],
-    "PRESENCE_PENALTY":  [None, 0.0, 1.5],
-    "REPEAT_PENALTY":    [None, 1.0, 1.1],
+    "KV_CACHE_K": ["q4_0", "q8_0", "turbo2", "turbo3", "turbo4", "f16"],
+    "KV_CACHE_V": ["q4_0", "q8_0", "turbo2", "turbo3", "turbo4", "f16"],
+    "THREADS": [6, 8, 12, 16],
+    "THREADS_BATCH": [None, 8, 12, 16, 24],
+    "BATCH_SIZE": [256, 512, 1024],
+    "UBATCH_SIZE": [64, 128, 256, 512],
+    "SPEC_DRAFT_N_MAX": [0, 1, 2, 3, 4],
+    "CONT_BATCHING": [False, True],
+    "FLASH_ATTN": ["on"],
+    "NO_MMAP": [False, True],
+    "TEMP": [0.0, 0.2, 0.4, 0.6, 0.7, 1.0],
+    "TOP_P": [None, 0.8, 0.9, 0.95],
+    "TOP_K": [None, 20, 40, 64],
+    "MIN_P": [None, 0.0, 0.02, 0.05],
+    "PRESENCE_PENALTY": [None, 0.0, 1.5],
+    "REPEAT_PENALTY": [None, 1.0, 1.1],
 }
 
 # Params not in search space but needed for config persistence
 # Core params (in autoresearch.core.config)
 CORE_PASSTHROUGH = [
-    "KV_CACHE", "MODEL", "CTX_SIZE", "JINJA", "REASONING_BUDGET", "REASONING_BUDGET_MESSAGE",
-    "REASONING", "SPEC_TYPE", "SPEC_DRAFT_MODEL", "FREQUENCY_PENALTY", "N_CPU_MOE",
+    "KV_CACHE",
+    "MODEL",
+    "CTX_SIZE",
+    "JINJA",
+    "REASONING_BUDGET",
+    "REASONING_BUDGET_MESSAGE",
+    "REASONING",
+    "SPEC_TYPE",
+    "SPEC_DRAFT_MODEL",
+    "FREQUENCY_PENALTY",
+    "N_CPU_MOE",
 ]
 # Bench params (in autoresearch.benchmarks.bench_config)
 BENCH_PASSTHROUGH = [
-    "INCLUDE_CODING", "CODING_TASK_LIMIT",
-    "INCLUDE_NEXUS", "INCLUDE_CLAW", "INCLUDE_AGENTIC_QUICK", "INCLUDE_AGENTIC_FULL",
+    "INCLUDE_CODING",
+    "CODING_TASK_LIMIT",
+    "INCLUDE_NEXUS",
+    "INCLUDE_CLAW",
+    "INCLUDE_AGENTIC_QUICK",
+    "INCLUDE_AGENTIC_FULL",
 ]
 PASSTHROUGH_PARAMS = CORE_PASSTHROUGH + BENCH_PASSTHROUGH
 
 # ── Graceful shutdown ────────────────────────────────────────────────────
 _stop_requested = False
 
+
 def _signal_handler(_sig, _frame):
     global _stop_requested
     _stop_requested = True
     print("\n[AUTOLOOP] Graceful stop requested. Finishing current evaluation...")
 
+
 signal.signal(signal.SIGINT, _signal_handler)
 signal.signal(signal.SIGTERM, _signal_handler)
+
 
 def load_config(baseline_cfg: dict[str, Any] | None = None) -> dict[str, Any]:
     """Load immutable defaults overlaid by the local Baseline state."""
     from autoresearch.benchmarks import bench_config as _bc
+
     if baseline_cfg is None:
         from autoresearch.core.config import load_config as _core_load_config
+
         baseline_cfg = _core_load_config()
     result = dict(baseline_cfg)
     # Merge bench params
@@ -90,6 +117,7 @@ def load_config(baseline_cfg: dict[str, Any] | None = None) -> dict[str, Any]:
 def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) -> None:
     """Resolve model alias in models/aliases/ and update its config.yaml with new flags and TPS."""
     import yaml
+
     aliases_dir = Path(__file__).resolve().parent / "models" / "aliases"
     if not aliases_dir.exists():
         return
@@ -110,20 +138,23 @@ def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) ->
         return
 
     try:
-        with open(yaml_path, "r", encoding="utf-8") as f:
+        with open(yaml_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         # 1. Compile flags from new_cfg
         flags = []
         existing_ngl = next(
             (
-                flag for flag in data.get("flags", [])
+                flag
+                for flag in data.get("flags", [])
                 if isinstance(flag, str) and flag.startswith(("--n-gpu-layers ", "-ngl "))
             ),
             None,
         )
-        if new_cfg.get("JINJA"): flags.append("--jinja")
-        if new_cfg.get("CTX_SIZE"): flags.append(f"--ctx-size {new_cfg['CTX_SIZE']}")
+        if new_cfg.get("JINJA"):
+            flags.append("--jinja")
+        if new_cfg.get("CTX_SIZE"):
+            flags.append(f"--ctx-size {new_cfg['CTX_SIZE']}")
         if existing_ngl:
             flags.append(existing_ngl)
 
@@ -131,21 +162,30 @@ def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) ->
         n_cpu_moe, _ = resolve_n_cpu_moe(model_path, new_cfg.get("N_CPU_MOE"))
         if n_cpu_moe is not None:
             flags.append(f"--n-cpu-moe {n_cpu_moe}")
-        
+
         k_val = new_cfg.get("KV_CACHE_K") or new_cfg.get("KV_CACHE")
-        if k_val: flags.append(f"--cache-type-k {k_val}")
-        
+        if k_val:
+            flags.append(f"--cache-type-k {k_val}")
+
         v_val = new_cfg.get("KV_CACHE_V") or new_cfg.get("KV_CACHE")
-        if v_val: flags.append(f"--cache-type-v {v_val}")
-        
-        if new_cfg.get("FLASH_ATTN"): flags.append(f"--flash-attn {new_cfg['FLASH_ATTN']}")
-        if new_cfg.get("THREADS"): flags.append(f"--threads {new_cfg['THREADS']}")
-        if new_cfg.get("THREADS_BATCH"): flags.append(f"--threads-batch {new_cfg['THREADS_BATCH']}")
-        if new_cfg.get("BATCH_SIZE"): flags.append(f"--batch-size {new_cfg['BATCH_SIZE']}")
-        if new_cfg.get("UBATCH_SIZE"): flags.append(f"--ubatch-size {new_cfg['UBATCH_SIZE']}")
-        if new_cfg.get("CONT_BATCHING"): flags.append("--cont-batching")
-        if new_cfg.get("NO_MMAP"): flags.append("--no-mmap")
-        
+        if v_val:
+            flags.append(f"--cache-type-v {v_val}")
+
+        if new_cfg.get("FLASH_ATTN"):
+            flags.append(f"--flash-attn {new_cfg['FLASH_ATTN']}")
+        if new_cfg.get("THREADS"):
+            flags.append(f"--threads {new_cfg['THREADS']}")
+        if new_cfg.get("THREADS_BATCH"):
+            flags.append(f"--threads-batch {new_cfg['THREADS_BATCH']}")
+        if new_cfg.get("BATCH_SIZE"):
+            flags.append(f"--batch-size {new_cfg['BATCH_SIZE']}")
+        if new_cfg.get("UBATCH_SIZE"):
+            flags.append(f"--ubatch-size {new_cfg['UBATCH_SIZE']}")
+        if new_cfg.get("CONT_BATCHING"):
+            flags.append("--cont-batching")
+        if new_cfg.get("NO_MMAP"):
+            flags.append("--no-mmap")
+
         spec_type = new_cfg.get("SPEC_TYPE")
         if spec_type and spec_type != "none":
             flags.append(f"--spec-type {spec_type}")
@@ -165,11 +205,12 @@ def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) ->
         if "metrics" not in data or not isinstance(data["metrics"], dict):
             data["metrics"] = {}
         data["metrics"]["tps"] = float(tps)
-        
+
         import datetime
+
         data["metrics"]["measured_at"] = datetime.date.today().strftime("%Y-%m-%d")
         data["metrics"]["measured_by"] = "autoloop"
-        
+
         notes = data["metrics"].get("notes", "")
         if notes and "(Auto-updated by autoloop)" not in notes:
             data["metrics"]["notes"] = f"{notes} (Auto-updated by autoloop)"
@@ -185,13 +226,22 @@ def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) ->
         print(f"  [WARNING] Failed to auto-update alias config: {e}")
 
 
-def trial_config(cfg: dict[str, Any], defaults: dict[str, Any], include_ppl: bool = False) -> dict[str, Any]:
+def trial_config(
+    cfg: dict[str, Any], defaults: dict[str, Any], include_ppl: bool = False
+) -> dict[str, Any]:
     """Map bench_config INCLUDE_* flags onto evaluation.py agentic_*/include_coding keys."""
     res_cfg = {**defaults, **cfg}
     if include_ppl:
-        for k in ["INCLUDE_CODING", "INCLUDE_AGENTIC_QUICK", "INCLUDE_AGENTIC_FULL",
-                  "include_coding", "agentic_quick", "agentic_full",
-                  "include_agentic_quick", "include_agentic_full"]:
+        for k in [
+            "INCLUDE_CODING",
+            "INCLUDE_AGENTIC_QUICK",
+            "INCLUDE_AGENTIC_FULL",
+            "include_coding",
+            "agentic_quick",
+            "agentic_full",
+            "include_agentic_quick",
+            "include_agentic_full",
+        ]:
             res_cfg[k] = False
         res_cfg["include_perplexity"] = True
     else:
@@ -270,8 +320,8 @@ def _available_gguf_names(models_dir: Path) -> list[str]:
         names.add(path.name)
     return sorted(names)
 
+
 def main():
-    import sys
     if hasattr(sys.stdout, "reconfigure"):
         try:
             sys.stdout.reconfigure(encoding="utf-8")
@@ -283,12 +333,30 @@ def main():
         except Exception:
             pass
     import argparse
+
     parser = argparse.ArgumentParser(description="Autonomous Hill-Climbing Evaluation Loop")
     parser.add_argument("--max-rounds", type=int, default=0, help="Max rounds (0=infinite)")
-    parser.add_argument("--reset-visited", action="store_true", help="Clear visited memory only (Baseline stays in config.py)")
-    parser.add_argument("--models", nargs="+", help="Space-separated list of model filenames to optimize (1 or more)")
-    parser.add_argument("--perplexity-val", action="store_true", help="Enable perplexity validation to act as a quality ceiling constraint while optimizing for TPS")
-    parser.add_argument("--mode", choices=["tps", "quality", "both"], default="both", help="Optimization mode: 'tps' (speed), 'quality' (accuracy), 'both' (everything)")
+    parser.add_argument(
+        "--reset-visited",
+        action="store_true",
+        help="Clear visited memory only (Baseline stays in config.py)",
+    )
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        help="Space-separated list of model filenames to optimize (1 or more)",
+    )
+    parser.add_argument(
+        "--perplexity-val",
+        action="store_true",
+        help="Enable perplexity validation to act as a quality ceiling constraint while optimizing for TPS",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["tps", "quality", "both"],
+        default="both",
+        help="Optimization mode: 'tps' (speed), 'quality' (accuracy), 'both' (everything)",
+    )
     cli_args = parser.parse_args()
 
     max_rounds = cli_args.max_rounds
@@ -304,7 +372,7 @@ def main():
     if not available_models:
         print("[AUTOLOOP] Error: No GGUF models found in models/ directory!")
         sys.exit(1)
-        
+
     selected_models = []
     if cli_args.models:
         for m in cli_args.models:
@@ -321,7 +389,9 @@ def main():
         print("\nAvailable models in models/:")
         for idx, m in enumerate(available_models, 1):
             print(f"  {idx}) {m}")
-        print("\nChoose 1 or more models to run the loop (comma-separated numbers, e.g. 1,3 or 'all'):")
+        print(
+            "\nChoose 1 or more models to run the loop (comma-separated numbers, e.g. 1,3 or 'all'):"
+        )
         while True:
             choice = input("Choice: ").strip()
             if not choice:
@@ -331,7 +401,9 @@ def main():
                 break
             try:
                 indices = [int(i.strip()) for i in choice.split(",")]
-                selected_models = [available_models[i-1] for i in indices if 1 <= i <= len(available_models)]
+                selected_models = [
+                    available_models[i - 1] for i in indices if 1 <= i <= len(available_models)
+                ]
                 if selected_models:
                     break
             except Exception:
@@ -373,11 +445,11 @@ def main():
     for model_name in selected_models:
         if _stop_requested:
             break
-            
+
         print(f"\n{'#' * 60}")
         print(f"  OPTIMIZING MODEL: {model_name}")
         print(f"{'#' * 60}")
-        
+
         # Load config and update MODEL
         cfg = load_config(state_manager.get_baseline())
         cfg["MODEL"] = model_name
@@ -405,15 +477,26 @@ def main():
 
             # ── Step 2: Evaluate baseline ────────────────────────────────
             print("\n[EVAL] Running baseline benchmarks...")
-            is_tps_mode = (cli_args.mode == "tps")
-            baseline_res = runner.run_trial(trial_config(baseline_cfg, _defaults, include_ppl=(is_tps_mode or cli_args.perplexity_val)))
-            if getattr(baseline_res, "outcome", TrialOutcome.OK) in (TrialOutcome.INFRA_ERROR, TrialOutcome.CODE_ERROR):
+            is_tps_mode = cli_args.mode == "tps"
+            baseline_res = runner.run_trial(
+                trial_config(
+                    baseline_cfg, _defaults, include_ppl=(is_tps_mode or cli_args.perplexity_val)
+                )
+            )
+            if getattr(baseline_res, "outcome", TrialOutcome.OK) in (
+                TrialOutcome.INFRA_ERROR,
+                TrialOutcome.CODE_ERROR,
+            ):
                 raise RuntimeError(f"Search stopped: {baseline_res.status}")
             baseline_score = baseline_res.val_score
             baseline_tps = baseline_res.avg_tps
             baseline_vram = baseline_res.peak_vram_gb
             baseline_outcome = getattr(baseline_res, "outcome", TrialOutcome.OK)
-            baseline_status = "discard" if baseline_outcome in (TrialOutcome.INVALID_CONFIG, TrialOutcome.MODEL_REJECTED) else "keep"
+            baseline_status = (
+                "discard"
+                if baseline_outcome in (TrialOutcome.INVALID_CONFIG, TrialOutcome.MODEL_REJECTED)
+                else "keep"
+            )
 
             if cli_args.mode == "tps":
                 tsv_category = "engine-tps"
@@ -424,13 +507,18 @@ def main():
 
             commit = get_git_commit()
             write_row(
-                RESULTS_FILE, commit, baseline_score,
-                baseline_res.swe_val, baseline_res.he_val, baseline_res.mbpp_val,
+                RESULTS_FILE,
+                commit,
+                baseline_score,
+                baseline_res.swe_val,
+                baseline_res.he_val,
+                baseline_res.mbpp_val,
                 baseline_vram,
                 baseline_status,
                 f"AutoLoop R{round_num} baseline for {model_name}: {search_strategy.format_config_summary(baseline_cfg)} "
                 f"TPS={baseline_tps:.1f} PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}",
-                lcb_score=baseline_res.lcb_val, bigcode_score=baseline_res.bigcode_val,
+                lcb_score=baseline_res.lcb_val,
+                bigcode_score=baseline_res.bigcode_val,
                 category=tsv_category,
                 tps=baseline_tps,
                 bench_tg=getattr(baseline_res, "bench_tg_tps", None),
@@ -447,8 +535,14 @@ def main():
                 },
             )
 
-            ppl_str = f" PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}" if (is_tps_mode or cli_args.perplexity_val) else ""
-            print(f"[BASELINE] Score={baseline_score:.6f} TPS={baseline_tps:.1f}{ppl_str} VRAM={baseline_vram:.1f}GB")
+            ppl_str = (
+                f" PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}"
+                if (is_tps_mode or cli_args.perplexity_val)
+                else ""
+            )
+            print(
+                f"[BASELINE] Score={baseline_score:.6f} TPS={baseline_tps:.1f}{ppl_str} VRAM={baseline_vram:.1f}GB"
+            )
 
             if baseline_status == "discard":
                 print(f"[BASELINE] Rejected ({baseline_res.status}); attempting Random Restart.")
@@ -485,19 +579,27 @@ def main():
                     continue
 
                 print(f"\n  [EVAL] Trying {changed}: {old_val} -> {new_val}")
-                res = runner.run_trial(trial_config(neighbor.config, _defaults, include_ppl=(is_tps_mode or cli_args.perplexity_val)))
-                if getattr(res, "outcome", TrialOutcome.OK) in (TrialOutcome.INFRA_ERROR, TrialOutcome.CODE_ERROR):
+                res = runner.run_trial(
+                    trial_config(
+                        neighbor.config,
+                        _defaults,
+                        include_ppl=(is_tps_mode or cli_args.perplexity_val),
+                    )
+                )
+                if getattr(res, "outcome", TrialOutcome.OK) in (
+                    TrialOutcome.INFRA_ERROR,
+                    TrialOutcome.CODE_ERROR,
+                ):
                     raise RuntimeError(f"Search stopped: {res.status}")
                 score = res.val_score
                 tps = res.avg_tps
                 vram = res.peak_vram_gb
 
                 delta = score - baseline_score
-                
+
                 # Pareto tie-breaker logic
                 is_improvement, reason = search_strategy.is_improvement(
-                    baseline_score, baseline_tps, baseline_vram,
-                    score, tps, vram
+                    baseline_score, baseline_tps, baseline_vram, score, tps, vram
                 )
 
                 # Apply Perplexity Quality Ceiling Constraint
@@ -506,17 +608,25 @@ def main():
                     b_ppl = getattr(baseline_res, "bench_ppl", 0.0)
                     if n_ppl > b_ppl * 1.01:
                         is_improvement = False
-                        reason = f"Perplexity degraded too much (PPL={n_ppl:.4f} vs base={b_ppl:.4f})"
+                        reason = (
+                            f"Perplexity degraded too much (PPL={n_ppl:.4f} vs base={b_ppl:.4f})"
+                        )
 
                 status = "keep" if is_improvement else "discard"
 
                 write_row(
-                    RESULTS_FILE, commit, score,
-                    res.swe_val, res.he_val, res.mbpp_val,
-                    vram, status,
+                    RESULTS_FILE,
+                    commit,
+                    score,
+                    res.swe_val,
+                    res.he_val,
+                    res.mbpp_val,
+                    vram,
+                    status,
                     f"AutoLoop R{round_num} {changed}={new_val}: "
                     f"{search_strategy.format_config_summary(neighbor.config)} TPS={tps:.1f} PPL={getattr(res, 'bench_ppl', 0.0):.4f} Δ={delta:+.6f}",
-                    lcb_score=res.lcb_val, bigcode_score=res.bigcode_val,
+                    lcb_score=res.lcb_val,
+                    bigcode_score=res.bigcode_val,
                     category=tsv_category,
                     tps=tps,
                     bench_tg=getattr(res, "bench_tg_tps", None),
@@ -534,8 +644,7 @@ def main():
                 )
 
                 if is_improvement:
-                    print(f"  >>> IMPROVEMENT! {changed}: {old_val} -> {new_val} "
-                          f"({reason})")
+                    print(f"  >>> IMPROVEMENT! {changed}: {old_val} -> {new_val} ({reason})")
                     # Persist new baseline to config.py
                     state_manager.update_baseline(neighbor.config)
                     # Automatically update model alias config
@@ -543,8 +652,10 @@ def main():
                     improved = True
                     break
                 else:
-                    print(f"  [DISCARD] {changed}: {old_val} -> {new_val} "
-                          f"(Score={score:.6f}, Δ={delta:+.6f})")
+                    print(
+                        f"  [DISCARD] {changed}: {old_val} -> {new_val} "
+                        f"(Score={score:.6f}, Δ={delta:+.6f})"
+                    )
 
             if not improved and not _stop_requested:
                 print(f"\n[AUTOLOOP] Local maxima reached in round {round_num}.")
@@ -560,13 +671,19 @@ def main():
                         break
                     else:
                         # Mark as visited in memory so we don't try it again in this round, but do not write to disk
-                        state_manager.mark_visited(search_strategy.get_config_key(candidate), persist=False)
-                
+                        state_manager.mark_visited(
+                            search_strategy.get_config_key(candidate), persist=False
+                        )
+
                 if new_baseline:
-                    print("[AUTOLOOP] Found unvisited VRAM-safe random configuration. Restarting search.")
+                    print(
+                        "[AUTOLOOP] Found unvisited VRAM-safe random configuration. Restarting search."
+                    )
                     state_manager.update_baseline(new_baseline)
                 else:
-                    print("[AUTOLOOP] Exhausted random search space or cannot find VRAM-safe config. Stopping.")
+                    print(
+                        "[AUTOLOOP] Exhausted random search space or cannot find VRAM-safe config. Stopping."
+                    )
                     break
 
     # ── Shutdown summary ─────────────────────────────────────────────

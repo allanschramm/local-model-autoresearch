@@ -1,8 +1,8 @@
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import sys
 
 from autoresearch.benchmarks.benchmark_harness import BenchmarkResult
 from autoresearch.core.llama_runner import ServerIntent
@@ -67,7 +67,9 @@ class TestSGLangRunner(unittest.TestCase):
     @patch("autoresearch.runners.evaluation.run_sglang_bench_validation", return_value=10.0)
     @patch("autoresearch.runners.evaluation.SGLangServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_sglang_bench_below_threshold_fails_before_server(self, mock_coding, mock_sglang, _mock_bench):
+    def test_sglang_bench_below_threshold_fails_before_server(
+        self, mock_coding, mock_sglang, _mock_bench
+    ):
         with tempfile.TemporaryDirectory() as tmp:
             models_dir = Path(tmp)
             (models_dir / "sglang-model").mkdir()

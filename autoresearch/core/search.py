@@ -1,8 +1,9 @@
 import random
 from dataclasses import dataclass
-from typing import Dict, Any, List, Set, Tuple
+from typing import Any
 
-Config = Dict[str, Any]
+Config = dict[str, Any]
+
 
 @dataclass
 class Neighbor:
@@ -11,13 +12,15 @@ class Neighbor:
     old: Any
     new: Any
 
+
 class SearchStrategy:
     """
     Deep module encapsulating the Hill-Climbing Search logic.
-    Provides leverage by standardising Neighbor generation, the Pareto Tie-Breaker, 
+    Provides leverage by standardising Neighbor generation, the Pareto Tie-Breaker,
     and Random Restarts across different search spaces.
     """
-    def __init__(self, search_space: Dict[str, List[Any]], use_pareto_tiebreaker: bool = False):
+
+    def __init__(self, search_space: dict[str, list[Any]], use_pareto_tiebreaker: bool = False):
         self.search_space = search_space
         self.use_pareto_tiebreaker = use_pareto_tiebreaker
 
@@ -37,7 +40,7 @@ class SearchStrategy:
         except (TypeError, ValueError):
             return True
 
-    def get_neighbors(self, current_cfg: Config) -> List[Neighbor]:
+    def get_neighbors(self, current_cfg: Config) -> list[Neighbor]:
         """Generate single-parameter perturbations of current config."""
         neighbors = []
         for param, candidates in self.search_space.items():
@@ -52,12 +55,7 @@ class SearchStrategy:
                         n[param] = val
                         if self.is_batch_consistent(n):
                             neighbors.append(
-                                Neighbor(
-                                    config=n,
-                                    changed=param,
-                                    old=current,
-                                    new=val
-                                )
+                                Neighbor(config=n, changed=param, old=current, new=val)
                             )
                 continue
 
@@ -67,30 +65,22 @@ class SearchStrategy:
                 n[param] = candidates[idx - 1]
                 if self.is_batch_consistent(n):
                     neighbors.append(
-                        Neighbor(
-                            config=n,
-                            changed=param,
-                            old=current,
-                            new=candidates[idx - 1]
-                        )
+                        Neighbor(config=n, changed=param, old=current, new=candidates[idx - 1])
                     )
             if idx < len(candidates) - 1:
                 n = current_cfg.copy()
                 n[param] = candidates[idx + 1]
                 if self.is_batch_consistent(n):
                     neighbors.append(
-                        Neighbor(
-                            config=n,
-                            changed=param,
-                            old=current,
-                            new=candidates[idx + 1]
-                        )
+                        Neighbor(config=n, changed=param, old=current, new=candidates[idx + 1])
                     )
 
         random.shuffle(neighbors)
         return neighbors
 
-    def random_restart(self, visited: Set[str], current_cfg: Config, max_attempts: int = 100) -> Config | None:
+    def random_restart(
+        self, visited: set[str], current_cfg: Config, max_attempts: int = 100
+    ) -> Config | None:
         """Generate a random valid configuration not in visited to escape local maxima."""
         for _ in range(max_attempts):
             new_cfg = current_cfg.copy()
@@ -105,9 +95,13 @@ class SearchStrategy:
 
     def is_improvement(
         self,
-        baseline_score: float, baseline_tps: float, baseline_vram: float,
-        new_score: float, new_tps: float, new_vram: float
-    ) -> Tuple[bool, str]:
+        baseline_score: float,
+        baseline_tps: float,
+        baseline_vram: float,
+        new_score: float,
+        new_tps: float,
+        new_vram: float,
+    ) -> tuple[bool, str]:
         """
         Evaluate if the new trial beats the baseline.
         Rules (Allan's matrix):
@@ -132,7 +126,10 @@ class SearchStrategy:
                 return True, f"Score tied, TPS improved (+{new_tps - baseline_tps:.1f})"
             tps_tied = abs(new_tps - baseline_tps) <= abs(baseline_tps) * 0.05
             if tps_tied and baseline_vram > 0 and new_vram < baseline_vram * 0.95:
-                return True, f"Score and TPS tied, VRAM improved (-{baseline_vram - new_vram:.2f}GB)"
+                return (
+                    True,
+                    f"Score and TPS tied, VRAM improved (-{baseline_vram - new_vram:.2f}GB)",
+                )
 
         return False, ""
 

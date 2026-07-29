@@ -83,42 +83,39 @@ def test_incomplete_ram_detection_stops_before_tiers(capsys):
 
 
 def test_classify_nvidia_is_discrete():
-    assert (
-        classify_memory_class(has_cuda=True, has_metal=False)
-        == "discrete_gpu"
-    )
+    assert classify_memory_class(has_cuda=True, has_metal=False) == "discrete_gpu"
 
 
 def test_classify_metal_or_no_cuda_is_unified():
-    assert (
-        classify_memory_class(has_cuda=False, has_metal=True)
-        == "unified_memory"
-    )
-    assert (
-        classify_memory_class(has_cuda=False, has_metal=False)
-        == "unified_memory"
-    )
+    assert classify_memory_class(has_cuda=False, has_metal=True) == "unified_memory"
+    assert classify_memory_class(has_cuda=False, has_metal=False) == "unified_memory"
 
 
 def test_model_pool_discrete_uses_vram():
-    assert model_pool_gb(
-        {
-            "ram_gb": 32.0,
-            "vram_gb": 8.0,
-            "memory_class": "discrete_gpu",
-        }
-    ) == 8.0
+    assert (
+        model_pool_gb(
+            {
+                "ram_gb": 32.0,
+                "vram_gb": 8.0,
+                "memory_class": "discrete_gpu",
+            }
+        )
+        == 8.0
+    )
 
 
 def test_model_pool_unified_uses_ram():
-    assert model_pool_gb(
-        {
-            "ram_gb": 16.0,
-            "vram_gb": 0.0,
-            "memory_class": "unified_memory",
-            "has_metal": True,
-        }
-    ) == 16.0
+    assert (
+        model_pool_gb(
+            {
+                "ram_gb": 16.0,
+                "vram_gb": 0.0,
+                "memory_class": "unified_memory",
+                "has_metal": True,
+            }
+        )
+        == 16.0
+    )
 
 
 def test_unified_16gb_does_not_claim_high_vram_tier(capsys):

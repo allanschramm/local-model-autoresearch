@@ -1,11 +1,12 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 import benchmark_search
-from autoresearch.core import config
 from autoresearch.benchmarks import bench_config
+from autoresearch.core import config
+
 
 class TestBenchmarkSearch(unittest.TestCase):
-
     def test_parse_args_defaults(self):
         with patch("sys.argv", ["benchmark_search.py"]):
             args = benchmark_search.parse_args()
@@ -16,16 +17,26 @@ class TestBenchmarkSearch(unittest.TestCase):
             self.assertEqual(args.include_coding, bench_config.INCLUDE_CODING)
 
     def test_parse_args_rejects_baseline_cli_overrides(self):
-        with patch("sys.argv", [
-            "benchmark_search.py",
-            "--model", "Ornith-1.0-35B-UD-Q3_K_XL.gguf",
-            "--threads", "8",
-            "--threads-batch", "8",
-            "--batch-size", "1024",
-            "--ubatch-size", "256",
-        ]):
-            with self.assertRaises(SystemExit):
-                benchmark_search.parse_args()
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "benchmark_search.py",
+                    "--model",
+                    "Ornith-1.0-35B-UD-Q3_K_XL.gguf",
+                    "--threads",
+                    "8",
+                    "--threads-batch",
+                    "8",
+                    "--batch-size",
+                    "1024",
+                    "--ubatch-size",
+                    "256",
+                ],
+            ),
+            self.assertRaises(SystemExit),
+        ):
+            benchmark_search.parse_args()
 
     def test_help_hides_config_only_baseline_flags(self):
         with patch("sys.argv", ["benchmark_search.py", "--help"]):
@@ -45,8 +56,10 @@ class TestBenchmarkSearch(unittest.TestCase):
             benchmark_search.args = benchmark_search.parse_args()
             # Simulate direct execution behavior of __main__ block
             from autoresearch.runners import run
+
             run.handle_single_run(benchmark_search.args)
             mock_handle.assert_called_once_with(benchmark_search.args)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,7 +5,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Set
+from typing import Any
 
 from autoresearch.core import config
 from autoresearch.core.config import ConfigError, validate_config, write_baseline
@@ -44,7 +44,9 @@ class SearchState:
         }
 
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp_name = tempfile.mkstemp(prefix=f".{self.state_path.name}.", dir=self.state_path.parent)
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=f".{self.state_path.name}.", dir=self.state_path.parent
+        )
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
                 json.dump(data, handle, indent=2, sort_keys=True)
@@ -72,7 +74,7 @@ class SearchState:
         write_baseline(validate_config(merged))
 
     @property
-    def visited(self) -> Set[str]:
+    def visited(self) -> set[str]:
         """Return a copy of the visited configurations set."""
         return set(self._visited)
 

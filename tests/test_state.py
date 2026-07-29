@@ -1,15 +1,14 @@
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from autoresearch.core.state import SearchState
 from autoresearch.core import config
-from autoresearch.core.config import write_baseline, load_config, ENGINE_DEFAULTS, SAMPLER_DEFAULTS
+from autoresearch.core.config import ENGINE_DEFAULTS, SAMPLER_DEFAULTS, load_config, write_baseline
+from autoresearch.core.state import SearchState
 
 
 class TestSearchState(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.state_file = Path(self.temp_dir.name) / "test_state.json"
@@ -26,11 +25,13 @@ class TestSearchState(unittest.TestCase):
 
     def test_update_baseline_delegates_to_write_baseline(self):
         with patch("autoresearch.core.state.write_baseline") as mock_write:
-            self.state.update_baseline({
-                "MODEL": "custom.gguf",
-                "CTX_SIZE": 8192,
-                "N_CPU_MOE": None,
-            })
+            self.state.update_baseline(
+                {
+                    "MODEL": "custom.gguf",
+                    "CTX_SIZE": 8192,
+                    "N_CPU_MOE": None,
+                }
+            )
             mock_write.assert_called_once()
             written = mock_write.call_args[0][0]
             self.assertEqual(written["MODEL"], "custom.gguf")
@@ -38,13 +39,15 @@ class TestSearchState(unittest.TestCase):
 
     def test_update_baseline_filters_keys(self):
         with patch("autoresearch.core.state.write_baseline") as mock_write:
-            self.state.update_baseline({
-                "MODEL": "custom.gguf",
-                "CTX_SIZE": 8192,
-                "FLASH_ATTN": "on",
-                "N_CPU_MOE": None,
-                "UNKNOWN_KEY": "should_be_filtered",
-            })
+            self.state.update_baseline(
+                {
+                    "MODEL": "custom.gguf",
+                    "CTX_SIZE": 8192,
+                    "FLASH_ATTN": "on",
+                    "N_CPU_MOE": None,
+                    "UNKNOWN_KEY": "should_be_filtered",
+                }
+            )
             written = mock_write.call_args[0][0]
             self.assertNotIn("UNKNOWN_KEY", written)
 
@@ -85,7 +88,6 @@ class TestSearchState(unittest.TestCase):
 
 
 class TestWriteBaseline(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.config_path = Path(self.temp_dir.name) / "config.py"

@@ -4,11 +4,12 @@ Testa se o seu servidor de IA Local (llama-server ou LM Studio) está rodando e 
 """
 
 import argparse
+import json
 import sys
 import time
-import urllib.request
 import urllib.error
-import json
+import urllib.request
+
 
 def performance_advice(tps):
     if tps >= 30:
@@ -42,7 +43,9 @@ def check_server(port=18080, host="127.0.0.1"):
         print("\n💡 Como resolver:")
         print(" 1. Inicie o llama-server ou LM Studio Local Server.")
         print(f" 2. Verifique se a porta configurada é a {port}.")
-        print(" 3. Configure autoresearch/core/config.py e inicie com scripts/serve-config.py serve.")
+        print(
+            " 3. Configure autoresearch/core/config.py e inicie com scripts/serve-config.py serve."
+        )
         print("=" * 60)
         sys.exit(1)
 
@@ -51,10 +54,13 @@ def check_server(port=18080, host="127.0.0.1"):
     payload = {
         "model": model_id,
         "messages": [
-            {"role": "user", "content": "Escreva uma lista rápida de 5 frutas e seus benefícios em português."}
+            {
+                "role": "user",
+                "content": "Escreva uma lista rápida de 5 frutas e seus benefícios em português.",
+            }
         ],
         "max_tokens": 150,
-        "temperature": 0.2
+        "temperature": 0.2,
     }
 
     start_time = time.time()
@@ -62,7 +68,7 @@ def check_server(port=18080, host="127.0.0.1"):
         req = urllib.request.Request(
             url_chat,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
             elapsed = time.time() - start_time
@@ -72,11 +78,11 @@ def check_server(port=18080, host="127.0.0.1"):
             completion_tokens = usage.get("completion_tokens", 0)
             if not completion_tokens and "choices" in res_data:
                 text = res_data["choices"][0]["message"]["content"]
-                completion_tokens = len(text.split()) * 1.3 # estimativa se omitido
+                completion_tokens = len(text.split()) * 1.3  # estimativa se omitido
 
             tps = completion_tokens / elapsed if elapsed > 0 else 0
 
-            print(f" [OK] Resposta recebida com sucesso!")
+            print(" [OK] Resposta recebida com sucesso!")
             print(f" • Tempo total: {elapsed:.2f}s")
             print(f" • Tokens gerados: {completion_tokens}")
             print(f" • Desempenho real: {tps:.1f} TPS (tokens por segundo)")
@@ -88,6 +94,7 @@ def check_server(port=18080, host="127.0.0.1"):
     except Exception as e:
         print(f" [X] Erro ao testar geração: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Valida uma API local compatível com OpenAI.")

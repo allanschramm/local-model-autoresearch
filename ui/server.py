@@ -2,7 +2,7 @@
 """Dashboard shell server for localhost 18765."""
 
 import json
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 class DashboardHandler(BaseHTTPRequestHandler):

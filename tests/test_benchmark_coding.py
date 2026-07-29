@@ -1,12 +1,13 @@
-import unittest
-from unittest.mock import patch, MagicMock
-from autoresearch.benchmarks import benchmark_coding
-from pathlib import Path
-import json
 import base64
-import zlib
+import json
 import pickle
 import tempfile
+import unittest
+import zlib
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+from autoresearch.benchmarks import benchmark_coding
 
 
 def _lcb_pickled_json(payload_str: str) -> str:
@@ -15,7 +16,6 @@ def _lcb_pickled_json(payload_str: str) -> str:
 
 
 class TestBenchmarkCoding(unittest.TestCase):
-
     # ------------------------------------------------------------------ weights
 
     @patch("autoresearch.benchmarks.benchmark_coding.run_coding_eval")
@@ -26,12 +26,13 @@ class TestBenchmarkCoding(unittest.TestCase):
         """
         mock_eval.side_effect = [
             (0.6, 100, 10.0),  # HumanEval -> val_pass2
-            (0.4, 200, 5.0),   # MBPP     -> val_pass3
-            (0.8, 300, 8.0),   # LCB      -> val_pass1
-            (0.2, 50,  4.0),   # BigCode  -> val_pass4
+            (0.4, 200, 5.0),  # MBPP     -> val_pass3
+            (0.8, 300, 8.0),  # LCB      -> val_pass1
+            (0.2, 50, 4.0),  # BigCode  -> val_pass4
         ]
 
         from autoresearch.core.llama_client import LlamaClient
+
         client = MagicMock(spec=LlamaClient)
         client.port = 1234
 
@@ -47,20 +48,23 @@ class TestBenchmarkCoding(unittest.TestCase):
         self.assertAlmostEqual(result.val_score, 0.56, places=4)
         self.assertAlmostEqual(result.total_seconds, 27.0, places=4)
         # TPS = 650 tokens / 27.0 s
-        self.assertAlmostEqual(result.avg_tps, round(650/27.0, 2), places=2)
+        self.assertAlmostEqual(result.avg_tps, round(650 / 27.0, 2), places=2)
 
     @patch("autoresearch.benchmarks.benchmark_coding.run_coding_eval")
     def test_run_benchmark_passes_gen_params(self, mock_eval):
         """Verify gen_params are forwarded to all sub-eval calls."""
         mock_eval.return_value = (0.5, 50, 5.0)
 
-        from autoresearch.core.llama_client import LlamaClient, GenerationParams
+        from autoresearch.core.llama_client import GenerationParams, LlamaClient
+
         client = MagicMock(spec=LlamaClient)
         client.port = 1234
 
         gen_params = GenerationParams(temp=0.6, top_p=0.95, top_k=20)
         benchmark_coding.run_benchmark(
-            client, gen_params=gen_params, task_limit=5,
+            client,
+            gen_params=gen_params,
+            task_limit=5,
         )
         # 4 sub-evals: HE, MBPP, LCB, BigCode
         self.assertEqual(mock_eval.call_count, 4)
@@ -87,6 +91,7 @@ class TestBenchmarkCoding(unittest.TestCase):
         mock_run_tests.side_effect = [True, False, True, False]
 
         from autoresearch.core.llama_client import LlamaClient
+
         client = MagicMock(spec=LlamaClient)
         client.complete.return_value = {
             "content": "def f(x): return x",
@@ -105,7 +110,7 @@ class TestBenchmarkCoding(unittest.TestCase):
         """Verify that run_coding_eval properly dedents and re-indents raw code."""
         mock_load.return_value = {
             "HE/0": {
-                "prompt": "def f0(x):\n    \"\"\"docstring\"\"\"",
+                "prompt": 'def f0(x):\n    """docstring"""',
                 "test": "assert f0(1) == 1",
                 "entry_point": "f0",
             }
@@ -113,6 +118,7 @@ class TestBenchmarkCoding(unittest.TestCase):
         mock_run_tests.return_value = True
 
         from autoresearch.core.llama_client import LlamaClient
+
         client = MagicMock(spec=LlamaClient)
         # Mock completion response with extra 8-space indentation (common in thinking blocks)
         client.complete.return_value = {
@@ -126,7 +132,7 @@ class TestBenchmarkCoding(unittest.TestCase):
         mock_run_tests.assert_called_once()
         actual_code = mock_run_tests.call_args[0][0]
         # Should have the prompt_sig, followed by exactly 4 spaces + return x
-        expected_code = "def f0(x):\n    \"\"\"docstring\"\"\"\n    return x"
+        expected_code = 'def f0(x):\n    """docstring"""\n    return x'
         self.assertEqual(actual_code, expected_code)
 
     # ------------------------------------------------------------------ LCB
@@ -160,10 +166,12 @@ class TestBenchmarkCoding(unittest.TestCase):
     def test_lcb_tests_pass(self):
         """A program that doubles n passes all tests."""
         code = "n = int(input())\nprint(n*2)\n"
-        private_json = json.dumps([
-            {"input": "5\n",  "output": "10\n"},
-            {"input": "21\n", "output": "42\n"},
-        ])
+        private_json = json.dumps(
+            [
+                {"input": "5\n", "output": "10\n"},
+                {"input": "21\n", "output": "42\n"},
+            ]
+        )
         entry = {
             "_private_tests_decoded": json.loads(private_json),
         }
@@ -192,8 +200,10 @@ class TestBenchmarkCoding(unittest.TestCase):
             mock_hf.return_value = str(src)
 
             cache = tmp_path / "lcb_cache"
-            with patch.object(benchmark_coding, "LCB_CACHE_DIR", cache), \
-                 patch.object(benchmark_coding, "DATA_DIR", tmp_path / "data"):
+            with (
+                patch.object(benchmark_coding, "LCB_CACHE_DIR", cache),
+                patch.object(benchmark_coding, "DATA_DIR", tmp_path / "data"),
+            ):
                 out = benchmark_coding._download_lcb_file(force=True)
 
             self.assertEqual(out, cache / "test6.jsonl")
@@ -211,9 +221,13 @@ class TestBenchmarkCoding(unittest.TestCase):
                 "question_content": "q1",
                 "platform": "atcoder",
                 "starter_code": "",
-                "private_test_cases": _lcb_pickled_json(json.dumps([
-                    {"input": "1\n", "output": "1\n", "testtype": "stdin"},
-                ])),
+                "private_test_cases": _lcb_pickled_json(
+                    json.dumps(
+                        [
+                            {"input": "1\n", "output": "1\n", "testtype": "stdin"},
+                        ]
+                    )
+                ),
             },
             {
                 "question_title": "T2",
@@ -279,7 +293,9 @@ class TestBenchmarkCoding(unittest.TestCase):
 
     def test_bigcode_tests_missing_test_field(self):
         code = "def task_func(n): return n\n"
-        self.assertFalse(benchmark_coding._run_bigcode_tests(code, {"entry_point": "task_func", "test": ""}))
+        self.assertFalse(
+            benchmark_coding._run_bigcode_tests(code, {"entry_point": "task_func", "test": ""})
+        )
 
     @patch("autoresearch.benchmarks.benchmark_coding.run_coding_eval")
     def test_bigcode_via_run_benchmark(self, mock_eval):
@@ -291,10 +307,13 @@ class TestBenchmarkCoding(unittest.TestCase):
             (0.0, 0, 1.0),  # BigCode
         ]
         from autoresearch.core.llama_client import LlamaClient
+
         client = MagicMock(spec=LlamaClient)
         client.port = 1234
 
-        result = benchmark_coding.run_benchmark(client, task_limit=5, lcb_task_limit=5, bigcode_task_limit=3)
+        result = benchmark_coding.run_benchmark(
+            client, task_limit=5, lcb_task_limit=5, bigcode_task_limit=3
+        )
         # The 4th sub-eval should receive a BigCodeBenchTask
         bigcode_call = mock_eval.call_args_list[3]
         task_arg = bigcode_call.args[1]  # run_coding_eval(client, task, ...)
@@ -308,8 +327,8 @@ class TestBenchmarkCoding(unittest.TestCase):
         mock_bench_cfg.EVALPLUS_STRICT = True
         entry = {
             "test": "assert candidate([1,2,3]) == True",
-            "base_input_output_tests": [([4,5], False)],
-            "plus_input_output_tests": [([100,200], True), ([300,400], False)],
+            "base_input_output_tests": [([4, 5], False)],
+            "plus_input_output_tests": [([100, 200], True), ([300, 400], False)],
             "entry_point": "has_close_elements",
         }
         test_code = benchmark_coding._get_test_code(entry, "humaneval")
@@ -322,8 +341,8 @@ class TestBenchmarkCoding(unittest.TestCase):
         """When strict=False and test is absent, build from base+plus pairs."""
         mock_bench_cfg.EVALPLUS_STRICT = False
         entry = {
-            "base_input_output_tests": [([1,2], True)],
-            "plus_input_output_tests": [([10,20], False)],
+            "base_input_output_tests": [([1, 2], True)],
+            "plus_input_output_tests": [([10, 20], False)],
             "entry_point": "f",
         }
         test_code = benchmark_coding._get_test_code(entry, "humaneval")
@@ -334,8 +353,8 @@ class TestBenchmarkCoding(unittest.TestCase):
         """Strict mode but no `test` field: build asserts from plus then base pairs."""
         mock_bench_cfg.EVALPLUS_STRICT = True
         entry = {
-            "base_input_output_tests": [([1,2], True)],
-            "plus_input_output_tests": [([10,20], False)],
+            "base_input_output_tests": [([1, 2], True)],
+            "plus_input_output_tests": [([10, 20], False)],
             "entry_point": "f",
         }
         test_code = benchmark_coding._get_test_code(entry, "humaneval")
@@ -356,7 +375,6 @@ class TestBenchmarkCoding(unittest.TestCase):
         text = "```\nx = 1\n```"
         self.assertEqual(benchmark_coding._strip_code(text), "x = 1")
 
-
     # ------------------------------------------------------------------ _strip_code (bug fix)
 
     def test_strip_code_empty_input(self):
@@ -366,25 +384,25 @@ class TestBenchmarkCoding(unittest.TestCase):
 
     def test_strip_code_think_only_truncated(self):
         """Truncated think block (no closing tag, no code) returns empty."""
-        text = f"<think>Let me think about this carefully. The problem is asking me to"
+        text = "<think>Let me think about this carefully. The problem is asking me to"
         self.assertEqual(benchmark_coding._strip_code(text), "")
 
     def test_strip_code_think_closed_no_code(self):
         """Closed think block with no code after returns empty."""
-        text = f"<think>Need to solve the doubling problem.</think>"
+        text = "<think>Need to solve the doubling problem.</think>"
         self.assertEqual(benchmark_coding._strip_code(text), "")
 
     def test_strip_code_think_plus_plain_code(self):
         """Think block followed by plain code (no fence) extracts the code."""
-        text = f"<think>Need to read n and double it.</think>\nn = int(input())\nprint(n*2)"
+        text = "<think>Need to read n and double it.</think>\nn = int(input())\nprint(n*2)"
         result = benchmark_coding._strip_code(text)
         self.assertEqual(result, "n = int(input())\nprint(n*2)")
 
     def test_strip_code_multiple_think_blocks(self):
         """Multiple think blocks are all stripped."""
         text = (
-            f"<think>First thought.</think>\n"
-            f"<think>Wait, reconsidering.</think>\n"
+            "<think>First thought.</think>\n"
+            "<think>Wait, reconsidering.</think>\n"
             "n = int(input())\nprint(n*2)"
         )
         result = benchmark_coding._strip_code(text)
@@ -402,7 +420,7 @@ class TestBenchmarkCoding(unittest.TestCase):
     def test_strip_code_function_definition_extraction(self):
         """BigCodeBench-style response: prose + think + bare function definition."""
         text = (
-            f"<think>The user wants task_func to return 42.</think>\n\n"
+            "<think>The user wants task_func to return 42.</think>\n\n"
             "def task_func(*args, **kwargs):\n    return 42"
         )
         result = benchmark_coding._strip_code(text)
@@ -411,11 +429,7 @@ class TestBenchmarkCoding(unittest.TestCase):
 
     def test_strip_code_indented_continuation_lines(self):
         """Indented continuation lines are preserved after def."""
-        text = (
-            f"<think>thinking</think>\n"
-            "def add(a, b):\n"
-            "    return a + b\n"
-        )
+        text = "<think>thinking</think>\ndef add(a, b):\n    return a + b\n"
         result = benchmark_coding._strip_code(text)
         self.assertEqual(result, "def add(a, b):\n    return a + b")
 
@@ -423,7 +437,7 @@ class TestBenchmarkCoding(unittest.TestCase):
         """Think blocks stripped, prose prefix preserved, code in output."""
         text = (
             "Sure, here's the code:\n\n"
-            f"<think>Wait, do I need the empty case?</think>\n"
+            "<think>Wait, do I need the empty case?</think>\n"
             "import sys\n"
             "n = int(sys.stdin.readline())\n"
             "print(n * 2)"
@@ -435,20 +449,22 @@ class TestBenchmarkCoding(unittest.TestCase):
 
     def test_strip_code_fenced_with_language_tag(self):
         """```py and ```python fences both work."""
-        text = f"<think>x</think>\n```py\nprint(1)\n```"
+        text = "<think>x</think>\n```py\nprint(1)\n```"
         self.assertEqual(benchmark_coding._strip_code(text), "print(1)")
 
     def test_strip_code_unclosed_fence_falls_through(self):
         """Unclosed fence preserved as-is (no special handling)."""
-        text = f"<think>x</think>\n```python\nn = 1\n"
+        text = "<think>x</think>\n```python\nn = 1\n"
         result = benchmark_coding._strip_code(text)
         self.assertIn("```python", result)
         self.assertIn("n = 1", result)
 
     def test_strip_code_preserves_indentation(self):
         """Verify that horizontal indentation is preserved even when empty lines are stripped."""
-        text = f"    def solution():\n        return True\n\n"
-        self.assertEqual(benchmark_coding._strip_code(text), "    def solution():\n        return True")
+        text = "    def solution():\n        return True\n\n"
+        self.assertEqual(
+            benchmark_coding._strip_code(text), "    def solution():\n        return True"
+        )
 
         # Fenced code with indentation
         text_fence = "```python\n    x = 1\n    return x\n```"
@@ -473,22 +489,38 @@ class TestBenchmarkCoding(unittest.TestCase):
         mock_run_lcb.return_value = True
 
         from autoresearch.core.llama_client import LlamaClient
+
         client = MagicMock(spec=LlamaClient)
         client.port = 1234
 
         # LCB task: model returns empty content but the code lives in reasoning_content
         def fake_complete(prompt, **kwargs):
-            if 'standard input' in prompt.lower() or 'read from' in prompt.lower():
+            if "standard input" in prompt.lower() or "read from" in prompt.lower():
                 return {
                     "content": "",  # model ran out of tokens mid-think
                     "reasoning_content": "n = int(input())\nprint(n*2)",
                     "usage": {"total_tokens": 10},
-                    "choices": [{"message": {"content": "", "reasoning_content": "n = int(input())\nprint(n*2)", "tool_calls": []}}],
+                    "choices": [
+                        {
+                            "message": {
+                                "content": "",
+                                "reasoning_content": "n = int(input())\nprint(n*2)",
+                                "tool_calls": [],
+                            }
+                        }
+                    ],
                 }
-            return {"content": "def f():\n    return 1", "usage": {"total_tokens": 10}, "choices": [{"message": {"content": "def f():\n    return 1", "tool_calls": []}}]}
+            return {
+                "content": "def f():\n    return 1",
+                "usage": {"total_tokens": 10},
+                "choices": [{"message": {"content": "def f():\n    return 1", "tool_calls": []}}],
+            }
+
         client.complete.side_effect = fake_complete
 
-        result = benchmark_coding.run_benchmark(client, task_limit=1, lcb_task_limit=1, bigcode_task_limit=0)
+        result = benchmark_coding.run_benchmark(
+            client, task_limit=1, lcb_task_limit=1, bigcode_task_limit=0
+        )
         # LCB pass should be 1.0 since reasoning_content was extracted and ran
         self.assertEqual(result.val_pass1, 1.0)
 
@@ -498,17 +530,36 @@ class TestBenchmarkCoding(unittest.TestCase):
     @patch("autoresearch.benchmarks.benchmark_coding._run_bigcode_tests", return_value=True)
     @patch("autoresearch.benchmarks.benchmark_coding._run_tests", return_value=True)
     @patch("autoresearch.benchmarks.benchmark_coding._load_problems")
-    def test_eval_uses_per_dataset_max_tokens(self, mock_load, mock_run_tests, mock_run_bigcode, mock_run_lcb, mock_lcb, mock_bcb):
+    def test_eval_uses_per_dataset_max_tokens(
+        self, mock_load, mock_run_tests, mock_run_bigcode, mock_run_lcb, mock_lcb, mock_bcb
+    ):
         """LCB and BigCodeBench sub-evals receive 2048 max_tokens."""
         mock_load.side_effect = [{}, {}]
-        mock_lcb.return_value = [{"question_title": "T", "question_content": "q", "platform": "atcoder", "starter_code": "", "_private_tests_decoded": [{"input": "1\n", "output": "2\n"}]}]
-        mock_bcb.return_value = [{"task_id": "BCB/0", "instruct_prompt": "noop", "test": "import unittest\nclass TestCases(unittest.TestCase):\n    def test_one(self): self.assertTrue(True)\n", "entry_point": "task_func"}]
+        mock_lcb.return_value = [
+            {
+                "question_title": "T",
+                "question_content": "q",
+                "platform": "atcoder",
+                "starter_code": "",
+                "_private_tests_decoded": [{"input": "1\n", "output": "2\n"}],
+            }
+        ]
+        mock_bcb.return_value = [
+            {
+                "task_id": "BCB/0",
+                "instruct_prompt": "noop",
+                "test": "import unittest\nclass TestCases(unittest.TestCase):\n    def test_one(self): self.assertTrue(True)\n",
+                "entry_point": "task_func",
+            }
+        ]
 
-        from autoresearch.core.llama_client import LlamaClient, GenerationParams
+        from autoresearch.core.llama_client import LlamaClient
+
         client = MagicMock(spec=LlamaClient)
         client.port = 1234
         client.complete.return_value = {
-            "content": "x = 1", "reasoning_content": "",
+            "content": "x = 1",
+            "reasoning_content": "",
             "usage": {"total_tokens": 5},
             "choices": [{"message": {"content": "x = 1", "tool_calls": []}}],
         }
@@ -525,6 +576,7 @@ class TestBenchmarkCoding(unittest.TestCase):
         # client.complete; only LCB/BigCode appear here.
         self.assertIn(2048, seen_max)
         self.assertEqual(seen_max.count(2048), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

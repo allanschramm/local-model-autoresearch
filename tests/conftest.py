@@ -1,4 +1,5 @@
 """Seed local Baseline from the tracked template when missing."""
+
 from __future__ import annotations
 
 from pathlib import Path

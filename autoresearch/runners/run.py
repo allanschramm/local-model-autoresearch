@@ -1,17 +1,15 @@
-import sys
-import csv
 import argparse
-import subprocess
+import csv
 import json
-import uuid
 import shutil
+import subprocess
+import sys
+import uuid
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
+from autoresearch.benchmarks import bench_config, format_agentic_benchmarks, format_claw_tiers
 from autoresearch.core import config
-from autoresearch.benchmarks import bench_config
-from autoresearch.benchmarks import format_agentic_benchmarks, format_claw_tiers
-
 from autoresearch.runners.evaluation import ExperimentRunner, resolve_tps_floor
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -24,16 +22,52 @@ CATEGORY_10_TASK = "10-task"
 CATEGORY_FULL_SUITE = "full-suite"
 
 BASELINE_CLI_FLAGS = {
-    "--model", "--kv", "--kv-k", "--cache-type-k", "-ctk",
-    "--kv-v", "--cache-type-v", "-ctv", "--max-tokens", "--ctx-size", "-c",
-    "--threads", "-t", "--threads-batch", "--n-cpu-moe", "-ncmoe",
-    "--ngl", "--n-gpu-layers", "-ngl", "--parallel", "--context-tokens",
-    "--batch-size", "-b", "--ubatch-size", "-ub", "--flash-attn", "-fa",
-    "--spec-type", "--spec-draft-n-max", "--spec-draft-model", "--no-mmap",
-    "--jinja", "--reasoning-budget", "--reasoning-budget-message", "--reasoning",
-    "--cont-batching", "--temp", "--top-p", "--min-p", "--top-k",
-    "--repeat-penalty", "--presence-penalty", "--frequency-penalty",
-    "--coding-task-limit", "--lcb-task-limit", "--bigcode-task-limit",
+    "--model",
+    "--kv",
+    "--kv-k",
+    "--cache-type-k",
+    "-ctk",
+    "--kv-v",
+    "--cache-type-v",
+    "-ctv",
+    "--max-tokens",
+    "--ctx-size",
+    "-c",
+    "--threads",
+    "-t",
+    "--threads-batch",
+    "--n-cpu-moe",
+    "-ncmoe",
+    "--ngl",
+    "--n-gpu-layers",
+    "-ngl",
+    "--parallel",
+    "--context-tokens",
+    "--batch-size",
+    "-b",
+    "--ubatch-size",
+    "-ub",
+    "--flash-attn",
+    "-fa",
+    "--spec-type",
+    "--spec-draft-n-max",
+    "--spec-draft-model",
+    "--no-mmap",
+    "--jinja",
+    "--reasoning-budget",
+    "--reasoning-budget-message",
+    "--reasoning",
+    "--cont-batching",
+    "--temp",
+    "--top-p",
+    "--min-p",
+    "--top-k",
+    "--repeat-penalty",
+    "--presence-penalty",
+    "--frequency-penalty",
+    "--coding-task-limit",
+    "--lcb-task-limit",
+    "--bigcode-task-limit",
     "--bench-tts-threshold",
 }
 
@@ -53,33 +87,139 @@ def determine_category(args) -> str:
         return CATEGORY_10_TASK
     return CATEGORY_FULL_SUITE
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Unified AutoResearch Benchmark Runner", allow_abbrev=False)
-    parser.add_argument("--desc", type=str, help="Description of the experiment (required for logging single runs)")
-    parser.add_argument("--model", type=str, default=config.MODEL, help="Model filename in models/ directory")
-    parser.add_argument("--kv", type=str, default=config.KV_CACHE, help="KV cache type (e.g. q4_0, q4_1, f16)")
-    parser.add_argument("--kv-k", "--cache-type-k", "-ctk", dest="kv_k", type=str, default=None, help="Key cache type (overrides --kv if set)")
-    parser.add_argument("--kv-v", "--cache-type-v", "-ctv", dest="kv_v", type=str, default=None, help="Value cache type (overrides --kv if set)")
+    parser = argparse.ArgumentParser(
+        description="Unified AutoResearch Benchmark Runner", allow_abbrev=False
+    )
+    parser.add_argument(
+        "--desc", type=str, help="Description of the experiment (required for logging single runs)"
+    )
+    parser.add_argument(
+        "--model", type=str, default=config.MODEL, help="Model filename in models/ directory"
+    )
+    parser.add_argument(
+        "--kv", type=str, default=config.KV_CACHE, help="KV cache type (e.g. q4_0, q4_1, f16)"
+    )
+    parser.add_argument(
+        "--kv-k",
+        "--cache-type-k",
+        "-ctk",
+        dest="kv_k",
+        type=str,
+        default=None,
+        help="Key cache type (overrides --kv if set)",
+    )
+    parser.add_argument(
+        "--kv-v",
+        "--cache-type-v",
+        "-ctv",
+        dest="kv_v",
+        type=str,
+        default=None,
+        help="Value cache type (overrides --kv if set)",
+    )
     parser.add_argument("--max-tokens", type=int, default=1024, help="Max generation tokens")
     parser.add_argument("--ctx-size", "-c", type=int, default=config.CTX_SIZE, help="Context size")
     parser.add_argument("--port", type=int, default=18080, help="Port for llama-server")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host for llama-server")
-    parser.add_argument("--threads", "-t", type=int, default=config.THREADS, help="Number of threads for llama-server")
-    parser.add_argument("--threads-batch", type=int, default=config.THREADS_BATCH, help="Number of batch/prefill threads for llama-server")
-    parser.add_argument("--ngl", "--n-gpu-layers", "-ngl", type=int, default=99, help="Number of GPU layers to offload")
-    parser.add_argument("--n-cpu-moe", "-ncmoe", type=int, default=getattr(config, 'N_CPU_MOE', None), help="Keep MoE expert weights of first N layers on CPU (VITRIOL)")
-    parser.add_argument("--batch-size", "-b", type=int, default=config.BATCH_SIZE, help="Batch size for llama-server")
-    parser.add_argument("--ubatch-size", "-ub", type=int, default=config.UBATCH_SIZE, help="Micro-batch size for llama-server")
+    parser.add_argument(
+        "--threads",
+        "-t",
+        type=int,
+        default=config.THREADS,
+        help="Number of threads for llama-server",
+    )
+    parser.add_argument(
+        "--threads-batch",
+        type=int,
+        default=config.THREADS_BATCH,
+        help="Number of batch/prefill threads for llama-server",
+    )
+    parser.add_argument(
+        "--ngl",
+        "--n-gpu-layers",
+        "-ngl",
+        type=int,
+        default=99,
+        help="Number of GPU layers to offload",
+    )
+    parser.add_argument(
+        "--n-cpu-moe",
+        "-ncmoe",
+        type=int,
+        default=getattr(config, "N_CPU_MOE", None),
+        help="Keep MoE expert weights of first N layers on CPU (VITRIOL)",
+    )
+    parser.add_argument(
+        "--batch-size",
+        "-b",
+        type=int,
+        default=config.BATCH_SIZE,
+        help="Batch size for llama-server",
+    )
+    parser.add_argument(
+        "--ubatch-size",
+        "-ub",
+        type=int,
+        default=config.UBATCH_SIZE,
+        help="Micro-batch size for llama-server",
+    )
     parser.add_argument("--parallel", type=int, default=1, help="Parallel slots count")
-    parser.add_argument("--flash-attn", "-fa", nargs="?", const="on", default=config.FLASH_ATTN, choices=["on", "off", "auto"], help="Enable/disable/auto Flash Attention")
-    parser.add_argument("--spec-type", type=str, default=config.SPEC_TYPE, help="Speculative decoding type (e.g. draft-mtp, mtp)")
-    parser.add_argument("--spec-draft-n-max", type=int, default=config.SPEC_DRAFT_N_MAX, help="Speculative draft max tokens count for MTP")
-    parser.add_argument("--spec-draft-model", type=str, default=config.SPEC_DRAFT_MODEL, help="Speculative draft model filename/path")
-    parser.add_argument("--context-tokens", type=int, default=config.CTX_SIZE, help="Context tokens padding length (100k minimum)")
-    parser.add_argument("--include-coding", action="store_true", default=getattr(bench_config, "INCLUDE_CODING", False), help="Run the optional 10-task direct-coding preflight")
-    parser.add_argument("--no-coding", dest="include_coding", action="store_false", help="Disable Coding benchmark")
-    parser.add_argument("--include-nexus", action="store_true", default=getattr(bench_config, "INCLUDE_NEXUS", False), help="Include Nexus benchmark")
-    parser.add_argument("--include-claw", action="store_true", default=getattr(bench_config, "INCLUDE_CLAW", False), help="Include Claw benchmark")
+    parser.add_argument(
+        "--flash-attn",
+        "-fa",
+        nargs="?",
+        const="on",
+        default=config.FLASH_ATTN,
+        choices=["on", "off", "auto"],
+        help="Enable/disable/auto Flash Attention",
+    )
+    parser.add_argument(
+        "--spec-type",
+        type=str,
+        default=config.SPEC_TYPE,
+        help="Speculative decoding type (e.g. draft-mtp, mtp)",
+    )
+    parser.add_argument(
+        "--spec-draft-n-max",
+        type=int,
+        default=config.SPEC_DRAFT_N_MAX,
+        help="Speculative draft max tokens count for MTP",
+    )
+    parser.add_argument(
+        "--spec-draft-model",
+        type=str,
+        default=config.SPEC_DRAFT_MODEL,
+        help="Speculative draft model filename/path",
+    )
+    parser.add_argument(
+        "--context-tokens",
+        type=int,
+        default=config.CTX_SIZE,
+        help="Context tokens padding length (100k minimum)",
+    )
+    parser.add_argument(
+        "--include-coding",
+        action="store_true",
+        default=getattr(bench_config, "INCLUDE_CODING", False),
+        help="Run the optional 10-task direct-coding preflight",
+    )
+    parser.add_argument(
+        "--no-coding", dest="include_coding", action="store_false", help="Disable Coding benchmark"
+    )
+    parser.add_argument(
+        "--include-nexus",
+        action="store_true",
+        default=getattr(bench_config, "INCLUDE_NEXUS", False),
+        help="Include Nexus benchmark",
+    )
+    parser.add_argument(
+        "--include-claw",
+        action="store_true",
+        default=getattr(bench_config, "INCLUDE_CLAW", False),
+        help="Include Claw benchmark",
+    )
     parser.add_argument(
         "--agentic-quick",
         action=argparse.BooleanOptionalAction,
@@ -92,36 +232,105 @@ def parse_args():
         default=getattr(bench_config, "INCLUDE_AGENTIC_FULL", False),
         help="Run Claw-Eval full tier quality gate (15 tasks; use --no-agentic-full to disable)",
     )
-    parser.add_argument("--list-agentic-benchmarks", action="store_true", help="List long-horizon agentic benchmark targets and exit")
-    parser.add_argument("--list-claw-tiers", action="store_true", help="List Claw-Eval quick/full task tiers and exit")
-    parser.add_argument("--coding-task-limit", type=int, default=getattr(bench_config, "CODING_TASK_LIMIT", 30), help="Tasks per dataset (0=full dataset)")
-    parser.add_argument("--lcb-task-limit", type=int, default=getattr(bench_config, "LCB_TASK_LIMIT", 10), help="LiveCodeBench task limit")
-    parser.add_argument("--bigcode-task-limit", type=int, default=getattr(bench_config, "BIGCODE_TASK_LIMIT", 10), help="BigCodeBench task limit")
-    parser.add_argument("--validation", action="store_true",
+    parser.add_argument(
+        "--list-agentic-benchmarks",
+        action="store_true",
+        help="List long-horizon agentic benchmark targets and exit",
+    )
+    parser.add_argument(
+        "--list-claw-tiers",
+        action="store_true",
+        help="List Claw-Eval quick/full task tiers and exit",
+    )
+    parser.add_argument(
+        "--coding-task-limit",
+        type=int,
+        default=getattr(bench_config, "CODING_TASK_LIMIT", 30),
+        help="Tasks per dataset (0=full dataset)",
+    )
+    parser.add_argument(
+        "--lcb-task-limit",
+        type=int,
+        default=getattr(bench_config, "LCB_TASK_LIMIT", 10),
+        help="LiveCodeBench task limit",
+    )
+    parser.add_argument(
+        "--bigcode-task-limit",
+        type=int,
+        default=getattr(bench_config, "BIGCODE_TASK_LIMIT", 10),
+        help="BigCodeBench task limit",
+    )
+    parser.add_argument(
+        "--validation",
+        action="store_true",
         help="Validation mode: run llama-bench + Claw quick smoke evaluation. "
-             "Validates model load, throughput, and basic agentic behavior. "
-             "No extended eval, no keep/discard. Useful for quick config sanity checks.")
-    parser.add_argument("--bench-tts-threshold", type=float, default=resolve_tps_floor(),
-        help="Minimum text generation t/s (default: Baseline TPS_FLOOR; config.py-only)")
-    parser.add_argument("--no-mmap", action="store_true", default=config.NO_MMAP, help="Disable mmap")
-    parser.add_argument("--jinja", action="store_true", default=config.JINJA, help="Enable Jinja chat template engine")
-    parser.add_argument("--reasoning-budget", type=int, default=config.REASONING_BUDGET, help="Thinking budget tokens limit")
-    parser.add_argument("--reasoning-budget-message", type=str, default=config.REASONING_BUDGET_MESSAGE, help="Message on thinking budget exhaust")
-    parser.add_argument("--reasoning", type=str, choices=["on", "off", "auto"], default=config.REASONING, help="Reasoning mode (on/off/auto)")
-    parser.add_argument("--cont-batching", action="store_true", default=config.CONT_BATCHING, help="Enable continuous batching")
+        "Validates model load, throughput, and basic agentic behavior. "
+        "No extended eval, no keep/discard. Useful for quick config sanity checks.",
+    )
+    parser.add_argument(
+        "--bench-tts-threshold",
+        type=float,
+        default=resolve_tps_floor(),
+        help="Minimum text generation t/s (default: Baseline TPS_FLOOR; config.py-only)",
+    )
+    parser.add_argument(
+        "--no-mmap", action="store_true", default=config.NO_MMAP, help="Disable mmap"
+    )
+    parser.add_argument(
+        "--jinja",
+        action="store_true",
+        default=config.JINJA,
+        help="Enable Jinja chat template engine",
+    )
+    parser.add_argument(
+        "--reasoning-budget",
+        type=int,
+        default=config.REASONING_BUDGET,
+        help="Thinking budget tokens limit",
+    )
+    parser.add_argument(
+        "--reasoning-budget-message",
+        type=str,
+        default=config.REASONING_BUDGET_MESSAGE,
+        help="Message on thinking budget exhaust",
+    )
+    parser.add_argument(
+        "--reasoning",
+        type=str,
+        choices=["on", "off", "auto"],
+        default=config.REASONING,
+        help="Reasoning mode (on/off/auto)",
+    )
+    parser.add_argument(
+        "--cont-batching",
+        action="store_true",
+        default=config.CONT_BATCHING,
+        help="Enable continuous batching",
+    )
     parser.add_argument("--temp", type=float, default=config.TEMP, help="Generation temperature")
     parser.add_argument("--top-p", type=float, default=config.TOP_P, help="Top-p sampling")
     parser.add_argument("--min-p", type=float, default=config.MIN_P, help="Min-p sampling")
     parser.add_argument("--top-k", type=int, default=config.TOP_K, help="Top-k sampling")
-    parser.add_argument("--repeat-penalty", type=float, default=config.REPEAT_PENALTY, help="Repeat penalty")
-    parser.add_argument("--presence-penalty", type=float, default=config.PRESENCE_PENALTY, help="Presence penalty")
-    parser.add_argument("--frequency-penalty", type=float, default=config.FREQUENCY_PENALTY, help="Frequency penalty")
-    
+    parser.add_argument(
+        "--repeat-penalty", type=float, default=config.REPEAT_PENALTY, help="Repeat penalty"
+    )
+    parser.add_argument(
+        "--presence-penalty", type=float, default=config.PRESENCE_PENALTY, help="Presence penalty"
+    )
+    parser.add_argument(
+        "--frequency-penalty",
+        type=float,
+        default=config.FREQUENCY_PENALTY,
+        help="Frequency penalty",
+    )
+
     for action in parser._actions:
         if BASELINE_CLI_FLAGS.intersection(action.option_strings):
             action.help = argparse.SUPPRESS
 
-    forbidden = [arg.split("=", 1)[0] for arg in sys.argv[1:] if arg.split("=", 1)[0] in BASELINE_CLI_FLAGS]
+    forbidden = [
+        arg.split("=", 1)[0] for arg in sys.argv[1:] if arg.split("=", 1)[0] in BASELINE_CLI_FLAGS
+    ]
     if forbidden:
         parser.error(f"Baseline flags are config.py-only: {', '.join(forbidden)}")
     return parser.parse_args()
@@ -159,20 +368,31 @@ def _result_config() -> dict[str, Any]:
 
 def get_git_commit() -> str:
     try:
-        commit = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode("utf-8").strip()
-        status = subprocess.check_output(["git", "status", "--porcelain"], stderr=subprocess.DEVNULL).decode("utf-8").strip()
+        commit = (
+            subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
+            )
+            .decode("utf-8")
+            .strip()
+        )
+        status = (
+            subprocess.check_output(["git", "status", "--porcelain"], stderr=subprocess.DEVNULL)
+            .decode("utf-8")
+            .strip()
+        )
         if status:
             commit += "-dirty"
         return commit
     except Exception:
         return "unknown"
 
+
 def get_previous_best(results_file: Path, model_name: str | None = None) -> float:
     if not results_file.exists():
         return 0.0
     best_score = 0.0
     try:
-        with open(results_file, "r", encoding="utf-8") as f:
+        with open(results_file, encoding="utf-8") as f:
             reader = csv.DictReader(f, delimiter="\t")
             for row in reader:
                 if row.get("status") == "keep":
@@ -192,17 +412,53 @@ def get_previous_best(results_file: Path, model_name: str | None = None) -> floa
         print(f"Error reading results.tsv: {e}")
     return best_score
 
+
 CATEGORY_FIELDNAMES = [
-    "schema_version", "trial_id", "commit", "model", "model_id", "backend",
-    "category", "evaluation_profile", "scoring_benchmark", "outcome", "diagnostic", "status",
-    "val_score", "swe_score", "lcb_score", "he_score",
-    "mbpp_score", "bigcode_score", "memory_gb", "elapsed_sec",
-    "tps", "bench_tg", "kv", "ctx",
-    "threads", "threads_batch", "batch_size", "ubatch_size",
-    "n_cpu_moe", "temp", "top_p", "top_k", "min_p",
-    "repeat_penalty", "presence_penalty", "cont_batching",
-    "flash_attn", "no_mmap", "spec_draft_n_max",
-    "task_ids", "random_seed", "config_json", "binary_version", "tps_source", "description",
+    "schema_version",
+    "trial_id",
+    "commit",
+    "model",
+    "model_id",
+    "backend",
+    "category",
+    "evaluation_profile",
+    "scoring_benchmark",
+    "outcome",
+    "diagnostic",
+    "status",
+    "val_score",
+    "swe_score",
+    "lcb_score",
+    "he_score",
+    "mbpp_score",
+    "bigcode_score",
+    "memory_gb",
+    "elapsed_sec",
+    "tps",
+    "bench_tg",
+    "kv",
+    "ctx",
+    "threads",
+    "threads_batch",
+    "batch_size",
+    "ubatch_size",
+    "n_cpu_moe",
+    "temp",
+    "top_p",
+    "top_k",
+    "min_p",
+    "repeat_penalty",
+    "presence_penalty",
+    "cont_batching",
+    "flash_attn",
+    "no_mmap",
+    "spec_draft_n_max",
+    "task_ids",
+    "random_seed",
+    "config_json",
+    "binary_version",
+    "tps_source",
+    "description",
 ]
 
 
@@ -210,7 +466,7 @@ def _ensure_category_column(results_file: Path) -> None:
     """One-time migration: add missing columns."""
     if not results_file.exists() or results_file.stat().st_size == 0:
         return
-    with open(results_file, "r", encoding="utf-8") as f:
+    with open(results_file, encoding="utf-8") as f:
         header = f.readline().strip()
     cols = header.split("\t")
     if cols == CATEGORY_FIELDNAMES:
@@ -219,13 +475,14 @@ def _ensure_category_column(results_file: Path) -> None:
     if results_file.is_file() and not backup.exists():
         shutil.copy2(results_file, backup)
     rows = []
-    with open(results_file, "r", encoding="utf-8") as f:
+    with open(results_file, encoding="utf-8") as f:
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
             rows.append(row)
     with open(results_file, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t",
-                                extrasaction="ignore")
+        writer = csv.DictWriter(
+            f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
+        )
         writer.writeheader()
         writer.writerows(rows)
 
@@ -237,7 +494,48 @@ def _tsv_cell(value: Any, fmt: str | None = None) -> str:
     return format(value, fmt) if fmt else str(value)
 
 
-def write_row(results_file: Path, commit: str, val_score: float, swe_score: float, he_score: float, mbpp_score: float, memory_gb: float, status: str, description: str, lcb_score: float = 0.0, bigcode_score: float = 0.0, category: str = "", elapsed_sec: float = 0.0, model: str = "", tps: float | None = None, bench_tg: float | None = None, kv: str = "", ctx: int | None = None, threads: int | None = None, threads_batch: int | None = None, batch_size: int | None = None, ubatch_size: int | None = None, n_cpu_moe: int | None = None, temp: float | None = None, top_p: float | None = None, top_k: int | None = None, min_p: float | None = None, repeat_penalty: float | None = None, presence_penalty: float | None = None, cont_batching: Any = None, flash_attn: str = "", no_mmap: Any = None, spec_draft_n_max: int | None = None, outcome: str = "", diagnostic: str = "", evaluation_profile: str = "", scoring_benchmark: str = "", task_ids: str = "", config_json: str = "", tps_source: str = ""):
+def write_row(
+    results_file: Path,
+    commit: str,
+    val_score: float,
+    swe_score: float,
+    he_score: float,
+    mbpp_score: float,
+    memory_gb: float,
+    status: str,
+    description: str,
+    lcb_score: float = 0.0,
+    bigcode_score: float = 0.0,
+    category: str = "",
+    elapsed_sec: float = 0.0,
+    model: str = "",
+    tps: float | None = None,
+    bench_tg: float | None = None,
+    kv: str = "",
+    ctx: int | None = None,
+    threads: int | None = None,
+    threads_batch: int | None = None,
+    batch_size: int | None = None,
+    ubatch_size: int | None = None,
+    n_cpu_moe: int | None = None,
+    temp: float | None = None,
+    top_p: float | None = None,
+    top_k: int | None = None,
+    min_p: float | None = None,
+    repeat_penalty: float | None = None,
+    presence_penalty: float | None = None,
+    cont_batching: Any = None,
+    flash_attn: str = "",
+    no_mmap: Any = None,
+    spec_draft_n_max: int | None = None,
+    outcome: str = "",
+    diagnostic: str = "",
+    evaluation_profile: str = "",
+    scoring_benchmark: str = "",
+    task_ids: str = "",
+    config_json: str = "",
+    tps_source: str = "",
+):
     _ensure_category_column(results_file)
     new_file = not results_file.exists() or results_file.stat().st_size == 0
     with open(results_file, "a", newline="", encoding="utf-8") as f:
@@ -253,8 +551,10 @@ def write_row(results_file: Path, commit: str, val_score: float, swe_score: floa
             "backend": "sglang" if model and not model.lower().endswith(".gguf") else "llama.cpp",
             "category": category,
             "evaluation_profile": evaluation_profile or category,
-            "scoring_benchmark": scoring_benchmark or ("claw-eval" if category.startswith("agentic") else "coding"),
-            "outcome": outcome or ("OK" if not status.lower().startswith("fail") else "MODEL_REJECTED"),
+            "scoring_benchmark": scoring_benchmark
+            or ("claw-eval" if category.startswith("agentic") else "coding"),
+            "outcome": outcome
+            or ("OK" if not status.lower().startswith("fail") else "MODEL_REJECTED"),
             "diagnostic": diagnostic,
             "status": status,
             "val_score": f"{val_score:.6f}",
@@ -286,18 +586,29 @@ def write_row(results_file: Path, commit: str, val_score: float, swe_score: floa
             "spec_draft_n_max": _tsv_cell(spec_draft_n_max),
             "task_ids": task_ids,
             "random_seed": "",
-            "config_json": config_json or json.dumps({
-                "kv": kv, "ctx": ctx, "threads": threads, "threads_batch": threads_batch,
-                "batch_size": batch_size, "ubatch_size": ubatch_size,
-                "flash_attn": flash_attn, "spec_draft_n_max": spec_draft_n_max,
-            }, separators=(",", ":"), sort_keys=True),
+            "config_json": config_json
+            or json.dumps(
+                {
+                    "kv": kv,
+                    "ctx": ctx,
+                    "threads": threads,
+                    "threads_batch": threads_batch,
+                    "batch_size": batch_size,
+                    "ubatch_size": ubatch_size,
+                    "flash_attn": flash_attn,
+                    "spec_draft_n_max": spec_draft_n_max,
+                },
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
             "binary_version": "",
             "tps_source": tps_source,
             "description": description,
         }
         writer.writerow(row)
 
-def run_evaluation(cfg: dict | Any, skip_bench: bool = False, **overrides) -> Dict[str, Any]:
+
+def run_evaluation(cfg: dict | Any, skip_bench: bool = False, **overrides) -> dict[str, Any]:
     """Run one trial and return results as a dict (backward-compat wrapper).
 
     New code should use ExperimentRunner.run_trial() directly for a typed TrialResult.
@@ -328,18 +639,21 @@ def run_evaluation(cfg: dict | Any, skip_bench: bool = False, **overrides) -> Di
         "tps_source": tr.tps_source,
     }
 
+
 def handle_single_run(args):
     if not args.desc:
-        print("Error: --desc is required for logging single runs. Example: --desc 'Tweak system prompt'")
+        print(
+            "Error: --desc is required for logging single runs. Example: --desc 'Tweak system prompt'"
+        )
         sys.exit(1)
-        
+
     print(f"Starting single run for model: {args.model}")
     commit = get_git_commit()
-    
+
     # Read previous best score
     prev_best = get_previous_best(RESULTS_FILE, args.model)
     print(f"Previous best 'keep' score: {prev_best:.6f}")
-    
+
     include_nexus_val = getattr(args, "include_nexus", False)
     include_claw_val = getattr(args, "include_claw", False)
     agentic_quick = getattr(args, "agentic_quick", False) is True
@@ -347,16 +661,27 @@ def handle_single_run(args):
 
     # Run evaluation
     res = run_evaluation(
-        args, include_nexus=include_nexus_val, include_claw=include_claw_val,
-        agentic_quick=agentic_quick, agentic_full=agentic_full,
+        args,
+        include_nexus=include_nexus_val,
+        include_claw=include_claw_val,
+        agentic_quick=agentic_quick,
+        agentic_full=agentic_full,
     )
-    
+
     if res["status"] != "OK":
         print(f"Evaluation failed: {res['status']}")
         write_row(
-            RESULTS_FILE, commit, 0.0, 0.0, 0.0, 0.0, res["peak_vram_gb"],
-            "discard", f"FAIL: {res['status']} | {args.desc}",
-            category=determine_category(args), elapsed_sec=res.get("elapsed_sec", 0.0),
+            RESULTS_FILE,
+            commit,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            res["peak_vram_gb"],
+            "discard",
+            f"FAIL: {res['status']} | {args.desc}",
+            category=determine_category(args),
+            elapsed_sec=res.get("elapsed_sec", 0.0),
             tps=res.get("avg_tps"),
             bench_tg=res.get("bench_tg_tps"),
             outcome=res.get("outcome", ""),
@@ -366,7 +691,7 @@ def handle_single_run(args):
             **_result_config(),
         )
         sys.exit(1)
-        
+
     val_score = res["val_score"]
     is_validation = getattr(args, "validation", False)
     if not isinstance(is_validation, bool):
@@ -381,12 +706,18 @@ def handle_single_run(args):
         details += f" agentic_{res['agentic_tier']}={res.get('agentic_val', 0.0):.4f} (n={res.get('agentic_task_count', 0)})"
     details += f" bench_tg={res.get('bench_tg_tps', 0.0):.1f}"
     details += f" | {args.desc}"
-    
+
     # Log to results.tsv
     write_row(
-        RESULTS_FILE, commit, val_score,
-        res.get("swe_val", 0.0), res.get("he_val", 0.0), res.get("mbpp_val", 0.0),
-        res["peak_vram_gb"], status, details,
+        RESULTS_FILE,
+        commit,
+        val_score,
+        res.get("swe_val", 0.0),
+        res.get("he_val", 0.0),
+        res.get("mbpp_val", 0.0),
+        res["peak_vram_gb"],
+        status,
+        details,
         lcb_score=res.get("lcb_val", 0.0),
         bigcode_score=res.get("bigcode_val", 0.0),
         category=determine_category(args),
@@ -399,14 +730,14 @@ def handle_single_run(args):
         tps_source=res.get("tps_source", ""),
         **_result_config(),
     )
-    
-    print("\n" + "="*40)
+
+    print("\n" + "=" * 40)
     print("EVALUATION COMPLETE")
-    print("="*40)
+    print("=" * 40)
     print(f"Model:          {args.model}")
     print(f"KV Cache:       {args.kv}")
     print(f"Context Size:   {args.ctx_size}")
-    print("-"*40)
+    print("-" * 40)
     print(f"Coding Score:     {res['coding_val']:.4f}")
     print(f"  LCB:            {res.get('lcb_val', 0.0):.4f}")
     print(f"  HumanEval+:     {res.get('he_val', 0.0):.4f}")
@@ -417,15 +748,16 @@ def handle_single_run(args):
     print(f"Peak VRAM:        {res['peak_vram_gb']:.1f} GB")
     print(f"Current Score:    {val_score:.6f}")
     print(f"Previous Best:    {prev_best:.6f}")
-    print("-"*40)
+    print("-" * 40)
     if improved:
         print(f"\n>>> STATUS: KEEP (Improved by +{val_score - prev_best:.6f})")
         print(">>> Run this to commit your tweak:")
-        print(f"    git commit -am \"keep: {args.desc} (score: {val_score:.6f})\"")
+        print(f'    git commit -am "keep: {args.desc} (score: {val_score:.6f})"')
     else:
         print(f"\n>>> STATUS: DISCARD (Regressed or no improvement by {val_score - prev_best:.6f})")
         print(">>> Run this to discard your tweak:")
         print("    git checkout . && git clean -fd")
+
 
 def main():
     args = parse_args()
@@ -436,6 +768,7 @@ def main():
         print(format_claw_tiers())
         return
     handle_single_run(args)
+
 
 if __name__ == "__main__":
     main()

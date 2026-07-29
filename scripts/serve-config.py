@@ -18,6 +18,7 @@ Exit codes:
     1 — server not running / not found
     2 — invalid config or missing dependency
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,6 +44,7 @@ from autoresearch.core.llama_runner import (
     resolve_model_path,
     resolve_vram_limit_mb,
 )
+
 CONFIG = REPO_ROOT / "autoresearch" / "core" / "config.py"
 MODELS_DIR = REPO_ROOT / "models"
 STATE_DIR = (
@@ -71,6 +73,7 @@ def parse_config(path: Path) -> dict:
         sys.exit(2)
 
     from autoresearch.core.config import load_config
+
     return load_config()
 
 
@@ -303,7 +306,10 @@ def _preflight_or_exit(cfg: dict) -> None:
     )
     if not ok_v:
         print(f"ERROR: {reason_v}", file=sys.stderr)
-        print(f"  est={est_v:.0f}MB limit={vram_limit:.0f}MB — cut CTX/KV/model or raise VRAM_LIMIT_MB", file=sys.stderr)
+        print(
+            f"  est={est_v:.0f}MB limit={vram_limit:.0f}MB — cut CTX/KV/model or raise VRAM_LIMIT_MB",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     ok_h, est_h, budget_h, reason_h = preflight_host_memory(
@@ -348,7 +354,9 @@ def cmd_serve() -> int:
             print(f"  {idx}. {candidate}")
         print()
         print("Either clone llama.cpp (or a fork) into the repo root, or set")
-        print("AUTORESEARCH_LLAMA_CPP_ROOT to the root llama.cpp directory (containing build-cuda/ or build-cpu/).")
+        print(
+            "AUTORESEARCH_LLAMA_CPP_ROOT to the root llama.cpp directory (containing build-cuda/ or build-cpu/)."
+        )
         return 2
 
     LOG.parent.mkdir(parents=True, exist_ok=True)

@@ -40,7 +40,10 @@ def is_gpu_available() -> bool:
 def build_llamacpp(target: str, clean: bool = False) -> int:
     if not LLAMA_CPP_DIR.exists():
         print(f"ERROR: llama.cpp directory not found at {LLAMA_CPP_DIR}", file=sys.stderr)
-        print("Please clone llama.cpp first: git clone https://github.com/ggerganov/llama.cpp.git", file=sys.stderr)
+        print(
+            "Please clone llama.cpp first: git clone https://github.com/ggerganov/llama.cpp.git",
+            file=sys.stderr,
+        )
         return 1
 
     build_dir_name = "build-cuda" if target == "cuda" else "build-cpu"
@@ -52,8 +55,10 @@ def build_llamacpp(target: str, clean: bool = False) -> int:
 
     cmake_args = [
         "cmake",
-        "-S", str(LLAMA_CPP_DIR),
-        "-B", str(build_dir),
+        "-S",
+        str(LLAMA_CPP_DIR),
+        "-B",
+        str(build_dir),
         "-DCMAKE_BUILD_TYPE=Release",
         "-DLLAMA_BUILD_SERVER=ON",
     ]
@@ -86,8 +91,12 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--cpu", action="store_true", help="build CPU-only binary target (default)")
     group.add_argument("--cuda", action="store_true", help="build CUDA GPU binary target")
-    group.add_argument("--auto", action="store_true", help="auto-detect hardware and build appropriate target")
-    parser.add_argument("--clean", action="store_true", help="clean build directory before building")
+    group.add_argument(
+        "--auto", action="store_true", help="auto-detect hardware and build appropriate target"
+    )
+    parser.add_argument(
+        "--clean", action="store_true", help="clean build directory before building"
+    )
 
     args = parser.parse_args()
 

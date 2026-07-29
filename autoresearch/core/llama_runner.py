@@ -26,10 +26,8 @@ from typing import Any
 _LLAMA_SERVER_HELP_CACHE = None
 _MODEL_SEARCH_SKIP = frozenset({".cache", "aliases", "huggingface"})
 
-import math
 from autoresearch.core import config
-
-from autoresearch.core.config import ConfigError, validate_config, is_dense_model
+from autoresearch.core.config import ConfigError, is_dense_model, validate_config
 from autoresearch.core.model_arch import gguf_block_count, gguf_is_moe, resolve_n_cpu_moe
 
 
@@ -82,7 +80,9 @@ def _is_gpu_working(binary_name: str, probe_flag: str) -> bool:
     if not tool_path:
         return False
     try:
-        res = subprocess.run([tool_path, probe_flag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        res = subprocess.run(
+            [tool_path, probe_flag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
         return res.returncode == 0
     except Exception:
         return False
@@ -139,6 +139,7 @@ LLAMA_SERVER_CANDIDATES = _binary_candidates("llama-server")
 @dataclass(frozen=True)
 class ServerIntent:
     """A pure data object describing high-level benchmark intent."""
+
     model_path: Path
     ctx_size: int
     kv_cache: str
@@ -166,7 +167,7 @@ class ServerIntent:
     n_cpu_moe_auto: bool = False
 
     @classmethod
-    def from_config(cls, cfg: dict, models_dir: Path, **overrides) -> tuple['ServerIntent', dict]:
+    def from_config(cls, cfg: dict, models_dir: Path, **overrides) -> tuple["ServerIntent", dict]:
         """Build ServerIntent from config dict. Caller converts non-dict to dict first.
 
         Returns (intent, norm_dict) where norm_dict holds all config fields
@@ -175,7 +176,11 @@ class ServerIntent:
         merged = dict(cfg)
         merged.update({k: v for k, v in overrides.items() if v is not None})
         merged = validate_config(merged)
-        norm = {str(k).lower(): v for k, v in merged.items() if v is not None and isinstance(k, (str, bytes))}
+        norm = {
+            str(k).lower(): v
+            for k, v in merged.items()
+            if v is not None and isinstance(k, (str, bytes))
+        }
 
         model_fn = norm.get("model", "g4-opt-it-Q4_K_M.gguf")
         kv_cache = norm.get("kv_cache") or norm.get("kv") or "q4_0"
@@ -229,6 +234,7 @@ class ServerIntent:
         )
 
         return intent, norm
+
 
 # VRAM Estimation Constants (calibrated for f16 KV cache and typical systems)
 VRAM_KB_PER_TOKEN_F16 = 80.0
@@ -292,9 +298,7 @@ def estimate_vram_mb(
             pass
         offload = min(1.0, float(n_cpu_moe) / layer_ref)
         expert_frac = 1.0 - VRAM_MOE_NON_EXPERT_FRAC
-        model_size_mb = model_size_mb * (
-            VRAM_MOE_NON_EXPERT_FRAC + expert_frac * (1.0 - offload)
-        )
+        model_size_mb = model_size_mb * (VRAM_MOE_NON_EXPERT_FRAC + expert_frac * (1.0 - offload))
 
     draft_mb = 0.0
     if draft_path:
@@ -596,23 +600,39 @@ class LlamaServerRunner:
         self.llama_server = resolve_llama_server()
 
     def _build_cmd(self, target_port: int) -> list[str]:
-        cache_type_k = self.intent.kv_cache_k if self.intent.kv_cache_k is not None else self.intent.kv_cache
-        cache_type_v = self.intent.kv_cache_v if self.intent.kv_cache_v is not None else self.intent.kv_cache
+        cache_type_k = (
+            self.intent.kv_cache_k if self.intent.kv_cache_k is not None else self.intent.kv_cache
+        )
+        cache_type_v = (
+            self.intent.kv_cache_v if self.intent.kv_cache_v is not None else self.intent.kv_cache
+        )
 
         cmd = [
             str(self.llama_server),
-            "--model", str(self.intent.model_path),
-            "--host", str(self.intent.host),
-            "--port", str(target_port),
-            "--ctx-size", str(self.intent.ctx_size),
-            "--batch-size", str(self.intent.batch_size),
-            "--ubatch-size", str(self.intent.ubatch_size),
-            "--threads", str(self.intent.threads),
-            "--parallel", str(self.intent.parallel),
-            "--n-gpu-layers", str(self.intent.ngl),
-            "--cache-type-k", cache_type_k,
-            "--cache-type-v", cache_type_v,
-            "--flash-attn", self.intent.flash_attn,
+            "--model",
+            str(self.intent.model_path),
+            "--host",
+            str(self.intent.host),
+            "--port",
+            str(target_port),
+            "--ctx-size",
+            str(self.intent.ctx_size),
+            "--batch-size",
+            str(self.intent.batch_size),
+            "--ubatch-size",
+            str(self.intent.ubatch_size),
+            "--threads",
+            str(self.intent.threads),
+            "--parallel",
+            str(self.intent.parallel),
+            "--n-gpu-layers",
+            str(self.intent.ngl),
+            "--cache-type-k",
+            cache_type_k,
+            "--cache-type-v",
+            cache_type_v,
+            "--flash-attn",
+            self.intent.flash_attn,
         ]
 
         if self.intent.threads_batch is not None:
@@ -633,25 +653,41 @@ class LlamaServerRunner:
 
         # MTP/Speculative Optimization: Detect MTP models and enable speculative decoding.
         spec_type_val = self.intent.spec_type
-        if spec_type_val is None and "MTP" in self.intent.model_path.name.upper() and self.intent.spec_draft_n_max > 0:
+        if (
+            spec_type_val is None
+            and "MTP" in self.intent.model_path.name.upper()
+            and self.intent.spec_draft_n_max > 0
+        ):
             global _LLAMA_SERVER_HELP_CACHE
             if _LLAMA_SERVER_HELP_CACHE is None:
                 try:
-                    _LLAMA_SERVER_HELP_CACHE = subprocess.check_output([str(self.llama_server), "--help"], stderr=subprocess.STDOUT, text=True)
+                    _LLAMA_SERVER_HELP_CACHE = subprocess.check_output(
+                        [str(self.llama_server), "--help"], stderr=subprocess.STDOUT, text=True
+                    )
                 except Exception:
                     _LLAMA_SERVER_HELP_CACHE = "mtp"
             if "mtp" in _LLAMA_SERVER_HELP_CACHE:
                 spec_type_val = "mtp"
             else:
                 spec_type_val = "draft-mtp"
-            print(f"  [MTP] Multi-Token Prediction detected for {self.intent.model_path.name}. Auto-selected spec-type: {spec_type_val}")
+            print(
+                f"  [MTP] Multi-Token Prediction detected for {self.intent.model_path.name}. Auto-selected spec-type: {spec_type_val}"
+            )
 
-        if spec_type_val is not None and spec_type_val.lower() != "none" and self.intent.spec_draft_n_max > 0:
+        if (
+            spec_type_val is not None
+            and spec_type_val.lower() != "none"
+            and self.intent.spec_draft_n_max > 0
+        ):
             cmd += [
-                "--spec-type", spec_type_val,
-                "--spec-draft-n-max", str(self.intent.spec_draft_n_max),
-                "--spec-draft-type-k", cache_type_k,
-                "--spec-draft-type-v", cache_type_v,
+                "--spec-type",
+                spec_type_val,
+                "--spec-draft-n-max",
+                str(self.intent.spec_draft_n_max),
+                "--spec-draft-type-k",
+                cache_type_k,
+                "--spec-draft-type-v",
+                cache_type_v,
             ]
             if self.intent.spec_draft_model:
                 draft_path = Path(self.intent.spec_draft_model)
@@ -671,7 +707,7 @@ class LlamaServerRunner:
 
     def __enter__(self):
         self._start_vram_sampler()
-        
+
         server_env = os.environ.copy()
         llama_lib_dir = str(self.llama_server.parent)
         lib_path_var = "PATH" if IS_WINDOWS else "LD_LIBRARY_PATH"
@@ -679,12 +715,12 @@ class LlamaServerRunner:
         server_env[lib_path_var] = (
             f"{llama_lib_dir}{os.pathsep}{existing}" if existing else llama_lib_dir
         )
-        
+
         startup_tail: list[str] = []
         for port in candidate_ports(self.intent.port):
             cmd = self._build_cmd(port)
             print(f"Starting server: {' '.join(cmd)}")
-            
+
             if self.log_path:
                 self._server_log = open(self.log_path, "w+", encoding="utf-8")
             else:
@@ -703,20 +739,22 @@ class LlamaServerRunner:
                 env=server_env,
                 text=True,
             )
-            
+
             self.port = port
             if self._wait_for_server(port):
                 return self
-            
+
             # If wait failed, grab the tail before cleaning up
             self._server_log.flush()
             if hasattr(self._server_log, "name"):
-                log_content = Path(self._server_log.name).read_text(encoding="utf-8", errors="replace")
+                log_content = Path(self._server_log.name).read_text(
+                    encoding="utf-8", errors="replace"
+                )
                 startup_tail = log_content.splitlines()[-50:]
-                
+
             self._cleanup_process()
             print(f"Failed to start on port {port}, trying next...")
-            
+
         self._cleanup_all()
         print("FAIL: Server crashed during startup.")
         if startup_tail:
@@ -726,7 +764,6 @@ class LlamaServerRunner:
 
     def __exit__(self, _exc_type, _exc_val, _exc_tb):
         self._cleanup_all()
-
 
     def _wait_for_server(self, port: int) -> bool:
         delay = 0.05
@@ -759,6 +796,7 @@ class LlamaServerRunner:
         # Load NVML library using ctypes
         nvml = None
         device = None
+
         class nvmlMemory_t(ctypes.Structure):
             _fields_ = [
                 ("total", ctypes.c_uint64),
@@ -775,7 +813,9 @@ class LlamaServerRunner:
             print("  [VRAM] NVML initialized successfully. High-frequency 20ms sampling enabled.")
         except Exception:
             nvml = None
-            print("  [VRAM] NVML initialization failed. Falling back to subprocess nvidia-smi (200ms).")
+            print(
+                "  [VRAM] NVML initialization failed. Falling back to subprocess nvidia-smi (200ms)."
+            )
 
         dense = is_dense_model(self.intent.model_path)
         limit = self.vram_limit_mb
