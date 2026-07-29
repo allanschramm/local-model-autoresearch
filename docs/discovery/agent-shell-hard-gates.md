@@ -61,7 +61,7 @@ Evaluation order: **deny → ask → allow**. Hooks still exit 2 independently o
 |---|---|---|
 | `allow` | Onboarding without prompt spam | `check_hardware.py`, `verify_setup.py`, `pytest`, `nvidia-smi`, `hf models/repos/file-size`, read-only `git` |
 | `ask` | Human confirms before disk/VRAM burn | `hf download`, `serve-config`, `model_up`, `benchmark_search`, `autoloop` |
-| `deny` | Hardblock | `.env` / `.env.*` (Read/Edit/Write — pedagogical; repo may have none), gate wiring paths, `python -c`, raw `llama-cli\|server\|bench` |
+| `deny` | Hardblock | `.env` / `.env.*` (Read/Edit/Write — pedagogical; repo may have none), `rm`, path-tolerant `python -c` / `py -c`, raw `llama-cli\|server\|bench`, gate wiring |
 
 `disableBypassPermissionsMode: "disable"` — YOLO cannot skip deny floors.
 
@@ -169,7 +169,7 @@ If hooks do not fire: restart Claude Code; confirm project trust / that settings
 
 - Claude Code Hooks / Settings: https://code.claude.com/docs/en/hooks , https://code.claude.com/docs/en/settings , https://code.claude.com/docs/en/permissions — 2026-07-29  
 - Smoke (2026-07-21): deny `python -c`, scratch `.py`, llama-cli, Baseline CLI overrides, foreign cwd, Set-Content gate; allow config-driven `benchmark_search.py`, `-m pytest`, `nvidia-smi`; deny Write gate files; allow Write `README.md`.  
-- Smoke (2026-07-29): hooks live under `.claude/hooks/`; project `allow` / `ask` / pedagogical `.env` deny; PostToolUse audit → `.claude/hooks-audit.log` (fail-open).
+- Smoke (2026-07-29): hooks under `.claude/hooks/`; Allow/Ask/Deny + PostToolUse audit; pedagogical `.env` + `rm` + path-tolerant `*python* -c *`; live demo: Bash tool required for Pre-hook (chat-only “I ran it” does not fire hooks).
 
 ---
 

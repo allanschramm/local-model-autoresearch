@@ -37,8 +37,11 @@
       "Write(.claude/settings.json)",
       "Edit(.claude/hooks/**)",
       "Write(.claude/hooks/**)",
-      "Bash(python* -c *)",
-      "Bash(python.exe* -c *)",
+      "Bash(rm *)",
+      "Bash(*python* -c *)",
+      "Bash(*python.exe* -c *)",
+      "Bash(*py -c *)",
+      "Bash(*py.exe* -c *)",
       "Bash(*llama-cli*)",
       "Bash(*llama-server*)",
       "Bash(*llama-bench*)"

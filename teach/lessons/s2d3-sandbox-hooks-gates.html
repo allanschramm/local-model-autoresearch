@@ -367,17 +367,28 @@
     <div class="gate-box">
       <h3>Exemplo neste repositório</h3>
       <p>
-        Aqui no workshop já existem scripts em <code>.claude/hooks/</code>:
+        No Claude Code deste projeto a lista e os hooks ficam em
+        <code>.claude/settings.json</code> + <code>.claude/hooks/</code>:
       </p>
       <ul>
-        <li><code>block-adhoc-eval.ps1</code> — barra Python/comandos fora da lista
-          (script solto, flag de teste na linha de comando em vez de editar o <code>config.py</code>…).</li>
-        <li><code>block-gate-tamper.ps1</code> — impede o agente de mexer nos arquivos
-          de segurança (hooks e settings).</li>
-        <li><code>audit-post-tool.ps1</code> — depois da tool, só registra (Post-hook).</li>
+        <li><strong>Allow</strong> — onboarding sem perguntar de novo
+          (<code>check_hardware</code>, <code>pytest</code>, <code>nvidia-smi</code>, git read-only…).</li>
+        <li><strong>Ask</strong> — pede confirmação antes de download / servidor / Trial
+          (<code>hf download</code>, <code>serve-config</code>, <code>benchmark_search</code>, <code>autoloop</code>).</li>
+        <li><strong>Deny</strong> — <code>.env</code> / <code>.env.*</code> (mesmo sem o arquivo
+          no disco), <code>rm</code>, <code>python -c</code>,
+          <code>llama-cli</code> / <code>llama-server</code> / <code>llama-bench</code>,
+          e edição dos arquivos de segurança.</li>
+        <li><code>block-adhoc-eval.ps1</code> (Pre) — Python fora da allowlist,
+          flags de Trial na linha de comando, llama cru.</li>
+        <li><code>block-gate-tamper.ps1</code> (Pre) — bloqueia editar settings/hooks.</li>
+        <li><code>audit-post-tool.ps1</code> (Post) — registra o que passou em
+          <code>.claude/hooks-audit.log</code>.</li>
       </ul>
       <p style="margin-bottom:0">
-        Wiring no Claude Code: <code>.claude/settings.json</code> (Allow / Ask / Deny + Pre/Post-hook).
+        Guardrail só age quando a <em>tool</em> é chamada. Se o modelo só
+        <em>escreve</em> que rodou o comando, o Pre-hook não dispara: no harness,
+        confira se apareceu “ran N shell command(s)”.
       </p>
     </div>
 
@@ -462,9 +473,14 @@ claude --tools ""</pre>
 
       <h3>No Cursor ou no Claude Code (escolha uma)</h3>
       <ol>
-        <li><strong>Claude Code:</strong> <code>/permissions</code> — coloque Deny em <code>Read(.env)</code> e peça para ler o <code>.env</code>.</li>
-        <li><strong>Claude CLI:</strong> <code>claude --tools "Read,Edit"</code> — confira se Bash some da sessão.</li>
-        <li><strong>Cursor:</strong> Settings → Agents → Run Mode / lista de permitidos, ou abra <code>.cursor/hooks.json</code> / <code>permissions.json</code> se o projeto tiver esses arquivos.</li>
+        <li><strong>Claude Code:</strong> peça para ler o <code>.env</code>
+          ou rode <code>python -c "print('ola')"</code> / <code>llama-server --help</code>.
+          Anote Deny ou mensagem do Pre-hook. Confira se o harness mostrou
+          “ran N shell command(s)”.</li>
+        <li><strong>Claude CLI:</strong> <code>claude --tools "Read,Edit"</code> —
+          confira se Bash some da sessão.</li>
+        <li><strong>Cursor:</strong> Settings → Agents → Run Mode / lista de permitidos,
+          ou <code>.cursor/hooks.json</code> / <code>permissions.json</code> se existirem no projeto.</li>
       </ol>
 
       <div class="practice-actions">
