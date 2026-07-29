@@ -1,6 +1,6 @@
 # Block agent Write/Edit/Delete on hard-gate files (human-only).
-# Cursor preToolUse (Write|Edit|Delete) + Claude Code PreToolUse (Edit|Write|Delete).
-# Deny = JSON + exit 2 (Cursor + Claude). Allow = JSON allow + exit 0.
+# Claude Code PreToolUse (Edit|Write|Delete).
+# Deny = stderr + exit 2. Allow = exit 0.
 #
 # Disable / rollback: docs/discovery/agent-shell-hard-gates.md §3
 
@@ -10,10 +10,8 @@ $denyMsg = @'
 BLOCKED: gate / hard-gate docs are human-maintained.
 
 Protected paths (human unlock required to edit):
-  .cursor/hooks.json
-  .cursor/rules/harness-trials.mdc
   .claude/settings.json
-  scripts/hooks/**
+  .claude/hooks/**
 
 Playbook: docs/discovery/agent-shell-hard-gates.md section 3
 (agent may teach / update that doc; must not edit wiring without explicit unlock).
@@ -74,10 +72,6 @@ if ([string]::IsNullOrWhiteSpace($path)) { Emit-Allow }
 $norm = ($path -replace '\\', '/').ToLowerInvariant()
 
 $protectedEnds = @(
-    '/.cursor/hooks.json',
-    '.cursor/hooks.json',
-    '/.cursor/rules/harness-trials.mdc',
-    '.cursor/rules/harness-trials.mdc',
     '/.claude/settings.json',
     '.claude/settings.json'
 )
@@ -86,6 +80,6 @@ foreach ($suf in $protectedEnds) {
     if ($norm.EndsWith($suf)) { Emit-Deny $denyMsg }
 }
 
-if ($norm -match '(^|/)scripts/hooks(/|$)') { Emit-Deny $denyMsg }
+if ($norm -match '(^|/)\.claude/hooks(/|$)') { Emit-Deny $denyMsg }
 
 Emit-Allow

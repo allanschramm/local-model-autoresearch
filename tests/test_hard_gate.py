@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-HOOK = ROOT / "scripts" / "hooks" / "block-adhoc-eval.ps1"
+HOOK = ROOT / ".claude" / "hooks" / "block-adhoc-eval.ps1"
 
 
 class TestHardGate(unittest.TestCase):

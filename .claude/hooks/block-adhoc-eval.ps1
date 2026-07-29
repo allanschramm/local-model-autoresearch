@@ -1,5 +1,5 @@
 # Agent hard-gate: shell policy for Trials / harness.
-# Cursor beforeShellExecution + Claude Code PreToolUse (Bash|PowerShell).
+# Claude Code PreToolUse (Bash|PowerShell).
 #
 # Policy:
 #   1) cwd must stay under workspace_roots (when provided)
@@ -14,7 +14,7 @@
 $ErrorActionPreference = 'Stop'
 
 $denyTrial = @'
-BLOCKED by repo hard-gate (scripts/hooks/block-adhoc-eval.ps1).
+BLOCKED by repo hard-gate (.claude/hooks/block-adhoc-eval.ps1).
 
 Trial workflow:
   1. Edit autoresearch/core/config.py (one knob)
@@ -122,7 +122,7 @@ function Test-UnderRoots([string]$path, $roots) {
     return $false
 }
 
-$gatePathRegex = '(?i)(?:^|[\s''"\\/])(?:\.cursor[/\\]hooks\.json|\.cursor[/\\]rules[/\\]harness-trials\.mdc|\.claude[/\\]settings\.json|scripts[/\\]hooks(?:[/\\]|\s|$))\b'
+$gatePathRegex = '(?i)(?:^|[\s''"\\/])(?:\.claude[/\\]settings\.json|\.claude[/\\]hooks(?:[/\\]|\s|$))\b'
 $baselineCliFlags = @(
     '--model', '--kv', '--kv-k', '--cache-type-k', '-ctk',
     '--kv-v', '--cache-type-v', '-ctv', '--max-tokens', '--ctx-size', '-c',
@@ -171,7 +171,7 @@ if ($n -match '(?i)(?:Out-File|Set-Content|Add-Content|New-Item|Copy-Item|Move-I
         Emit-Deny $denyGateShell
     }
 }
-if ($n -match '(?i)(?:>|>>).{0,120}(?:\.cursor[/\\]hooks\.json|\.cursor[/\\]rules[/\\]harness-trials\.mdc|\.claude[/\\]settings\.json|scripts[/\\]hooks)') {
+if ($n -match '(?i)(?:>|>>).{0,120}(?:\.claude[/\\]settings\.json|\.claude[/\\]hooks)') {
     Emit-Deny $denyGateShell
 }
 

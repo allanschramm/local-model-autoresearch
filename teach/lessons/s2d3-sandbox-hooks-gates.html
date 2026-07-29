@@ -331,7 +331,7 @@
       "matcher": "Bash",
       "hooks": [{
         "type": "command",
-        "command": "powershell.exe -File scripts/hooks/check.ps1"
+        "command": "powershell.exe -File .claude/hooks/check.ps1"
       }]
     }]
   }
@@ -367,17 +367,17 @@
     <div class="gate-box">
       <h3>Exemplo neste repositório</h3>
       <p>
-        Aqui no workshop já existem dois scripts em <code>scripts/hooks/</code>:
+        Aqui no workshop já existem scripts em <code>.claude/hooks/</code>:
       </p>
       <ul>
         <li><code>block-adhoc-eval.ps1</code> — barra Python/comandos fora da lista
           (script solto, flag de teste na linha de comando em vez de editar o <code>config.py</code>…).</li>
         <li><code>block-gate-tamper.ps1</code> — impede o agente de mexer nos arquivos
           de segurança (hooks e settings).</li>
+        <li><code>audit-post-tool.ps1</code> — depois da tool, só registra (Post-hook).</li>
       </ul>
       <p style="margin-bottom:0">
-        No Claude Code: <code>.claude/settings.json</code> (Deny + Pre-hook).
-        No Cursor: <code>.cursor/hooks.json</code>, se o projeto trouxer esses arquivos.
+        Wiring no Claude Code: <code>.claude/settings.json</code> (Allow / Ask / Deny + Pre/Post-hook).
       </p>
     </div>
 

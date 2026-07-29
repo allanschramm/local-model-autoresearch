@@ -10,8 +10,7 @@ Repository operators and developers.
 - Scripts must be runnable from the repository root.
 - `model_up.py` (global `model-up`) must work from any cwd: resolve `--model` and draft path flags (`--spec-draft-model` / `-md` / `--model-draft`) to absolute paths, and spawn `llama-server` with `cwd=REPO_ROOT`.
 - `setup-check.sh` is the canonical readiness verification script (supports GPU acceleration and CPU-only builds). It must import-check every package listed in root `requirements.txt` (including `gguf`).
-- `hooks/block-adhoc-eval.ps1` — shell policy (python allowlist, config-only Baseline, cwd, no gate rewrite).
-- `hooks/block-gate-tamper.ps1` — deny Edit/Write/Delete on gate wiring paths.
+- Claude Code hard-gates live under [`.claude/hooks/`](../.claude/hooks/) (not `scripts/`). See [docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md).
 - **Rollback:** [docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md) §3.
 
 ## Work Guidance
@@ -29,7 +28,6 @@ Repository operators and developers.
 - Ensure `bash scripts/setup-check.sh` passes before declaring environment readiness.
 
 ## Child DOX Index
-- [hooks/block-adhoc-eval.ps1](hooks/block-adhoc-eval.ps1) — shell hard-gate.
-- [hooks/block-gate-tamper.ps1](hooks/block-gate-tamper.ps1) — gate-file hard-gate.
 - [lcb_only.py](lcb_only.py) — LCB-only remeasure helper (`scripts/lcb_only.py`).
 - [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0008).
+- Hard-gates (Claude): [../.claude/hooks/](../.claude/hooks/) + [../docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md).

@@ -1,11 +1,11 @@
 # Agent shell hard-gates
 
-**Date:** 2026-07-29 (updated: Claude allow/ask/deny for onboarding + hardware soft gates)  
+**Date:** 2026-07-29 (updated: hooks under `.claude/hooks/` per Claude Code convention)  
 **Audience:** operators + next coding agent + anyone who clones  
 **Purpose:** What is installed, what it blocks, how a **human** turns it off. Clone-and-use — no OS admin rituals.
 
-> **Agent rule:** If the user asks to disable / remove / revert these gates, **do not silently strip them**. Teach the steps in §3, wait for explicit “do it” / “desliga” / “remove”, then apply. Prefer the human running Cursor UI toggles themselves when possible.  
-> Editing **wiring** under `scripts/hooks/**`, `.cursor/hooks.json`, `.claude/settings.json`, or `.cursor/rules/harness-trials.mdc` requires explicit user unlock — hooks deny those paths.
+> **Agent rule:** If the user asks to disable / remove / revert these gates, **do not silently strip them**. Teach the steps in §3, wait for explicit “do it” / “desliga” / “remove”, then apply.  
+> Editing **wiring** under `.claude/hooks/**` or `.claude/settings.json` requires explicit user unlock — hooks deny those paths.
 
 ---
 
@@ -13,16 +13,15 @@
 
 | Piece | Path | Role |
 |---|---|---|
-| Shell policy | `scripts/hooks/block-adhoc-eval.ps1` | cwd check; python allowlist; deny Baseline CLI overrides / `-c` / raw llama / shell rewrite of gates |
-| Gate-file policy | `scripts/hooks/block-gate-tamper.ps1` | Deny Write/Edit/Delete on wiring paths |
-| Cursor wiring | `.cursor/hooks.json` | `beforeShellExecution` + `preToolUse` (all tools; script no-ops if no path), `failClosed: true` |
-| Cursor soft rule | `.cursor/rules/harness-trials.mdc` | Always-on Trial = `config.py` + harness CLI |
-| Claude wiring | `.claude/settings.json` | `allow` (onboarding read-only tooling) + `ask` (download / serve / Trial) + `deny` (gates + python`-c` / llama\*) ; `disableBypassPermissionsMode`; `PreToolUse` Bash\|PowerShell + Edit\|Write\|Delete |
+| Shell policy | `.claude/hooks/block-adhoc-eval.ps1` | PreToolUse Bash\|PowerShell: cwd check; python allowlist; deny Baseline CLI overrides / `-c` / raw llama / shell rewrite of gates |
+| Gate-file policy | `.claude/hooks/block-gate-tamper.ps1` | PreToolUse Edit\|Write\|Delete: deny wiring paths |
+| Post-tool audit | `.claude/hooks/audit-post-tool.ps1` | PostToolUse Bash\|PowerShell\|Edit\|Write: append `.claude/hooks-audit.log` (fail-open; `*.log` gitignored) |
+| Claude wiring | `.claude/settings.json` | `allow` / `ask` / `deny` + `disableBypassPermissionsMode` + PreToolUse + PostToolUse (Claude-only) |
 | Claude local | `.claude/settings.local.json` | Machine-only allow extras (gitignored). Keep empty or narrow — never `python.exe *` / CLI soup |
 | Contract text | `AGENTS.md` + `scripts/AGENTS.md` | DOX pointers |
 | Host memory | harness `HOST_MEMORY_PREFLIGHT` | Rejects oversized GGUF+KV vs RAM−headroom on serve / Trial (not a Claude permission rule) |
 
-**Out of scope (by design):** OS ACL / `icacls` / chmod lockdowns / enterprise managed hooks. Clone users must not need admin filesystem rituals — only in-repo Cursor/Claude project hooks.
+**Out of scope (by design):** OS ACL / `icacls` / chmod lockdowns / enterprise managed hooks / Cursor project hooks. Clone users get Claude Code in-repo settings + `.claude/hooks/` only.
 
 ---
 
@@ -49,10 +48,8 @@
 
 **Edit/Write/Delete — blocked paths:**
 
-- `.cursor/hooks.json`
-- `.cursor/rules/harness-trials.mdc`
 - `.claude/settings.json`
-- anything under `scripts/hooks/`
+- anything under `.claude/hooks/`
 
 **Editable:** `docs/discovery/agent-shell-hard-gates.md` (this file), `AGENTS.md`, app code, `config.py`, etc.
 
@@ -64,7 +61,7 @@ Evaluation order: **deny → ask → allow**. Hooks still exit 2 independently o
 |---|---|---|
 | `allow` | Onboarding without prompt spam | `check_hardware.py`, `verify_setup.py`, `pytest`, `nvidia-smi`, `hf models/repos/file-size`, read-only `git` |
 | `ask` | Human confirms before disk/VRAM burn | `hf download`, `serve-config`, `model_up`, `benchmark_search`, `autoloop` |
-| `deny` | Hardblock | gate wiring paths, `python -c`, raw `llama-cli\|server\|bench` |
+| `deny` | Hardblock | `.env` / `.env.*` (Read/Edit/Write — pedagogical; repo may have none), gate wiring paths, `python -c`, raw `llama-cli\|server\|bench` |
 
 `disableBypassPermissionsMode: "disable"` — YOLO cannot skip deny floors.
 
@@ -72,39 +69,41 @@ Evaluation order: **deny → ask → allow**. Hooks still exit 2 independently o
 
 **Local extras:** `.claude/settings.local.json` (gitignored). Keep allow empty or narrow. Do not re-add `Bash(venv/Scripts/python.exe *)` or Baseline CLI soup — hooks block soup anyway; broad allow trains bad habits.
 
+**PostToolUse:** `audit-post-tool.ps1` logs successful Bash/PowerShell/Edit/Write to `.claude/hooks-audit.log`. Fail-open (never blocks). Use the log to tighten allow/ask later — same idea as S2D3 “comanda na saída”.
+
+**Hook script location:** Anthropic examples use `.claude/hooks/`; this repo follows that convention (`${CLAUDE_PROJECT_DIR}/.claude/hooks/...` in settings).
+
 ---
 
 ## 3. How to DISABLE everything (rollback playbook)
 
-Use when the user wants to “voltar atrás”. Do **one layer at a time**; reload Cursor / restart Claude Code after file changes.
+Use when the user wants to “voltar atrás”. Do **one layer at a time**; restart Claude Code after file changes.
 
-### 3.1 Fastest — Cursor UI only (keeps files, stops enforcement)
+### 3.1 Fastest — Claude session only (keeps files)
 
-1. Cursor Settings → Hooks → disable project hooks / untrust workspace.
-2. Optional: disable rule `harness-trials.mdc` in Rules UI.
+1. Start Claude without project settings, or temporarily move/rename `.claude/settings.json` yourself.
+2. Or use a session that does not load project hooks (see Claude Code docs). Prefer §3.2 for a durable off.
 
 ### 3.2 Full repo rollback (remove project enforcement)
 
-**Disable hooks in UI first** (or explicit unlock) before an agent can delete wiring — otherwise Edit/Write on these paths is denied.
+**Explicit unlock** before an agent can delete wiring — otherwise Edit/Write on these paths is denied.
 
 From repo root, after explicit user OK:
 
 ```powershell
-Remove-Item -Force .cursor/hooks.json -ErrorAction SilentlyContinue
-Remove-Item -Force .cursor/rules/harness-trials.mdc -ErrorAction SilentlyContinue
 Remove-Item -Force .claude/settings.json -ErrorAction SilentlyContinue
 # optional:
-# Remove-Item -Recurse -Force scripts/hooks -ErrorAction SilentlyContinue
+# Remove-Item -Recurse -Force .claude/hooks -ErrorAction SilentlyContinue
 ```
 
-Then strip AGENTS.md / scripts/AGENTS.md hard-gate bullets (Edit tool).  
-Reload Window + restart Claude Code.  
+Then strip AGENTS.md hard-gate bullets (Edit tool).  
+Restart Claude Code.  
 Smoke: `python -c "print(1)"` via agent should no longer be project-denied.
 
 ### 3.3 Git rollback
 
 ```powershell
-git log --oneline -- .cursor/hooks.json .claude/settings.json scripts/hooks .cursor/rules/harness-trials.mdc
+git log --oneline -- .claude/settings.json .claude/hooks
 # revert or checkout prior revision of those paths
 ```
 
@@ -121,12 +120,12 @@ git log --oneline -- .cursor/hooks.json .claude/settings.json scripts/hooks .cur
 
 ## 4. Script for the next agent — “teach me to disable”
 
-1. Confirm soft (UI) vs hard (delete files) vs git revert.  
+1. Confirm soft (rename settings) vs hard (delete files) vs git revert.  
 2. Point to **this doc §3**.  
 3. List inventory §1.  
-4. Wait for explicit go-ahead.  
-5. If wiring is still protected by hooks, tell the user to disable project hooks in Cursor UI **first**, then delete.  
-6. Reload + verify.  
+4. Wait for explicit go-ahead / unlock.  
+5. Delete or revert `.claude/settings.json` (+ optional `.claude/hooks`).  
+6. Restart Claude Code + verify.  
 7. Offer to strip AGENTS.md bullets in the same change set.
 
 ---
@@ -135,46 +134,45 @@ git log --oneline -- .cursor/hooks.json .claude/settings.json scripts/hooks .cur
 
 In-repo hooks = strong friction, not a vault. Residual: user disables hooks; obfuscation; tools that omit `path` in payload. Clone-and-use wins over per-machine lockdowns.
 
-| Control | Cursor | Claude Code |
-|---|---|---|
-| Block shell | `beforeShellExecution` deny | `PreToolUse` exit 2 |
-| Block file edit | `preToolUse` deny | `permissions.deny` + PreToolUse |
-| Soft ask | Flaky vs IDE allowlist | permissions ask |
-| Sandbox OS | separate | not native Windows |
+| Control | Claude Code (this repo) |
+|---|---|
+| Block shell | `PreToolUse` exit 2 (`block-adhoc-eval.ps1`) |
+| Block file edit | `permissions.deny` + PreToolUse (`block-gate-tamper.ps1`) |
+| Audit after tool | `PostToolUse` (`audit-post-tool.ps1`) → `.claude/hooks-audit.log` |
+| Soft ask | `permissions.ask` (download / serve / Trial) |
+| Sandbox OS | not native Windows — rely on allow/ask/deny + hooks |
 
 ---
 
 ## 6. Yolo vs human
 
 - Yolo skips approval prompts; it does not reliably skip exit-2 / deny hooks.  
-- Wiring paths are denied to Edit/Write/Shell rewrite → agents **teach** §3; humans (or UI-disabled hooks) apply rollback.  
+- Wiring paths are denied to Edit/Write/Shell rewrite → agents **teach** §3; humans apply rollback.  
 - **No OS ACL / icacls.** Anyone who clones gets the same in-repo hooks with zero machine setup.
 
 ---
 
 ## 7. What clone users get (portable)
 
-On clone + open in Cursor (trusted workspace) or Claude Code:
+On clone + open in Claude Code:
 
-1. Project hooks load from git.  
-2. Soft rule `harness-trials.mdc` applies.  
-3. No Windows/Linux permission commands required.
+1. Project `.claude/settings.json` loads allow/ask/deny + Pre/Post hooks from `.claude/hooks/`.  
+2. No Windows/Linux permission commands required.
 
-If hooks do not fire: trust the workspace / enable project hooks in Cursor Settings → Hooks; restart Claude Code. Non-devs only need that UI trust step.
+If hooks do not fire: restart Claude Code; confirm project trust / that settings were not renamed away.
 
-**Explicitly not part of the product:** `icacls`, chmod lockdowns, enterprise `/etc/cursor` hooks, or any per-machine admin ritual.
+**Explicitly not part of the product:** Cursor project hooks, `icacls`, chmod lockdowns, enterprise managed hooks, or any per-machine admin ritual.
 
 ---
 
 ## 8. Sources / Verification
 
-- Cursor Hooks: https://cursor.com/docs/hooks — 2026-07-21  
-- Claude Code Hooks / Settings: https://docs.anthropic.com/en/docs/claude-code/hooks , https://docs.anthropic.com/en/docs/claude-code/settings , https://code.claude.com/docs/en/permissions — 2026-07-29  
-- Smoke (2026-07-21): deny `python -c`, scratch `.py`, llama-cli, Baseline CLI overrides, foreign cwd, Set-Content gate; allow config-driven `benchmark_search.py`, `-m pytest`, `nvidia-smi`; deny Write `.cursor/hooks.json`; allow Write `README.md`.  
-- Smoke (2026-07-29): project `allow` covers `check_hardware` / pytest / nvidia-smi without prompt; `ask` covers `hf download` + Trial/serve; `deny` + hooks still hardblock raw llama / `python -c` / gate edits; local allow list emptied (no `python.exe *`).
+- Claude Code Hooks / Settings: https://code.claude.com/docs/en/hooks , https://code.claude.com/docs/en/settings , https://code.claude.com/docs/en/permissions — 2026-07-29  
+- Smoke (2026-07-21): deny `python -c`, scratch `.py`, llama-cli, Baseline CLI overrides, foreign cwd, Set-Content gate; allow config-driven `benchmark_search.py`, `-m pytest`, `nvidia-smi`; deny Write gate files; allow Write `README.md`.  
+- Smoke (2026-07-29): hooks live under `.claude/hooks/`; project `allow` / `ask` / pedagogical `.env` deny; PostToolUse audit → `.claude/hooks-audit.log` (fail-open).
 
 ---
 
 ## Open questions
 
-- Whether every Cursor edit tool sends `path` / `file_path` in `preToolUse` (script allows when path missing — residual gap).
+- None open for Claude-only wiring under `.claude/hooks/`.

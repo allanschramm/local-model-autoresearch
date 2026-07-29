@@ -27,14 +27,16 @@
       "Bash(*autoloop.py*)"
     ],
     "deny": [
-      "Edit(.cursor/hooks.json)",
-      "Write(.cursor/hooks.json)",
-      "Edit(.cursor/rules/harness-trials.mdc)",
-      "Write(.cursor/rules/harness-trials.mdc)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Edit(.env)",
+      "Write(.env)",
+      "Edit(.env.*)",
+      "Write(.env.*)",
       "Edit(.claude/settings.json)",
       "Write(.claude/settings.json)",
-      "Edit(scripts/hooks/**)",
-      "Write(scripts/hooks/**)",
+      "Edit(.claude/hooks/**)",
+      "Write(.claude/hooks/**)",
       "Bash(python* -c *)",
       "Bash(python.exe* -c *)",
       "Bash(*llama-cli*)",
@@ -49,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$CLAUDE_PROJECT_DIR/scripts/hooks/block-adhoc-eval.ps1\""
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/block-adhoc-eval.ps1\""
           }
         ]
       },
@@ -58,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$CLAUDE_PROJECT_DIR/scripts/hooks/block-adhoc-eval.ps1\""
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/block-adhoc-eval.ps1\""
           }
         ]
       },
@@ -67,7 +69,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$CLAUDE_PROJECT_DIR/scripts/hooks/block-gate-tamper.ps1\""
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/block-gate-tamper.ps1\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-post-tool.ps1\""
           }
         ]
       }

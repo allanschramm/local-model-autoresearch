@@ -69,7 +69,7 @@ Aprovar no reflexo (Enter) sem ler. Motivo dos guardrails. Semana 2 · Dia 3.
 Permitir sem prompt / bloquear / sempre perguntar. Claude: `permissions` em settings; ordem deny→ask→allow. Cursor IDE: lista de permitidos; Cursor CLI: `permissions.allow`/`deny`.
 
 **Hook (pré / pós)**:
-Script antes (pode bloquear) ou depois (registra / avisa) da tool. Claude: `PreToolUse` / `PostToolUse`. Cursor: `preToolUse` / `postToolUse`. Ex. repo: `scripts/hooks/`.
+Script antes (pode bloquear) ou depois (registra / avisa) da tool. Claude: `PreToolUse` / `PostToolUse`. Cursor: `preToolUse` / `postToolUse`. Ex. repo: `.claude/hooks/`.
 
 **`--tools` / `--allowedTools` / `--disallowedTools`**:
 Claude CLI: lista da sessão / rodar sem perguntar / deny. Não confundir `--tools` com `--allowedTools`.
