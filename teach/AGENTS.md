@@ -52,4 +52,5 @@ Course operator / instructors. Not part of the autotuning runtime loop.
 - [assets/guardrails-sim.js](assets/guardrails-sim.js) — Nightclub door sim (Deny/Allow/Pre/Post) embedded in S2D3 (not a standalone page).
 - [assets/diagrams/s2d1-amostragem-restaurante.excalidraw](assets/diagrams/s2d1-amostragem-restaurante.excalidraw) — Instructor theory board for S2D1: vertical scroll, restaurant metaphor only (no config/code).
 - [assets/diagrams/s2d2-mcp-cozinha.excalidraw](assets/diagrams/s2d2-mcp-cozinha.excalidraw) — Instructor theory board for S2D2: vertical scroll, kitchen metaphor only (skill=receita, MCP=utensílio; no config/code).
+- [assets/diagrams/s2d3-guardrails-boate.excalidraw](assets/diagrams/s2d3-guardrails-boate.excalidraw) — Instructor theory board for S2D3: vertical scroll, nightclub metaphor only (fila=tools, lista=Deny/Allow/Ask, porta=Pre-hook, comanda=Post-hook; sandbox aside; no config/code).
 - (otherwise flat under `teach/`)
