@@ -152,7 +152,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - [autoresearch/AGENTS.md](autoresearch/AGENTS.md) — Core autotuning package (config, runners, benchmarks).
 - [scripts/hooks/block-adhoc-eval.ps1](scripts/hooks/block-adhoc-eval.ps1) — Shell hard-gate (allowlist + config-only Baseline + cwd).
 - [scripts/hooks/block-gate-tamper.ps1](scripts/hooks/block-gate-tamper.ps1) — Gate-file hard-gate (Edit/Write/Delete).
-- [.claude/settings.json](.claude/settings.json) — Claude Code permissions.deny + PreToolUse wiring.
+- [.claude/settings.json](.claude/settings.json) — Claude Code allow/ask/deny + PreToolUse wiring (onboarding vs hardware soft/hard gates).
 - [docs/discovery/agent-shell-hard-gates.md](docs/discovery/agent-shell-hard-gates.md) — Inventory + disable playbook.
 - [models/README.md](models/README.md) — Shared GGUF store layout (nested LM Studio + basename resolve).
 - [docs/AGENTS.md](docs/AGENTS.md) — Durable documentation contract.

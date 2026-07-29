@@ -1,5 +1,31 @@
 {
   "permissions": {
+    "defaultMode": "default",
+    "disableBypassPermissionsMode": "disable",
+    "allow": [
+      "Bash(nvidia-smi*)",
+      "Bash(*check_hardware.py*)",
+      "Bash(*verify_setup.py*)",
+      "Bash(*setup-check*)",
+      "Bash(*rank_results.py*)",
+      "Bash(*-m pytest*)",
+      "Bash(*-m unittest*)",
+      "Bash(hf models *)",
+      "Bash(hf repos *)",
+      "Bash(hf file-size *)",
+      "Bash(hf repo *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "WebFetch(domain:huggingface.co)"
+    ],
+    "ask": [
+      "Bash(hf download *)",
+      "Bash(*serve-config.py*)",
+      "Bash(*model_up.py*)",
+      "Bash(*benchmark_search.py*)",
+      "Bash(*autoloop.py*)"
+    ],
     "deny": [
       "Edit(.cursor/hooks.json)",
       "Write(.cursor/hooks.json)",

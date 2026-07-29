@@ -1,6 +1,6 @@
 # Agent shell hard-gates
 
-**Date:** 2026-07-21 (updated: full stack applied; ACL rejected as non-portable)  
+**Date:** 2026-07-29 (updated: Claude allow/ask/deny for onboarding + hardware soft gates)  
 **Audience:** operators + next coding agent + anyone who clones  
 **Purpose:** What is installed, what it blocks, how a **human** turns it off. Clone-and-use — no OS admin rituals.
 
@@ -17,8 +17,10 @@
 | Gate-file policy | `scripts/hooks/block-gate-tamper.ps1` | Deny Write/Edit/Delete on wiring paths |
 | Cursor wiring | `.cursor/hooks.json` | `beforeShellExecution` + `preToolUse` (all tools; script no-ops if no path), `failClosed: true` |
 | Cursor soft rule | `.cursor/rules/harness-trials.mdc` | Always-on Trial = `config.py` + harness CLI |
-| Claude wiring | `.claude/settings.json` | `permissions.deny` on gate paths + Bash python`-c` / llama\* ; `PreToolUse` Bash\|PowerShell + Edit\|Write\|Delete |
+| Claude wiring | `.claude/settings.json` | `allow` (onboarding read-only tooling) + `ask` (download / serve / Trial) + `deny` (gates + python`-c` / llama\*) ; `disableBypassPermissionsMode`; `PreToolUse` Bash\|PowerShell + Edit\|Write\|Delete |
+| Claude local | `.claude/settings.local.json` | Machine-only allow extras (gitignored). Keep empty or narrow — never `python.exe *` / CLI soup |
 | Contract text | `AGENTS.md` + `scripts/AGENTS.md` | DOX pointers |
+| Host memory | harness `HOST_MEMORY_PREFLIGHT` | Rejects oversized GGUF+KV vs RAM−headroom on serve / Trial (not a Claude permission rule) |
 
 **Out of scope (by design):** OS ACL / `icacls` / chmod lockdowns / enterprise managed hooks. Clone users must not need admin filesystem rituals — only in-repo Cursor/Claude project hooks.
 
@@ -53,6 +55,22 @@
 - anything under `scripts/hooks/`
 
 **Editable:** `docs/discovery/agent-shell-hard-gates.md` (this file), `AGENTS.md`, app code, `config.py`, etc.
+
+### Claude Code permissions (`.claude/settings.json`)
+
+Evaluation order: **deny → ask → allow**. Hooks still exit 2 independently of allow/ask.
+
+| Tier | Purpose | Examples |
+|---|---|---|
+| `allow` | Onboarding without prompt spam | `check_hardware.py`, `verify_setup.py`, `pytest`, `nvidia-smi`, `hf models/repos/file-size`, read-only `git` |
+| `ask` | Human confirms before disk/VRAM burn | `hf download`, `serve-config`, `model_up`, `benchmark_search`, `autoloop` |
+| `deny` | Hardblock | gate wiring paths, `python -c`, raw `llama-cli\|server\|bench` |
+
+`disableBypassPermissionsMode: "disable"` — YOLO cannot skip deny floors.
+
+**Not in permissions:** “model/ctx too big for this rig”. That is harness `HOST_MEMORY_PREFLIGHT` / VRAM preflight when spawn goes through `serve-config` / `benchmark_search` / `autoloop`. Deny+hook force that path (no raw llama).
+
+**Local extras:** `.claude/settings.local.json` (gitignored). Keep allow empty or narrow. Do not re-add `Bash(venv/Scripts/python.exe *)` or Baseline CLI soup — hooks block soup anyway; broad allow trains bad habits.
 
 ---
 
@@ -151,8 +169,9 @@ If hooks do not fire: trust the workspace / enable project hooks in Cursor Setti
 ## 8. Sources / Verification
 
 - Cursor Hooks: https://cursor.com/docs/hooks — 2026-07-21  
-- Claude Code Hooks / Settings: https://docs.anthropic.com/en/docs/claude-code/hooks , https://docs.anthropic.com/en/docs/claude-code/settings — 2026-07-21  
-- Smoke (2026-07-21): deny `python -c`, scratch `.py`, llama-cli, Baseline CLI overrides, foreign cwd, Set-Content gate; allow config-driven `benchmark_search.py`, `-m pytest`, `nvidia-smi`; deny Write `.cursor/hooks.json`; allow Write `README.md`.
+- Claude Code Hooks / Settings: https://docs.anthropic.com/en/docs/claude-code/hooks , https://docs.anthropic.com/en/docs/claude-code/settings , https://code.claude.com/docs/en/permissions — 2026-07-29  
+- Smoke (2026-07-21): deny `python -c`, scratch `.py`, llama-cli, Baseline CLI overrides, foreign cwd, Set-Content gate; allow config-driven `benchmark_search.py`, `-m pytest`, `nvidia-smi`; deny Write `.cursor/hooks.json`; allow Write `README.md`.  
+- Smoke (2026-07-29): project `allow` covers `check_hardware` / pytest / nvidia-smi without prompt; `ask` covers `hf download` + Trial/serve; `deny` + hooks still hardblock raw llama / `python -c` / gate edits; local allow list emptied (no `python.exe *`).
 
 ---
 
