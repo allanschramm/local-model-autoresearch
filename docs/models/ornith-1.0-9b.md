@@ -7,7 +7,7 @@
 **GGUF basenames (separate Trials):**  
 - `Ornith-1.0-9B-UD-Q4_K_XL.gguf` — Unsloth Dynamic  
 - `Ornith-1.0-9B-MTP-Q4_K_M.gguf` — MTP pack  
-- `ornith-1.0-9b-Q4_K_M.gguf` — deepreinforce official Q4_K_M (coding-10 **0.5800** in TSV; claw-full still missing for this basename)  
+- `ornith-1.0-9b-Q4_K_M.gguf` — deepreinforce official Q4_K_M (coding-10 **0.5800**; claw-full **0.4000** @ 65k)  
 **Family:** Ornith (deepreinforce-ai; Qwen 3.5 architecture)  
 **Quantizations:** Unsloth `UD-Q4_K_XL` ≠ deepreinforce `Q4_K_M` ≠ MTP pack — each is its own Objective Vector.
 
@@ -135,6 +135,11 @@ Since the model is ~5.6 GB and we have 8 GB of VRAM, we can run with maximum GPU
 - ctx **32768**, draft-mtp n=4, TEMP 0.4.
 - **coding 0.5800** (LCB 0.40 / HE 0.80 / MBPP 0.90 / BC 0.10); Combined TPS **86.7**; bench_tg **64.0**; peak **7.4 GB**.
 - Ties UD coding (0.57); agentic claw-full **0.4667** (weaker than UD 0.60). Speed pick only.
+
+### deepreinforce `ornith-1.0-9b-Q4_K_M` claw-full (2026-07-28)
+- First try @ 65k / `VRAM_LIMIT_MB=7900`: **VRAM kill** mid T054 (used 7930 MB) after 6/15 @ 0.4000 — row `MODEL_REJECTED`.
+- Retry @ 32k: early VRAM kill on T002 (7910 MB) — not usable.
+- Success @ 65k / `VRAM_LIMIT_MB=8000`: **agentic_full 0.4000** (6/15), bench_tg **42.5**, peak **7.8 GB**. Weaker than UD claw **0.6000**. Vector **complete** with coding **0.5800** (`iq_min=0.4000`).
 
 ## Open questions
 - None (baseline verified). Coding vs historical Mythos 0.64 still open if Mythos GGUF present.

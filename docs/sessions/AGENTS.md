@@ -57,3 +57,6 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - [`2026-07-26-pocket-26b-pipeline.md`](./2026-07-26-pocket-26b-pipeline.md) — POCKET-26B Q4_K_M; claw-full 0.20 / coding 0.49.
 - [`2026-07-27-incomplete-vectors-pareto.md`](./2026-07-27-incomplete-vectors-pareto.md) — complete incomplete vectors; Ornith Q3 A/B; Day ADR 0008; Qwen coding reject.
 - [`2026-07-27-kat-coder-v2.5-dev-pipeline.md`](./2026-07-27-kat-coder-v2.5-dev-pipeline.md) — KAT-Coder IQ4_XS; claw-full 0.6000 / coding 0.640.
+- [`2026-07-28-qwen35-4b-mtp-claw-full.md`](./2026-07-28-qwen35-4b-mtp-claw-full.md) — Qwen3.5-4B-MTP claw-full 0.2667; vector complete (coding 0.385).
+- [`2026-07-28-ornith-9b-deepreinforce-claw-full.md`](./2026-07-28-ornith-9b-deepreinforce-claw-full.md) — ornith-1.0-9b-Q4_K_M claw 0.4000 @ 65k; vector complete.
+- [`2026-07-28-qwen35-9b-mtp-claw-full.md`](./2026-07-28-qwen35-9b-mtp-claw-full.md) — Qwen3.5-9B-MTP claw 0.2000; vector complete (coding 0.495).

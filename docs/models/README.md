@@ -22,7 +22,8 @@ Cards:
 - [Gemma-4-E4B](gemma-4-e4b.md) — claw **0.3333** / coding **0.555**
 - [Nanbeige4.2-3B](nanbeige4.2-3b.md) — claw **0.2667** / coding **0.2800**; needs `llama.cpp-nanbeige42`
 - [Qwythos-9B-Claude-Mythos-5-1M](qwythos-9b-claude-mythos-5-1m.md) — non-MTP claw **0.3333** / coding **0.640**; MTP complete too
-- [Qwen3.5-9B](qwen3.5-9b.md) — claw **0.1333**; coding-10 **rejected** (VRAM)
+- [Qwen3.5-9B](qwen3.5-9b.md) — UD claw **0.1333** / coding **rejected**; MTP claw **0.2000** / coding **0.495**
+- Qwen3.5-4B-MTP (`Qwen3.5-4B-MTP-Q4_K_M.gguf`) — claw **0.2667** / coding **0.385**; GGUF deleted after vector complete; no dedicated card yet
 - [Qwen3.6-35B-A3B](qwen3.6-35b-a3b.md) — claw **0.4000** / coding **0.5300**
 - [Qwen-AgentWorld-35B-A3B](qwen-agentworld-35b-a3b.md)
 - [Gemma-4-26B-A4B](gemma-4-26b-a4b.md) — claw **0.1333** / coding **0.590**
