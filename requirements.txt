@@ -29,3 +29,5 @@ pypdf>=4.0
 
 # Dev / tests (also needed for `pytest`)
 pytest
+pre-commit
+ruff

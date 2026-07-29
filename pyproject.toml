@@ -1,0 +1,51 @@
+# Repo-owned Python tooling (not llama.cpp / vendor trees).
+# Install runtime: see requirements.txt
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = [
+  "llama.cpp",
+  "llama.cpp-nanbeige42",
+  "llama.cpp-prismml",
+  "claw-eval",
+  "VITRIOL",
+  "venv",
+  ".venv",
+  "teach",
+  ".claude",
+  ".agents",
+  ".pi",
+  ".cursor",
+  ".gitnexus",
+]
+
+[tool.ruff.lint]
+# Correctness + import hygiene. Expand selects after the baseline is green.
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+  "E501",   # line length — formatter owns wrap decisions
+  "E402",   # late imports (tests / optional deps)
+  "E701",   # one-line colon style in existing code
+  "F841",   # unused locals — tighten in a follow-up pass
+  "B904",   # raise ... from err — tighten later
+  "UP042",  # str Enum modernization — tighten later
+  "SIM102", # collapsible if — style preference
+  "SIM105", # contextlib.suppress — style preference
+  "SIM108", # ternary vs if/else — style preference
+  "SIM115", # open() context — tighten later
+  "SIM117", # nested with in tests is readable enough
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["autoresearch"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

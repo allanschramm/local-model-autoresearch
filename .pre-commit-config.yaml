@@ -1,0 +1,56 @@
+# Git pre-commit for THIS repo only (local-model-autotuning).
+# Does NOT install into llama.cpp / claw-eval / parent Nexus-System.
+#
+# Setup (once, from repo root, venv active or via paths below):
+#   uv pip install --python ./venv/Scripts/python.exe -r requirements.txt
+#   .\venv\Scripts\pre-commit.exe install
+# Manual: .\venv\Scripts\pre-commit.exe run --all-files
+#
+# Claude agent hard-gates (.claude/hooks) are separate — see
+# docs/discovery/agent-shell-hard-gates.md
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.0
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        types_or: [python, pyi]
+        files: >-
+          (?x)^(
+            autoresearch/|
+            tests/|
+            scripts/[^/]+\.py$|
+            ui/|
+            autoloop\.py$|
+            benchmark_search\.py$
+          )
+      - id: ruff-format
+        types_or: [python, pyi]
+        files: >-
+          (?x)^(
+            autoresearch/|
+            tests/|
+            scripts/[^/]+\.py$|
+            ui/|
+            autoloop\.py$|
+            benchmark_search\.py$
+          )
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest (owned Python changed)
+        entry: python scripts/run_pytest_hook.py
+        language: system
+        pass_filenames: false
+        files: >-
+          (?x)^(
+            autoresearch/|
+            tests/|
+            scripts/[^/]+\.py$|
+            ui/|
+            autoloop\.py$|
+            benchmark_search\.py$
+          )
+        stages: [pre-commit]

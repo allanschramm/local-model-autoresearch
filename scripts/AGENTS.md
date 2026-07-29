@@ -26,8 +26,11 @@ Repository operators and developers.
 - Test script changes locally by executing them.
 - `rank_results.py`: `.\venv\Scripts\python.exe -m pytest tests/test_rank_results.py`
 - Ensure `bash scripts/setup-check.sh` passes before declaring environment readiness.
+- Git pre-commit (Ruff/pytest) is repo-root owned — see root `AGENTS.md` Verification + `.pre-commit-config.yaml`. Not under `scripts/hooks` (removed; Claude gates live in `.claude/hooks/`).
 
 ## Child DOX Index
+- [run_pytest_hook.py](run_pytest_hook.py) — pre-commit local entry for venv pytest.
 - [lcb_only.py](lcb_only.py) — LCB-only remeasure helper (`scripts/lcb_only.py`).
 - [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0008).
 - Hard-gates (Claude): [../.claude/hooks/](../.claude/hooks/) + [../docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md).
+- Git pre-commit: [../.pre-commit-config.yaml](../.pre-commit-config.yaml) + [../pyproject.toml](../pyproject.toml).

@@ -35,7 +35,8 @@ Repository-wide agent guidelines are owned by the repository developers.
 - `program.md` and evaluation harnesses are fixed unless the user explicitly requests a change.
 
 ## Verification
-- Test with `pytest`. Ensure the full collected test suite passes.
+- Test with `pytest` via project venv. Ensure the full collected test suite passes.
+- **Git pre-commit (this repo only):** `pre-commit` + Ruff + pytest when owned Python changes. Install once: `uv pip install --python ./venv/Scripts/python.exe -r requirements.txt` then `.\venv\Scripts\pre-commit.exe install`. Manual: `.\venv\Scripts\pre-commit.exe run --all-files`. Config: `.pre-commit-config.yaml` + `pyproject.toml`. Does **not** wire hooks into `llama.cpp` / vendor clones / parent monorepo.
 - Inspect `results.tsv` to ensure it is not polluted or modified by agent logic.
 
 ## Pre-Task Reading
@@ -154,6 +155,8 @@ When the user requests a durable behavior change, record it here or in the relev
 - [.claude/hooks/block-gate-tamper.ps1](.claude/hooks/block-gate-tamper.ps1) — Gate-file hard-gate (Edit/Write/Delete).
 - [.claude/settings.json](.claude/settings.json) — Claude Code allow/ask/deny + Pre/PostToolUse (Claude-only; pedagogical `.env` deny + Trial hard-gates).
 - [.claude/hooks/audit-post-tool.ps1](.claude/hooks/audit-post-tool.ps1) — PostToolUse audit log (fail-open).
+- [.pre-commit-config.yaml](.pre-commit-config.yaml) — Git pre-commit: Ruff + pytest (this repo only).
+- [pyproject.toml](pyproject.toml) — Ruff / pytest config for owned Python.
 - [docs/discovery/agent-shell-hard-gates.md](docs/discovery/agent-shell-hard-gates.md) — Inventory + disable playbook.
 - [models/README.md](models/README.md) — Shared GGUF store layout (nested LM Studio + basename resolve).
 - [docs/AGENTS.md](docs/AGENTS.md) — Durable documentation contract.

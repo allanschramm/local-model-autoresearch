@@ -18,6 +18,7 @@ venv-sglang/
 .venv/
 .nexus_venv/
 .pytest_cache/
+.ruff_cache/
 
 # Local tools & config
 .antigravitycli/
