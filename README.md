@@ -8,6 +8,37 @@ Otimizador autônomo (hill-climbing) de flags de runtime de LLMs locais via `lla
 
 ---
 
+> [!CAUTION]
+> ### ⚠️ ALERTA CRÍTICO DE SEGURANÇA, FALHAS E ESTABILIDADE DO SISTEMA
+>
+> **O uso deste otimizador envolve execução intensiva de hardware e experimentos de runtime. A seleção inadequada de modelos e parâmetros pode causar instabilidade grave no sistema operacional e no hardware.**
+>
+> #### 1. Falhas de Memória e Hardware
+> - **OOM (Out of Memory):** Esgotamento total de VRAM/RAM, resultando no encerramento abrupto do processo, servidor de IA ou da interface gráfica do SO.
+> - **Tela Azul (BSOD) / Crash de Driver GPU:** Carregar modelos densos maiores que a VRAM física dedicada força o uso da memória compartilhada do Windows (PCIe paging/shared GPU memory). Isso gera timeouts de TDR (*Timeout Detection and Recovery*), travamento imediato do driver gráfico da NVIDIA e BSOD.
+> - **Congelamento Total do Sistema (Hard Lock):** Em sistemas de memória unificada (macOS / APUs AMD/Intel), exceder o limite de RAM sem deixar a folga (*headroom* de 15% a 20%) para o SO e a IDE causa paralisia total do computador, exigindo reinicialização forçada.
+> - **Estresse Térmico e Elétrico:** O `autoloop.py` executa benchmarks em looping contínuo com 100% de uso de GPU/CPU por longos períodos. Sem refrigeração adequada (especialmente em notebooks ou GPUs com limite térmico reduzido), há risco de *thermal throttling* severo ou desligamento térmico de emergência.
+>
+> #### 2. Incompatibilidades de Runtime e Forks do `llama.cpp`
+> - **Falha de Flags Incompatíveis:** O uso de flags avançadas ou de forks específicos (ex: `--spec-type`, `--cache-type-k`, `--n-cpu-moe`, MTP/TurboQuant) em compilações do `llama.cpp` upstream que não as suportam causa falha imediata na inicialização do `llama-server`.
+> - **Mismatch de CUDA/Driver:** Compilações com bibliotecas CUDA desalinhadas com o driver mantido no sistema causam crash na camada `ggml-cuda`.
+>
+> #### 3. Comportamento Autônomo e Perda de Configurações
+> - **Sobrescrita do `config.py`:** O autoloop e os agentes de IA reescrevem o arquivo local `autoresearch/core/config.py` a cada iteração vitoriosa. Qualquer edição manual que não tenha sido salva em backup local será sobrescrita.
+>
+> #### 4. Esteja ciente dos riscos
+>
+> Este software é fornecido "COMO ESTÁ" (*AS IS*), sem garantias de qualquer tipo, expressas ou implícitas.
+>
+> Rodar auto-tuning intensivo tem risco real pro seu hardware e pras suas configs locais — então antes de soltar o loop:
+> - Valide seu hardware com `python scripts/check_hardware.py`
+> - Acompanhe temperatura e estabilidade durante a sessão
+> - Mantenha backup de qualquer config que você não quer ver sobrescrita
+>
+> Dito isso: os autores e mantenedores não se responsabilizam por danos a hardware (GPU, CPU, RAM), perda de dados, corrupção do sistema, crashes, BSODs ou qualquer paralisação de atividades resultante do uso do projeto. A execução, download de modelos e benchmarking rodam na sua máquina, por sua conta.
+
+---
+
 ## Quickstart (via Agente)
 
 Abra seu agente de coding (Claude Code, Codex, Pi Agent, OpenCode) e cole:
