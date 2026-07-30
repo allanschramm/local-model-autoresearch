@@ -65,10 +65,8 @@ def _format_arch_line(intent: ServerIntent) -> str:
     return f"  [arch] {kind} block_count={bc} n-cpu-moe={n} ({mode})"
 
 
-def _moe_full_gpu_vram_reject(intent: ServerIntent, est_mb: float, limit_mb: float) -> str | None:
-    """Explicit reject when MoE N_CPU_MOE=0 exceeds physical VRAM budget."""
-    if intent.n_cpu_moe != 0:
-        return None
+def _moe_vram_reject(intent: ServerIntent, est_mb: float, limit_mb: float) -> str | None:
+    """Explicit reject when MoE model exceeds physical VRAM budget."""
     path = intent.model_path
     if not path.is_file():
         return None
@@ -77,9 +75,14 @@ def _moe_full_gpu_vram_reject(intent: ServerIntent, est_mb: float, limit_mb: flo
             return None
     except Exception:
         return None
+    if intent.n_cpu_moe == 0:
+        return (
+            f"MoE full-GPU (N_CPU_MOE=0) est={est_mb:.0f}MB > limit={limit_mb:.0f}MB; "
+            "set N_CPU_MOE=None for auto block_count offload"
+        )
     return (
-        f"MoE full-GPU (N_CPU_MOE=0) est={est_mb:.0f}MB > limit={limit_mb:.0f}MB; "
-        "set N_CPU_MOE=None for auto block_count offload"
+        f"MoE offload (N_CPU_MOE={intent.n_cpu_moe}) est={est_mb:.0f}MB > limit={limit_mb:.0f}MB; "
+        "exceeds physical VRAM limit"
     )
 
 
@@ -363,8 +366,8 @@ class ExperimentRunner:
         ok_vram, est_vram, vram_reason = preflight_vram_for_intent(intent, vram_limit_mb)
         print(f"  [vram-preflight] est={est_vram:.0f}MB limit={vram_limit_mb:.0f}MB ok={ok_vram}")
         if not ok_vram:
-            moe_full = _moe_full_gpu_vram_reject(intent, est_vram, vram_limit_mb)
-            reason = moe_full or vram_reason
+            moe_reject = _moe_vram_reject(intent, est_vram, vram_limit_mb)
+            reason = moe_reject or vram_reason
             res.status = f"FAIL: {reason}"
             res.outcome = TrialOutcome.MODEL_REJECTED
             res.diagnostic = reason
