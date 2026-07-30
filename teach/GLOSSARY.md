@@ -32,8 +32,17 @@ HTTP na máquina (ex.: `127.0.0.1:18080`), em geral formato OpenAI-compatível.
 **Harness**:
 Cliente da API (script, app, agente, IDE).
 
+**Agent Harness**:
+Skills + MCP + guardrails no cliente do agente (Claude Code, Cursor, Codex, …). Semana 2. Distinto do Eval Harness (Trials / benchmarks deste repo — fora do objetivo do aluno).
+
+**Day**:
+Uso supervisionado do modelo local de dia — rápido o bastante para o trabalho; reduz gasto de tokens de assinatura. Conceito na Semana 1 · Dia 4; aplicação na Semana 2 · Dia 4.
+
+**Night**:
+Uso do modelo local em loop sozinho (ex.: issues overnight); de manhã: review, teste, abrir PR. Conceito na Semana 1 · Dia 4; aplicação na Semana 2 · Dia 4.
+
 **Skill**:
-Pacote de instruções (`SKILL.md`) que ensina o agente a seguir um fluxo. Catálogo: [skills.sh](https://skills.sh/). Semana 1 · Dia 4.
+Pacote de instruções (`SKILL.md`) que ensina o agente a seguir um fluxo. Catálogo: [skills.sh](https://skills.sh/). Semana 2 · Dia 1.
 
 **Skill local (projeto)**:
 Instalação padrão do `npx skills add` (sem `-g`). Vive no repo.
@@ -48,10 +57,10 @@ Parte do modelo fora da VRAM. Dense: evitar. MoE: ferramenta do Dia 3.
 Memória esgotada. Em denso, cortar contexto/KV, remover draft ou escolher GGUF menor — nunca “spill and hope”.
 
 **Amostragem (sampling)**:
-Escolher a próxima palavra (restaurante). Ordem no motor: penalties → top_k → top_p → min_p → temperature → sorteio. Semana 2 · Dia 1.
+Escolher a próxima palavra (restaurante). Ordem no motor: penalties → top_k → top_p → min_p → temperature → sorteio. Semana 1 · Dia 4.
 
 **MCP**:
-Encaixe plug-and-play de utensílios extras pro agente (cozinheiro). O harness já tem faca/panela; MCP adiciona ferramentas de fora (docs, APIs…). Semana 2 · Dia 2. Skill = receita (S1D4).
+Encaixe plug-and-play de utensílios extras pro agente (cozinheiro). O harness já tem faca/panela; MCP adiciona ferramentas de fora (docs, APIs…). Semana 2 · Dia 2. Skill = receita (S2D1).
 
 **Context7**:
 Utensílio MCP: manual atualizado (docs por versão) das bibliotecas. Hands-on S2D2 (Cursor / Claude Code).

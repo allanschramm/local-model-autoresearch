@@ -35,7 +35,7 @@ Identity of a configuration for merge and frontier membership: the full `ENGINE_
 _Avoid_: model-only key, engine-only key
 
 **Usage Profile**:
-A selection lens over the Pareto Set, not a separate frontier. **Day** (supervised): among points with `min(agentic, coding) ≥ DAY_IQ_RATIO × max(min on the set)`, maximize TPS; ties → higher `min`, then ctx (default `DAY_IQ_RATIO=0.75`). Empty band → max `min(agentic, coding)` then TPS. **Night** requires `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`, with fallback to max ctx if none qualify (unsupervised long loops).
+A selection lens over the Pareto Set, not a separate frontier. **Day** (supervised): among points with `min(agentic, coding) ≥ DAY_IQ_RATIO × max(min on the set)`, maximize TPS; ties → higher `min`, then ctx (default `DAY_IQ_RATIO=0.75`). Empty band → max `min(agentic, coding)` then TPS. **Night** requires `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`, with fallback to max ctx if none qualify (unsupervised long loops). Student-facing **usage** framing (no selection math) lives in [`teach/GLOSSARY.md`](teach/GLOSSARY.md) and [`teach/SPEC.md`](teach/SPEC.md).
 _Avoid_: separate day/night frontiers, Day = pure max TPS, Day = speed-band-first, TPS Floor as keep rule
 
 **DAY_IQ_RATIO**:

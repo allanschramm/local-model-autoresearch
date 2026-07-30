@@ -161,14 +161,14 @@ When the user requests a durable behavior change, record it here or in the relev
 - [models/README.md](models/README.md) — Shared GGUF store layout (nested LM Studio + basename resolve).
 - [docs/AGENTS.md](docs/AGENTS.md) — Durable documentation contract.
   - [docs/models/AGENTS.md](docs/models/AGENTS.md) — Per-model GGUF specs (architecture, quant, settings).
-  - [docs/adr/AGENTS.md](docs/adr/AGENTS.md) — Architecture decision records contract + index (ADRs 0001–0008).
+  - [docs/adr/AGENTS.md](docs/adr/AGENTS.md) — Architecture decision records contract + index (ADRs 0001–0009).
   - [docs/discovery/AGENTS.md](docs/discovery/AGENTS.md) — User-facing guides: model selection, good-enough speed path, whichllm/llmfit, quantization, agent onboarding, MTP/TPS, inference engines.
   - [docs/sessions/AGENTS.md](docs/sessions/AGENTS.md) — Empirical session logs (reproducibility evidence).
  - [docs/architecture.html](docs/architecture.html) — Interactive architecture diagram.
  - [docs/llamacpp-toolset.md](docs/llamacpp-toolset.md) — llama.cpp binary reference (build, bench, server, quantize).
 - [scripts/AGENTS.md](scripts/AGENTS.md) — Operator scripts (setup, monitoring, server daemon).
 - [tests/AGENTS.md](tests/AGENTS.md) — Unit and integration test suite.
-- [teach/AGENTS.md](teach/AGENTS.md) — Course materials (M0 + S1 TPS + S2D1 samplers + S2D2 MCP + S2D3 guardrails; S2D4 draft); Dia 1 LM Studio, Dia 2+ this repo.
+- [teach/AGENTS.md](teach/AGENTS.md) — Course materials; arc contract [teach/SPEC.md](teach/SPEC.md) (Day/Night + Agent Harness).
 - External sources (**agent read-only — never edit**):
  - [llama.cpp/](llama.cpp/) — upstream runtime (**git submodule**).
  - [claw-eval/](claw-eval/) — Claw-Eval harness (**local vendor tree**, gitignored; not a submodule).

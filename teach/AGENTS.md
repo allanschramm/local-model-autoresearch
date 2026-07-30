@@ -1,56 +1,49 @@
 # Teach — Course Materials
 
 ## Purpose
-Course materials to teach anyone to run local AI from scratch. Módulo 0, Semana 1 (incl. Dia 4 skills), and Semana 2 · Dias 1–3 (samplers + MCP/Context7 + guardrails) are published; Semana 2 Dia 4 remains a curriculum draft.
+Autodidact course materials: local AI from zero through Day/Night Agent Harness workflow. Target architecture: [SPEC.md](SPEC.md). Mission: [MISSION.md](MISSION.md).
 
 ## Ownership
 Course operator / instructors. Not part of the autotuning runtime loop.
 
 ## Local Contracts
-- Purpose of repo course: Workshop AILOCAL Essentials (teach anyone to run local AI from scratch).
-- Módulo 0: Conceptual foundations for absolute beginners (AI basics, Cloud vs Local, CPU/GPU/VRAM, Quantization, interactive VRAM calculator).
-- Semana 1 Dias 1–3: TPS / performance — no model-quality scoring.
-- Semana 1 Dia 4: agent skills (`skills.sh`, project vs global, Matt Pocock chain). `implement` uses local model; `code-review` may use a normal (cloud) model — intentional hybrid.
-- Semana 2 · Dias 1–3 published (sampling / `SAMPLER_DEFAULTS`; MCP + Context7; guardrails). Dia 4 stays “Em construção”, outside progress until published. Skills stay in S1D4 — S2D2 is MCP-only.
-- Student workflow: 100% local inside git checkout. Entrypoints: (1) Agent mode via `/teach` skill in CLI/IDE, (2) Browser mode via local `teach/index.html`.
-- Lesson HTML nav: always link `../index.html` as **Guia**; prev/next lesson HTML only. Never link `MISSION.md` / `CURRICULUM.md` from student-facing HTML (`file://` shows raw markdown).
-- Student-facing HTML surface: `index.html` + `reference/glossario.html` + the 10 lessons under `lessons/` (S0D1–S0D2, S1D1–S1D4, S2D1–S2D4). No extra cheat-sheet pages. Prefer glossary over `docs/*.md` links in lesson bodies.
-- Guia CTA: `index.html` “Próximo passo” uses `TeachProgress.getNextLesson` (first incomplete in curriculum order).
-- Onboarding step 5 (`verify_setup.py`) is optional until a local server listens on the selected port; the repository server helper defaults to 18080.
-- Student CLI tools: `scripts/check_hardware.py` (cross-OS hardware + model-pool recommender) and `scripts/verify_setup.py` (server health & TPS benchmark).
-- Agent guidance: During `/teach` sessions, agent acts as interactive tutor. Follow 5-step onboarding: (1) Check/install Python, (2) Create `venv`, (3) Install `requirements.txt`, (4) Run `check_hardware.py`, (5) Run `verify_setup.py`. Then proceed to Module 0.
-- **Hardware before download (hard gate):** After step 4, read `check_hardware` output (`discrete_gpu` vs `unified_memory`, RAM/VRAM). Explain in pt-BR (unified = one pool shared with OS/IDE/browser). Confirm numbers. **Forbidden** until that is done: `hf download`, whichllm/llmfit “just download #1”, `benchmark_search` / validation with a large GGUF. whichllm/llmfit = candidates only; on unified RAM reject picks that would consume most of the pool (e.g. ~12 GB on 16 GB). If detection incomplete, guide manual checks — never download blind.
-- **Leigo voice (esp. Semana 2):** Portuguese name first; English flag in parentheses. Explain effect (“maior = mais criativo”), not formulas. Chain related knobs. No logit/softmax/“guloso”.
-- **Zero meta no HTML do aluno (hard gate):** NUNCA vazar para arquivos que o aluno lê
-  (`lessons/*.html`, `index.html`, `reference/*.html`) pensamentos, scaffolding agente↔instrutor,
-  decisões de currículo, ou rótulos de planejamento. Proibido em título, parágrafo, aside ou nav:
-  “nota rápida”, “simplificado”, “não é o foco”, “desta aula”, “já vimos X”, “hoje o foco”,
-  “o que cortamos”, “(rascunho)” em link de próximo, “para o leigo”, justificativa de design,
-  comentários do tipo “meta”. Contraste de conceitos que ensina (ex. skill vs MCP, Claude vs Cursor
-  no Windows) OK. Banner `draft-banner` / pill “Em construção” no guia = exceção de status de publicação.
-  Só conteúdo que o aluno precisa aprender. Violação = editar de novo até zerar meta.
-- Quizzes: hashed answers only (`assets/QUIZ-HASH.md`); options simplified in pt-BR for beginners (no LM Studio references in quizzes).
-- **Completion gate:** each published lesson requires its quiz plus a practice check (`assets/progress.js`; localStorage keys `teach_quiz_pass_v1` and `teach_practice_pass_v1`). Simulated practice counts as completion but remains labeled until replaced by real practice. Preserve draft Semana 2 Dia 4 state but ignore it in published progress.
-- Dense GGUF guidance: fit **physical VRAM** on discrete NVIDIA, or the **unified RAM pool** (with OS headroom) on Mac/UMA; never recommend partial dense offload/shared-memory spill. Expert offload is MoE-only.
+- **SPEC is law for arc/slots:** [SPEC.md](SPEC.md). Slot ids + filenames stable; content follows the SPEC slot map.
+- Módulo 0: conceptual foundations for absolute beginners.
+- Semana 1: local AI only (motors, TPS, MoE, samplers, Day/Night **usage**). Skills are **not** Semana 1.
+- Semana 2: Agent Harness (skills → MCP → guardrails → S2D4 full application). Each lesson ends with transpose-to-your-client framing.
+- **Agent Harness** = skills / MCP / guardrails in the agent client. **Eval Harness** (Trials / `benchmark_search`) is out of scope as a student objective.
+- Student workflow: 100% local checkout. Entrypoints: `/teach` tutor and `teach/index.html`.
+- Lesson HTML nav: Guia = `../index.html`; prev/next lesson HTML only. Never link `MISSION.md` / `CURRICULUM.md` / `SPEC.md` from student-facing HTML.
+- Student-facing HTML surface: `index.html` + `reference/glossario.html` + lessons under `lessons/`. Prefer glossary over `docs/*.md` in lesson bodies.
+- Day/Night in student HTML = usage language only. Pareto selection math stays in `CONTEXT.md` / `docs/discovery/` / ADR 0008.
+- Fixed Day/Night example numbers: `results.tsv` via `scripts/rank_results.py` (basenames + scores). No aliases / GGUF inventory in tracked docs.
+- Learners without capable hardware: conceptual path complete; real local practice optional; never gate “Concluir”.
+- **Zero meta no HTML do aluno (hard gate):** never leak planning, curriculum decisions, or agent↔instructor scaffolding into `lessons/*.html`, `index.html`, `reference/*.html`. Full rule list unchanged — teachable concept contrast OK; draft banner on unpublished lessons OK.
+- **Leigo voice:** Portuguese name first; English flag in parentheses; effects not formulas.
+- **Hardware before download (hard gate):** after `check_hardware`, explain `discrete_gpu` vs `unified_memory`; confirm; never blind download.
+- Dense GGUF: physical VRAM or unified pool with headroom; MoE-only expert offload.
+- Quizzes: hashed answers (`assets/QUIZ-HASH.md`). Completion = quiz + practice (`assets/progress.js`).
 - No GGUFs, results, or run logs in this tree.
 
 ## Work Guidance
-- Prefer editing lesson HTML + `CURRICULUM.md` / `MISSION.md` together.
-- Keep glossary/definitions accurate (dense fits physical VRAM; expert offload/MoE = Dia 3).
-- Ensure interactive HTML elements (quizzes, calculators, troubleshooting wizards) work 100% offline in static browser view (`file://`). Quiz/progress scripts are classic (no ES modules) for that reason.
+- Prefer editing lesson HTML + `CURRICULUM.md` / `MISSION.md` / `SPEC.md` together.
+- After SPEC-affecting changes: learning record under `learning-records/`.
+- Keep interactive HTML offline-capable (`file://`); classic scripts (no ES modules) for quiz/progress.
 
 ## Verification
-- Open `index.html` or lesson HTML in a browser; click quizzes (client-side hash check).
-- Confirm “Concluir” stays locked until quiz and practice pass; simulated practice shows its pending-real-practice label.
-- Confirm lesson headers link to `index.html` (Guia) and prev/next HTML lessons — no `.md` in student nav.
-- Run `node --test teach/progress.test.js` after changing `LESSON_ORDER` / quiz maps.
+- Open `index.html` or lesson HTML; quizzes and Concluir gate behave correctly.
+- `node --test teach/progress.test.js` after `LESSON_ORDER` / quiz map changes.
+- Student nav has no `.md` links.
 
 ## Child DOX Index
-- [GLOSSARY.md](GLOSSARY.md) — Canonical terms (HTML: `reference/glossario.html` only).
-- [assets/sampler-sim.js](assets/sampler-sim.js) — Interactive restaurant sampler embedded in S2D1 (not a standalone page).
-- [assets/mcp-sim.js](assets/mcp-sim.js) — Kitchen-bench MCP utensil toggle embedded in S2D2 (not a standalone page).
-- [assets/guardrails-sim.js](assets/guardrails-sim.js) — Nightclub door sim (Deny/Allow/Pre/Post) embedded in S2D3 (not a standalone page).
-- [assets/diagrams/s2d1-amostragem-restaurante.excalidraw](assets/diagrams/s2d1-amostragem-restaurante.excalidraw) — Instructor theory board for S2D1: vertical scroll, restaurant metaphor only (no config/code).
-- [assets/diagrams/s2d2-mcp-cozinha.excalidraw](assets/diagrams/s2d2-mcp-cozinha.excalidraw) — Instructor theory board for S2D2: vertical scroll, kitchen metaphor only (skill=receita, MCP=utensílio; no config/code).
-- [assets/diagrams/s2d3-guardrails-boate.excalidraw](assets/diagrams/s2d3-guardrails-boate.excalidraw) — Instructor theory board for S2D3: vertical scroll, nightclub metaphor only (fila=tools, lista=Deny/Allow/Ask, porta=Pre-hook, comanda=Post-hook; sandbox aside; no config/code).
-- (otherwise flat under `teach/`)
+- [SPEC.md](SPEC.md) — target arc, slot map, Day/Night + Agent Harness contracts.
+- [MISSION.md](MISSION.md) — why / success / constraints.
+- [CURRICULUM.md](CURRICULUM.md) — human slot index.
+- [GLOSSARY.md](GLOSSARY.md) — canonical terms (HTML: `reference/glossario.html`).
+- [NOTES.md](NOTES.md) — instructor scratch / preferences.
+- [learning-records/](learning-records/) — decision-grade teaching insights.
+- [assets/sampler-sim.js](assets/sampler-sim.js) — S2D1 restaurant sampler (until content swap completes, sim follows sampler lesson slot).
+- [assets/mcp-sim.js](assets/mcp-sim.js) — S2D2 kitchen MCP sim.
+- [assets/guardrails-sim.js](assets/guardrails-sim.js) — S2D3 nightclub door sim.
+- [assets/diagrams/](assets/diagrams/) — instructor theory boards (metaphor only).
+- [ADR 0009](../docs/adr/0009-teach-day-night-agent-harness.md) — architecture decision.

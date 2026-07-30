@@ -57,12 +57,18 @@
       <dd>Servidor HTTP na sua máquina (ex.: <code>127.0.0.1:18080</code>), em geral compatível com o formato OpenAI.</dd>
       <dt>Harness</dt>
       <dd>Cliente que fala com a API: script, app, agente ou IDE.</dd>
+      <dt>Agent Harness</dt>
+      <dd>Skills, MCP e guardrails no cliente do agente (Claude Code, Cursor, Codex, …). Semana 2.</dd>
+      <dt>Day</dt>
+      <dd>Modelo local no trabalho supervisionado de dia — rápido o bastante; menos tokens de assinatura. Semana 1 · Dia 4; aplicação na Semana 2 · Dia 4.</dd>
+      <dt>Night</dt>
+      <dd>Modelo local em loop sozinho (ex.: issues de madrugada); de manhã: review, teste, abrir PR. Semana 1 · Dia 4; aplicação na Semana 2 · Dia 4.</dd>
       <dt>Skill</dt>
-      <dd>Pacote de instruções (<code>SKILL.md</code>) que ensina o agente a seguir um fluxo. Catálogo: <a href="https://skills.sh/">skills.sh</a>. Semana 1 · Dia 4.</dd>
+      <dd>Pacote de instruções (<code>SKILL.md</code>) que ensina o agente a seguir um fluxo. Catálogo: <a href="https://skills.sh/">skills.sh</a>. Semana 2 · Dia 1.</dd>
       <dt>Skill local vs global</dt>
       <dd>Local = projeto (padrão do <code>skills add</code>). Global = conta do usuário (<code>-g</code>), vale em qualquer projeto.</dd>
       <dt>Amostragem</dt>
-      <dd>Escolher a próxima palavra como pedir o próximo prato: freios → cardápio curto → ousadia → sorteio. Semana 2 · Dia 1. Ordem no motor: penalties → top_k → top_p → min_p → temperature → sorteio.</dd>
+      <dd>Escolher a próxima palavra como pedir o próximo prato: freios → cardápio curto → ousadia → sorteio. Semana 1 · Dia 4. Ordem no motor: penalties → top_k → top_p → min_p → temperature → sorteio.</dd>
       <dt>Temperatura (<code>TEMP</code>)</dt>
       <dd>Ousadia do cliente. Maior = mais criativa; menor = mais precisa. <code>0</code> ≈ só o favorito.</dd>
       <dt>Top-K (<code>TOP_K</code>)</dt>
@@ -78,7 +84,7 @@
         frequência (<code>FREQUENCY_PENALTY</code>, off <code>0</code>) = quanto mais pediu, mais freio.
       </dd>
       <dt>MCP</dt>
-      <dd>Plug-and-play de utensílios extras pro agente (cozinheiro). O harness já traz ferramentas; MCP adiciona mais (docs, APIs…). Semana 2 · Dia 2. Skill = receita (Semana 1 · Dia 4).</dd>
+      <dd>Plug-and-play de utensílios extras pro agente (cozinheiro). O harness já traz ferramentas; MCP adiciona mais (docs, APIs…). Semana 2 · Dia 2. Skill = receita (Semana 2 · Dia 1).</dd>
       <dt>Context7</dt>
       <dd>Utensílio MCP: manual atualizado de bibliotecas (docs por versão). Cursor / Claude Code.</dd>
       <dt>Sandbox (caixa de areia)</dt>

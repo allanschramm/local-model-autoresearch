@@ -1,7 +1,7 @@
 # Missão: Workshop AILOCAL Essentials
 
 ## Por que existe
-Ensinar qualquer pessoa a **rodar IA Local no próprio computador com alto desempenho**. Módulo 0, Semana 1 e Semana 2 · Dias 1–3 (samplers + MCP/Context7 + guardrails) formam a jornada publicada; Dia 4 da Semana 2 segue em desenho.
+Capacitar qualquer pessoa a **rodar IA local** e **configurar o Agent Harness** (skills, MCP, guardrails) para um fluxo de trabalho Day/Night: economizar tokens de assinatura de dia e adiantar issues de noite — depois review, teste e PR. Material autodidata neste repositório (`teach/index.html` + tutor `/teach`).
 
 ## Como é o sucesso
 ### Módulo 0 — Fundação Conceitual do Zero (para leigos)
@@ -11,32 +11,32 @@ Ensinar qualquer pessoa a **rodar IA Local no próprio computador com alto desem
 - O milagre da Quantização (GGUF Q4 vs Q8 - analogia com compressão de imagem)
 - Calculadora interativa de compatibilidade de VRAM
 
-### Semana 1 — Desempenho + skills (escopo fechado)
-- Mini-glossário Dia 1 (motor, modelo, quant, VRAM, KV, TPS, API/harness) — simplificado para leigos
+### Semana 1 — IA local (desempenho + amostragem + Day/Night)
 - Distinguir **motor de inferência** vs **modelo** vs **quant**
-- Baixar e escolher modelos GGUF focando no suporte da GPU (heurística de velocidade)
-- Usar o modelo via **API local compatível com OpenAI** em qualquer aplicativo
-- No Dia 2+: praticar o fluxo com **llama.cpp** e **ajustar parâmetros** para TPS (velocidade)
-- No Dia 3: rodar **modelos MoE maiores que a memória de vídeo** (offload) no llama.cpp
-- No Dia 4: **skills** — achar em [skills.sh](https://skills.sh/), instalar (projeto vs global), fluxo Matt Pocock (`grill-with-docs` → `to-tickets` → `implement` com modelo local → `code-review` com modelo normal)
+- Baixar e escolher modelos GGUF; API local compatível com OpenAI
+- Ajustar llama.cpp para TPS; MoE maior que a VRAM (offload)
+- Samplers (temperatura, top-k/p, min-p, penalidades)
+- Conceito **Day** vs **Night** como uso (não como curso de Pareto)
 
-### Semana 2 — Qualidade
-- **Dia 1 (publicado):** parâmetros de geração — temperatura, top-k, top-p, min-p, repeat / presence / frequency; semear `SAMPLER_DEFAULTS` do card
-- **Dia 2 (publicado):** MCP (utensílios extras / plug-and-play) + Context7; skills = receitas no S1D4
-- **Dia 3 (publicado):** guardrails (Allow/Deny/hooks Cursor+Claude; sandbox Claude vs Cursor no Windows; CLI `--tools`)
-- Dia 4 (em construção): caso de uso final
+### Semana 2 — Agent Harness + aplicação
+- Skills (`skills.sh`, fluxo Matt Pocock; `implement` no modelo local)
+- MCP + Context7; guardrails (Allow/Deny/hooks; sandbox)
+- Cada aula: transpor a ideia ao harness que o aluno já usa
+- Dia 4: fluxo completo Day + Night overnight + checklist deste repo
+
+Detalhe do arco e dos slots: [SPEC.md](SPEC.md).
 
 ## Regras e Restrições
 - Material em **pt-BR** simples e didático para leigos
-- Experiência 100% local: o aluno estuda clonando o repo e utilizando o tutor de IA (`/teach`) ou abrindo `teach/index.html` no navegador local (sem portal/servidor remoto)
-- Semana 1 Dias 1–3: **desempenho / velocidade (TPS)** — sem avaliação de inteligência ou treinamento
-- Semana 1 Dia 4: skills + fluxo agente; `implement` no modelo local; `code-review` pode usar modelo normal (nuvem) de propósito
-- Quizzes: gabarito com hash de segurança; opções simples em pt-BR sem menção ao LM Studio
-- Progresso no guia: Concluir exige quiz e prática; a rota simulada conta, mas fica sinalizada como prática real pendente
-- O foco do repositório é capacitar qualquer pessoa a rodar IA local do zero em sua própria máquina
+- Experiência 100% local no checkout (sem portal remoto de progresso)
+- Sem rig capaz: caminho conceitual completo; prática local opcional (não trava “Concluir”)
+- Quizzes com hash; progresso exige quiz + prática (simulação conta)
+- Exemplo de Agent Harness no repo: Claude Code + Cursor
+- Aluno configura e transpõe; não precisa criar harness do zero no curso
 
-## Fora de Escopo (Semana 1)
-- Avaliar "qual modelo é mais inteligente"
+## Fora de Escopo
+- Currículo além de Módulo 0 + Semanas 1–2
+- Eval Harness / Pareto Search / Trials como objetivo do aluno
 - Treinamento ou fine-tuning de modelos
-- Decodificação especulativa avançada
-- Substituir o fluxo local por nuvem como caminho principal (exceção didática: review no Dia 4)
+- Plataforma remota de certificação / progresso
+- Commitar aliases `model-up` ou inventário local de GGUFs em docs trackeados

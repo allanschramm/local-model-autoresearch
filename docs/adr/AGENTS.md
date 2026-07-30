@@ -36,3 +36,4 @@ Durable record of architecture decisions for the `local-model-autotuning` projec
 - [`0006-pareto-frontier-search.md`](./0006-pareto-frontier-search.md) — Multi-objective Pareto Set (ctx × TPS × agentic × coding); Day/Night pick; status vocabulary. Day pick superseded by 0007 then 0008.
 - [`0007-day-profile-speed-band.md`](./0007-day-profile-speed-band.md) — Day = speed band then IQ (superseded by 0008).
 - [`0008-day-iq-epsilon-then-tps.md`](./0008-day-iq-epsilon-then-tps.md) — Day = IQ ε-band then max TPS; Night maximin unchanged.
+- [`0009-teach-day-night-agent-harness.md`](./0009-teach-day-night-agent-harness.md) — Teach path: Day/Night usage + Agent Harness arc (`teach/SPEC.md`).
