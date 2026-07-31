@@ -20,7 +20,7 @@
       <p class="eyebrow">Semana 1 · Dia 3 · Performance</p>
       <h1>MoE — modelos maiores que a sua GPU</h1>
       <p class="lede">
-        Modelos densos colocam (quase) tudo na VRAM. Modelos <strong>MoE</strong> ativam apenas alguns especialistas por token —
+        Modelos densos colocam (quase) tudo na VRAM. Modelos <strong>MoE</strong> ativam apenas alguns experts por token —
         com a técnica de offload você consegue rodar modelos maiores que a sua placa de vídeo.
       </p>
       <p class="navlinks">
@@ -31,19 +31,19 @@
     </header>
 
     <section class="lesson-meta" aria-label="Resumo da aula">
-      <p><strong>Resultado:</strong><br />Distinguir denso de MoE e configurar offload de especialistas.</p>
+      <p><strong>Resultado:</strong><br />Distinguir denso de MoE e configurar offload de experts.</p>
       <p><strong>Duração:</strong><br />20–30 minutos.</p>
       <p><strong>Pré-requisito:</strong><br />Semana 1 · Dia 2.</p>
     </section>
 
     <h2>Como funciona o MoE (Mixture of Experts)?</h2>
     <p>
-      Em um modelo tradicional (denso), todo o conhecimento do arquivo é processado para cada palavra. Em um modelo <strong>MoE</strong>, o modelo é dividido em vários "Especialistas". Para cada token gerado, o <strong>Roteador</strong> escolhe apenas os 2 melhores especialistas para responder.
+      Em um modelo tradicional (denso), todo o conhecimento do arquivo é processado para cada palavra. Em um modelo <strong>MoE</strong>, o modelo é dividido em vários "Experts". Para cada token gerado, o <strong>Router</strong> escolhe apenas os 2 melhores experts para responder.
     </p>
 
-    <h3>Simulador 1: O Roteador de Especialistas em Ação</h3>
-    <p>Escolha um tipo de pergunta para ver o Roteador ativando apenas 2 de 8 especialistas em tempo real:</p>
-    <p class="note">Os nomes no simulador são só rótulos. No modelo real, os especialistas não têm títulos fixos como “matemática” ou “tradução”; o roteador aprende padrões numéricos.</p>
+    <h3>Simulador 1: O Router de Experts em Ação</h3>
+    <p>Escolha um tipo de pergunta para ver o Router ativando apenas 2 de 8 experts em tempo real:</p>
+    <p class="note">Os nomes no simulador são só rótulos. No modelo real, os experts não têm títulos fixos como “matemática” ou “tradução”; o router aprende padrões numéricos.</p>
 
     <div style="background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1.2rem; margin: 1.25rem 0;">
       <label style="font-family: var(--sans); font-weight: 600; display: block; font-size: 0.9rem; margin-bottom: 0.5rem;">Escolha o assunto da pergunta:</label>
@@ -55,23 +55,23 @@
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1rem;" id="expert-grid">
-        <!-- 8 especialistas renderizados pelo JS -->
+        <!-- 8 experts renderizados pelo JS -->
       </div>
 
       <p class="calc-result" id="moe-status" style="margin: 0; font-size: 0.9rem;"></p>
     </div>
 
     <h3>Simulador 2: <code>N_CPU_MOE</code></h3>
-    <p>Ajuste quantas das 40 camadas manterão seus especialistas na CPU/RAM. Atenção, roteamento e camadas restantes continuam na GPU:</p>
+    <p>Ajuste quantas das 40 camadas manterão seus experts na CPU/RAM. Attention, routing e camadas restantes continuam na GPU:</p>
 
     <div style="background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1.2rem; margin: 1.25rem 0;">
       <label for="moe-vram-slider" style="font-family: var(--sans); font-weight: 600; display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.4rem;">
-        <span>Camadas com especialistas na CPU:</span>
+        <span>Camadas com experts na CPU:</span>
         <span id="moe-vram-val" style="color: var(--accent);">40 de 40</span>
       </label>
       <input type="range" id="moe-vram-slider" min="0" max="40" step="4" value="40" style="width: 100%; margin-bottom: 1rem;" />
 
-      <label style="font-family: var(--sans); font-weight: 600; display: block; font-size: 0.9rem; margin-bottom: 0.4rem;">Distribuição conceitual das camadas de especialistas:</label>
+      <label style="font-family: var(--sans); font-weight: 600; display: block; font-size: 0.9rem; margin-bottom: 0.4rem;">Distribuição conceitual das camadas de experts:</label>
 
       <div style="height: 2rem; width: 100%; background: var(--line); border-radius: 4px; overflow: hidden; display: flex; margin-bottom: 0.8rem;">
         <div id="bar-vram" style="height: 100%; background: #0f766e; color: white; display: flex; align-items: center; justify-content: center; font-family: var(--sans); font-size: 0.75rem; font-weight: bold; transition: width 0.3s;">GPU: 0</div>
@@ -83,7 +83,7 @@
 
     <script>
       (function() {
-        // Simulador 1: Roteador
+        // Simulador 1: Router
         const topicBtns = document.querySelectorAll('.moe-topic-btn');
         const gridEl = document.getElementById('expert-grid');
         const statusEl = document.getElementById('moe-status');
@@ -130,12 +130,12 @@
             const topic = btn.getAttribute('data-topic');
             const active = topicMap[topic];
             renderExperts(active);
-            statusEl.innerHTML = `<strong>Roteador ativou:</strong> Especialistas <code>#${active[0]+1}</code> e <code>#${active[1]+1}</code>. Os outros 6 especialistas permaneceram dormindo sem gastar tempo de GPU.`;
+            statusEl.innerHTML = `<strong>Router ativou:</strong> Experts <code>#${active[0]+1}</code> e <code>#${active[1]+1}</code>. Os outros 6 experts permaneceram dormindo sem gastar tempo de GPU.`;
           });
         });
 
         renderExperts([0, 6]);
-        statusEl.innerHTML = `<strong>Roteador ativou:</strong> Especialistas <code>#1</code> e <code>#7</code> para código.`;
+        statusEl.innerHTML = `<strong>Router ativou:</strong> Experts <code>#1</code> e <code>#7</code> para código.`;
 
         // Simulador 2: Offload VRAM
         const slider = document.getElementById('moe-vram-slider');
@@ -184,11 +184,11 @@
     <h2>Quiz de validação</h2>
     <div class="quiz" data-quiz data-lesson="s1d3-q1"
          data-answer-hash="6da41398b4c370729c5bf095b217e5511cb11b2da17b53134f4f6f6d4523fe57"
-         data-ok="Muito bem! Em MoE, o offload mantém especialistas selecionados na CPU/RAM sem derramar um modelo denso."
-         data-bad="O offload permitido aqui é específico para especialistas MoE via N_CPU_MOE.">
+         data-ok="Muito bem! Em MoE, o offload mantém experts selecionados na CPU/RAM sem derramar um modelo denso."
+         data-bad="O offload permitido aqui é específico para experts MoE via N_CPU_MOE.">
       <p class="q">Qual é a principal vantagem de usar a técnica de offload em modelos de IA do tipo MoE?</p>
       <div class="choices">
-        <button type="button" data-choice="A">Manter especialistas MoE na CPU/RAM enquanto atenção e roteamento usam a GPU</button>
+        <button type="button" data-choice="A">Manter experts MoE na CPU/RAM enquanto attention e routing usam a GPU</button>
         <button type="button" data-choice="B">Treinar modelos de IA gigantes sem precisar de nenhuma memória</button>
         <button type="button" data-choice="C">Apagar o motor local e rodar tudo em um editor de código</button>
         <button type="button" data-choice="D">Fazer a IA responder sem precisar de eletricidade</button>
@@ -198,8 +198,8 @@
 
     <div class="quiz" data-quiz data-lesson="s1d3-q2"
          data-answer-hash="795d7cf91e9a0ff829581f62005225930988ce20a579c2cffe1f3bc6f7152e8f"
-         data-ok="Certo! Offload MoE divide especialistas entre GPU e CPU/RAM para caber no hardware."
-         data-bad="O ponto central: usar offload de especialistas MoE para adaptar o modelo à VRAM/RAM da máquina.">
+         data-ok="Certo! Offload MoE divide experts entre GPU e CPU/RAM para caber no hardware."
+         data-bad="O ponto central: usar offload de experts MoE para adaptar o modelo à VRAM/RAM da máquina.">
       <p class="q">Qual é o ponto central do offload em modelos MoE?</p>
       <div class="choices">
         <button type="button" data-choice="A">Memorizar todos os nomes secretos de todos os motores do mercado</button>
@@ -212,7 +212,7 @@
 
     <h2>Próximo</h2>
     <p><a href="s1d4-usecase-fluxo-zero.html">Dia 4 — Skills (Matt Pocock)</a></p>
-    <p class="source-note"><strong>Fontes:</strong> <a href="https://github.com/Randozart/VITRIOL">VITRIOL</a> e <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md">opções <code>--n-cpu-moe</code> do llama-server</a>.</p>
+    <p class="source-note"><strong>Fonte:</strong> <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md">opções <code>--n-cpu-moe</code> do llama-server</a>.</p>
     <footer class="site"><p>Ficou alguma dúvida? Pergunte ao tutor.</p></footer>
   </div>
   <script src="../assets/progress.js"></script>

@@ -230,7 +230,7 @@
       <li><strong>VRAM (Memória de Vídeo):</strong> O terreno mais nobre e rápido do seu computador. É a memória dedicada da placa de vídeo onde a IA precisa ficar armazenada para rodar rápido.</li>
     </ul>
 
-    <p><strong>E a RAM do sistema?</strong> Ela atende a CPU. Neste curso, um modelo <strong>denso</strong> deve caber inteiro na VRAM física: dividi-lo com a RAM compartilhada pode congelar o computador. A exceção é o offload de <strong>especialistas MoE</strong>, apresentado no Dia 3.</p>
+    <p><strong>E a RAM do sistema?</strong> Ela atende a CPU. Neste curso, um modelo <strong>denso</strong> deve caber inteiro na VRAM física: dividi-lo com a RAM compartilhada pode congelar o computador. A exceção é o offload de <strong>experts MoE</strong>.</p>
 
     <h3>O milagre da Quantização (GGUF)</h3>
     <p>
@@ -347,7 +347,7 @@
       },
       "16": {
         recommended: "Comece por um GGUF denso de 14B em Q4.",
-        note: "MoE pode usar offload de especialistas; denso não pode derramar para RAM."
+        note: "MoE pode usar offload de experts; denso não pode derramar para RAM."
       },
       "24": {
         recommended: "Comece por um GGUF denso de até 32B em Q4, verificando o tamanho real.",

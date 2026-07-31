@@ -1,7 +1,7 @@
 # Teaching notes
 
 - Contrato de arco: [SPEC.md](SPEC.md). Missão: [MISSION.md](MISSION.md). ADR: [0009](../docs/adr/0009-teach-day-night-agent-harness.md).
-- Alvo de slots: S1D4 = samplers + Day/Night (uso); S2D1 = skills; S2D2/S2D3 = ajuste leve de arco + transpor; S2D4 = aplicação completa. Filenames/ids de slot estáveis.
+- Alvo de slots: S1D4 = samplers + Day/Night (uso); S2D1 = skills; S2D2/S2D3 = ajuste leve de arco + transpor; S2D4 = aplicação completa (publicado). Filenames/ids de slot estáveis. HTML S1D4/S2D1 ainda na ordem antiga até swap.
 - Dia 1 = **LM Studio** (visual). Dia 2+ = **este repo + llama.cpp**.
 - pt-BR em prosa e quizzes; flags/ferramentas verbatim.
 - Gabarito hasheado (`assets/QUIZ-HASH.md`). Gate Concluir = quiz + prática; simulação conta; prática local real opcional.

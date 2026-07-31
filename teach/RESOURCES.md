@@ -67,4 +67,4 @@
 ## Lacunas
 - Link canónico LM Studio “Local Server” pode mudar de URL — validar na véspera do Dia 1.
 - Motor “surpresa” do Dia 3: não documentar até o operador revelar.
-- Semana 2 live: Dias 1–3 publicados; Dia 4 em aberto.
+- Semana 2 live: Dias 1–4 publicados (S2D4 = Day/Night + checklist + transpor).

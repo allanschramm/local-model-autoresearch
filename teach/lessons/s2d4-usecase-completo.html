@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>S2 Dia 4 — Caso de Uso Completo (Projeto Integrado)</title>
+  <title>S2 Dia 4 — Day/Night: aplicação completa</title>
   <link rel="stylesheet" href="../assets/lesson.css" />
   <style>
     .checklist-box {
@@ -16,89 +16,317 @@
     .checklist-box ul {
       list-style: none;
       padding-left: 0;
+      margin: 0;
     }
     .checklist-box li {
-      padding: 0.4rem 0;
+      padding: 0.55rem 0;
       border-bottom: 1px dashed var(--line);
     }
     .checklist-box li:last-child {
       border-bottom: none;
+    }
+    .flow-sim {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 1.2rem;
+      margin: 1.5rem 0;
+    }
+    .flow-phases {
+      display: grid;
+      gap: 0.65rem;
+      margin: 0.85rem 0 1rem;
+    }
+    @media (min-width: 640px) {
+      .flow-phases { grid-template-columns: 1fr 1fr 1fr; }
+    }
+    .flow-phase {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0.85rem 0.9rem;
+      background: var(--bg);
+      text-align: left;
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 0.9rem;
+    }
+    .flow-phase:disabled {
+      cursor: default;
+      opacity: 0.55;
+    }
+    .flow-phase.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+    }
+    .flow-phase.done {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+    .flow-phase strong { display: block; margin-bottom: 0.25rem; }
+    .flow-phase span { color: var(--muted); font-size: 0.82rem; }
+    #flow-detail {
+      margin: 0;
+      font-size: 0.92rem;
+      min-height: 3.2rem;
+    }
+    #flow-status {
+      margin: 0.75rem 0 0;
+      font-size: 0.88rem;
+      color: var(--muted);
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header class="site">
-      <p class="eyebrow">Semana 2 · Dia 4 · Projeto Integrado Final</p>
-      <h1>Caso de Uso Completo — Autonomia Total em IA Local</h1>
+      <p class="eyebrow">Semana 2 · Dia 4 · Aplicação completa</p>
+      <h1>Day / Night — do harness ao PR</h1>
       <p class="lede">
-        Parabéns! Você chegou ao encerramento do curso. Hoje integramos todo o conhecimento acumulado: do diagnóstico de hardware à automação completa do seu modelo local conectado a aplicativos reais.
+        Monte o <strong>Agent Harness</strong> (skills, MCP, guardrails) e use o modelo local
+        no ritmo do dia: <strong>Day</strong> supervisionado, <strong>Night</strong> sozinho
+        nas issues, e de manhã review, teste e PR.
       </p>
       <p class="navlinks">
         <a href="s2d3-sandbox-hooks-gates.html">← Dia 3</a>
         <a href="../index.html">Guia</a>
+        <a href="../reference/glossario.html">Glossário</a>
       </p>
     </header>
 
-    <aside class="draft-banner"><strong>Semana 2 em construção.</strong> Este rascunho não entra no progresso do curso e pode mudar enquanto o currículo é desenhado. Volte ao <a href="../index.html">guia publicado</a>.</aside>
+    <section class="lesson-meta" aria-label="Resumo da aula">
+      <p><strong>Resultado:</strong><br />Descrever e simular o fluxo Day → Night → manhã; confirmar skills, MCP e guardrails antes de rodar.</p>
+      <p><strong>Duração:</strong><br />30–45 minutos (conceito + checklist + simulação).</p>
+      <p><strong>Pré-requisito:</strong><br />Skills, MCP e guardrails. API local ajuda na prática real.</p>
+    </section>
 
-    <h2>1. O Fluxo de Trabalho de Ponta a Ponta</h2>
-    <p>A jornada completa de implementação da sua IA local resume-se nestes 5 passos estratégicos:</p>
+    <h2>1. O fluxo completo</h2>
+    <p>
+      <strong>Day</strong> = modelo local no trabalho de dia, com você no volante:
+      rápido o bastante para o que está fazendo; menos tokens de assinatura.
+    </p>
+    <p>
+      <strong>Night</strong> = modelo local em loop sozinho (ex.: issues abertas).
+      Você dorme; o agente avança o que der dentro das regras do harness.
+    </p>
+    <p>
+      De <strong>manhã</strong>: ler o que mudou, rodar testes, abrir ou atualizar o PR.
+      Sem essa etapa, overnight vira bagunça — não entrega.
+    </p>
+    <ol>
+      <li>Agent Harness no lugar (skills + MCP + Allow/Deny/hooks).</li>
+      <li>Day: servidor local + harness apontando para a API; trabalho supervisionado.</li>
+      <li>Night: deixar o agente nas issues (com guardrails ativos).</li>
+      <li>Manhã: review → teste → PR.</li>
+    </ol>
+    <p class="note">
+      Day e Night aqui são <em>uso</em> — como você trabalha com o modelo.
+    </p>
+
+    <h2>2. Checklist operacional</h2>
+    <p>
+      Antes de Day ou Night, confirme que o harness está no lugar.
+    </p>
 
     <div class="checklist-box">
-      <h3>🚀 Checklist da Implementação Local</h3>
+      <h3>Antes de Day ou Night</h3>
       <ul>
-        <li>✅ <strong>1. Diagnóstico:</strong> Execute <code>.\venv\Scripts\python.exe scripts/check_hardware.py</code> para identificar as flags <code>-ngl</code> e contexto ideais do seu PC.</li>
-        <li>✅ <strong>2. Motor:</strong> Inicie o <code>llama-server</code> com o modelo GGUF ajustado para alta velocidade (TPS).</li>
-        <li>✅ <strong>3. Validação:</strong> Rode <code>.\venv\Scripts\python.exe scripts/verify_setup.py</code> para medir a latência e confirmar se o TPS está ótimo.</li>
-        <li>✅ <strong>4. Amostragem:</strong> Configure a Temperatura em <code>0.0</code> para programação/exatidão ou <code>0.7</code> para conversas gerais.</li>
-        <li>✅ <strong>5. Conexão:</strong> Aponte seu VS Code (Continue/Cline), Open WebUI ou app favorito para <code>http://127.0.0.1:8080/v1</code>.</li>
+        <li>
+          <strong>Skills</strong> — pacotes de procedimento no harness
+          (skills do projeto ou globais; ex. cadeia
+          <code>wayfinder</code> → <code>grill-with-docs</code> → <code>to-tickets</code> →
+          <code>implement</code> → <code>code-review</code>).
+        </li>
+        <li>
+          <strong>MCP</strong> — utensílios plugáveis (docs, grafo, etc.).
+          Confirme que o servidor que você usa aparece no harness.
+          Sem MCP ligado, o agente só inventa texto.
+        </li>
+        <li>
+          <strong>Guardrails</strong> — Allow / Deny / hooks no harness
+          (listas allow / ask / deny, scripts de hook, Run Mode / lista de permitidos).
+        </li>
+        <li>
+          <strong>API local</strong> — <code>llama-server</code> (ou LM Studio) com o GGUF
+          que cabe no hardware; harness apontando para a porta local.
+        </li>
       </ul>
     </div>
 
-    <h2>2. Arquitetura de IA Local Produtiva</h2>
+    <div class="checklist-box">
+      <h3>Day → Night → manhã</h3>
+      <ul>
+        <li><strong>Day:</strong> issues ou tarefas curtas com você revisando cada passo importante.</li>
+        <li><strong>Night:</strong> fila de issues; harness com Deny/hooks ativos; sem “aperte Enter em tudo”.</li>
+        <li><strong>Manhã:</strong> diff legível → testes → PR (ou pedido de review humano).</li>
+      </ul>
+    </div>
+
+    <h2>3. Simulador do fluxo</h2>
     <p>
-      Você agora possui privacidade total (dados nunca saem da sua máquina), custo zero por token e desempenho otimizado diretamente na sua placa de vídeo ou processador.
+      Clique nas três fases <em>nesta ordem</em>. O detalhe muda; no fim a simulação marca completo.
     </p>
 
-    <h2>3. Prática (Validação Final do Curso)</h2>
-    <p class="note">Quiz: Avaliação do Projeto Integrado.</p>
+    <div class="flow-sim" id="flow-sim">
+      <div class="flow-phases" role="group" aria-label="Fases Day Night manhã">
+        <button type="button" class="flow-phase" data-phase="day" aria-pressed="false">
+          <strong>1 · Day</strong>
+          <span>Trabalho supervisionado</span>
+        </button>
+        <button type="button" class="flow-phase" data-phase="night" aria-pressed="false" disabled>
+          <strong>2 · Night</strong>
+          <span>Issues sem você na frente</span>
+        </button>
+        <button type="button" class="flow-phase" data-phase="morning" aria-pressed="false" disabled>
+          <strong>3 · Manhã</strong>
+          <span>Review, teste, PR</span>
+        </button>
+      </div>
+      <p id="flow-detail">Comece por Day — modelo local, você no volante.</p>
+      <p id="flow-status" role="status"></p>
+    </div>
+
+    <section class="practice" data-practice data-lesson="s2d4">
+      <h2>Prática</h2>
+
+      <h3>Simulado</h3>
+      <ol>
+        <li>Percorra Day → Night → manhã no simulador acima.</li>
+        <li>Confirme mentalmente: skills, MCP e guardrails estão ativos no harness que você usa.</li>
+      </ol>
+
+      <h3>Real</h3>
+      <ol>
+        <li>Suba a API local e aponte o harness para ela.</li>
+        <li>Deixe uma ou mais issues para um loop Night (com guardrails ligados).</li>
+        <li>De manhã: review, teste, abra ou atualize o PR.</li>
+      </ol>
+
+      <div class="practice-actions">
+        <button type="button" data-practice-mode="real" aria-pressed="false">Rodei overnight real e fiz review / teste / PR</button>
+        <button type="button" data-practice-mode="simulated" aria-pressed="false">Simulei o fluxo Day → Night → manhã</button>
+      </div>
+      <p class="practice-status" data-practice-feedback role="status"></p>
+    </section>
+
+    <h2>Quiz</h2>
 
     <div class="quiz" data-quiz data-lesson="s2d4-q1"
          data-answer-hash="99eb7100028651bfc2280895a0cc1aaa7a05bcb0e73f900200207befe3ec675d"
-         data-ok="Excelente! Você dominou o ciclo completo de IA local com desempenho, qualidade e segurança."
-         data-bad="Selecione a opção que contempla hardware, motor local, amostragem e segurança.">
-      <p class="q">Qual das alternativas descreve uma pilha de IA local de alta maturidade no seu próprio computador?</p>
+         data-ok="Certo: Day é uso supervisionado de dia com o modelo local."
+         data-bad="Day = trabalho de dia com você no volante; Night é o loop sozinho.">
+      <p class="q">O que é o uso <strong>Day</strong>?</p>
       <div class="choices">
-        <button type="button" data-choice="A">Rodar um modelo sem quantização direto na nuvem sem controlar a memória</button>
-        <button type="button" data-choice="B">Hardware diagnosticado, modelo GGUF ajustado, servidor local ativo, parâmetros otimizados e hooks de segurança</button>
-        <button type="button" data-choice="C">Apagar as placas de vídeo e usar apenas mensagens de texto manuais</button>
-        <button type="button" data-choice="D">Depender 100% de APIs pagas sem opção offline</button>
+        <button type="button" data-choice="A">Deixar o agente sozinho a noite inteira sem review de manhã</button>
+        <button type="button" data-choice="B">Modelo local no trabalho supervisionado de dia, rápido o bastante e com menos tokens de assinatura</button>
+        <button type="button" data-choice="C">Desligar a API local e usar só tokens de assinatura o dia inteiro</button>
+        <button type="button" data-choice="D">Desligar todos os guardrails para o agente editar qualquer arquivo</button>
       </div>
       <p class="feedback" data-feedback></p>
     </div>
 
     <div class="quiz" data-quiz data-lesson="s2d4-q2"
-         data-answer-hash="7160266d6e7cb48d6b9cf7780a06d99c991e95cced81929868e1b750033e4d13"
-         data-ok="Excelente! Você concluiu com sucesso todo o ciclo de aprendizado sobre IA Local!"
-         data-bad="A combinação de hardware ajustado, amostragem correta e segurança garante autonomia e qualidade total.">
-      <p class="q">Qual é o papel do script `scripts/verify_setup.py` na jornada do aluno?</p>
+         data-answer-hash="8f3541a0df472df273ed9dc7f65021e35097cbc993737def0a2f011fed19e38e"
+         data-ok="Isso — manhã fecha o ciclo: review, teste e PR."
+         data-bad="Depois do Night vem a manhã: revisar, testar e abrir (ou atualizar) o PR.">
+      <p class="q">Depois de um loop <strong>Night</strong>, o que fecha o ciclo de manhã?</p>
       <div class="choices">
-        <button type="button" data-choice="A">Deletar modelos GGUF antigos do disco</button>
-        <button type="button" data-choice="B">Instalar drivers de placa de vídeo sem permissão</button>
-        <button type="button" data-choice="C">Testar a conexão com o servidor local e medir o TPS real para confirmar a velocidade ideal</button>
-        <button type="button" data-choice="D">Formatar o arquivo de configuração do Windows</button>
+        <button type="button" data-choice="A">Apagar o GGUF e reinstalar o sistema operacional</button>
+        <button type="button" data-choice="B">Review do que mudou, rodar testes e abrir ou atualizar o PR</button>
+        <button type="button" data-choice="C">Treinar um modelo novo do zero com os diffs da noite</button>
+        <button type="button" data-choice="D">Desligar MCP e skills para o resto da semana</button>
       </div>
       <p class="feedback" data-feedback></p>
     </div>
 
-    <h2>Conclusão</h2>
-    <p>Você completou o workshop! Retorne ao <a href="../index.html">Portal do Aluno</a> para rever o mapa do conhecimento e checar seu progresso final.</p>
+    <div class="quiz" data-quiz data-lesson="s2d4-q3"
+         data-answer-hash="89946bdd372c738ef0aaf5d3a5f3b5bc5a31eab1990c452d404ed9c063503224"
+         data-ok="Exato: Agent Harness = skills, MCP, guardrails e tools."
+         data-bad="Agent Harness é skills, MCP, guardrails e tools — não um chat sem ações.">
+      <p class="q">O que é o <strong>Agent Harness</strong>?</p>
+      <div class="choices">
+        <button type="button" data-choice="A">Skills, MCP, guardrails e tools que dão corpo ao modelo</button>
+        <button type="button" data-choice="B">Só o arquivo GGUF no disco, sem API nem tools</button>
+        <button type="button" data-choice="C">Um instalador de driver de GPU que substitui o llama.cpp</button>
+        <button type="button" data-choice="D">A ferramenta que quantiza GGUF sozinha, sem configuração</button>
+      </div>
+      <p class="feedback" data-feedback></p>
+    </div>
 
+    <div class="quiz" data-quiz data-lesson="s2d4-q4"
+         data-answer-hash="f933deac827c0e569a344dda09da8e58549376b80ee94edbe5d4285e31872773"
+         data-ok="Certo: o checklist confirma skills, MCP e guardrails antes do fluxo Day/Night."
+         data-bad="O checklist operacional confirma que skills, MCP e guardrails estão no lugar.">
+      <p class="q">Para que serve o checklist operacional Day/Night?</p>
+      <div class="choices">
+        <button type="button" data-choice="A">Listar quais GGUFs estão no disco desta máquina para commit no git</button>
+        <button type="button" data-choice="B">Confirmar skills, MCP e guardrails (hooks) antes do fluxo Day → Night → manhã</button>
+        <button type="button" data-choice="C">Substituir review humano: o overnight já abre o PR sem ninguém olhar</button>
+        <button type="button" data-choice="D">Pular o review de manhã e confiar cego no overnight</button>
+      </div>
+      <p class="feedback" data-feedback></p>
+    </div>
+
+    <h2>Encerramento</h2>
+    <p>
+      Você montou o fluxo: IA local + Agent Harness + Day/Night.
+      Volte ao <a href="../index.html">guia</a> quando quiser rever qualquer aula.
+    </p>
+
+    <p class="source-note">
+      <strong>Fonte:</strong>
+      <a href="../reference/glossario.html">Glossário</a>.
+      Dúvida? Pergunte ao tutor.
+    </p>
     <footer class="site">
-      <p><strong>Workshop AILOCAL Essentials · Conclusão do Workshop.</strong></p>
+      <p>Workshop AILOCAL Essentials · Semana 2 · Aplicação Day/Night.</p>
     </footer>
   </div>
+  <script>
+    (function () {
+      var order = ["day", "night", "morning"];
+      var detail = {
+        day: "Day: API local ligada, skills/MCP à mão, você revisa o que importa.",
+        night: "Night: agente nas issues com Deny/hooks ativos — sem fadiga de “Permitir?”.",
+        morning: "Manhã: ler o diff, rodar testes, abrir ou atualizar o PR.",
+      };
+      var next = 0;
+      var buttons = {};
+      order.forEach(function (id) {
+        buttons[id] = document.querySelector('[data-phase="' + id + '"]');
+      });
+      var detailEl = document.getElementById("flow-detail");
+      var statusEl = document.getElementById("flow-status");
+
+      function paint() {
+        order.forEach(function (id, i) {
+          var btn = buttons[id];
+          var done = i < next;
+          var active = i === next && next < order.length;
+          btn.disabled = i > next;
+          btn.classList.toggle("done", done);
+          btn.classList.toggle("active", active);
+          btn.setAttribute("aria-pressed", done || active ? "true" : "false");
+        });
+        if (next >= order.length) {
+          detailEl.textContent = "Fluxo simulado completo: Day → Night → manhã.";
+          statusEl.textContent = "Fluxo completo.";
+        } else {
+          statusEl.textContent = "Próxima fase: " + (next + 1) + " de " + order.length + ".";
+        }
+      }
+
+      order.forEach(function (id, i) {
+        buttons[id].addEventListener("click", function () {
+          if (i !== next) return;
+          detailEl.textContent = detail[id];
+          next += 1;
+          paint();
+        });
+      });
+
+      paint();
+    })();
+  </script>
   <script src="../assets/progress.js"></script>
   <script src="../assets/quiz.js"></script>
 </body>
