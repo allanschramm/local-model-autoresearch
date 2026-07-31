@@ -71,8 +71,8 @@ Each Semana 2 lesson ends with how to apply the same idea in the learner’s own
 
 - One full workflow: configure Agent Harness pieces already taught → Day daytime use → Night overnight on issues → morning review / test / PR.
 - Operational checklist pointing at this repo’s example config (skills, MCP, guardrails / hooks).
-- Transpose box for the learner’s client.
 - Simulated practice required for progress; real overnight run optional.
+- Optional further-study trailhead at end (“Já sei o essencial — e agora?”): speed, engines, harnesses, meta-harnesses — not part of the required curriculum.
 
 ## Out of scope
 

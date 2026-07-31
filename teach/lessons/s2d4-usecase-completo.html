@@ -270,7 +270,84 @@
     <p>
       Você montou o fluxo: IA local + Agent Harness + Day/Night.
       Volte ao <a href="../index.html">guia</a> quando quiser rever qualquer aula.
+      Quer explorar além do essencial? Segue um mapa de curiosidade.
     </p>
+
+    <h2>Já sei o essencial — e agora?</h2>
+    <p>
+      Abaixo: caminhos opcionais para estudar por conta. Cada um abre um mundo;
+      nenhum é necessário para o fluxo Day/Night que você acabou de montar.
+    </p>
+
+    <div class="checklist-box">
+      <h3>1. Mais velocidade no mesmo motor (llama.cpp)</h3>
+      <p>
+        <strong>Speculative decoding:</strong> um draft rápido (em geral um modelo menor,
+        ou heads/draft equivalentes) <em>propõe</em> vários tokens; o modelo alvo
+        <em>verifica</em> em lote. Se aceitar, sobe o TPS sem trocar de motor.
+        <strong>MTP</strong> é uma forma disso no llama.cpp (heads embutidas no GGUF
+        ou um GGUF assistant/draft separado).
+      </p>
+      <ul>
+        <li>
+          <strong>Speculative decoding / MTP</strong> —
+          <a href="../../docs/discovery/speculative-decoding-formats.md">formatos</a>
+          ·
+          <a href="../../docs/discovery/mtp-baseline-guide.md">baseline MTP</a>
+        </li>
+        <li>
+          <strong>KV quant</strong> (<code>-ctk</code> / <code>-ctv</code>) — menos VRAM de histórico em contexto fundo
+          (já no <a href="../reference/glossario.html">glossário</a>).
+        </li>
+        <li>
+          <strong>CUDA Graphs / allocators</strong> —
+          <a href="../../docs/discovery/advanced-inference-optimizations.md">otimizações avançadas</a>
+        </li>
+        <li>
+          <strong>CPU path</strong> (AVX/AMX, NUMA) —
+          <a href="../../docs/discovery/cpu-inference-guide.md">guia de CPU</a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="checklist-box">
+      <h3>2. Outros motores de inferência</h3>
+      <p>llama.cpp continua o padrão local do dia a dia; estes brilham quando o workload muda.</p>
+      <ul>
+        <li><strong>vLLM</strong> — serving / throughput multi-usuário. <a href="https://docs.vllm.ai/">docs.vllm.ai</a></li>
+        <li><strong>SGLang</strong> — prefix reuse / RAG / agentic. <a href="https://github.com/sgl-project/sglang">sgl-project/sglang</a></li>
+        <li><strong>OpenVINO GenAI</strong> — CPU/iGPU Intel. <a href="../../docs/discovery/openvino-genai-cpu-igpu-guide.md">guia OpenVINO</a></li>
+        <li><strong>TensorRT-LLM</strong> — pico NVIDIA “fix”. <a href="https://github.com/NVIDIA/TensorRT-LLM">NVIDIA/TensorRT-LLM</a></li>
+        <li><strong>Ollama / MLX</strong> — UX simples · Apple Silicon. <a href="https://ollama.com/">ollama.com</a> · <a href="https://github.com/ml-explore/mlx">ml-explore/mlx</a></li>
+        <li><strong>Colibrì</strong> — MoE gigante em streaming. <a href="../../docs/discovery/colibri-inference-engine.md">guia Colibrì</a></li>
+        <li><strong>Mapa</strong> — <a href="../../docs/discovery/inference-engines-landscape.md">landscape de motores</a></li>
+      </ul>
+    </div>
+
+    <div class="checklist-box">
+      <h3>3. Outros Agent Harnesses</h3>
+      <p>Mesmo contrato (skills, MCP, guardrails, tools) — outro “corpo”.</p>
+      <ul>
+        <li><strong>Pi</strong> — terminal minimalista + API local. <a href="https://pi.dev/">pi.dev</a></li>
+        <li><strong>Hermes Agent</strong> — orquestração multi-tool. <a href="https://github.com/NousResearch/hermes-agent">NousResearch/hermes-agent</a></li>
+        <li><strong>OpenCode</strong> — TUI open-source, multi-provider. <a href="https://github.com/anomalyco/opencode">anomalyco/opencode</a></li>
+        <li><strong>Aider</strong> — terminal + git nativo. <a href="https://aider.chat/">aider.chat</a></li>
+        <li><strong>Continue</strong> — VS Code / JetBrains. <a href="https://continue.dev/">continue.dev</a></li>
+        <li><strong>Cline / Kilo Code</strong> — agent no editor. <a href="https://cline.bot/">cline.bot</a> · <a href="https://kilocode.ai/">kilocode.ai</a></li>
+        <li><strong>goose</strong> — CLI self-hosted, model-agnostic. <a href="https://github.com/block/goose">block/goose</a></li>
+      </ul>
+    </div>
+
+    <div class="checklist-box">
+      <h3>4. Meta-harnesses</h3>
+      <p>Orquestram Agent Harnesses: agendam, isolam e fecham o ciclo Night → review → PR.</p>
+      <ul>
+        <li><strong>Archon</strong> — workflows/DAG em worktrees. <a href="https://archon.diy/">archon.diy</a></li>
+        <li><strong>Case</strong> — pipeline com gates de evidência até o PR. <a href="https://github.com/workos/case">workos/case</a></li>
+        <li><strong>Sandcastle</strong> — agentes em sandbox + branch. <a href="https://github.com/mattpocock/sandcastle">mattpocock/sandcastle</a></li>
+        <li><strong>OpenHands Agent Canvas</strong> — control center de vários agents. <a href="https://docs.openhands.dev/">docs.openhands.dev</a></li>
+      </ul>
+    </div>
 
     <p class="source-note">
       <strong>Fonte:</strong>

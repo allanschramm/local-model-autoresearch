@@ -67,4 +67,29 @@
 ## Lacunas
 - Link canónico LM Studio “Local Server” pode mudar de URL — validar na véspera do Dia 1.
 - Motor “surpresa” do Dia 3: não documentar até o operador revelar.
-- Semana 2 live: Dias 1–4 publicados (S2D4 = Day/Night + checklist + transpor).
+- Semana 2 live: Dias 1–4 publicados (S2D4 = Day/Night + checklist + “e agora?” opcional).
+
+## Depois do essencial (opcional)
+
+Mapa de curiosidade no fim da S2D4. Estudar por conta — não é currículo obrigatório.
+
+### Mais velocidade (llama.cpp)
+- Speculative decoding: draft rápido propõe tokens; modelo alvo verifica em lote. MTP = uma forma (`draft-mtp`: heads embutidas ou GGUF assistant).
+- [speculative-decoding-formats.md](../docs/discovery/speculative-decoding-formats.md)
+- [mtp-baseline-guide.md](../docs/discovery/mtp-baseline-guide.md)
+- [advanced-inference-optimizations.md](../docs/discovery/advanced-inference-optimizations.md) — CUDA Graphs, allocators, KV
+- [cpu-inference-guide.md](../docs/discovery/cpu-inference-guide.md)
+
+### Motores
+- [vLLM](https://docs.vllm.ai/) · [SGLang](https://github.com/sgl-project/sglang) · [TensorRT-LLM](https://github.com/NVIDIA/TensorRT-LLM) · [LMDeploy](https://github.com/InternLM/lmdeploy)
+- [OpenVINO GenAI](../docs/discovery/openvino-genai-cpu-igpu-guide.md) · [Ollama](https://ollama.com/) · [MLX](https://github.com/ml-explore/mlx) · [Colibrì](../docs/discovery/colibri-inference-engine.md)
+- [inference-engines-landscape.md](../docs/discovery/inference-engines-landscape.md)
+
+### Agent Harnesses
+- [Pi](https://pi.dev/) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [OpenCode](https://github.com/anomalyco/opencode)
+- [Aider](https://aider.chat/) · [Continue](https://continue.dev/) · [Cline](https://cline.bot/) · [Kilo Code](https://kilocode.ai/)
+- [goose](https://github.com/block/goose) · [OpenHands](https://github.com/OpenHands/OpenHands)
+
+### Meta-harnesses
+- [Archon](https://archon.diy/) · [Case (workos/case)](https://github.com/workos/case) · [Sandcastle](https://github.com/mattpocock/sandcastle)
+- [OpenHands Agent Canvas](https://docs.openhands.dev/) · [Claude Code dynamic workflows](https://claude.com/blog/introducing-dynamic-workflows-in-claude-code)
