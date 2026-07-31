@@ -367,9 +367,12 @@ class TestLlamaRunner(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "moe.gguf"
-            model.write_bytes(b"x" * (10 * 1024 * 1024 * 1024))  # 10 GiB
-            full = estimate_vram_mb(model, 2048, "q4_0", "q4_0")
-            vitriol = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=32)
+            model.write_bytes(b"x")
+            with patch(
+                "pathlib.Path.stat", return_value=MagicMock(st_size=10 * 1024 * 1024 * 1024)
+            ):
+                full = estimate_vram_mb(model, 2048, "q4_0", "q4_0")
+                vitriol = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=32)
             self.assertLess(vitriol, full * 0.4)
             self.assertGreater(vitriol, 1000.0)
 
@@ -392,15 +395,18 @@ class TestLlamaRunner(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "moe.gguf"
-            model.write_bytes(b"x" * (14 * 1024 * 1024 * 1024))  # 14 GiB file
-            ok, est, reason = preflight_vram(
-                model,
-                65536,
-                kv_cache_k="q4_0",
-                kv_cache_v="q4_0",
-                vram_limit_mb=7900.0,
-                n_cpu_moe=30,
-            )
+            model.write_bytes(b"x")
+            with patch(
+                "pathlib.Path.stat", return_value=MagicMock(st_size=14 * 1024 * 1024 * 1024)
+            ):
+                ok, est, reason = preflight_vram(
+                    model,
+                    65536,
+                    kv_cache_k="q4_0",
+                    kv_cache_v="q4_0",
+                    vram_limit_mb=7900.0,
+                    n_cpu_moe=30,
+                )
             self.assertTrue(ok, reason)
             self.assertLessEqual(est, 7900.0)
 
@@ -490,11 +496,14 @@ class TestLlamaRunner(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "moe.gguf"
-            model.write_bytes(b"x" * (10 * 1024 * 1024 * 1024))
-            with patch("autoresearch.core.llama_runner.gguf_is_moe", return_value=True):
-                with patch("autoresearch.core.llama_runner.gguf_block_count", return_value=40):
-                    full = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=40)
-                    half = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=20)
+            model.write_bytes(b"x")
+            with patch(
+                "pathlib.Path.stat", return_value=MagicMock(st_size=10 * 1024 * 1024 * 1024)
+            ):
+                with patch("autoresearch.core.llama_runner.gguf_is_moe", return_value=True):
+                    with patch("autoresearch.core.llama_runner.gguf_block_count", return_value=40):
+                        full = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=40)
+                        half = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=20)
             self.assertLess(full, half)
 
     def test_estimate_vram_offload_falls_back_to_32_ref(self):
@@ -502,12 +511,16 @@ class TestLlamaRunner(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "moe.gguf"
-            model.write_bytes(b"x" * (10 * 1024 * 1024 * 1024))
+            model.write_bytes(b"x")
             with patch(
-                "autoresearch.core.llama_runner.gguf_is_moe", side_effect=RuntimeError("no arch")
+                "pathlib.Path.stat", return_value=MagicMock(st_size=10 * 1024 * 1024 * 1024)
             ):
-                # n=32 / fallback 32 → full expert offload → ~28% of file + kv + overhead
-                est = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=32)
+                with patch(
+                    "autoresearch.core.llama_runner.gguf_is_moe",
+                    side_effect=RuntimeError("no arch"),
+                ):
+                    # n=32 / fallback 32 → full expert offload → ~28% of file + kv + overhead
+                    est = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=32)
             file_mb = 10 * 1024
             self.assertAlmostEqual(
                 est,

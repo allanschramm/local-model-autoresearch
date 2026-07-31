@@ -8,6 +8,7 @@ Repository operators and developers.
 
 ## Local Contracts
 - Scripts must be runnable from the repository root.
+- OpenVINO GenAI remains optional. `bench_openvino.py` imports it only while running and exits nonzero with an actionable install message when unavailable.
 - `model_up.py` (global `model-up`) must work from any cwd: resolve `--model` and draft path flags (`--spec-draft-model` / `-md` / `--model-draft`) to absolute paths, and spawn `llama-server` with `cwd=REPO_ROOT`.
 - `setup-check.sh` is the canonical readiness verification script (supports GPU acceleration and CPU-only builds). It must import-check every package listed in root `requirements.txt` (including `gguf`).
 - Claude Code hard-gates live under [`.claude/hooks/`](../.claude/hooks/) (not `scripts/`). See [docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md).
@@ -29,6 +30,7 @@ Repository operators and developers.
 - Git pre-commit (Ruff/pytest) is repo-root owned — see root `AGENTS.md` Verification + `.pre-commit-config.yaml`. Not under `scripts/hooks` (removed; Claude gates live in `.claude/hooks/`).
 
 ## Child DOX Index
+- [bench_openvino.py](bench_openvino.py) — optional OpenVINO GenAI CPU/iGPU benchmark with separate prefill/decode TPS output.
 - [run_pytest_hook.py](run_pytest_hook.py) — pre-commit local entry for venv pytest.
 - [lcb_only.py](lcb_only.py) — LCB-only remeasure helper (`scripts/lcb_only.py`).
 - [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0008).
