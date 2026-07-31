@@ -162,7 +162,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - [docs/AGENTS.md](docs/AGENTS.md) — Durable documentation contract.
   - [docs/models/AGENTS.md](docs/models/AGENTS.md) — Per-model GGUF specs (architecture, quant, settings).
   - [docs/adr/AGENTS.md](docs/adr/AGENTS.md) — Architecture decision records contract + index (ADRs 0001–0009).
-  - [docs/discovery/AGENTS.md](docs/discovery/AGENTS.md) — User-facing guides: model selection, good-enough speed path, whichllm/llmfit, quantization, agent onboarding, MTP/TPS, inference engines.
+  - [docs/discovery/AGENTS.md](docs/discovery/AGENTS.md) — User-facing guides: model selection, good-enough speed path, whichllm/llmfit, quantization, CPU inference, agent onboarding, MTP/TPS, inference engines.
   - [docs/sessions/AGENTS.md](docs/sessions/AGENTS.md) — Empirical session logs (reproducibility evidence).
  - [docs/architecture.html](docs/architecture.html) — Interactive architecture diagram.
  - [docs/llamacpp-toolset.md](docs/llamacpp-toolset.md) — llama.cpp binary reference (build, bench, server, quantize).

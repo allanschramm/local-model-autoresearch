@@ -1,7 +1,7 @@
 # AGENTS.md — docs/discovery
 
 ## Purpose
-User-facing guides for **discovering, evaluating, selecting, and optimizing** local LLMs and inference runtimes that fit the `local-model-autotuning` workflow. Covers tooling (`whichllm`), evaluation methodology (Pareto frontier, Zellinger economic evaluation), quantization strategies, and engine architectures.
+User-facing guides for **discovering, evaluating, selecting, and optimizing** local LLMs and inference runtimes (GPU and CPU) that fit the `local-model-autotuning` workflow. Covers tooling (`whichllm`), evaluation methodology (Pareto frontier, Zellinger economic evaluation), quantization strategies, CPU optimization (AVX-512/AMX/NUMA), and engine architectures.
 
 ## Ownership
 - Owned by: `local-model-autotuning` developers.
@@ -53,3 +53,6 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`mtp-baseline-guide.md`](./mtp-baseline-guide.md) — guide on verifying and benchmarking MTP speculative decoding with llama-bench/llama-cli.
 - [`small-model-mtp-tps.md`](./small-model-mtp-tps.md) — inventory of local MTP packaging + fair TPS matrix (8 GB, 2026-07-20).
 - [`unsloth-qwen-guides.md`](./unsloth-qwen-guides.md) — reference guide on Unsloth dynamic quantization and Qwen fine-tuning mechanics.
+
+### 4. CPU Inference & Build Optimization
+- [`cpu-inference-guide.md`](./cpu-inference-guide.md) — CPU-optimized llama.cpp build flags (AVX-512/AMX), Intel vs AMD notes, NUMA, thread affinity, allocators (tcmalloc/jemalloc), and GGUF quant selection for CPU cache.
