@@ -90,3 +90,7 @@ autoresearch/core/config.py
 models/sglang/
 .autoresearch_state.json
 .autoresearch_state.json.*
+
+# Case harness (local runtime + interview artifacts)
+.case/
+CLAUDE.local.md
