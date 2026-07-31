@@ -419,6 +419,8 @@ def cmd_start(alias_name: str | None) -> int:
         return 1
 
     STATE_DIR.mkdir(parents=True, exist_ok=True)
+    env = os.environ.copy()
+    env["GGML_CUDA_NO_PINNED"] = "1"
     with open(LOGFILE, "w", encoding="utf-8") as log:
         proc = subprocess.Popen(
             cmd,
@@ -427,6 +429,7 @@ def cmd_start(alias_name: str | None) -> int:
             stdin=subprocess.DEVNULL,
             close_fds=True,
             cwd=str(REPO_ROOT),
+            env=env,
             **_server_kwargs(),
         )
         _write_state(RunningState(proc.pid, cfg.name, cfg.alias or cfg.name, cfg.port, cfg.host))

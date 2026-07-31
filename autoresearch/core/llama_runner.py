@@ -715,6 +715,7 @@ class LlamaServerRunner:
         server_env[lib_path_var] = (
             f"{llama_lib_dir}{os.pathsep}{existing}" if existing else llama_lib_dir
         )
+        server_env["GGML_CUDA_NO_PINNED"] = "1"
 
         startup_tail: list[str] = []
         for port in candidate_ports(self.intent.port):
