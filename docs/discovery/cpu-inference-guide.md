@@ -1,6 +1,6 @@
 # CPU Inference Optimization Guide for llama.cpp
 
-*See also: [`docs/llamacpp-toolset.md`](../llamacpp-toolset.md) for llama.cpp build targets and CLI flags, and [`advanced-inference-optimizations.md`](./advanced-inference-optimizations.md) for general runtime & memory optimizations.*
+*See also: [`docs/llamacpp-toolset.md`](../llamacpp-toolset.md) for llama.cpp build targets and CLI flags, and [`advanced-inference-optimizations.md`](./advanced-inference-optimizations.md) for general runtime & memory optimizations (including why `tcmalloc` / `jemalloc` help).*
 
 ## 1. Build Configuration
 
@@ -17,36 +17,29 @@
 
 | Flag | Intel | AMD | Purpose |
 |------|-------|-----|---------|
-| `GGML_AVX` | All x86-64 | Zen1+ | Baseline vectorized ops |
-| `GGML_AVX2` | All x86-64 | Zen1+ | Enhanced vector ops |
-| `GGML_AVX512` | 6th-gen+ | Genoa+ | 512-bit vectorization |
+| `GGML_AVX` | Sandy Bridge+ | Bulldozer+ / Zen1+ | Baseline vectorized ops |
+| `GGML_AVX2` | Haswell+ | Zen1+ | Enhanced vector ops |
+| `GGML_AVX512` | Skylake-X / Xeon SP+ (not mainstream 6th–10th Core) | Zen4+ / Genoa+ | 512-bit vectorization |
 | `GGML_AVX512_VNNI` | Ice Lake+ | - | INT8 matrix ops |
 | `GGML_AVX512_BF16` | Cooper Lake+ | - | BF16 operations |
 | `GGML_AMX_TILE` | Sapphire Rapids+ | - | AMX tile ops |
 | `GGML_AMX_INT8` | Sapphire Rapids+ | - | AMX INT8 |
 | `GGML_AMX_BF16` | Sapphire Rapids+ | - | AMX BF16 |
 
-**AMD note:** Zen2/Zen3 support AVX2 only. Zen4+ and EPYC (Genoa+) support AVX-512. No AMX on AMD.
+**Intel note:** Consumer Skylake–Comet Lake desktop Core lacks AVX-512; only Skylake-X / Xeon SP (and later server/HEDT lines) have it. Ice Lake adds VNNI; Cooper Lake adds BF16; Sapphire Rapids adds AMX.
+
+**AMD note:** Zen1–Zen3 are AVX2-only. Zen4+ and EPYC Genoa+ add AVX-512. No AMX on AMD.
 
 ### Build Commands
-
-**Linux / macOS (Native build with OpenMP & AVX-512 / AMX):**
 
 ```bash
 # Intel Sapphire Rapids+ (AVX-512 + AMX)
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=ON -DGGML_OPENMP=ON \
   -DGGML_AVX512=ON -DGGML_AMX_TILE=ON -DGGML_AMX_INT8=ON -DGGML_AMX_BF16=ON
 
-# Standard x86-64 Native Build
+# Standard native build (AVX2 on typical desktops)
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=ON -DGGML_OPENMP=ON
 cmake --build build --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
-```
-
-**Windows (MSVC + Ninja with Native AVX2):**
-
-```powershell
-cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=ON -DGGML_OPENMP=ON -DGGML_AVX2=ON
-cmake --build build --config Release
 ```
 
 ### OpenMP Parallelization
@@ -59,7 +52,7 @@ cmake --build build --config Release
 
 Non-Uniform Memory Access (NUMA) matters on multi-socket systems.
 
-> **Platform:** NUMA, CPU affinity, and allocator preload below are Linux-focused. Windows/macOS use the native build in §1; allocator preload is Linux-only.
+> **Platform:** §§2–4 are Linux-only (`lscpu`, `numactl`, `taskset`, `ldconfig` / `LD_PRELOAD`).
 
 ### NUMA Strategies (`llama-server --numa`)
 
@@ -101,52 +94,58 @@ llama-server -t 12 -tb 8   # 12 main, 8 batch threads
 | Option | Example | Description |
 |--------|---------|-------------|
 | `--cpu-mask` | `-C 0xFF` | Hex mask (cores 0-7) |
-| `--cpu-range` | `-Cr 0-7` | Core range |
+| `--cpu-range` | `-Cr 0-7` | Contiguous CPU id range only |
 | `--cpu-strict` | `--cpu-strict 1` | Strict placement |
 | `--cpu-mask-batch` | `-Cb 0xFF` | Batch thread mask |
 | `--cpu-range-batch` | `-Crb 0-7` | Batch thread range |
 
+`--cpu-range` accepts a single `lo-hi` span. On SMT/HT, physical cores are often non-contiguous CPU ids — prefer discovering one logical CPU per physical `CORE` and binding with `taskset` (below).
+
 ### Physical Core Affinity
 
-On systems with SMT/hyperthreading, bind to physical cores to avoid cache thrashing and ensure stable latency:
-
 ```bash
-# Discover physical core mapping (Linux)
+# Inspect topology
 lscpu -e=CPU,CORE,SOCKET
 
-# Option A: Direct llama-server CPU core binding (set range to match physical core IDs from `lscpu -e`)
-llama-server -m model.gguf -t 8 --cpu-range 0-7 --cpu-strict 1
+# First N logical CPU ids with distinct physical CORE (skips SMT siblings)
+N=8
+CORES=$(lscpu -p=CPU,CORE | awk -F, -v n="$N" '
+  !/^#/ && !seen[$2]++ { ids[++c]=$1 }
+  END {
+    if (c < n) { printf "need %d physical cores, found %d\n", n, c > "/dev/stderr"; exit 1 }
+    for (i = 1; i <= n; i++) printf "%s%s", ids[i], (i < n ? "," : "")
+    print ""
+  }')
 
-# Option B: OS-level thread binding via taskset (8 physical cores; match -t)
-# Inspect topology first with `lscpu -e` to pick physical core IDs on your machine.
-sudo taskset -cp 0,2,4,6,8,10,12,14 $(pidof llama-server)
+# Option A (preferred): bind at process start
+taskset -c "$CORES" llama-server -m model.gguf -t "$N" --cpu-strict 1
+
+# Option B: OS-level bind on one running PID (fails closed if 0 or >1 matches)
+pid=$(pgrep -x llama-server)
+case "$pid" in
+  '') echo "llama-server not running" >&2; exit 1 ;;
+  *[!0-9]*) echo "multiple llama-server PIDs: $pid" >&2; exit 1 ;;
+esac
+sudo taskset -cp "$CORES" "$pid"
 ```
 
 ---
 
 ## 4. Memory Allocators
 
-Resolve the library path on your distro first, then preload:
+Why and when: see [`advanced-inference-optimizations.md`](./advanced-inference-optimizations.md) §2. **Linux + glibc `ldconfig` only** — abort outside that environment (macOS / musl lack this lookup path):
 
 ```bash
-# Find the .so on this machine (path differs by distro)
-ldconfig -p | grep -E 'tcmalloc|jemalloc'
-
-# Example once you have the path:
-LD_PRELOAD="$(ldconfig -p | awk '/libtcmalloc\.so/{print $NF; exit}')" \
-  llama-server -m model.gguf -t 8
-
-LD_PRELOAD="$(ldconfig -p | awk '/libjemalloc\.so/{print $NF; exit}')" \
-  llama-server -m model.gguf -t 8
+command -v ldconfig >/dev/null || { echo "ldconfig required (Linux glibc)" >&2; exit 1; }
+name=tcmalloc   # or: jemalloc
+lib="$(ldconfig -p | awk -v n="$name" '$0 ~ "lib"n"\\.so"{print $NF; exit}')"
+[ -n "$lib" ] || { echo "$name not found — install the matching package" >&2; exit 1; }
+LD_PRELOAD="$lib" llama-server -m model.gguf -t 8
 ```
-
-Also covered in [`advanced-inference-optimizations.md`](./advanced-inference-optimizations.md) §2.
 
 ---
 
 ## 5. GGUF Quantization for CPU
-
-### Model Quants
 
 | Type | BPW | CPU Recommendation |
 |------|-----|-------------------|
@@ -157,89 +156,4 @@ Also covered in [`advanced-inference-optimizations.md`](./advanced-inference-opt
 | Q6_K | 6.56 | Near-fp16 quality |
 | Q8_0 | 8.50 | Highest, slowest |
 
-**CPU Memory Bandwidth & Cache Strategy:**
-CPU inference speed is strictly bound by RAM bandwidth and L3 cache footprint.
-- **Cache Fit:** Smaller quants (Q4_K_M, IQ4_XS) fit a larger portion of layer weights into L3 cache during repeat tokens/attention calculations.
-- **Recommendation:** Start with `Q4_K_M`. For memory-bandwidth constrained CPUs (dual-channel DDR4/DDR5), prefer `Q4_K_M` or `IQ4_XS` over heavy `Q8_0` to maintain token generation speed. Use `Q5_K_M` when high accuracy is required and RAM bandwidth allows.
-
-### KV Cache Compression
-
-```bash
-llama-server -m model.gguf -ctk q4_0 -ctv q4_0
-```
-
-Saves 50-75% KV cache memory. Trade-off: minor quality loss.
-
-### CPU Cache & Context Overhead
-
-KV cache size directly impacts L2/L3 cache hits during generation:
-
-| Cache Tier | Typical Size | Considerations |
-|------------|--------------|----------------|
-| L2 | 256 KB–1 MB per core | Holds immediate attention vector computations |
-| L3 | 8 MB–128 MB shared | Holds active KV cache layers & small quant blocks |
-
-> **Formula**: KV cache size ≈ `2 × n_kv_heads × head_dim × bytes_per_elem × CTX_SIZE × n_layers`. Check L3 cache size via `lscpu` or `cat /sys/devices/system/cpu/cpu0/cache/index*/size`. When KV cache exceeds L3 cache capacity, attention layers fall back to main system RAM bandwidth. Use KV cache quantizing (`-ctk q4_0 -ctv q4_0`) to fit longer contexts within L3 cache bounds.
-
----
-
-## 6. Practical Tuning Workflow
-
-### 1. Quick Validation
-
-```bash
-# Smoke test
-llama-cli -m model.gguf -p "Hello" -n 128 -ngl 0
-```
-
-### 2. Thread Benchmarking
-
-```bash
-for t in 4 6 8 10 12; do
-  llama-bench -m model.gguf -t $t -p 512 -n 128 -ngl 0 -o json
-done
-```
-
-### 3. NUMA Comparison
-
-```bash
-llama-bench -m model.gguf -t 8 --numa distribute -p 512 -n 128
-llama-bench -m model.gguf -t 8 --numa isolate -p 512 -n 128
-```
-
-### 4. Allocator Comparison
-
-Run the same `llama-bench` command under the default allocator, then with `tcmalloc` / `jemalloc` via the `LD_PRELOAD` patterns in §4. Compare wall time / tokens/s.
-
----
-
-## 7. Hardware-Specific Notes
-
-### Intel CPUs
-
-| Generation | AVX-512 | AMX | Notes |
-|------------|---------|-----|-------|
-| 6th-gen HEDT/Xeon (Skylake-X/SP) | Yes | - | Early AVX-512 (consumer Skylake lacks it) |
-| Ice Lake | Yes | - | VNNI (INT8 matrix extension; no BF16) |
-| Cooper Lake | Yes | - | AVX-512 BF16 extension |
-| Sapphire Rapids | Yes | Yes | AMX tile/int8/bf16 |
-
-Build: `-DGGML_NATIVE=ON -DGGML_AVX512=ON`
-
-### AMD CPUs
-
-| Family | AVX-512 | Notes |
-|--------|---------|-------|
-| Zen1-Zen3 | No | AVX2 only |
-| Zen4+ (Genoa/EPYC 9004+) | Yes | AVX-512 support |
-| EPYC Milan (Zen3) | No | AVX2 only; Genoa replaced it |
-
-Build: `-DGGML_NATIVE=ON -DGGML_AVX2=ON` (or AVX512 on Zen4+)
-
----
-
-## 8. Common Pitfalls
-
-1. **Over-threading:** More threads ≠ faster. Match physical cores, not logical cores.
-2. **NUMA on single-socket:** Can hurt performance. Test before enabling.
-3. **Allocator preload:** Missing library crashes the process. Verify path exists.
+**CPU memory bandwidth & L3 cache:** smaller quants (Q4_K_M, IQ4_XS) keep more layer weights in L3 during decode. Start with `Q4_K_M`. On dual-channel DDR4/DDR5, prefer `Q4_K_M` or `IQ4_XS` over `Q8_0` for TPS; use `Q5_K_M` when accuracy matters and bandwidth allows. Check L3 size with `lscpu` (or `/sys/devices/system/cpu/cpu0/cache/index*/size` on Linux).
