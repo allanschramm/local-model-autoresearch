@@ -1,0 +1,170 @@
+"""Trial classifier tests (issue #4): classify + fingerprint merge, no GPU needed."""
+
+from __future__ import annotations
+
+import json
+
+from autoresearch.core.classify import (
+    bucket,
+    classify_trial,
+    flip_rows,
+    fp_from_baseline,
+    fp_from_config_json,
+    plan_write,
+    vector_from_row,
+)
+from autoresearch.core.pareto import ObjectiveVector
+
+BASELINE = {
+    "MODEL": "M.gguf",
+    "CTX_SIZE": 131072,
+    "KV_CACHE": "turbo2",
+    "THREADS": 6,
+    "TEMP": 0.4,
+    "TOP_P": 0.95,
+}
+
+
+def v(**kw) -> ObjectiveVector:
+    return ObjectiveVector(**kw)
+
+
+def cfg_json(baseline: dict) -> str:
+    return json.dumps(
+        {k.lower(): val for k, val in baseline.items()}, sort_keys=True, separators=(",", ":")
+    )
+
+
+def row(**kw) -> dict:
+    base = {
+        "trial_id": "t1",
+        "status": "incomplete",
+        "memory_gb": "8.0",
+        "config_json": cfg_json(BASELINE),
+        "ctx": "",
+        "tps": "",
+        "agentic": "",
+        "coding": "",
+    }
+    base.update(kw)
+    return base
+
+
+def test_bucket_rounds_memory_gb():
+    assert bucket(7.9) == 8
+    assert bucket(16.0) == 16
+
+
+def test_fp_from_baseline_matches_persisted_config_json():
+    assert fp_from_baseline(BASELINE) == fp_from_config_json(row()["config_json"])
+    assert fp_from_baseline(dict(BASELINE, THREADS=8)) != fp_from_baseline(BASELINE)
+    assert fp_from_config_json("") is None
+    assert fp_from_config_json("not json") is None
+
+
+def test_vector_from_row_blank_axes_are_none():
+    vec = vector_from_row(row(ctx="131072", tps="30.0", agentic="0.6"))
+    assert (vec.ctx, vec.tps, vec.agentic) == (131072, 30.0, 0.6)
+    assert vec.coding is None
+    assert not vec.complete
+
+
+def test_classify_trial_all_statuses():
+    full = v(ctx=131072, tps=30.0, agentic=0.6, coding=0.6)
+    assert classify_trial(failed=True, vector=full, known=[]) == "rejected"
+    assert (
+        classify_trial(failed=False, vector=v(ctx=131072, tps=30.0, agentic=0.6), known=[])
+        == "incomplete"
+    )
+    assert classify_trial(failed=False, vector=full, known=[full]) == "on_front"
+    better = v(ctx=131072, tps=40.0, agentic=0.7, coding=0.7)
+    assert classify_trial(failed=False, vector=full, known=[better]) == "dominated"
+
+
+def test_plan_write_partial_is_incomplete_no_flips():
+    status, flips = plan_write(
+        [], fp="fp", vector=v(ctx=131072, tps=30.0, agentic=0.6), bucket_gb=8
+    )
+    assert status == "incomplete"
+    assert flips == {}
+
+
+def test_plan_write_failed_short_circuits_to_rejected():
+    status, flips = plan_write(
+        [],
+        fp="fp",
+        vector=v(ctx=131072, tps=30.0, agentic=0.6, coding=0.6),
+        bucket_gb=8,
+        failed=True,
+    )
+    assert status == "rejected"
+    assert flips == {}
+
+
+def test_merge_completes_prior_incomplete_and_flips_its_row():
+    fp = fp_from_baseline(BASELINE)
+    prior = row(trial_id="old1", status="incomplete", ctx="131072", tps="30.0", agentic="0.6")
+    status, flips = plan_write([prior], fp=fp, vector=v(ctx=131072, coding=0.5), bucket_gb=8)
+    assert status == "on_front"  # merged with prior axes -> complete, undominated
+    assert flips == {"old1": "on_front"}
+
+
+def test_merge_still_incomplete_leaves_rows_alone():
+    fp = fp_from_baseline(BASELINE)
+    prior = row(trial_id="old1", status="incomplete", ctx="131072")
+    status, flips = plan_write([prior], fp=fp, vector=v(ctx=131072, tps=30.0), bucket_gb=8)
+    assert status == "incomplete"
+    assert flips == {}
+
+
+def test_plan_write_dominated_by_known_bucket_point():
+    fp = fp_from_baseline(BASELINE)
+    better = row(
+        trial_id="old1",
+        status="keep",
+        config_json=cfg_json(dict(BASELINE, THREADS=8)),
+        ctx="131072",
+        tps="40.0",
+        agentic="0.7",
+        coding="0.7",
+    )
+    status, flips = plan_write(
+        [better],
+        fp=fp,
+        vector=v(ctx=131072, tps=30.0, agentic=0.6, coding=0.6),
+        bucket_gb=8,
+    )
+    assert status == "dominated"
+    assert flips == {}
+
+
+def test_known_set_respects_memory_bucket():
+    fp = fp_from_baseline(BASELINE)
+    strong_other_bucket = row(
+        trial_id="old1",
+        status="keep",
+        memory_gb="16.0",
+        config_json=cfg_json(dict(BASELINE, THREADS=8)),
+        ctx="131072",
+        tps="40.0",
+        agentic="0.7",
+        coding="0.7",
+    )
+    status, _ = plan_write(
+        [strong_other_bucket],
+        fp=fp,
+        vector=v(ctx=131072, tps=30.0, agentic=0.6, coding=0.6),
+        bucket_gb=8,
+    )
+    assert status == "on_front"  # the 16GB point does not compete
+
+
+def test_flip_rows_persists_on_front_as_keep_alias():
+    out = flip_rows([row(trial_id="a"), row(trial_id="b")], {"a": "on_front", "b": "dominated"})
+    assert [r["status"] for r in out] == ["keep", "dominated"]
+    assert out[0]["trial_id"] == "a"  # untouched fields survive
+
+
+def test_flip_rows_ignores_unknown_trial_ids():
+    out = flip_rows([row(trial_id="a")], {"nope": "dominated"})
+    assert out[0]["status"] == "incomplete"

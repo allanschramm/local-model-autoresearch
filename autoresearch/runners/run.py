@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from autoresearch.benchmarks import bench_config, format_agentic_benchmarks, format_claw_tiers
-from autoresearch.core import config
+from autoresearch.core import classify, config
 from autoresearch.runners.evaluation import ExperimentRunner, resolve_tps_floor
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -392,6 +392,29 @@ def get_git_commit() -> str:
         return "unknown"
 
 
+def read_rows(results_file: Path) -> list[dict[str, str]]:
+    """All results.tsv rows as dicts ([] when missing or empty)."""
+    if not results_file.exists() or results_file.stat().st_size == 0:
+        return []
+    with open(results_file, encoding="utf-8") as f:
+        return [dict(row) for row in csv.DictReader(f, delimiter="\t")]
+
+
+def _apply_flips(results_file: Path, flips: dict[str, str]) -> None:
+    """Persist flipped statuses of prior rows (fingerprint merge, issue #4)."""
+    if not flips or not results_file.exists():
+        return
+    with open(results_file, encoding="utf-8") as f:
+        rows = [dict(r) for r in csv.DictReader(f, delimiter="\t")]
+    rows = classify.flip_rows(rows, flips)
+    with open(results_file, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def get_previous_best(results_file: Path, model_name: str | None = None) -> float:
     if not results_file.exists():
         return 0.0
@@ -665,10 +688,6 @@ def handle_single_run(args):
     print(f"Starting single run for model: {args.model}")
     commit = get_git_commit()
 
-    # Read previous best score
-    prev_best = get_previous_best(RESULTS_FILE, args.model)
-    print(f"Previous best 'keep' score: {prev_best:.6f}")
-
     include_nexus_val = getattr(args, "include_nexus", False)
     include_claw_val = getattr(args, "include_claw", False)
     agentic_quick = getattr(args, "agentic_quick", False) is True
@@ -683,8 +702,9 @@ def handle_single_run(args):
         agentic_full=agentic_full,
     )
 
-    if res["status"] != "OK":
-        print(f"Evaluation failed: {res['status']}")
+    failed = res["status"] != "OK" or res.get("outcome", "OK") != "OK"
+    if failed:
+        print(f"Evaluation failed: {res['status'] or res.get('outcome', 'OK')}")
         write_row(
             RESULTS_FILE,
             commit,
@@ -693,8 +713,8 @@ def handle_single_run(args):
             0.0,
             0.0,
             res["peak_vram_gb"],
-            "discard",
-            f"FAIL: {res['status']} | {args.desc}",
+            "rejected",  # classifier: hard failure (VRAM policy / crash / invalid)
+            f"FAIL: {res['status'] or res.get('outcome', 'OK')} | {args.desc}",
             category=determine_category(args),
             elapsed_sec=res.get("elapsed_sec", 0.0),
             tps=res.get("avg_tps"),
@@ -708,12 +728,26 @@ def handle_single_run(args):
         sys.exit(1)
 
     val_score = res["val_score"]
-    is_validation = getattr(args, "validation", False)
-    if not isinstance(is_validation, bool):
-        is_validation = False
 
-    improved = val_score > prev_best
-    status = "keep" if (improved and not is_validation) else "discard"
+    # Classify via the Pareto nucleus (issue #4): rejected on hard failure,
+    # incomplete while any axis is missing, else on_front/dominated vs the
+    # known Set for this hardware+budget bucket.
+    coding_measured = getattr(args, "include_coding", False) is True
+    vector = classify.ObjectiveVector(
+        ctx=args.ctx_size,
+        tps=res["avg_tps"] or None,
+        agentic=res["agentic_val"] if res.get("agentic_tier") else None,
+        coding=res["coding_val"] if coding_measured else None,
+    )
+    _ensure_category_column(RESULTS_FILE)
+    rows = read_rows(RESULTS_FILE)
+    fp = classify.fp_from_baseline(config.load_config())
+    status, flips = classify.plan_write(
+        rows,
+        fp=fp,
+        vector=vector,
+        bucket_gb=classify.bucket(res["peak_vram_gb"]),
+    )
 
     details = f"{args.model} kv={args.kv} ctx={args.ctx_size} TPS={res['avg_tps']:.1f} VRAM={res['peak_vram_gb']:.1f}GB coding={res['coding_val']:.4f}"
     details += f" lcb={res.get('lcb_val', 0.0):.4f} he={res.get('he_val', 0.0):.4f} mbpp={res.get('mbpp_val', 0.0):.4f} bigcode={res.get('bigcode_val', 0.0):.4f}"
@@ -735,6 +769,8 @@ def handle_single_run(args):
         details,
         lcb_score=res.get("lcb_val", 0.0),
         bigcode_score=res.get("bigcode_val", 0.0),
+        agentic=vector.agentic,
+        coding=vector.coding,
         category=determine_category(args),
         elapsed_sec=res.get("elapsed_sec", 0.0),
         tps=res.get("avg_tps"),
@@ -745,6 +781,7 @@ def handle_single_run(args):
         tps_source=res.get("tps_source", ""),
         **_result_config(),
     )
+    _apply_flips(RESULTS_FILE, flips)
 
     print("\n" + "=" * 40)
     print("EVALUATION COMPLETE")
@@ -762,16 +799,8 @@ def handle_single_run(args):
     print(f"Bench tg:         {res.get('bench_tg_tps', 0.0):.1f} t/s")
     print(f"Peak VRAM:        {res['peak_vram_gb']:.1f} GB")
     print(f"Current Score:    {val_score:.6f}")
-    print(f"Previous Best:    {prev_best:.6f}")
     print("-" * 40)
-    if improved:
-        print(f"\n>>> STATUS: KEEP (Improved by +{val_score - prev_best:.6f})")
-        print(">>> Run this to commit your tweak:")
-        print(f'    git commit -am "keep: {args.desc} (score: {val_score:.6f})"')
-    else:
-        print(f"\n>>> STATUS: DISCARD (Regressed or no improvement by {val_score - prev_best:.6f})")
-        print(">>> Run this to discard your tweak:")
-        print("    git checkout . && git clean -fd")
+    print(f"\n>>> TRIAL STATUS: {status}")
 
 
 def main():
