@@ -60,3 +60,4 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - [`2026-07-28-qwen35-4b-mtp-claw-full.md`](./2026-07-28-qwen35-4b-mtp-claw-full.md) — Qwen3.5-4B-MTP claw-full 0.2667; vector complete (coding 0.385).
 - [`2026-07-28-ornith-9b-deepreinforce-claw-full.md`](./2026-07-28-ornith-9b-deepreinforce-claw-full.md) — ornith-1.0-9b-Q4_K_M claw 0.4000 @ 65k; vector complete.
 - [`2026-07-28-qwen35-9b-mtp-claw-full.md`](./2026-07-28-qwen35-9b-mtp-claw-full.md) — Qwen3.5-9B-MTP claw 0.2000; vector complete (coding 0.495).
+- [`2026-07-31-day-model-candidates-100k.md`](./2026-07-31-day-model-candidates-100k.md) — primary-source shortlist for new 100k+ DAY candidates on the 8 GB rig; no downloads or Trials.
