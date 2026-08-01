@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from autoresearch.benchmarks.agentic_runner import (
+    ServiceManager,
     run_agentic_eval,
     score_task,
 )
@@ -127,6 +128,27 @@ def test_run_agentic_eval_missing_task(mock_llama_client: MagicMock):
     assert res["score"] == 0.0
     assert len(res["task_results"]) == 1
     assert res["task_results"][0]["details"] == "missing"
+
+
+def test_service_manager_starts_mock_with_utf8(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    popen = MagicMock(return_value=MagicMock())
+    monkeypatch.setattr("autoresearch.benchmarks.agentic_runner.subprocess.Popen", popen)
+    monkeypatch.setattr(ServiceManager, "_wait_healthy", lambda *_: None)
+
+    ServiceManager(
+        tmp_path,
+        {
+            "services": [
+                {
+                    "name": "web",
+                    "port": 9113,
+                    "command": "python mock_services/web/server.py",
+                }
+            ]
+        },
+    ).start()
+
+    assert popen.call_args.kwargs["env"]["PYTHONUTF8"] == "1"
 
 
 def test_run_agentic_eval_successful_task(

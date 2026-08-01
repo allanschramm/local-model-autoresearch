@@ -52,6 +52,7 @@ class ServiceManager:
 
             env = os.environ.copy()
             env["ERROR_RATE"] = "0"  # disable error injection for deterministic scoring
+            env["PYTHONUTF8"] = "1"
             for k, v in svc.get("env", {}).items():
                 env[k] = str(v)
             env["PORT"] = str(port)
