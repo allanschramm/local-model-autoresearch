@@ -23,6 +23,7 @@ venv-sglang/
 # Local tools & config
 .antigravitycli/
 .mcp.json
+.pi-glla
 
 # Models and large binaries (user provides their own)
 *.gguf
