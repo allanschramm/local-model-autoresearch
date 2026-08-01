@@ -84,8 +84,7 @@ def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[Ob
     """Complete points already in this hardware+budget bucket, merged per Fingerprint."""
     by_fp: dict[str, list[ObjectiveVector]] = {}
     for row in rows:
-        mem = _cell_float(row.get(BUCKET_PROXY))
-        if mem is None or bucket(mem) != bucket_gb:
+        if _row_bucket(row) != bucket_gb:
             continue
         fp = fp_from_config_json(row.get("config_json"))
         if fp is None:
@@ -97,6 +96,12 @@ def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[Ob
         if merged.complete:
             known.append(merged)
     return known
+
+
+def _row_bucket(row: Mapping[str, Any]) -> int | None:
+    """Bucket of a results.tsv row (None when the memory cell is unset)."""
+    mem = _cell_float(row.get(BUCKET_PROXY))
+    return None if mem is None else bucket(mem)
 
 
 def plan_write(
@@ -111,12 +116,15 @@ def plan_write(
 
     Returns (status, {trial_id: status}). When the Fingerprint merge completes
     an earlier incomplete point, every prior incomplete row of the same
-    Fingerprint is flipped to the computed status (ADR 0006 merge rule).
+    Fingerprint **in the same bucket** is flipped to the computed status
+    (ADR 0006 merge rule; merge and the known Set never cross budgets).
     """
     if failed:
         return "rejected", {}
     prior = [
-        vector_from_row(row) for row in rows if fp_from_config_json(row.get("config_json")) == fp
+        vector_from_row(row)
+        for row in rows
+        if fp_from_config_json(row.get("config_json")) == fp and _row_bucket(row) == bucket_gb
     ]
     merged = merge([Trial(fp=fp, vector=v) for v in [*prior, vector]])[0].vector
     status = classify_trial(failed=False, vector=merged, known=_known_vectors(rows, bucket_gb))
@@ -125,7 +133,9 @@ def plan_write(
     flips = {
         row.get("trial_id", ""): status
         for row in rows
-        if row.get("status") == "incomplete" and fp_from_config_json(row.get("config_json")) == fp
+        if row.get("status") == "incomplete"
+        and fp_from_config_json(row.get("config_json")) == fp
+        and _row_bucket(row) == bucket_gb
     }
     return status, flips
 

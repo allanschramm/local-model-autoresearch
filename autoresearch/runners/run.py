@@ -733,10 +733,12 @@ def handle_single_run(args):
     # incomplete while any axis is missing, else on_front/dominated vs the
     # known Set for this hardware+budget bucket.
     coding_measured = getattr(args, "include_coding", False) is True
+    # Claw quick is smoke, not the agentic axis (ADR 0006: agentic = Claw full).
+    agentic_full = res.get("agentic_tier") == "full"
     vector = classify.ObjectiveVector(
         ctx=args.ctx_size,
         tps=res["avg_tps"] or None,
-        agentic=res["agentic_val"] if res.get("agentic_tier") else None,
+        agentic=res["agentic_val"] if agentic_full else None,
         coding=res["coding_val"] if coding_measured else None,
     )
     _ensure_category_column(RESULTS_FILE)

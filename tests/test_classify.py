@@ -159,6 +159,21 @@ def test_known_set_respects_memory_bucket():
     assert status == "on_front"  # the 16GB point does not compete
 
 
+def test_merge_and_flips_are_bucket_scoped():
+    fp = fp_from_baseline(BASELINE)
+    other_bucket = row(
+        trial_id="big",
+        status="incomplete",
+        memory_gb="16.0",
+        ctx="131072",
+        tps="30.0",
+        agentic="0.6",
+    )
+    status, flips = plan_write([other_bucket], fp=fp, vector=v(ctx=131072, coding=0.5), bucket_gb=8)
+    assert status == "incomplete"  # the 16GB partial does not merge into the 8GB point
+    assert flips == {}
+
+
 def test_flip_rows_persists_on_front_as_keep_alias():
     out = flip_rows([row(trial_id="a"), row(trial_id="b")], {"a": "on_front", "b": "dominated"})
     assert [r["status"] for r in out] == ["keep", "dominated"]
