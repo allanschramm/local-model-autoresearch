@@ -29,6 +29,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-01-ornith-turboquant-131k.md`](./2026-08-01-ornith-turboquant-131k.md) — Complete Ornith 131k pipeline on TurboQuant+ Turbo2, including MTP failures and the 7.2 GB no-spec winner.
 - [`2026-08-01-ornith-turboquant-100k.md`](./2026-08-01-ornith-turboquant-100k.md) — TurboQuant+ release Trials for Ornith embedded MTP at 100k, including effective KV/MTP flags and VRAM-gate results.
 - [`2026-08-01-turboquant-release-research.md`](./2026-08-01-turboquant-release-research.md) — Official TurboQuant+ prebuilt release, Windows/CUDA assets, KV tiers, MTP support, and upstream relationship.
 - [`2026-06-19-alias-system.md`](./2026-06-19-alias-system.md) — Alias system setup and design.

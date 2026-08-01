@@ -93,3 +93,6 @@ models/sglang/
 .case/
 CLAUDE.local.md
 .claude/settings.local.json
+.pi-glla/active.jsonl
+.pi-glla/owner.json
+.pi-glla/session-owner.json
