@@ -580,6 +580,38 @@ class TestRun(unittest.TestCase):
         finally:
             path.unlink(missing_ok=True)
 
+    def test_vram_kill_during_enter_is_model_rejected(self):
+        from autoresearch.core.llama_runner import ServerIntent
+        from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
+
+        intent = ServerIntent(
+            model_path=Path("model.gguf"),
+            ctx_size=100000,
+            kv_cache="turbo3",
+            flash_attn="on",
+        )
+        runner = MagicMock(vram_killed=True, peak_vram_mb=7978.0)
+        runner.__enter__.side_effect = RuntimeError("VRAM_LIMIT_EXCEEDED")
+        with (
+            patch(
+                "autoresearch.runners.evaluation.ServerIntent.from_config",
+                return_value=(intent, {"vram_limit_mb": 7900}),
+            ),
+            patch(
+                "autoresearch.runners.evaluation.preflight_vram_for_intent",
+                return_value=(True, 6906.0, ""),
+            ),
+            patch(
+                "autoresearch.runners.evaluation.preflight_host_memory_for_intent",
+                return_value=(True, 6906.0, 27790.0, ""),
+            ),
+            patch("autoresearch.runners.evaluation.LlamaServerRunner", return_value=runner),
+        ):
+            result = ExperimentRunner(Path("models")).run_trial({}, skip_bench=True)
+
+        self.assertEqual(result.outcome, TrialOutcome.MODEL_REJECTED)
+        self.assertEqual(result.diagnostic, "VRAM_LIMIT_EXCEEDED")
+
     def test_format_arch_line_modes(self):
         import tempfile
 

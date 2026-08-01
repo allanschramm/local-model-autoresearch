@@ -95,7 +95,7 @@ Ternary (1-bit / 2-bit) quantizations compress 27B parameter models down to unde
 
 #### 2. Ternary-Bonsai-27B-Q2_0.gguf — **deleted locally (2026-07-23)**
 *   **Status:** Rejected. PrismML CUDA loads the quant, but **bench_tg ≈ 10.6 t/s** @ ctx 32k on RTX 4060 8 GB — below `TPS_FLOOR` 15. Prefer [Bonsai-27B-Q1_0](#1-bonsai-27b-q1_0gguf) (~41 t/s). Full note: [ternary-bonsai-27b.md](../models/ternary-bonsai-27b.md).
-*   **If re-acquiring:** needs `llama.cpp-prismml`; start with `-c 32768` (65k fails VRAM preflight ~8.5 GB est).
+*   **If re-acquiring:** needs a compatible PrismML prebuilt release under `llama.cpp-releases/`; start with `-c 32768` (65k fails VRAM preflight ~8.5 GB est).
 
 ---
 

@@ -745,6 +745,10 @@ class LlamaServerRunner:
             if self._wait_for_server(port):
                 return self
 
+            if self.vram_killed:
+                self._cleanup_all()
+                raise RuntimeError("VRAM_LIMIT_EXCEEDED")
+
             # If wait failed, grab the tail before cleaning up
             self._server_log.flush()
             if hasattr(self._server_log, "name"):
@@ -769,7 +773,7 @@ class LlamaServerRunner:
     def _wait_for_server(self, port: int) -> bool:
         delay = 0.05
         while True:
-            if self._server_proc.poll() is not None:
+            if self._server_proc is None or self._server_proc.poll() is not None:
                 return False
             try:
                 req = urllib.request.Request(f"http://127.0.0.1:{port}/health")

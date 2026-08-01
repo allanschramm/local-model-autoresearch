@@ -3,7 +3,7 @@
 **Source (weights):** https://huggingface.co/Nanbeige/Nanbeige4.2-3B  
 **Base (metadata):** https://huggingface.co/Nanbeige/Nanbeige4.2-3B-Base  
 **Community GGUF:** `owao/nanbeige4.2-3b-gguf` → `nanbeige4.2-3b-Q4_K_M.gguf`  
-**Arch fork:** https://github.com/Nanbeige/llama.cpp/tree/nanbeige42 → local `llama.cpp-nanbeige42/`  
+**Arch runtime:** https://github.com/Nanbeige/llama.cpp/tree/nanbeige42 — acquire a compatible prebuilt release under `llama.cpp-releases/`; do not clone/build locally.  
 **License:** Apache-2.0  
 **Local file:** `models/owao/nanbeige4.2-3b-gguf/nanbeige4.2-3b-Q4_K_M.gguf` (2.4 GiB)  
 **Family:** Nanbeige 4.2  
@@ -101,7 +101,7 @@ SAMPLER_DEFAULTS = {
 }
 ```
 
-Runtime for Trials / `model-up`: set `AUTORESEARCH_LLAMA_CPP_ROOT=llama.cpp-nanbeige42` or alias field `llama_cpp_root: llama.cpp-nanbeige42`.
+Runtime for Trials / `model-up`: set `AUTORESEARCH_LLAMA_CPP_ROOT` (or alias `llama_cpp_root`) to the versioned extracted release root containing `build-cuda/bin/`.
 
 ### Status
 - **llama-bench matrix:** tg128 peak **56.00** (f16, b1024/ub512); alias/Baseline **~55 tg** at f16 b512/ub256 with best PP (~2727). Evidence: [session](../sessions/2026-07-23-nanbeige42-tps-matrix.md).

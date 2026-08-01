@@ -40,11 +40,9 @@ All binaries → `$LLAMA_CPP/build-cuda/bin/` or `$LLAMA_CPP/build-cpu/bin/` (or
 ## Hardware
 
 - GPU: RTX 4060 (8 GB VRAM, CUDA 8.9) — adapt paths and flags for your hardware
-- Optional external forks (regular dirs under repo root, **not** git submodules):
-  - `llama.cpp-nanbeige42/` — Nanbeige Looped Transformer (`Nanbeige/llama.cpp` @ `nanbeige42`). Required for [Nanbeige4.2-3B](models/nanbeige4.2-3b.md).
-  - `llama.cpp-prismml/` — PrismML / Bonsai path when upstream is insufficient.
-  - `llama.cpp-fermionresearch/` — Fermion Research fork for Neutrino-8B.
-  - Point harness via `AUTORESEARCH_LLAMA_CPP_ROOT`, or pin per-alias with `llama_cpp_root` in `models/aliases/<name>/config.yaml` (`model-up`).
+- Only `llama.cpp/` remains a source clone/submodule. Alternate runtimes are downloaded release archives, extracted under `llama.cpp-releases/<engine>/<tag>/build-cuda/bin/`, and never built locally.
+- Point the harness at a release root via `AUTORESEARCH_LLAMA_CPP_ROOT`, or pin the same root per alias with `llama_cpp_root` in `models/aliases/<name>/config.yaml` (`model-up`). Keep engine and release tag in Trial evidence.
+- Installed examples: `llama.cpp-releases/turboquant/tqp-v0.3.0/` and `llama.cpp-releases/prismml/prism-b9599-9ca265a/` (Windows CUDA 12.4 prebuilts).
 
 ---
 

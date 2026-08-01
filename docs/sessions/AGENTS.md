@@ -29,6 +29,8 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-01-ornith-turboquant-100k.md`](./2026-08-01-ornith-turboquant-100k.md) — TurboQuant+ release Trials for Ornith embedded MTP at 100k, including effective KV/MTP flags and VRAM-gate results.
+- [`2026-08-01-turboquant-release-research.md`](./2026-08-01-turboquant-release-research.md) — Official TurboQuant+ prebuilt release, Windows/CUDA assets, KV tiers, MTP support, and upstream relationship.
 - [`2026-06-19-alias-system.md`](./2026-06-19-alias-system.md) — Alias system setup and design.
 - [`2026-06-19-mtp-baseline.md`](./2026-06-19-mtp-baseline.md) — MTP baseline benchmarking and verification.
 - [`2026-06-19-whichllm-coding.md`](./2026-06-19-whichllm-coding.md) — whichllm evaluation on coding benchmarks.
@@ -61,3 +63,5 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - [`2026-07-28-ornith-9b-deepreinforce-claw-full.md`](./2026-07-28-ornith-9b-deepreinforce-claw-full.md) — ornith-1.0-9b-Q4_K_M claw 0.4000 @ 65k; vector complete.
 - [`2026-07-28-qwen35-9b-mtp-claw-full.md`](./2026-07-28-qwen35-9b-mtp-claw-full.md) — Qwen3.5-9B-MTP claw 0.2000; vector complete (coding 0.495).
 - [`2026-07-31-day-model-candidates-100k.md`](./2026-07-31-day-model-candidates-100k.md) — primary-source shortlist for new 100k+ DAY candidates on the 8 GB rig; no downloads or Trials.
+- [`2026-08-01-day-models-131k-pipeline.md`](./2026-08-01-day-models-131k-pipeline.md) — full 131k throughput, coding-10, and Claw full results for Nemotron 3 Nano and Granite 4.0/4.1 candidates.
+- [`2026-08-01-ornith-mtp-100k-preflight.md`](./2026-08-01-ornith-mtp-100k-preflight.md) — Ornith 9B embedded-MTP rejection at the 100k context floor by the physical-VRAM hard gate.

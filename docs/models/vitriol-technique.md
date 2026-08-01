@@ -1,8 +1,8 @@
 # MoE on small VRAM — stock `--n-cpu-moe` vs Randozart/VITRIOL
 
-**Repo policy:** Search / Trials / Day-Night stay on **upstream `llama.cpp`** (submodule), except models that need an **arch fork** (`llama.cpp-nanbeige42`, `llama.cpp-prismml`, …). The Randozart [VITRIOL](https://github.com/Randozart/VITRIOL) fork is **study material only** — not a harness Baseline, not a Trial engine.
+**Repo policy:** Default Search / Trials / Day-Night use upstream `llama.cpp`. Alternate llama.cpp engines and architecture forks must be versioned prebuilt releases under `llama.cpp-releases/`; upstream is the only llama.cpp source clone. Randozart [VITRIOL](https://github.com/Randozart/VITRIOL) is a separate gitignored study repository, not a llama.cpp fork or default Trial engine.
 
-Local clone (gitignored): `VITRIOL/` — optional; re-clone from GitHub if missing.
+Local study clone: `VITRIOL/` at the pinned commit recorded below.
 
 ## Naming (read this first)
 

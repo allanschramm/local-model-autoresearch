@@ -206,6 +206,33 @@ class TestLlamaRunner(unittest.TestCase):
         self.assertFalse(runner._wait_for_server(18080))
 
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_wait_for_server_handles_vram_sampler_cleanup(self, mock_resolve):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        runner = LlamaServerRunner(self.intent)
+        runner._server_proc = None
+
+        self.assertFalse(runner._wait_for_server(18080))
+
+    @patch("autoresearch.core.llama_runner.LlamaServerRunner._start_vram_sampler")
+    @patch("autoresearch.core.llama_runner.candidate_ports", return_value=[18080])
+    @patch("autoresearch.core.llama_runner.subprocess.Popen")
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_enter_reports_vram_cleanup_without_touching_closed_log(
+        self, mock_resolve, _mock_popen, _mock_ports, _mock_sampler
+    ):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        runner = LlamaServerRunner(self.intent)
+
+        def reject_for_vram(_port):
+            runner.vram_killed = True
+            runner._cleanup_process()
+            return False
+
+        runner._wait_for_server = reject_for_vram
+        with self.assertRaisesRegex(RuntimeError, "VRAM_LIMIT_EXCEEDED"):
+            runner.__enter__()
+
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
     @patch("urllib.request.urlopen")
     @patch("time.time")
     @patch("time.sleep")

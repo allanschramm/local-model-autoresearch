@@ -72,11 +72,9 @@ run_nexus_only.py
 # Models folder is entirely local/offline
 /models/
 
-# Local vendor trees (not git submodules — keep on disk, do not commit)
+# Local vendor/runtime artifacts (do not commit)
 /claw-eval/
-/llama.cpp-nanbeige42/
-/llama.cpp-prismml/
-/llama.cpp-fermionresearch/
+/llama.cpp-releases/
 /VITRIOL/
 
 # Local mutable Baseline (seed from config.py.example)
@@ -94,3 +92,4 @@ models/sglang/
 # Case harness (local runtime + interview artifacts)
 .case/
 CLAUDE.local.md
+.claude/settings.local.json

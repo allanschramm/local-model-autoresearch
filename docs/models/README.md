@@ -20,7 +20,7 @@ Dense and MoE models can both have MTP support.
 Cards:
 - [Gemma-4-12B](gemma-4-12b.md) — coding **0.5650**; claw-full missing for this basename
 - [Gemma-4-E4B](gemma-4-e4b.md) — claw **0.3333** / coding **0.555**
-- [Nanbeige4.2-3B](nanbeige4.2-3b.md) — claw **0.2667** / coding **0.2800**; needs `llama.cpp-nanbeige42`
+- [Nanbeige4.2-3B](nanbeige4.2-3b.md) — claw **0.2667** / coding **0.2800**; needs a compatible Nanbeige prebuilt release
 - [Qwythos-9B-Claude-Mythos-5-1M](qwythos-9b-claude-mythos-5-1m.md) — non-MTP claw **0.3333** / coding **0.640**; MTP complete too
 - [Qwen3.5-9B](qwen3.5-9b.md) — UD claw **0.1333** / coding **rejected**; MTP claw **0.2000** / coding **0.495**
 - Qwen3.5-4B-MTP (`Qwen3.5-4B-MTP-Q4_K_M.gguf`) — claw **0.2667** / coding **0.385**; GGUF deleted after vector complete; no dedicated card yet

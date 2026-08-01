@@ -26,7 +26,7 @@ Repository-wide agent guidelines are owned by the repository developers.
 - Never assume. When uncertain whether a file is scratch, a decision is right, or a path is safe — ask the user or yourself explicitly before acting.
 - NEVER commit and/or push without explicit user command. Wait for "commit", "commit and push", or equivalent. Do not infer intent.
 - **Atomic commit = no leftovers**: When the user asks for an "atomic commit" / "commit atômico", every current git change that belongs in the repo (modified + untracked) must end up committed — do not leave files sitting unstaged/uncommitted. Split into **multiple logical commits** when the working tree mixes concerns (preferred). "Entire working tree" means cover everything, **not** dump everything into one commit. Only leave paths out when the user explicitly excludes them.
-- **Never edit upstream/vendor trees:** `llama.cpp/` (submodule), local `claw-eval/`, `llama.cpp-nanbeige42/`, `llama.cpp-prismml/`, and any other third-party checkout are read-only for agents. No Edit/Write/Delete/patch inside them. Work around via env (`PYTHONUTF8=1`), harness code owned by this repo, or ask the user.
+- **Never edit upstream/vendor runtimes:** `llama.cpp/` (submodule), local `claw-eval/`, `VITRIOL/`, and extracted `llama.cpp-releases/` are read-only for agents. No Edit/Write/Delete/patch inside them. Work around via env (`PYTHONUTF8=1`), harness code owned by this repo, or ask the user.
 
 ## Work Guidance
 - Use `/caveman lite|full|ultra|wenyan` for communication style constraint.
@@ -144,10 +144,10 @@ When the user requests a durable behavior change, record it here or in the relev
 - **Prefer llmfit over whichllm**: Always prefer `llmfit` for candidate discovery and hardware sizing. Keep `whichllm` only as an optional fallback (fewer models, outdated, poor performance on unified RAM). Note: neither is final fit authority — especially on `unified_memory`. Local `check_hardware` + conservative headroom win; discard unsafe #1 picks and explain why.
 - **Dense = no shared-memory offload**: Never partially offload dense GGUFs (layers to CPU / Windows shared GPU memory). That path freezes the whole PC. Only MoE may use expert offload (`--n-cpu-moe`). Dense must fit in **physical** VRAM on discrete GPUs, or in the **unified RAM pool** (with OS headroom) on Mac/UMA — cut `CTX_SIZE` / KV quant / drop draft or reject — never “spill and hope”.
 - **MoE initial `N_CPU_MOE`**: Baseline `None` → harness auto-sets `--n-cpu-moe` to GGUF `block_count` (full expert CPU offload). Set `0` only when the MoE fits physical VRAM (full GPU). Explicit `N>0` remains a manual override.
-- **Upstream llama.cpp for speed**: Search / Trials maximize TPS on **official** `llama.cpp` (submodule). Arch forks only when the GGUF needs them (Nanbeige, PrismML, …). Do **not** switch the harness to Randozart/VITRIOL DMA; that fork is documented for future operators in [docs/models/vitriol-technique.md](docs/models/vitriol-technique.md). Model-card “VITRIOL split” means stock `--n-cpu-moe`, not the fork.
+- **llama.cpp runtime policy:** Keep only official `llama.cpp/` as a llama.cpp source clone/submodule. Default Trials use that upstream build. Alternate llama.cpp engines or architecture forks use versioned prebuilt releases under gitignored `llama.cpp-releases/<engine>/<tag>/`; do not clone/build their source locally. Select them through `AUTORESEARCH_LLAMA_CPP_ROOT` and preserve engine/tag in the Trial evidence. VITRIOL is a separate study repository, not a llama.cpp fork; model-card “VITRIOL split” still means stock `--n-cpu-moe`.
 - **Virtual environment execution**: ALWAYS use the project's dedicated virtual environment (`.\venv\Scripts\python.exe` / `.\venv\Scripts\pytest.exe` on Windows, `./venv/bin/python` on Linux/macOS) for all python scripts, tests, and tool commands. NEVER run system-global `python` or `pip`, and NEVER install packages globally.
 - **Never commit alias registry**: `model-up` alias names, ports, and `models/aliases/*/config.yaml` are machine-local (`/models/` gitignored). Tracked docs use GGUF basenames + benchmark scores only — not which alias the user runs.
-- **Upstream/vendor trees are read-only**: Never modify `llama.cpp/` (only remaining submodule), nor local vendor checkouts `claw-eval/`, `llama.cpp-nanbeige42/`, `llama.cpp-prismml/`. UTF-8 / Windows mock issues → `PYTHONUTF8=1` (or harness-owned env injection), never patch upstream files.
+- **Upstream/vendor runtimes are read-only**: Never modify `llama.cpp/` (the only llama.cpp clone/submodule), local `claw-eval/`, `VITRIOL/`, or extracted `llama.cpp-releases/`. UTF-8 / Windows mock issues → `PYTHONUTF8=1` (or harness-owned env injection), never patch third-party files.
 
 ## Child DOX Index
 - [autoresearch/AGENTS.md](autoresearch/AGENTS.md) — Core autotuning package (config, runners, benchmarks).
@@ -172,8 +172,8 @@ When the user requests a durable behavior change, record it here or in the relev
 - External sources (**agent read-only — never edit**):
  - [llama.cpp/](llama.cpp/) — upstream runtime (**git submodule**).
  - [claw-eval/](claw-eval/) — Claw-Eval harness (**local vendor tree**, gitignored; not a submodule).
- - `llama.cpp-nanbeige42/`, `llama.cpp-prismml/` — arch forks (**local vendor trees**, gitignored).
- - `VITRIOL/` — Randozart MoE DMA study clone (**gitignored**; not a Trial engine). See [docs/models/vitriol-technique.md](docs/models/vitriol-technique.md).
+ - `llama.cpp-releases/` — versioned prebuilt alternate runtimes (**gitignored**, never source clones); select with `AUTORESEARCH_LLAMA_CPP_ROOT`.
+ - `VITRIOL/` — separate Randozart MoE DMA study clone (**gitignored**; not a llama.cpp fork or default Trial engine). See [docs/models/vitriol-technique.md](docs/models/vitriol-technique.md).
 - [docs/agents/](docs/agents/) — Matt Pocock engineering-skills config (issue tracker, triage labels, domain docs).
 
 ## Agent skills

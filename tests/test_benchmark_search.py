@@ -13,6 +13,8 @@ class TestBenchmarkSearch(unittest.TestCase):
             self.assertEqual(args.model, config.MODEL)
             self.assertEqual(args.ctx_size, config.CTX_SIZE)
             self.assertEqual(args.kv, config.KV_CACHE)
+            self.assertEqual(args.kv_k, config.KV_CACHE_K)
+            self.assertEqual(args.kv_v, config.KV_CACHE_V)
             self.assertEqual(args.threads, config.THREADS)
             self.assertEqual(args.include_coding, bench_config.INCLUDE_CODING)
 

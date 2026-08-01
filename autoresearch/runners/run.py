@@ -107,7 +107,7 @@ def parse_args():
         "-ctk",
         dest="kv_k",
         type=str,
-        default=None,
+        default=config.KV_CACHE_K,
         help="Key cache type (overrides --kv if set)",
     )
     parser.add_argument(
@@ -116,7 +116,7 @@ def parse_args():
         "-ctv",
         dest="kv_v",
         type=str,
-        default=None,
+        default=config.KV_CACHE_V,
         help="Value cache type (overrides --kv if set)",
     )
     parser.add_argument("--max-tokens", type=int, default=1024, help="Max generation tokens")
