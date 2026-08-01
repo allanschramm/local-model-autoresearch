@@ -23,11 +23,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _ensure_repo_root_on_sys_path() -> None:
+    repo_root = str(REPO_ROOT)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+
+
+_ensure_repo_root_on_sys_path()
+
+from autoresearch.core.pareto import pareto_set
+
+DEFAULT_TSV = REPO_ROOT / "results.tsv"
+
 _DESC_TPS_RE = re.compile(r"(?:bench_tg|TPS)=([0-9]+(?:\.[0-9]+)?)", re.IGNORECASE)
 _DESC_CTX_RE = re.compile(r"\bctx=([0-9]+)\b", re.IGNORECASE)
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_TSV = REPO_ROOT / "results.tsv"
 
 DEFAULT_DAY_IQ_RATIO = 0.75
 DEFAULT_NIGHT_CTX_FLOOR = 65536
@@ -198,21 +210,9 @@ def build_vectors(
     return complete, incomplete
 
 
-def dominates(a: Point, b: Point) -> bool:
-    """A dominates B on maximize axes ctx, TPS, agentic, coding."""
-    ge = a.ctx >= b.ctx and a.tps >= b.tps and a.agentic >= b.agentic and a.coding >= b.coding
-    gt = a.ctx > b.ctx or a.tps > b.tps or a.agentic > b.agentic or a.coding > b.coding
-    return ge and gt
-
-
-def pareto_front(points: Sequence[Point]) -> list[Point]:
-    front: list[Point] = []
-    for candidate in points:
-        if any(dominates(other, candidate) for other in points if other is not candidate):
-            continue
-        front.append(candidate)
-    front.sort(key=lambda p: (-p.iq_min, -p.tps, -p.ctx, p.model))
-    return front
+# Pareto Set owned by the nucleus (issue #1); alias keeps callers/tests stable.
+# Input order preserved — Day/Night tables sort internally (ADR 0008).
+pareto_front = pareto_set
 
 
 def pick_day(front: Sequence[Point], day_iq_ratio: float = DEFAULT_DAY_IQ_RATIO) -> Point | None:
