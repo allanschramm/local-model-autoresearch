@@ -21,6 +21,11 @@ CATEGORY_VALIDATION = "validation"
 CATEGORY_10_TASK = "10-task"
 CATEGORY_FULL_SUITE = "full-suite"
 
+# Trial Status (issue #3): four ADR 0006 values + legacy keep/discard.
+# keep is a deprecated alias of on_front; on_front persists as "keep" so
+# keep/discard-only readers keep working (expand, not contract).
+TRIAL_STATUSES = {"keep", "discard", "on_front", "dominated", "incomplete", "rejected"}
+
 BASELINE_CLI_FLAGS = {
     "--model",
     "--kv",
@@ -432,6 +437,8 @@ CATEGORY_FIELDNAMES = [
     "he_score",
     "mbpp_score",
     "bigcode_score",
+    "agentic",
+    "coding",
     "memory_gb",
     "elapsed_sec",
     "tps",
@@ -506,6 +513,8 @@ def write_row(
     description: str,
     lcb_score: float = 0.0,
     bigcode_score: float = 0.0,
+    agentic: float | None = None,
+    coding: float | None = None,
     category: str = "",
     elapsed_sec: float = 0.0,
     model: str = "",
@@ -537,6 +546,10 @@ def write_row(
     tps_source: str = "",
 ):
     _ensure_category_column(results_file)
+    if status not in TRIAL_STATUSES:
+        raise ValueError(f"invalid trial status: {status!r}; allowed: {sorted(TRIAL_STATUSES)}")
+    if status == "on_front":
+        status = "keep"  # deprecated alias persisted for keep/discard reader compat
     new_file = not results_file.exists() or results_file.stat().st_size == 0
     with open(results_file, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t")
@@ -563,6 +576,8 @@ def write_row(
             "he_score": f"{he_score:.6f}",
             "mbpp_score": f"{mbpp_score:.6f}",
             "bigcode_score": f"{bigcode_score:.6f}",
+            "agentic": _tsv_cell(agentic, ".4f"),
+            "coding": _tsv_cell(coding, ".6f"),
             "memory_gb": f"{memory_gb:.1f}",
             "elapsed_sec": f"{elapsed_sec:.0f}",
             "tps": _tsv_cell(tps, ".1f"),

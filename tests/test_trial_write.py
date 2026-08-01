@@ -1,0 +1,111 @@
+"""Trial write path serialization tests (issue #3).
+
+Objective Vector axes (ctx, TPS, agentic, coding — partials allowed) and
+Trial Status (on_front | dominated | incomplete | rejected) persist through
+write_row into results.tsv, with keep/discard legacy still accepted and
+on_front written as the deprecated "keep" alias so keep/discard-only readers
+keep functioning (expand, not contract).
+"""
+
+from __future__ import annotations
+
+import csv
+
+from autoresearch.runners.run import TRIAL_STATUSES, get_previous_best, write_row
+
+
+def _read(tmp_tsv) -> list[dict]:
+    with open(tmp_tsv, encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f, delimiter="\t"))
+
+
+def _write_row(tmp_tsv, status: str = "keep", val_score: float = 0.5, **kw) -> None:
+    write_row(
+        tmp_tsv,
+        "abc123",
+        val_score,
+        0.4,
+        0.3,
+        0.2,
+        1.0,
+        status,
+        "trial write test",
+        **kw,
+    )
+
+
+def test_write_row_persists_objective_vector_axes(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_row(
+        tsv,
+        ctx=131072,
+        tps=30.5,
+        agentic=0.6000,
+        coding=0.650000,
+    )
+    row = _read(tsv)[0]
+    assert row["ctx"] == "131072"
+    assert row["tps"] == "30.5"
+    assert row["agentic"] == "0.6000"
+    assert row["coding"] == "0.650000"
+
+
+def test_partial_axes_render_blank(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv, ctx=32768, tps=20.0)  # agentic + coding unmeasured
+    row = _read(tsv)[0]
+    assert row["ctx"] == "32768"
+    assert row["tps"] == "20.0"
+    assert row["agentic"] == ""
+    assert row["coding"] == ""
+
+
+def test_on_front_persists_as_keep_alias(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv, status="on_front")
+    assert _read(tsv)[0]["status"] == "keep"
+
+
+def test_new_trial_statuses_persist_literally(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    for status in ("dominated", "incomplete", "rejected"):
+        _write_row(tsv, status=status)
+    persisted = [row["status"] for row in _read(tsv)]
+    assert persisted == ["dominated", "incomplete", "rejected"]
+
+
+def test_legacy_keep_discard_still_accepted(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv, status="keep")
+    _write_row(tsv, status="discard")
+    assert [row["status"] for row in _read(tsv)] == ["keep", "discard"]
+
+
+def test_invalid_status_rejected(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    try:
+        _write_row(tsv, status="bogus")
+    except ValueError as e:
+        assert "bogus" in str(e)
+    else:
+        raise AssertionError("expected ValueError for invalid status")
+    assert not tsv.exists()  # nothing written
+
+
+def test_status_enum_matches_issue_vocabulary():
+    assert {
+        "keep",
+        "discard",
+        "on_front",
+        "dominated",
+        "incomplete",
+        "rejected",
+    } == TRIAL_STATUSES
+
+
+def test_keep_only_reader_still_finds_on_front_rows(tmp_path):
+    """get_previous_best (keep/discard-only) must still see on_front rows."""
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv, status="on_front", val_score=0.42)
+    _write_row(tsv, status="discard", val_score=0.10)
+    assert get_previous_best(tsv) == 0.42
