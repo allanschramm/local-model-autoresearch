@@ -625,6 +625,33 @@ class TestAutoLoop(unittest.TestCase):
         self.assertEqual(mock_write_row.call_args.args[7], "rejected")
         self.assertEqual(mock_write_row.call_args.kwargs["outcome"], "MODEL_REJECTED")
 
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
+    @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
+    @patch("autoloop.ExperimentRunner")
+    @patch("autoloop.load_config")
+    @patch("autoloop.SearchState.update_baseline")
+    @patch("autoloop.get_git_commit", return_value="abc123")
+    @patch("autoloop.write_row")
+    def test_autoloop_infra_error_is_recorded_then_stops(
+        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg, mock_runner_cls, _mock_models
+    ):
+        """INFRA_ERROR Trial is persisted as rejected before the loop raises (issue #4)."""
+        from autoresearch.runners.evaluation import TrialOutcome
+
+        mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
+        mock_runner = MagicMock()
+        mock_runner.run_trial.return_value = self._make_trial_result(
+            outcome=TrialOutcome.INFRA_ERROR, status="FAIL: server crashed"
+        )
+        mock_runner_cls.return_value = mock_runner
+
+        with patch.object(SearchStrategy, "get_neighbors", return_value=[]):
+            with self.assertRaises(RuntimeError):
+                autoloop.main()
+
+        self.assertEqual(mock_write_row.call_args.args[7], "rejected")
+        self.assertEqual(mock_write_row.call_args.kwargs["outcome"], "INFRA_ERROR")
+
 
 if __name__ == "__main__":
     unittest.main()

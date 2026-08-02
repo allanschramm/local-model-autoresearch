@@ -249,10 +249,55 @@ def _classify(cfg: dict[str, Any], res) -> tuple[str, dict[str, str], classify.O
         fp=classify.fp_from_baseline(cfg),
         vector=vector,
         bucket_gb=classify.bucket(getattr(res, "peak_vram_gb", 0.0)),
-        failed=getattr(res, "outcome", TrialOutcome.OK)
-        in (TrialOutcome.INVALID_CONFIG, TrialOutcome.MODEL_REJECTED),
+        failed=getattr(res, "outcome", TrialOutcome.OK) != TrialOutcome.OK,
     )
     return status, flips, vector
+
+
+def _write_trial(
+    cfg: dict[str, Any],
+    res,
+    description: str,
+    model_name: str,
+    tsv_category: str,
+) -> str:
+    """Classify, persist, and apply merge flips for one Trial (issue #4).
+
+    Returns the ADR 0006 status. Every non-OK outcome (including
+    INFRA_ERROR / CODE_ERROR) lands as `rejected` — no Trial disappears.
+    """
+    status, flips, vector = _classify(cfg, res)
+    write_row(
+        RESULTS_FILE,
+        get_git_commit(),
+        res.val_score,
+        res.swe_val,
+        res.he_val,
+        res.mbpp_val,
+        res.peak_vram_gb,
+        status,
+        description,
+        lcb_score=res.lcb_val,
+        bigcode_score=res.bigcode_val,
+        agentic=vector.agentic,
+        coding=vector.coding,
+        category=tsv_category,
+        tps=res.avg_tps,
+        bench_tg=getattr(res, "bench_tg_tps", None),
+        outcome=getattr(getattr(res, "outcome", TrialOutcome.OK), "value", "OK"),
+        diagnostic=getattr(res, "diagnostic", ""),
+        evaluation_profile=tsv_category,
+        scoring_benchmark="claw-eval",
+        task_ids=",".join(getattr(res, "task_ids", ())),
+        tps_source=getattr(res, "tps_source", ""),
+        **{
+            **tsv_fields_from_cfg(cfg),
+            "model": model_name,
+            "config_json": json.dumps(cfg, sort_keys=True, default=repr),
+        },
+    )
+    _apply_flips(RESULTS_FILE, flips)
+    return status
 
 
 def trial_config(
@@ -512,15 +557,9 @@ def main():
                     baseline_cfg, _defaults, include_ppl=(is_tps_mode or cli_args.perplexity_val)
                 )
             )
-            if getattr(baseline_res, "outcome", TrialOutcome.OK) in (
-                TrialOutcome.INFRA_ERROR,
-                TrialOutcome.CODE_ERROR,
-            ):
-                raise RuntimeError(f"Search stopped: {baseline_res.status}")
             baseline_score = baseline_res.val_score
             baseline_tps = baseline_res.avg_tps
             baseline_vram = baseline_res.peak_vram_gb
-            baseline_status, baseline_flips, baseline_vector = _classify(baseline_cfg, baseline_res)
 
             if cli_args.mode == "tps":
                 tsv_category = "engine-tps"
@@ -529,39 +568,18 @@ def main():
             else:
                 tsv_category = "agentic-full"
 
-            commit = get_git_commit()
-            write_row(
-                RESULTS_FILE,
-                commit,
-                baseline_score,
-                baseline_res.swe_val,
-                baseline_res.he_val,
-                baseline_res.mbpp_val,
-                baseline_vram,
-                baseline_status,
-                f"AutoLoop R{round_num} baseline for {model_name}: {search_strategy.format_config_summary(baseline_cfg)} "
-                f"TPS={baseline_tps:.1f} PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}",
-                lcb_score=baseline_res.lcb_val,
-                bigcode_score=baseline_res.bigcode_val,
-                agentic=baseline_vector.agentic,
-                coding=baseline_vector.coding,
-                category=tsv_category,
-                tps=baseline_tps,
-                bench_tg=getattr(baseline_res, "bench_tg_tps", None),
-                outcome=getattr(getattr(baseline_res, "outcome", TrialOutcome.OK), "value", "OK"),
-                diagnostic=getattr(baseline_res, "diagnostic", ""),
-                evaluation_profile=tsv_category,
-                scoring_benchmark="claw-eval",
-                task_ids=",".join(getattr(baseline_res, "task_ids", ())),
-                tps_source=getattr(baseline_res, "tps_source", ""),
-                **{
-                    **tsv_fields_from_cfg(baseline_cfg),
-                    "model": model_name,
-                    "config_json": json.dumps(baseline_cfg, sort_keys=True, default=repr),
-                },
+            baseline_desc = (
+                f"AutoLoop R{round_num} baseline for {model_name}: "
+                f"{search_strategy.format_config_summary(baseline_cfg)} "
+                f"TPS={baseline_tps:.1f} PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}"
+            )
+            baseline_status = _write_trial(
+                baseline_cfg, baseline_res, baseline_desc, model_name, tsv_category
             )
 
-            _apply_flips(RESULTS_FILE, baseline_flips)
+            baseline_outcome = getattr(baseline_res, "outcome", TrialOutcome.OK)
+            if baseline_outcome in (TrialOutcome.INFRA_ERROR, TrialOutcome.CODE_ERROR):
+                raise RuntimeError(f"Search stopped: {baseline_res.status}")
 
             ppl_str = (
                 f" PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}"
@@ -640,39 +658,18 @@ def main():
                             f"Perplexity degraded too much (PPL={n_ppl:.4f} vs base={b_ppl:.4f})"
                         )
 
-                status, flips, vec = _classify(neighbor.config, res)
-
-                write_row(
-                    RESULTS_FILE,
-                    commit,
-                    score,
-                    res.swe_val,
-                    res.he_val,
-                    res.mbpp_val,
-                    vram,
-                    status,
+                neighbor_desc = (
                     f"AutoLoop R{round_num} {changed}={new_val}: "
-                    f"{search_strategy.format_config_summary(neighbor.config)} TPS={tps:.1f} PPL={getattr(res, 'bench_ppl', 0.0):.4f} Δ={delta:+.6f}",
-                    lcb_score=res.lcb_val,
-                    bigcode_score=res.bigcode_val,
-                    agentic=vec.agentic,
-                    coding=vec.coding,
-                    category=tsv_category,
-                    tps=tps,
-                    bench_tg=getattr(res, "bench_tg_tps", None),
-                    outcome=getattr(getattr(res, "outcome", TrialOutcome.OK), "value", "OK"),
-                    diagnostic=getattr(res, "diagnostic", ""),
-                    evaluation_profile=tsv_category,
-                    scoring_benchmark="claw-eval",
-                    task_ids=",".join(getattr(res, "task_ids", ())),
-                    tps_source=getattr(res, "tps_source", ""),
-                    **{
-                        **tsv_fields_from_cfg(neighbor.config),
-                        "model": model_name,
-                        "config_json": json.dumps(neighbor.config, sort_keys=True, default=repr),
-                    },
+                    f"{search_strategy.format_config_summary(neighbor.config)} TPS={tps:.1f} "
+                    f"PPL={getattr(res, 'bench_ppl', 0.0):.4f} Δ={delta:+.6f}"
                 )
-                _apply_flips(RESULTS_FILE, flips)
+                _write_trial(neighbor.config, res, neighbor_desc, model_name, tsv_category)
+
+                if getattr(res, "outcome", TrialOutcome.OK) in (
+                    TrialOutcome.INFRA_ERROR,
+                    TrialOutcome.CODE_ERROR,
+                ):
+                    raise RuntimeError(f"Search stopped: {res.status}")
 
                 if is_improvement:
                     print(f"  >>> IMPROVEMENT! {changed}: {old_val} -> {new_val} ({reason})")
