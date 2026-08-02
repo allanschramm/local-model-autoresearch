@@ -107,11 +107,13 @@
       <p class="eyebrow">Semana 2 · Dia 3 · Automação e Segurança</p>
       <h1>Guardrails — Allow, Deny e Hooks</h1>
       <p class="lede">
-        Na prática o agente vira uma fila de <strong>tools</strong>: ler arquivo, editar, terminal.
+        Na prática o agente vira uma fila de <strong>tools</strong>: ler arquivo, editar,
+        terminal — e as do MCP do Dia 2.
         <strong>Guardrail</strong> é o segurança da <strong>boate</strong> — lista da casa,
         checagem na porta, comanda na saída. Sem isso, cada comando vira “Permitir?”
         e logo você só aperta Enter. Mesma ideia no <strong>Cursor</strong> e no
-        <strong>Claude Code</strong>.
+        <strong>Claude Code</strong>. Com as regras no lugar, o agente pode rodar
+        <strong>Night</strong> — sozinho, nas issues — sem virar bagunça.
       </p>
       <p class="navlinks">
         <a href="s2d2-mcp-ferramentas.html">← Dia 2</a>
@@ -547,6 +549,20 @@ claude --tools ""</pre>
       </div>
       <p class="feedback" data-feedback></p>
     </div>
+
+    <h2>Transpor para o seu harness</h2>
+    <p>
+      Allow / Deny / hooks existem em todo harness com tools — o nome muda, a ideia não.
+      No Claude Code: <code>.claude/settings.json</code> + hooks. No Cursor:
+      <code>permissions.json</code> / <code>hooks.json</code> (ou Run Mode na UI).
+      Em outro cliente, procure por permissões, lista de permitidos ou hooks nas
+      configurações.
+    </p>
+    <p>
+      Guardrail é o que torna o <strong>Night</strong> seguro: o agente trabalha sozinho
+      dentro das regras. No <strong>Day</strong>, ele acaba com a fadiga de aprovação —
+      você revisa o que importa, não cada “Permitir?”.
+    </p>
 
     <h2>Próximo</h2>
     <p><a href="s2d4-usecase-completo.html">Dia 4 — Caso de Uso Completo</a></p>
