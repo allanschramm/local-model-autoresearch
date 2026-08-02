@@ -40,7 +40,7 @@
 | **Dia 1** | Motores, baixar/escolher modelos, API local | [s1d1](lessons/s1d1-lmstudio-avisos-motores-api.html) |
 | **Dia 2** | llama.cpp + flags TPS | [s1d2](lessons/s1d2-llamacpp-flags-tps.html) |
 | **Dia 3** | MoE maior que a GPU (offload) | [s1d3](lessons/s1d3-moe-maior-que-a-vram.html) |
-| **Dia 4** | Samplers + conceito Day/Night (uso) | [s1d4](lessons/s1d4-usecase-fluxo-zero.html) | Publicado (swap) |
+| **Dia 4** | Samplers + Day/Night (uso) com tabela fixa | [s1d4](lessons/s1d4-usecase-fluxo-zero.html) | Publicado (swap + Day/Night uso) |
 
 ---
 

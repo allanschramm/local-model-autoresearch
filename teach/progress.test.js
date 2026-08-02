@@ -68,13 +68,19 @@ test("lesson readiness requires quizzes and either practice route", () => {
   assert.equal(progress.getPracticeMode("s0d2"), "real");
 });
 
-test("Week 1 Day 4 readiness needs all four quizzes plus practice", () => {
+test("Week 1 Day 4 readiness needs all six quizzes plus practice", () => {
   const progress = loadProgress({
-    teach_quiz_pass_v1: JSON.stringify(["s1d4-q1", "s1d4-q2", "s1d4-q3"]),
+    teach_quiz_pass_v1: JSON.stringify([
+      "s1d4-q1",
+      "s1d4-q2",
+      "s1d4-q3",
+      "s1d4-q4",
+      "s1d4-q5",
+    ]),
   });
 
   assert.equal(progress.isLessonReady("s1d4"), false);
-  progress.markQuizPassed("s1d4-q4");
+  progress.markQuizPassed("s1d4-q6");
   progress.markPractice("s1d4", "simulated");
   assert.equal(progress.isLessonReady("s1d4"), true);
 });
