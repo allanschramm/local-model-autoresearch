@@ -29,6 +29,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-02-qwen36-35b-unsloth-100k.md`](./2026-08-02-qwen36-35b-unsloth-100k.md) — Complete Qwen3.6 35B-A3B Unsloth no-spec pipeline at 100k with full expert CPU offload.
 - [`2026-08-02-qwythos-claude-mythos-100k.md`](./2026-08-02-qwythos-claude-mythos-100k.md) — Complete Claude-Mythos pipeline at 100k and the feasible Qwythos comparison boundary.
 - [`2026-08-02-qwythos-v2-mtp-b16-vram.md`](./2026-08-02-qwythos-v2-mtp-b16-vram.md) — Strict Qwythos v2 MTP matching-batch A/B rejected at the physical-VRAM gate.
 - [`2026-08-02-qwythos-v2-normal-100k.md`](./2026-08-02-qwythos-v2-normal-100k.md) — Complete no-MTP Qwythos v2 pipeline at 100k with Turbo2 and batch/ubatch 16/8.

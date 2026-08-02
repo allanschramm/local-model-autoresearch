@@ -1,171 +1,329 @@
-# Qwen3.6-35B-A3B — Model Card (Local)
+# Qwen3.6-35B-A3B - model card and GGUF inventory
 
-**Source repo:** https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF
-**Unsloth docs:** https://unsloth.ai/docs/models/qwen3.6
-**MTP-specific repo:** https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF
-**License:** Apache-2.0
-**Local file:** `$MODELS_DIR/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` (21.11 GB, baixado do repo MTP-GGUF em 2026-06-19). `$MODELS_DIR` defaults to `~/models` or set via env.
-**Symlink:** `models/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf -> $MODELS_DIR/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf`
+**Inventory date:** 2026-08-02
 
-**MTP-GGUF (validado 2026-06-19):** o arquivo em disco é do repo `unsloth/Qwen3.6-35B-A3B-MTP-GGUF`. Validado via llama-server log: `qwen35moe.nextn_predict_layers u32 = 1` confirma que os tensores MTP estão integrados no `.gguf`. NÃO é o mesmo arquivo do repo base `Qwen3.6-35B-A3B-GGUF` (esse NÃO tem MTP). Filename **não contém "MTP"**, então o auto-detect do `llama_runner.py` (linha 189) só dispara se passar `spec_type` explícito.
-**Family:** Qwen3.6 (Alibaba)
-**Quantization:** Unsloth Dynamic 2.0 — `UD-Q4_K_M` (calibrated on real-world use-cases, important layers upcasted)
+**Status:** publisher inventory refreshed; no model download or inference run was performed for this update. Publisher facts and local facts are kept separate.
 
-## Architecture (from GGUF metadata, verified via gguf lib)
-- Causal LM (text-only, no vision encoder in this GGUF)
-- **`block_count` = 40 layers** (confirmed from `qwen35moe.block_count`)
-- **35B total / 3B activated** (MoE, `expert_count=256, expert_used_count=8` + 1 shared expert)
-- Hidden 2048, vocab 248320, ctx 262144
-- RoPE dim 64, freq_base 10,000,000
-- **Hybrid architecture: 10 full-attention + 30 DeltaNet (linear attention) layers**
-  - `full_attention_interval = 4` — every 4th block is full attention
-  - 30 layers have `ssm_a`, `ssm_conv1d`, `ssm_dt`, `ssm_norm`, `ssm_out`, `ssm_alpha`, `ssm_beta` tensors
-  - 10 layers have `attn_q`, `attn_k`, `attn_v`, `attn_output` (16 Q heads, 2 KV heads, dim 256)
-  - Gated attention: 30 layers have `attn_gate.weight` (linear)
-- `ssm.conv_kernel=4, ssm.group_count=16, ssm.inner_size=4096, ssm.state_size=128, ssm.time_step_rank=32`
-- **Shared expert**: 1 per layer (`ffn_*_shexp.weight` in Q8_0). 256 routed experts in Q4_K.
-- Token embeddings: Q8_0 (preserved precision). Output: Q6_K (preserved precision).
-- **`general.name` = `Qwen3.6-35B-A3B`**, file_type=15 (Q4_K_M), quantization_version=2
-- 733 tensors total, 19 per block × 40 blocks ≈ 760
-- **NO MTP tensors in this GGUF.** The base repo (`Qwen3.6-35B-A3B-GGUF`) does NOT include MTP. To use MTP, re-download from the `Qwen3.6-35B-A3B-MTP-GGUF` repo.
+**Official source:** [Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B)
+**Unsloth base GGUF:** [unsloth/Qwen3.6-35B-A3B-GGUF](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF)
+**Unsloth MTP GGUF:** [unsloth/Qwen3.6-35B-A3B-MTP-GGUF](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF)
+**Unsloth docs:** [Qwen3.6](https://unsloth.ai/docs/models/qwen3.6) and [MTP](https://unsloth.ai/docs/models/mtp)
+**Official llama.cpp GGUF:** [ggml-org/Qwen3.6-35B-A3B-GGUF](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-GGUF)
+**Official llama.cpp MTP GGUF:** [ggml-org/Qwen3.6-35B-A3B-MTP-GGUF](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-MTP-GGUF)
+**License:** Apache-2.0 on the official Qwen repo and the Unsloth, ggml-org, and Bartowski base-GGUF repos. Fine-tune license metadata is called out separately below.
+**Local basename evidence:** `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` and `Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf` (GGUF headers inspected 2026-08-02 with the project venv `gguf_dump` and `PYTHONUTF8=1`).
+**Local absolute file:** **Not recorded in tracked docs.** Runtime resolves the selected basename; no machine-specific path is stored here.
+**Symlink:** **Not recorded in tracked docs.**
+**Family:** Qwen3.6 hybrid MoE (text and vision-capable publisher checkpoints; a usable vision GGUF also needs a matching `mmproj` sidecar).
+**Quantization coverage:** BF16, Q8_0, Q6/Q5/Q4 K-quants, IQ quants, MXFP4_MOE, Unsloth UD, and specialist MoE mixtures are listed below. None is labelled QAT by the inspected publishers.
 
-## Hardware requirements (per Unsloth docs)
-| Quant | Total RAM (RAM + VRAM) |
-|---|---|
-| 3-bit | 17 GB |
-| **4-bit (our pick)** | **23 GB** |
-| 6-bit | 30 GB |
-| 8-bit | 38 GB |
-| BF16 | 70 GB |
+## Architecture
 
-**Our target:** 8 GB VRAM (RTX 4060) + 16 GB RAM = 24 GB total. We are AT the 4-bit edge — split (active layers GPU / rest CPU) is mandatory.
+### Publisher-reported architecture (not local GGUF verification)
 
-**Warnings from Unsloth:**
-- **Do NOT use CUDA 13.2** (gibberish outputs). Use <13.2 or 13.3+.
-- If gibberish, ctx too low OR try `--cache-type-k bf16 --cache-type-v bf16`.
-- VRAM+RAM should exceed quant file size; otherwise SSD/HDD offload works but is slower.
+The official Qwen card reports 35B total parameters and about 3B active parameters, 40 layers, hidden size 2048, vocabulary 248,320, 256 routed experts with 8 routed experts plus 1 shared expert per MoE block, and a repeating hybrid layout of three gated DeltaNet blocks followed by one gated-attention block (each followed by MoE). DeltaNet uses 32 value heads and 16 query/key heads with head dimension 128; gated attention uses 16 query heads and 2 KV heads with head dimension 256. Rotary dimension is 64. Native context is 262,144 tokens and the card documents extension to 1,010,000 tokens. The model was trained with multi-step MTP.
 
-## Sampling (per Unsloth Recommended Settings)
+### Verified GGUF header evidence (2026-08-02)
 
-### Thinking mode (default — Qwen3.6 is hybrid thinking)
-| Param | General tasks | Precise coding (e.g. WebDev) |
+The project venv `gguf_dump` reported the following header values for the two selected basenames. These are basename-level facts; machine-specific paths are intentionally outside this tracked card.
+
+| Header field | `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` | `Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf` |
 |---|---|---|
-| temperature | 1.0 | **0.6** |
-| top_p | 0.95 | 0.95 |
-| top_k | 20 | 20 |
-| min_p | 0.0 | 0.0 |
-| presence_penalty | 0.0 | 0.0 |
-| repeat_penalty | 1.0 (off) | 1.0 (off) |
+| `general.name` | `Qwen3.6-35B-A3B` | `Qwen3.6 35B A3B Uncensored Heretic Native MTP Preserved` |
+| `general.architecture` | `qwen35moe` | `qwen35moe` |
+| `tensor_count` | 753 | 753 |
+| `block_count` | 41 | 41 |
+| `context_length` | 262144 | 262144 |
+| `head_count_kv` | 2 | 2 |
+| `expert_count` | 256 | 256 |
+| `expert_used_count` | 8 | 8 |
+| `nextn_predict_layers` | 1 | 1 |
+| `file_type` | 15 | 15 |
 
-### Instruct (non-thinking) mode
-| Param | General |
-|---|---|
-| temperature | 0.7 |
-| top_p | 0.8 |
-| top_k | 20 |
-| min_p | 0.0 |
-| presence_penalty | **1.5** |
-| repeat_penalty | 1.0 (off) |
+These headers establish MoE (`expert_count=256`) and MTP-preserving metadata (`nextn_predict_layers=1`) for both inspected basenames. A full tensor-name audit (2026-08-02) confirmed the MTP head tensors on both local files — see MTP and draft packaging.
 
-To disable thinking: `--chat-template-kwargs '{"enable_thinking": false}'` (TBD: confirm exact flag spelling in Qwen3.6 chat template — Unsloth doc was truncated at this point).
-**Preserve Thinking** is a new Qwen3.6 feature (TBD: details, doc truncated).
+## Public GGUF inventory
 
-## Context
-- **Max native:** 262,144 tokens
-- Extensible to 1M via YaRN
-- **Adequate output length:** 32,768 tokens
-- Recommended `presence_penalty` range: 0.0 to 2.0 (off by default; higher may slightly decrease perf)
+Sizes below are the publisher/Hugging Face display values at extraction time. They are rounded and can change when a repository is rebuilt. `imatrix` and `mmproj` files are sidecars, not standalone language-model targets.
 
-## MTP (Multi-Token Prediction)
-- **Status (2026-06-19):** MTP-GGUF já baixado e validado em disco. Tensores MTP presentes no arquivo (`nextn_predict_layers = 1` confirmado via log).
-- **Speedup empírico medido (MESMO PROMPT, MESMAS FLAGS, só file swap):**
-  - Base GGUF → 11.1 tok/s (`r_q4`)
-  - MTP-GGUF (sem flag MTP ativa) → 22.5 tok/s (`mtp_baseline`)
-  - **Ganho: 2.03× só com file swap.** Provável causa: MTP tensors carregados auxiliam mesmo inativos, OU perfil de quantização Unsloth SOTA.
-- **Speedup projetado com MTP ativo** (próximo teste, não executado): +1.15-1.25× pra MoE → ~26-28 tok/s.
-- llama.cpp flags (upstream build):
-  ```
-  --spec-type draft-mtp         # Use draft-mtp on standard/upstream llama.cpp (mtp is rejected by standard CLI)
-  --spec-draft-n-max 2          # Unsloth recommends; test 1-6
-  --spec-draft-type-k q4_0
-  --spec-draft-type-v q4_0
-  ```
-- **Auto-detect:** `llama_runner.py:189-205` is configured to map speculative decoding.
-- **Cuidado:** thinking mode é default, consome tokens sem output visível. Pra ver resposta final, `enable_thinking: false` no payload ou `max_tokens > 200`.
-- **Distinção crítica:** speculative decoding com draft model externo (Qwen 3.5 800M) FALHA pra MoE+SSM (validado em YouTube 2026-06-19: 17→11 tok/s com 65% aceitação). MTP usa cabeças treinadas no próprio modelo e é mecanismo diferente.
-- Ver session log completo: `docs/sessions/2026-06-19-mtp-baseline.md`.
+### Unsloth base GGUF (no MTP-specific repository packaging)
 
+Source: [base tree](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/tree/main). The `UD-*` files are Unsloth Dynamic 2.0 post-training quants; the repository does not label them QAT.
 
-## llama.cpp flags (per Unsloth)
-TBD — Unsloth doc section was truncated at the 5k mark in our extraction. The Qwen3.6 doc references a "🦙 Llama.cpp Guide" subsection we did not fully capture. **Re-extract if needed before first run.**
+| Basename | Quant | Reported size |
+|---|---:|---:|
+| `Qwen3.6-35B-A3B-MXFP4_MOE.gguf` | MXFP4_MOE | 21.7 GB |
+| `Qwen3.6-35B-A3B-Q8_0.gguf` | Q8_0 | 36.9 GB |
+| `Qwen3.6-35B-A3B-UD-IQ1_M.gguf` | UD-IQ1_M | 10 GB |
+| `Qwen3.6-35B-A3B-UD-IQ2_M.gguf` | UD-IQ2_M | 11.5 GB |
+| `Qwen3.6-35B-A3B-UD-IQ2_XXS.gguf` | UD-IQ2_XXS | 10.8 GB |
+| `Qwen3.6-35B-A3B-UD-IQ3_S.gguf` | UD-IQ3_S | 13.7 GB |
+| `Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf` | UD-IQ3_XXS | 13.2 GB |
+| `Qwen3.6-35B-A3B-UD-IQ4_NL.gguf` | UD-IQ4_NL | 18 GB |
+| `Qwen3.6-35B-A3B-UD-IQ4_NL_XL.gguf` | UD-IQ4_NL_XL | 19.5 GB |
+| `Qwen3.6-35B-A3B-UD-IQ4_XS.gguf` | UD-IQ4_XS | 17.7 GB |
+| `Qwen3.6-35B-A3B-UD-Q2_K_XL.gguf` | UD-Q2_K_XL | 12.3 GB |
+| `Qwen3.6-35B-A3B-UD-Q3_K_M.gguf` | UD-Q3_K_M | 16.6 GB |
+| `Qwen3.6-35B-A3B-UD-Q3_K_S.gguf` | UD-Q3_K_S | 15.4 GB |
+| `Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf` | UD-Q3_K_XL | 16.8 GB |
+| `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` | UD-Q4_K_M | 22.1 GB |
+| `Qwen3.6-35B-A3B-UD-Q4_K_S.gguf` | UD-Q4_K_S | 20.9 GB |
+| `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` | UD-Q4_K_XL | 22.4 GB |
+| `Qwen3.6-35B-A3B-UD-Q5_K_M.gguf` | UD-Q5_K_M | 26.5 GB |
+| `Qwen3.6-35B-A3B-UD-Q5_K_S.gguf` | UD-Q5_K_S | 24.9 GB |
+| `Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf` | UD-Q5_K_XL | 26.6 GB |
+| `Qwen3.6-35B-A3B-UD-Q6_K.gguf` | UD-Q6_K | 29.3 GB |
+| `Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf` | UD-Q6_K_XL | 31.8 GB |
+| `Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf` | UD-Q8_K_XL | 38.5 GB |
 
-Known good starting points (from Qwen3.5-MTP script that we already use):
-- `--spec-type draft-mtp`
-- `--cache-type-k q4_0` `--cache-type-v q4_0`
-- `--flash-attn on`
-- `--threads 8` `--threads-batch 8`
-- `--batch-size 512` `--ubatch-size 128`
-- `--ctx-size 32768`
+Sidecars in the same repository: `imatrix_unsloth.gguf_file` (192 MB), `mmproj-BF16.gguf` (903 MB), `mmproj-F16.gguf` (899 MB), and `mmproj-F32.gguf` (1.79 GB). The base repository does not expose an `mtp-*` model basename.
 
-## VITRIOL / Split strategy (Codacus technique)
-Source: https://www.youtube.com/watch?v=ZwNCsUTNWOA (Qwen 3.6 35B on i5-12th + 16GB RAM + GTX 1070 8GB → 18 tok/s, 132k ctx).
+### Unsloth MTP GGUF
 
-**The core insight:** With MoE, you don't need to put the whole model on the GPU. You put **attention + shared expert + routing** on the GPU, and the **256 routed experts stay in CPU/RAM**. Per-token compute is small (3B active), so the CPU bottleneck is acceptable.
+Source: [MTP tree](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/main). These are the publisher's MTP-preserving targets; there is no separate `mtp-*` file inside this repository. The target GGUF and the `draft-mtp` runtime path must still be checked locally.
 
-### The 2-knob split (our llama-server turboquant build, verified from `common/arg.cpp`)
+| Basename | Quant | Reported size |
+|---|---:|---:|
+| `Qwen3.6-35B-A3B-MXFP4_MOE.gguf` | MXFP4_MOE | 22.2 GB |
+| `Qwen3.6-35B-A3B-Q8_0.gguf` | Q8_0 | 37.8 GB |
+| `Qwen3.6-35B-A3B-UD-IQ1_M.gguf` | UD-IQ1_M | 11.4 GB |
+| `Qwen3.6-35B-A3B-UD-IQ2_M.gguf` | UD-IQ2_M | 11.9 GB |
+| `Qwen3.6-35B-A3B-UD-IQ2_XXS.gguf` | UD-IQ2_XXS | 11.8 GB |
+| `Qwen3.6-35B-A3B-UD-IQ3_S.gguf` | UD-IQ3_S | 15.3 GB |
+| `Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf` | UD-IQ3_XXS | 14.1 GB |
+| `Qwen3.6-35B-A3B-UD-IQ4_NL.gguf` | UD-IQ4_NL | 18.5 GB |
+| `Qwen3.6-35B-A3B-UD-IQ4_XS.gguf` | UD-IQ4_XS | 18.2 GB |
+| `Qwen3.6-35B-A3B-UD-Q2_K_XL.gguf` | UD-Q2_K_XL | 12.6 GB |
+| `Qwen3.6-35B-A3B-UD-Q3_K_M.gguf` | UD-Q3_K_M | 17.1 GB |
+| `Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf` | UD-Q3_K_XL | 17.2 GB |
+| `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` | UD-Q4_K_M | 22.7 GB |
+| `Qwen3.6-35B-A3B-UD-Q4_K_S.gguf` | UD-Q4_K_S | 21.4 GB |
+| `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` | UD-Q4_K_XL | 22.9 GB |
+| `Qwen3.6-35B-A3B-UD-Q5_K_M.gguf` | UD-Q5_K_M | 27.1 GB |
+| `Qwen3.6-35B-A3B-UD-Q5_K_S.gguf` | UD-Q5_K_S | 25.5 GB |
+| `Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf` | UD-Q5_K_XL | 27.2 GB |
+| `Qwen3.6-35B-A3B-UD-Q6_K.gguf` | UD-Q6_K | 30 GB |
+| `Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf` | UD-Q6_K_XL | 32.6 GB |
+| `Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf` | UD-Q8_K_XL | 39.1 GB |
 
-1. **`-ngl 99` / `--n-gpu-layers 99`** — load as many attention+shared layers into VRAM as fit. Tells llama.cpp "try GPU for the always-active path."
-2. **`-ncmoe 40` / `--n-cpu-moe 40`** — keep the **MoE expert weights of the first N layers in CPU**. For Qwen3.6 35B (40 layers total), `40` = ALL experts stay in CPU/RAM. Lower N = move some experts to GPU, but eats VRAM.
+Sidecars: `imatrix_unsloth.gguf_file` (192 MB), `mmproj-BF16.gguf` (903 MB), `mmproj-F16.gguf` (899 MB), and `mmproj-F32.gguf` (1.79 GB). The Unsloth card recommends upstream `llama-server` with `--spec-type draft-mtp --spec-draft-n-max 2`, `-np 1`; its MTP path does not support `-np > 1` or `--mmproj`.
 
-**Plus a 3rd for the draft model (MTP):**
-3. **`-ncmoed N` / `--n-cpu-moe-draft N`** — same logic but for the MTP draft model. Draft is small, so probably fits fully on GPU regardless.
+### Official ggml-org artifacts
 
-### Codacus flag stack (translated to our build)
-| Flag (our build) | Codacus name | Meaning |
-|---|---|---|
-| `--n-gpu-layers 99` | `-ngl 99` | Max attention+shared layers on GPU |
-| `--n-cpu-moe 40` | `-n-cpu-moe 40` (he said `-n-cpu-layers-ai`, transcript typo) | All 40 layers' MoE experts on CPU |
-| `--cache-type-k q4_0` | `--cache-type-k Q4` | Quantize K cache (4-bit) |
-| `--cache-type-v q4_0` | `--cache-type-v Q4` | Quantize V cache (4-bit) |
-| `--ctx-size 132000` | `-c 132k` | Push to 132k context (he tested 64k first, then 132k) |
-| `--no-mmap` | `--no-mmap` | **NOT used** (he explicitly said he skipped due to 16GB RAM) |
-| `--spec-type draft-mtp` | (his video, n/a) | MTP speculative decoding |
+Source: [base tree](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-GGUF/tree/main).
 
-### Codacus result: 18 tok/s, 132k ctx, 8GB VRAM + 16GB RAM
-- 18 tok/s is **above our 20 tok/s floor only marginally** — but he was on i5-12th + 1070. We have i5/i7 12th+ + RTX 4060. 4060 has 2× CUDA cores of 1070. We should hit 25-35 tok/s easily.
+| Basename | Role / quant | Reported size |
+|---|---|---:|
+| `Qwen3.6-35B-A3B-BF16.gguf` | base BF16 | 69.4 GB |
+| `Qwen3.6-35B-A3B-Q4_K_M.gguf` | base Q4_K_M | 20.4 GB |
+| `Qwen3.6-35B-A3B-Q8_0.gguf` | base Q8_0 | 36.9 GB |
+| `dflash-Qwen3.6-35B-A3B-BF16.gguf` | DFlash draft, BF16 | 783 MB |
+| `dflash-Qwen3.6-35B-A3B-Q8_0.gguf` | DFlash draft, Q8_0 | 421 MB |
+| `mmproj-Qwen3.6-35B-A3B-BF16.gguf` | vision sidecar | 903 MB |
+| `mmproj-Qwen3.6-35B-A3B-Q8_0.gguf` | vision sidecar | 614 MB |
+| `mtp-Qwen3.6-35B-A3B-BF16.gguf` | separate MTP artifact, BF16 | 3.74 GB |
+| `mtp-Qwen3.6-35B-A3B-Q4_0.gguf` | separate MTP artifact, Q4_0 | 1.06 GB |
+| `mtp-Qwen3.6-35B-A3B-Q8_0.gguf` | separate MTP artifact, Q8_0 | 1.99 GB |
 
-### MTP flag verified from our source
-Verified in July 2026: Our current standard llama.cpp binary accepts `--spec-type draft-mtp` (and rejects `mtp`). The alias configurations are configured to use `--spec-type draft-mtp` which successfully enables MTP, achieving ~1.8x speedup.
+Source: [MTP-only tree](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-MTP-GGUF/tree/main).
 
-MTP adds ~2 GB RAM/VRAM headroom and 1.4-2.2× speedup (Unsloth). Unambiguously turn it ON.
+| Basename | Role / quant | Reported size |
+|---|---|---:|
+| `Qwen3.6-35B-A3B-MTP-BF16.gguf` | integrated MTP BF16 target | 71.1 GB |
+| `Qwen3.6-35B-A3B-MTP-Q8_0.gguf` | integrated MTP Q8_0 target | 37.8 GB |
+| `mmproj-Qwen3.6-35B-A3B-Q8_0.gguf` | vision sidecar | 614 MB |
+
+The official MTP card uses `--spec-type draft-mtp --spec-draft-n-max 2` or `3` and points to [llama.cpp PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673), which is merged. The `dflash-*` files are DFlash artifacts, not MTP files.
+
+### Bartowski GGUF
+
+Source: [bartowski/Qwen_Qwen3.6-35B-A3B-GGUF tree](https://huggingface.co/bartowski/Qwen_Qwen3.6-35B-A3B-GGUF/tree/main). License shown by the repository: Apache-2.0. These are standard K/I quants; no QAT label is supplied.
+
+| Basename | Quant | Reported size |
+|---|---:|---:|
+| `Qwen_Qwen3.6-35B-A3B-IQ1_M.gguf` | IQ1_M | 9.42 GB |
+| `Qwen_Qwen3.6-35B-A3B-IQ2_M.gguf` | IQ2_M | 13 GB |
+| `Qwen_Qwen3.6-35B-A3B-IQ2_S.gguf` | IQ2_S | 11.9 GB |
+| `Qwen_Qwen3.6-35B-A3B-IQ2_XS.gguf` | IQ2_XS | 11.7 GB |
+| `Qwen_Qwen3.6-35B-A3B-IQ2_XXS.gguf` | IQ2_XXS | 10.7 GB |
+| `Qwen_Qwen3.6-35B-A3B-IQ3_M.gguf` | IQ3_M | 17.8 GB |
+| `Qwen_Qwen3.6-35B-A3B-IQ3_XS.gguf` | IQ3_XS | 17.1 GB |
+| `Qwen_Qwen3.6-35B-A3B-IQ3_XXS.gguf` | IQ3_XXS | 15.8 GB |
+| `Qwen_Qwen3.6-35B-A3B-IQ4_NL.gguf` | IQ4_NL | 20.8 GB |
+| `Qwen_Qwen3.6-35B-A3B-IQ4_XS.gguf` | IQ4_XS | 19.7 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q2_K.gguf` | Q2_K | 13.5 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q2_K_L.gguf` | Q2_K_L | 14 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q3_K_L.gguf` | Q3_K_L | 17.8 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q3_K_M.gguf` | Q3_K_M | 17.1 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q3_K_S.gguf` | Q3_K_S | 16.4 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q3_K_XL.gguf` | Q3_K_XL | 18.2 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q4_0.gguf` | Q4_0 | 20.8 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q4_1.gguf` | Q4_1 | 22.9 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q4_K_L.gguf` | Q4_K_L | 22.7 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf` | Q4_K_M | 22.3 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q4_K_S.gguf` | Q4_K_S | 21.5 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q5_K_L.gguf` | Q5_K_L | 26.2 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q5_K_M.gguf` | Q5_K_M | 25.9 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q5_K_S.gguf` | Q5_K_S | 25.1 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q6_K.gguf` | Q6_K | 30.9 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q6_K_L.gguf` | Q6_K_L | 31.2 GB |
+| `Qwen_Qwen3.6-35B-A3B-Q8_0.gguf` | Q8_0 | 37.8 GB |
+
+Sidecars/drafts: `Qwen_Qwen3.6-35B-A3B-imatrix.gguf` (192 MB), `mmproj-Qwen_Qwen3.6-35B-A3B-bf16.gguf` (903 MB), `mmproj-Qwen_Qwen3.6-35B-A3B-f16.gguf` (899 MB), `mtp-Qwen_Qwen3.6-35B-A3B-Q4_0.gguf` (1.19 GB), and `mtp-Qwen_Qwen3.6-35B-A3B-Q8_0.gguf` (1.99 GB). The `mtp-*` files are separate basenames; inspect GGUF metadata before treating them as integrated MTP targets.
+
+### AesSedai specialist MoE quants
+
+Source: [AesSedai/Qwen3.6-35B-A3B-GGUF](https://huggingface.co/AesSedai/Qwen3.6-35B-A3B-GGUF). The card describes fused/imatrixed specialist MoE mixtures and says its 2026-05-18 update added MTP tensors to the quants. The repository uses one folder and two shards per quant; the sizes below are the card's GiB values.
+
+| Exact shard basenames | Mixture / card size |
+|---|---:|
+| `Qwen3.6-35B-A3B-IQ3_S-00001-of-00002.gguf`, `Qwen3.6-35B-A3B-IQ3_S-00002-of-00002.gguf` | IQ3_S, 13.48 GiB |
+| `Qwen3.6-35B-A3B-IQ4_XS-00001-of-00002.gguf`, `Qwen3.6-35B-A3B-IQ4_XS-00002-of-00002.gguf` | IQ4_XS, 17.23 GiB |
+| `Qwen3.6-35B-A3B-Q4_K_M-00001-of-00002.gguf`, `Qwen3.6-35B-A3B-Q4_K_M-00002-of-00002.gguf` | Q4_K_M, 21.45 GiB |
+| `Qwen3.6-35B-A3B-Q5_K_M-00001-of-00002.gguf`, `Qwen3.6-35B-A3B-Q5_K_M-00002-of-00002.gguf` | Q5_K_M, 25.28 GiB |
+| `Qwen3.6-35B-A3B-Q6_K-00001-of-00002.gguf`, `Qwen3.6-35B-A3B-Q6_K-00002-of-00002.gguf` | Q6_K, 27.93 GiB |
+
+Sidecars: `imatrix.gguf` (192 MB), `mmproj-Qwen3.6-35B-A3B-BF16.gguf` (903 MB), `mmproj-Qwen3.6-35B-A3B-F16.gguf` (899 MB), and `mmproj-Qwen3.6-35B-A3B-F32.gguf` (1.79 GB). License: **apache-2.0** (AesSedai repo card, verified 2026-08-02). MTP keys were confirmed locally on 2026-08-02 (`blk.40.nextn.*` tensors); llama.cpp `draft-mtp` support confirmed via source — see MTP section.
+
+## Fine-tune and uncensored candidates
+
+These are separate model families, not interchangeable with the base Qwen checkpoint. They should not become the baseline without an explicit selection and a complete Objective Vector.
+
+### Hesamation reasoning distill
+
+Source: [hesamation/Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled-GGUF](https://huggingface.co/hesamation/Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled-GGUF). The card describes an Apache-2.0 text-only SFT fine-tune and supplies no distinct sampler profile.
+
+| Basename | Quant | Reported size |
+|---|---:|---:|
+| `Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled.Q4_K_M.gguf` | Q4_K_M | 21.2 GB |
+| `Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled.Q5_K_M.gguf` | Q5_K_M | 24.7 GB |
+| `Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled.Q6_K.gguf` | Q6_K | 28.5 GB |
+| `Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled.Q8_0.gguf` | Q8_0 | size not surfaced by the inspected tree |
+
+No MTP or draft package is documented for this fine-tune; do not assume MTP merely because the base model supports it. The card's llama.cpp example is ordinary GGUF loading.
+
+### Bahushruth abliterated v4
+
+Source: [Bahushruth/Qwen3.6-35B-A3B-abliterated-v4-GGUF](https://huggingface.co/Bahushruth/Qwen3.6-35B-A3B-abliterated-v4-GGUF). Standard files are converted with `--no-mtp`; the card separately publishes a BF16 MTP file and asks for a recent llama.cpp with `--spec-type draft-mtp --spec-draft-n-max 1`. Sizes are the card's rounded values.
+
+| Basename | Quant / packaging | Reported size |
+|---|---|---:|
+| `Qwen3.6-35B-A3B-abliterated-v4-BF16.gguf` | BF16, standard | 69.4 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-Q8_0.gguf` | Q8_0, standard | 36.9 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-Q6_K.gguf` | Q6_K, standard | 28.5 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-Q5_K_M.gguf` | Q5_K_M, standard | 24.7 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-Q4_K_M.gguf` | Q4_K_M, standard | 21.2 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-IQ4_XS.gguf` | IQ4_XS, standard | 18.7 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-IQ4_NL.gguf` | IQ4_NL, standard | 19.8 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-Q3_K_M.gguf` | Q3_K_M, standard | 16.8 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-IQ3_M.gguf` | IQ3_M, standard | 15.4 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-IQ3_XXS.gguf` | IQ3_XXS, standard | 13.6 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-Q2_K.gguf` | Q2_K, standard | 12.9 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-IQ2_M.gguf` | IQ2_M, standard | 11.7 GB |
+| `Qwen3.6-35B-A3B-abliterated-v4-BF16-MTP.gguf` | BF16, MTP-preserving | about 71 GB (card table) |
+
+The card does not provide a separate sampler recommendation. The BF16 MTP size is rounded differently in the page summary; retain the publisher's uncertainty rather than treating it as a local byte count.
+
+### SC117 Heretic/MPOA APEX
+
+Source: [SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF](https://huggingface.co/SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF). The card describes an Apache-2.0 uncensored Heretic/MPOA APEX fine-tune with native MTP preserved. The current tree exposes these exact files (HF display values are rounded and differ from an older update table):
+
+| Basename | APEX tier | Current tree size (approx.) |
+|---|---|---:|
+| `Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Quality.gguf` | I-Quality | 23.5 GB |
+| `Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Balanced.gguf` | I-Balanced | 26 GB |
+| `Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf` | I-Compact | 17 GB |
+| `Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-MINI.gguf` | I-MINI | 14.3 GB |
+
+The card recommends `--spec-type draft-mtp --spec-draft-n-max 2` and publishes the same four sampler profiles used by the MTP Qwen card (thinking/general `1.0/0.95/20`, thinking/coding `0.6/0.95/20`, instruct/general `0.7/0.8/20`, instruct/reasoning `1.0/1.0/40`; presence penalties 1.5, 0, 1.5, and 2 respectively). These are fine-tune recommendations, not base-model measurements.
+
+## Hardware requirements
+
+- Run `scripts/check_hardware.py` before downloading or selecting a model. The whole GGUF, KV cache, runtime allocations, and vision/MTP sidecars must fit with OS/IDE headroom.
+- Unsloth's published total-memory guide is approximately: 3-bit 17 GB, 4-bit 23 GB, 6-bit 30 GB, 8-bit 38 GB, and BF16 70 GB. These are sizing hints, not a fit result for this machine.
+- The Unsloth Qwen3.6 guidance warns against CUDA 13.2 for this model and suggests BF16 KV cache types when output is degraded; confirm the current runtime/toolchain before applying either recommendation.
+- Dense GGUFs must fit physical VRAM on a discrete-GPU machine or the unified RAM pool on UMA. Do not partially offload a dense model and hope shared memory remains usable.
+- MoE expert offload is a separate path: `N_CPU_MOE=None` lets the harness infer a safe default from GGUF `block_count`; `N_CPU_MOE=0` is only for a MoE that actually fits in physical VRAM; an explicit positive value is a manual override.
+- The listed 10-39 GB model sizes are not a fit guarantee. Context size, KV type, draft/MTP state, `mmproj`, and the selected runtime all change peak memory. The measured point below passed its host/VRAM preflight; that result does not generalize to every quant or context.
+
+## Recommended settings
+
+Seed `SAMPLER_DEFAULTS` from the model card before the first Trial. Use the profile matching the job; do not start from the repository template when a publisher profile exists.
+
+| Profile | Temperature | Top-p | Top-k | Min-p | Presence penalty | Repetition penalty |
+|---|---:|---:|---:|---:|---:|---:|
+| Thinking / general | 1.0 | 0.95 | 20 | 0 | 1.5 | 1.0 |
+| Thinking / precise coding | 0.6 | 0.95 | 20 | 0 | 0 | 1.0 |
+| Instruct / non-thinking | 0.7 | 0.80 | 20 | 0 | 1.5 | 1.0 |
+| Instruct / reasoning (MTP card) | 1.0 | 1.0 | 40 | 0 | 2.0 | 1.0 |
+
+The Qwen/Unsloth cards use `chat_template_kwargs` with `{"enable_thinking": false}` to disable thinking; `{"preserve_thinking": true}` retains the prior thinking trace in continued conversations (**preserve thinking is on by default**). PowerShell escaping: `--chat-template-kwargs "{\"enable_thinking\":false}"`. Confirm the exact request field in the local serving path before a Trial.
+
+## MTP and draft packaging
+
+- **Inspected header evidence + tensor audit (2026-08-02):** both local files report `nextn_predict_layers=1` AND carry the MTP head tensors `blk.40.nextn.{eh_proj,enorm,hnorm,shared_head_norm}` (UD `eh_proj` Q8_0; SC117 `eh_proj` Q4_K). This confirms MTP-preserving weights on disk; it is not a runtime speed or acceptance-rate result.
+- **Integrated MTP targets:** Unsloth MTP files, ggml-org `Qwen3.6-35B-A3B-MTP-*`, Bahushruth `...-BF16-MTP.gguf`, SC117 APEX files, and AesSedai's updated specialist quants are documented by their publishers as MTP-preserving. Confirm `*.nextn_predict_layers` and related keys in the actual local GGUF; file naming alone is not proof.
+- **Separate MTP artifacts:** ggml-org base `mtp-*` files and Bartowski `mtp-*` files are separate basenames that need explicit pairing/metadata inspection.
+- **DFlash:** ggml-org `dflash-*` files correspond to the [z-lab DFlash project](https://github.com/z-lab/dflash), whose primary integration docs target vLLM/SGLang. This card does not claim a stock llama.cpp `draft-dflash` flag.
+- **llama.cpp:** use the current upstream spelling `--spec-type draft-mtp --spec-draft-n-max N` documented by [PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673). Flag acceptance was confirmed by the source probe below (2026-08-02); only the *measured-point* runtime behavior with speculative decoding remains to be verified in a Trial.
+- **Local runtime probe (2026-08-02, source-verified):** the checked-out llama.cpp `common/speculative.cpp` `common_speculative_type_from_name_map` accepts: `none`, `draft-simple`, `draft-eagle3`, `draft-mtp`, `draft-dflash`, `draft-dspark`, `ngram-simple`, `ngram-map-k`, `ngram-map-k4v`, `ngram-mod`, `ngram-cache`. **Bare `mtp` is NOT accepted in this tree** — keep `--spec-type draft-mtp`. Fork nuance (GOLDEN-RULES.md): TurboQuant/custom fork builds historically accept `mtp`; the harness probes `--help` at runtime and picks per build. Confirm the built binary matches this tree at first Trial.
+- **TurboQuant/custom builds:** GGUF format compatibility does not prove MTP, DFlash, UD, IQ, or specialist-mixture support. The project runtime and release tag must be recorded and probed before relying on any speculative flag.
+
+## MoE split (VITRIOL-compatible policy)
+
+The repository policy is to keep dense models fully resident and to use expert CPU offload only for MoE models. For this family, seed `N_CPU_MOE=None` and let the harness derive the initial value from the inspected GGUF's block count; do not hardcode `40` until local metadata confirms 40 blocks. Tune `--n-gpu-layers` and `--n-cpu-moe N` only after the host-memory preflight passes. See [vitriol-technique.md](./vitriol-technique.md) for the stock split policy; this is not the Randozart DMA fork.
 
 ## Our config baseline
-- `CTX_SIZE`: **65536** (atualizado em commit `78d54e2` — tuning buscou 65k pra 9B-MTP; Validar se valor ótimo para 35B-A3B é o mesmo ou se precisa reduzir)
-- `KV_CACHE_K = KV_CACHE_V`: tentar `q4_0` primeiro, depois `turbo2/3/4` se o llama-server suportar [Validar quais TurboQuant types nosso build expõe]
-- `SPEC_TYPE = "draft-mtp"` (corrigido — o `draft-mtp` é o flag suportado pelo upstream/standard build)
-- `SPEC_DRAFT_N_MAX = 2` (recomendado Unsloth; range 1-6)
-- `THREADS = 8` (16/8 hyperthreaded cores)
-- `BATCH_SIZE = 512` `UBATCH_SIZE = 128`
-- `FLASH_ATTN = "on"`
-- `--n-gpu-layers`: Validar (autoloop vai descobrir)
-- `--n-cpu-moe`: 40 (= total de layers — mantém todos os experts no CPU/RAM, padrão Codacus) — suporte nativo adicionado em commit `2bd795b`
-- Sampling (seed `SAMPLER_DEFAULTS` before Trials):
-  - **Agentic / general (thinking):** `TEMP=1.0`, `TOP_P=0.95`, `TOP_K=20`, `MIN_P=0.0`, `PRESENCE_PENALTY=0.0`, `REPEAT_PENALTY=1.0`
-  - **Coding-10:** same but `TEMP=0.6`
 
-## TPS medidos (2026-06-19)
-- `r_q4` (base GGUF, sem MTP): **11.1 tok/s** (medido Allan)
-- `mtp_baseline` (MTP-GGUF, sem flag MTP): **22.5 tok/s** (medido M3, 5 runs × 100 tok, média 22.14/22.36/22.89/22.44/22.84)
-- Próximo: `mtp_active` (MTP-GGUF + `--spec-type mtp --spec-draft-n-max 2`): projetado 26-28 tok/s (NÃO executado, aguardando OK Allan)
+- `CTX_SIZE`: repository default `131072`; the measured no-spec point below used `100000`.
+- `SAMPLER_DEFAULTS`: the measured point used thinking/general `TEMP=1.0`, `TOP_P=0.95`, `TOP_K=20`, `MIN_P=0`, `REPEAT_PENALTY=1.0`, `PRESENCE_PENALTY=1.5`.
+- `N_CPU_MOE=None`: harness auto-resolved to `41` for the measured basename.
+- Measured engine knobs: TurboQuant `tqp-v0.3.0`, KV K/V `turbo3/turbo3`, batch/ubatch `32/16`, and threads `6/8`.
+- `N_GPU_LAYERS` and flash-attention setting: **TBD**; they were not part of the supplied Trial evidence.
+- `SPEC_TYPE=None`: the measured point used no speculative decoding. MTP `SPEC_TYPE="draft-mtp"` and `SPEC_DRAFT_N_MAX=2` are the starting values now that the local probe (2026-08-02) confirmed `draft-mtp` is accepted in this tree; a speculative Trial is still required to confirm measured behavior.
+- A point is not `on_front` until it has the same Fingerprint and complete Claw-full plus coding-10 Objective Vector. Fine-tunes and base quants are distinct Trial families.
 
-## Sources / Verification
-- HF model card (extracted 2026-06-15)
-- Unsloth Qwen3.6 doc (https://unsloth.ai/docs/models/qwen3.6.md, extracted same day, truncated at 5k chars)
-- Unsloth MTP guide (https://unsloth.ai/docs/models/mtp.md, extracted same day, truncated at 5k chars)
+## Measured Trial evidence
+
+Trial `76f6f780-dda3-4ba7-8a42-e6a267d95b1e` measured the following point for basename `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf`:
+
+| Field | Measured value |
+|---|---|
+| Engine | TurboQuant `tqp-v0.3.0` |
+| Context | `100000` |
+| KV cache K/V | `turbo3/turbo3` |
+| Batch / ubatch | `32/16` |
+| Threads / batch threads | `6/8` |
+| Speculative decoding | none (`SPEC_TYPE=None`) |
+| Sampler | thinking/general: `TEMP=1.0`, `TOP_P=0.95`, `TOP_K=20`, `MIN_P=0`, `REPEAT_PENALTY=1.0`, `PRESENCE_PENALTY=1.5` |
+| `N_CPU_MOE` | `None` requested; auto-resolved `41` |
+| Preflight | VRAM `7496 < 7900`; host `23189 < 27790` |
+| Benchmark throughput | `24.5 TPS` |
+| Coding generation | `29.4` |
+| Peak memory | `4.9 GB` |
+| Coding scores | LCB `0.4`, HumanEval `0.2`, MBPP `0.9`, BigCode `0.1`; composite `0.43` |
+| Claw full | `0.5333` (`8/15`) |
+| Elapsed | `7454 s` |
+| Result | `OK` |
+
+This is a measured no-spec baseline, not an MTP speed or runtime-compatibility result.
+
+## Sources / verification
+
+- Official architecture, license, sampler, and file tree: [Qwen model card](https://huggingface.co/Qwen/Qwen3.6-35B-A3B) and [official files](https://huggingface.co/Qwen/Qwen3.6-35B-A3B/tree/main), extracted 2026-08-02.
+- Unsloth sizing and runtime guidance: [Qwen3.6 docs](https://unsloth.ai/docs/models/qwen3.6) and [MTP docs](https://unsloth.ai/docs/models/mtp), extracted 2026-08-02.
+- Unsloth base and MTP inventories, sampler, and MTP command: [base card/tree](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/tree/main) and [MTP card/tree](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/main), extracted 2026-08-02.
+- Official llama.cpp artifacts and command: [base tree](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-GGUF/tree/main), [MTP tree](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-MTP-GGUF/tree/main), and [PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673), extracted 2026-08-02.
+- Bartowski inventory: [model card/tree](https://huggingface.co/bartowski/Qwen_Qwen3.6-35B-A3B-GGUF/tree/main), extracted 2026-08-02.
+- Specialist/fine-tune inventories: [AesSedai](https://huggingface.co/AesSedai/Qwen3.6-35B-A3B-GGUF), [Hesamation](https://huggingface.co/hesamation/Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled-GGUF), [Bahushruth](https://huggingface.co/Bahushruth/Qwen3.6-35B-A3B-abliterated-v4-GGUF), and [SC117](https://huggingface.co/SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF), extracted 2026-08-02.
+- DFlash pairing and runtime scope: [z-lab/dflash](https://github.com/z-lab/dflash), extracted 2026-08-02.
+- GGUF header verification: project venv `gguf_dump` with `PYTHONUTF8=1`, exact basenames and fields recorded in the Architecture table above, extracted 2026-08-02. The card records basenames and header fields only.
+- Trial evidence: run `76f6f780-dda3-4ba7-8a42-e6a267d95b1e`, basename `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf`, measured 2026-08-02; flags, preflight, scores, and elapsed time are recorded above.
 
 ## Open questions
-1. **[Resolvido 2026-06-19]** `llama-server` (turboquant build) NÃO aceita `--spec-type draft-mtp` — o valor é silenciosamente rejeitado. Flag correta é `--spec-type mtp`. Validado por inspeção de `common/arg.cpp` e probe automático em `llama_runner.py:189-205`.
-2. **[Resolvido 2026-06-19]** MTP-GGUF tem tensores MTP (`nextn_predict_layers = 1` confirmado). File swap sozinho dá 2× TPS. Validar: ganho adicional com `--spec-type mtp` ativo (próximo teste).
-3. Validar: exato valor de `--n-gpu-layers` para nosso 8 GB VRAM + 3B active MoE — autoloop vai descobrir.
-4. Validar: ganho com `--no-mmap` e `--mlock` (sweep adicional, ainda não testado).
-5. Validar: re-extrair seção completa Unsloth Qwen3.6 llama.cpp pra confirmar comando canônico upstream (vs divergências do turboquant build).
+
+- Should the SC117 uncensored candidate receive a separate Trial in addition to the measured Unsloth point?
+- Trial-time check: does the *built* binary (this source tree) accept `draft-mtp` for that exact file — the source map says yes; confirm at first run. Which custom/TurboQuant build (if any) is in scope?
+- What does the hardware preflight allow for the SC117 candidate, MTP state, `mmproj`, and other contexts?
+- Which candidate, if any, is authorized for a full Claw + coding-10 Objective Vector? Until then, candidate rows are inventory only.
+- No QAT-labelled Qwen3.6-35B-A3B artifact was found in the inspected official Qwen, Unsloth, or ggml-org inventories. Treat QAT as **not identified**, not as a claim that no third party can publish one later.
