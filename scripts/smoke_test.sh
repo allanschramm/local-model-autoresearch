@@ -46,6 +46,9 @@ run_test() {
   # MTP only for models that support it (check nextn_predict_layers in model)
   local MTP_ARGS=()
   if [[ "$MODEL" == *"Qwen"* ]]; then
+    # turbo4 KV + bare `mtp` are TurboQuant-fork spellings (upstream llama.cpp rejects `mtp`;
+    # it accepts `draft-mtp`). Unlike the harness, this script does NOT probe --help per build —
+    # it assumes the TurboQuant build (turbo4 KV only exists there) — see GOLDEN-RULES.md.
     MTP_ARGS=(--spec-type mtp --spec-draft-n-max 5 --spec-draft-type-k turbo4 --spec-draft-type-v turbo4)
   fi
 
