@@ -6,6 +6,8 @@ The LLM inference engine ecosystem has matured into distinct specialized tiers b
 
 This guide surveys the primary inference engines, analyzing their memory managers, attention mechanisms, KV cache strategies, and hardware targets.
 
+> Fastest-TPS on this rig (RTX 4060 8 GB / Windows): see [fastest-tps-inference-engine.md](./fastest-tps-inference-engine.md) — llama.cpp CUDA stays baseline; ExLlamaV3/EXL3 is the only Windows-capable raw-TPS challenger.
+
 ---
 
 ## Technical Comparison Matrix
@@ -36,6 +38,7 @@ This guide surveys the primary inference engines, analyzing their memory manager
 - **Optimization Strategy**: Token-level prefix reuse drastically lowers **Time to First Token (TTFT)** when multiple queries share system prompts, RAG context blocks, or multi-turn agent histories.
 - **Structured Output**: Native integration with compressed finite-state machine (FSM) grammar execution for accelerated JSON/schema decoding.
 - **Strengths**: Best-in-class performance for agentic coding workflows, long-context RAG pipelines, and complex prompt DAGs.
+- **Deep dive**: [sglang-inference-engine.md](./sglang-inference-engine.md) — RadixAttention internals, XGrammar structured outputs, speculative decoding (EAGLE/MTP/DFlash), quantization matrix, hardware support, GGUF/Windows limits.
 
 ### 3. TensorRT-LLM (Compiled Graph & Custom Kernels)
 - **Core Mechanism**: Converts PyTorch model definitions into optimized C++ **TensorRT engine graphs**, performing ahead-of-time (AOT) kernel fusion, fp8/fp4 precision selection, and custom GEMM tuning.

@@ -53,6 +53,8 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`vllm-quantization.md`](./vllm-quantization.md) — vLLM quantization formats, hardware compatibility matrix, out-of-tree quant plugin API.
 - [`vllm-quant-deep-dive.md`](./vllm-quant-deep-dive.md) — per-format quantization mechanics from vLLM source: kernels, group sizes, min SMs, NVFP4 status, config flags, repo relevance.
 - [`colibri-inference-engine.md`](./colibri-inference-engine.md) — architectural & performance guide for Colibrì zero-dependency C streaming MoE runtime.
+- [`sglang-inference-engine.md`](./sglang-inference-engine.md) — SGLang research guide: RadixAttention, scheduler, structured outputs (XGrammar), speculative decoding, quantization matrix, hardware support, GGUF/Windows limits.
+- [`fastest-tps-inference-engine.md`](./fastest-tps-inference-engine.md) — fastest-TPS engine research on this rig (RTX 4060 8 GB / Win): llama.cpp CUDA baseline vs ExLlamaV3/EXL3, TRT-LLM, vLLM/SGLang; measured results.tsv evidence + MoE/MTP speed levers.
 - [`speculative-decoding-formats.md`](./speculative-decoding-formats.md) — architectural and performance comparison of speculative formats (MTP vs Eagle vs DFlash vs N-gram).
 - [`mtp-baseline-guide.md`](./mtp-baseline-guide.md) — guide on verifying and benchmarking MTP speculative decoding with llama-bench/llama-cli.
 - [`small-model-mtp-tps.md`](./small-model-mtp-tps.md) — inventory of local MTP packaging + fair TPS matrix (8 GB, 2026-07-20).
