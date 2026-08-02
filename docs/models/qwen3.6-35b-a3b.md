@@ -2,7 +2,7 @@
 
 **Inventory date:** 2026-08-02
 
-**Status:** publisher inventory refreshed; no model download or inference run was performed for this update. Publisher facts and local facts are kept separate.
+**Status:** publisher inventory refreshed 2026-08-02; a no-spec Trial at 100k was measured on the same date (see Measured Trial evidence). Publisher facts and local facts are kept separate.
 
 **Official source:** [Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B)
 **Unsloth base GGUF:** [unsloth/Qwen3.6-35B-A3B-GGUF](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF)

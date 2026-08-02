@@ -92,7 +92,7 @@ flags:
   - --n-cpu-moe 32         # 20% na VRAM: 8/40 → 32
   - --cache-type-k q4_0
   - --cache-type-v q4_0
-  - --spec-type mtp
+  - --spec-type draft-mtp   # accepted upstream; bare `mtp` rejected by upstream llama.cpp (forks may differ — harness probes --help per build)
   - --spec-draft-n-max 2
   - --flash-attn on
   - --threads 8

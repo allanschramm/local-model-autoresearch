@@ -9,10 +9,13 @@
 **Family:** Bonsai (PrismML-Eng) — 1-bit ternary-pack
 **Quantization:** `Q1_0` (1-bit; ~1.125 bpw)
 
-## Architecture
-- Base: **Qwen3.5** (GGUF metadata key prefix `qwen35.*`); hybrid attention (per run guide, keeps KV small for its size)
-- Context length: **262,144 tokens** — GGUF-verified (`qwen35.context_length = 262144`)
-- Block count / expert counts / head counts: **TBD** — verify with `gguf.GGUFReader` (header read, no model run)
+## Architecture (GGUF-verified 2026-08-02, local `Bonsai-27B-Q1_0.gguf`)
+- **Base: Qwen3.5** — `general.architecture='qwen35'`; PrismML's "Qwen3.6-derived" marketing is contradicted by the actual file.
+- **Dense, not MoE** — no `expert_count`/`expert_used_count` keys present. Treat as dense, no `--n-cpu-moe`.
+- **Hybrid attention:** `full_attention_interval=4` over `block_count=64` → 16 full-attention + 48 linear-attention layers (matches the run-guide "16/64 layers cached"); `ssm.conv_kernel=4, state_size=128, group_count=16, time_step_rank=48, inner_size=6144`.
+- **Header values:** `block_count=64`, hidden `5120`, `feed_forward_length=17408`, `attention.head_count=24`, `head_count_kv=4`, key/value length 256, `rope.freq_base=1e7`, ctx **262,144**, 851 tensors, `general.file_type=40`.
+- **Embedded recommended sampling:** `TEMP=1.0, TOP_P=0.95, TOP_K=20` (GGUF `general.sampling.*`).
+- Context length: **262,144 tokens** — GGUF-verified (`qwen35.context_length = 262144`).
 - 27B family is vision-language: accepts images (vision projector +~0.9 GiB when used)
 
 ## Hardware Requirements (RTX 4060 8 GB)
@@ -23,6 +26,8 @@
 | FP16 KV @ 100K ctx | ~6.3 GiB | from run-guide table |
 | DSpark drafter extra | ~0.5–2.4 GiB | embeds/head shared with target; naive loader estimate 2426 MiB |
 | Runtime overhead | ~0.7–1.2 GiB | +vision projector ~0.9 GiB if used |
+
+**KV sizing (PrismML KV-CACHE guide, 2026-08-02):** FP16 KV ≈ 64 KiB/token (~6.3 GiB @ 100K); experimental 4-bit KV (`--cache-type-k q4_0 --cache-type-v q4_0`) ≈ 18 KiB/token. Footprints: Q1_0 ≈ 4.8 GiB @ 4K / 5.2 GiB @ 10K / 10.8 GiB @ 100K (weights + activations + FP16 KV).
 
 **Verified fit:** target + 65K KV cache loaded and warmed up on RTX 4060 with no OOM (server log).
 Full 262K KV (~4.3 GiB) would NOT fit (≈9.3 GiB > 8 GiB) — cap context well below train max.
@@ -48,6 +53,7 @@ Flag notes (from run guide):
 - ~1.8–2× faster decode on CUDA code/reasoning workloads; output at temp 0 identical to normal decode.
 - Verify engaged via API `timings.draft_n` / `draft_n_accepted` (missing/zero = not active).
 - `llama-cli` has no draft support; one-shot binary is `llama-speculative-simple`.
+- Published decode on datacenter GPUs (PrismML, 2026-08-02): ~70 → ~135 tok/s at ~0.9 acceptance. On this rig the canonical drafter measured 39.2 t/s (2026-07-21) — still below target-only ~41, so max-TPS stays `SPEC_TYPE=None`.
 
 ## Fork Requirement
 - Q2_0 and DSpark need the external **PrismML-Eng/llama.cpp** fork, branch `prism` (tested commit `9fcaed763` = tag `prism-b9596`), built with CUDA. The fork is not vendored in this repository.
@@ -123,9 +129,10 @@ Runtime: upstream `llama.cpp/build-cuda` (Q1_0). DSpark / Ternary Q2_0 requires 
 - VRAM fit at 65K: observed server log (target + KV allocated, warmed up, no OOM) — 2026-07-18
 - Drafter crash: observed server log — 2026-07-18
 - Max-TPS matrix (65k–131k): harness cli-bench, this card table — 2026-07-21
+- Dense/hybrid/KV/DSpark architecture + published throughput: https://github.com/PrismML-Eng/Bonsai-demo (README.md, SPECULATIVE.md, KV-CACHE.md) + https://prismml.com/news/bonsai-27b — 2026-08-02
+- GGUF header verification (local `Bonsai-27B-Q1_0.gguf`, re-downloaded from `prism-ml/Bonsai-27B-gguf`): venv `gguf_dump` with `PYTHONUTF8=1` — 2026-08-02
 
 ## Open Questions
 - **DSpark speedup**: canonical drafter loads (39.2 t/s @ 65k / 7.6 GB) but still loses to target-only ~41. Acceptance rate / PrismML kernel path TBD if chasing speculative wins.
-- **Architecture**: block_count, expert_count, head_count_kv — **TBD**, run `gguf.GGUFReader`.
 - **VITRIOL**: MoE vs dense — treat as **dense** (no shared-memory offload; VRAM guard applies).
 - **Ternary variant** `Ternary-Bonsai-27B-Q2_0` — **REJECTED / GGUF deleted 2026-07-23**. PrismML loads; **10.6 t/s** @ ctx 32k (`TPS_FLOOR` 15). See [ternary-bonsai-27b.md](ternary-bonsai-27b.md). Keep Q1_0 only.

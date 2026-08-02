@@ -24,7 +24,7 @@ Cards:
 - [Qwythos-9B-Claude-Mythos-5-1M](qwythos-9b-claude-mythos-5-1m.md) — non-MTP claw **0.3333** / coding **0.640**; MTP complete too
 - [Qwen3.5-9B](qwen3.5-9b.md) — UD claw **0.1333** / coding **rejected**; MTP claw **0.2000** / coding **0.495**
 - Qwen3.5-4B-MTP (`Qwen3.5-4B-MTP-Q4_K_M.gguf`) — claw **0.2667** / coding **0.385**; GGUF deleted after vector complete; no dedicated card yet
-- [Qwen3.6-35B-A3B](qwen3.6-35b-a3b.md) — claw **0.4000** / coding **0.5300**
+- [Qwen3.6-35B-A3B](qwen3.6-35b-a3b.md) — claw **0.5333** / coding **0.4300** (UD-Q4_K_XL @ 100k no-spec; Q3_K_XL vector incomplete)
 - [Qwen-AgentWorld-35B-A3B](qwen-agentworld-35b-a3b.md)
 - [Gemma-4-26B-A4B](gemma-4-26b-a4b.md) — claw **0.1333** / coding **0.590**
 - [Ornith-1.0-9B](ornith-1.0-9b.md) — UD / MTP / deepreinforce `ornith-1.0-9b-Q4_K_M` are separate Trials
@@ -45,7 +45,8 @@ Claw-Eval ranks: [claw-eval-leaderboard.md](../discovery/claw-eval-leaderboard.m
 Coding-10 ranks: [coding-leaderboard.md](../discovery/coding-leaderboard.md).
 
 ## Open extraction tasks
-Unsloth's web docs return ~5k chars per `web_extract` call, truncating longer pages. The following sections are still missing from our cards and should be re-extracted via `browser_navigate` or a longer timeout when needed:
-- Qwen3.6 "🦙 Llama.cpp Guide" (canonical command for the model)
-- Qwen3.6 "💡 Thinking: Enable/Disable + Preserve Thinking" details
-- Gemma 4 "🦙 llama.cpp Guide" and "Recommended Settings" sampling params
+All three previously-truncated Unsloth sections were re-extracted on **2026-08-02** (primary sources) and applied to the cards:
+- Qwen3.6 "🦙 Llama.cpp Guide" → canonical command (q8_0 KV) in [qwen3.6-35b-a3b.md](qwen3.6-35b-a3b.md) MTP section.
+- Qwen3.6 "💡 Thinking: Enable/Disable + Preserve Thinking" → `enable_thinking` / `preserve_thinking` kwargs in [qwen3.6-35b-a3b.md](qwen3.6-35b-a3b.md) Recommended settings.
+- Gemma 4 "🦙 llama.cpp Guide" + "Recommended Settings" → `TEMP=1.0 / TOP_P=0.95 / TOP_K=64` + guide command in [gemma-4-26b-a4b.md](gemma-4-26b-a4b.md).
+Evidence: [docs/sessions/2026-08-02-research-gap-closure.md](../sessions/2026-08-02-research-gap-closure.md).

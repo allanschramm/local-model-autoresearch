@@ -4,7 +4,7 @@
 **Unsloth docs:** https://unsloth.ai/docs/models/qwen3.6 (same architecture family)
 **License:** Apache-2.0
 **Local file:** `models/Qwen-AgentWorld-35B-A3B-UD-IQ4_XS.gguf` (16.56 GB)
-**Family:** Qwen-AgentWorld (Qwen 3.5 MoE architecture)
+**Family:** Qwen-AgentWorld — native language world model (CPT → SFT → RL/GSPO); base `Qwen/Qwen3.5-35B-A3B-Base`, **not** a Qwen3.6 fine-tune (official card, 2026-08-02; arXiv 2606.24597)
 **Quantization:** Unsloth Dynamic 2.0 — `UD-IQ4_XS` (importance-quantized 4-bit extra-small)
 
 ## Architecture (from GGUF metadata, verified via gguf.GGUFReader 2026-07-02)
@@ -33,15 +33,18 @@
 
 **Note:** IQ4_XS is importance-quantized — uses imatrix calibration data for better quality at lower size. Expect quality close to Q4_K_M with ~25% less memory.
 
-## Recommended Settings (based on Qwen 3.5 MoE family)
+## Recommended Settings (official Best Practices, verified 2026-08-02)
 - **Temperature:** 0.6
 - **Top P:** 0.95
 - **Top K:** 20
 - **Min P:** 0.0
 - **Repeat Penalty:** 1.0 (disabled)
+- Thinking mode on by default; recommended output length 32,768 tokens.
+- Source: https://huggingface.co/Qwen/Qwen-AgentWorld-35B-A3B (2026-08-02). Qwen3.6 sampler profiles do not apply (different family, no MTP).
 
 ## MTP (Multi-Token Prediction)
 - **NO MTP tensors in this GGUF.** No spec_type configured.
+- **No MTP claim on the official card** (absence-of-evidence, 2026-08-02): the base is the Qwen3.5-era checkpoint (MTP is a Qwen3.6-family feature) — treat MTP as unsupported until a local header check proves otherwise. Do not assume MTP.
 
 ## VITRIOL / Split strategy (MoE expert offloading)
 Same as Qwen3.6-35B-A3B: attention + shared expert + routing on GPU, 256 routed experts in CPU/RAM.
@@ -65,10 +68,11 @@ Source: https://www.youtube.com/watch?v=ZwNCsUTNWOA (Codacus technique).
 
 ## Sources / Verification
 - HuggingFace: `unsloth/Qwen-AgentWorld-35B-A3B-GGUF`
+- Official Qwen card + README: https://huggingface.co/Qwen/Qwen-AgentWorld-35B-A3B (2026-08-02) — base model, Best Practices sampling, tech report arXiv 2606.24597
 - GGUF metadata verified via `gguf.GGUFReader` on 2026-07-02
-- Architecture identical to Qwen3.6-35B-A3B (same qwen35moe arch, same layer/expert counts)
+- Architecture skeleton is the Qwen3.5 MoE family (qwen35moe arch, 40 layers, 256 experts); the AgentWorld fine-tune is a separate world-model family — do not equate it with Qwen3.6.
 
 ## Open questions
 - **TBD (2026-07-02):** First validation run needed — baseline score and TPS on RTX 4060.
 - **TBD:** Compare IQ4_XS vs Q4_K_M quality at same settings (imatrix calibration may help or hurt).
-- **TBD:** Relationship to Qwen3.6-35B-A3B — same base model? Different fine-tune? HF card claims "AgentWorld" variant.
+
