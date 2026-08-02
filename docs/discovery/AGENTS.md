@@ -41,6 +41,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 ### 2. Quantization & Low-VRAM Optimizations
 - [`quantization-cascade.md`](./quantization-cascade.md) — quantization format selection guide (UD vs standard, VRAM tiers, decision matrix).
 - [`quantization-cascade-agent.md`](./quantization-cascade-agent.md) — agent quick reference for quant selection (terse, grog-readable).
+- [`nvfp4-quantization.md`](./nvfp4-quantization.md) — NVIDIA NVFP4 4-bit FP format (Blackwell): structure, scaling, memory, ecosystem, repo relevance.
 - [`advanced-inference-optimizations.md`](./advanced-inference-optimizations.md) — high-performance techniques: CUDA graphs, tcmalloc/jemalloc, KV cache optimizations, and offload bottlenecks.
 - [`low-vram-optimizations.md`](./low-vram-optimizations.md) — strategies for VRAM-constrained GPUs: GGUF/EXL2/HQQ quants, KV cache compression, MoE offloading, and preventing system paging.
 - [`../models/vitriol-technique.md`](../models/vitriol-technique.md) — stock `--n-cpu-moe` vs Randozart/VITRIOL DMA fork (study only; Search stays upstream).

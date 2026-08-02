@@ -73,3 +73,4 @@ If you see a file named **`UD-Q4_K_XL`** or **`UD-IQ4_NL`**, download that one f
 
 - `docs/models/` — per-model GGUF specs and architecture notes
 - `docs/discovery/discover-models.md` — end-to-end model selection workflow
+- `docs/discovery/nvfp4-quantization.md` — NVIDIA NVFP4 4-bit FP format (Blackwell-only; not a GGUF quant — lives in TensorRT-LLM/vLLM stack)
