@@ -389,6 +389,26 @@ class TestLlamaRunner(unittest.TestCase):
             )
             self.assertAlmostEqual(with_draft - base, 10.0, places=1)
 
+    def test_estimate_vram_mb_includes_speculative_workspace_by_draft_window(self):
+        from autoresearch.core.llama_runner import estimate_vram_mb
+
+        base = estimate_vram_mb(Path("models/non-existent.gguf"), 2048)
+        mtp_two = estimate_vram_mb(
+            Path("models/non-existent.gguf"),
+            2048,
+            spec_type="draft-mtp",
+            spec_draft_n_max=2,
+        )
+        mtp_four = estimate_vram_mb(
+            Path("models/non-existent.gguf"),
+            2048,
+            spec_type="draft-mtp",
+            spec_draft_n_max=4,
+        )
+
+        self.assertAlmostEqual(mtp_two - base, 1024.0)
+        self.assertAlmostEqual(mtp_four - mtp_two, 512.0)
+
     def test_estimate_vram_mb_n_cpu_moe_shrinks_weight(self):
         from autoresearch.core.llama_runner import estimate_vram_mb
 
@@ -416,6 +436,46 @@ class TestLlamaRunner(unittest.TestCase):
         self.assertFalse(ok)
         self.assertGreater(est, 1.0)
         self.assertIn("VRAM_PREFLIGHT", reason)
+
+    def test_preflight_vram_for_intent_accounts_for_configured_ctx_and_mtp(self):
+        from autoresearch.core.llama_runner import preflight_vram_for_intent
+
+        intent = ServerIntent(
+            model_path=Path("models/embedded-MTP.gguf"),
+            ctx_size=131072,
+            kv_cache="q4_0",
+            flash_attn="on",
+            spec_type="draft-mtp",
+            spec_draft_n_max=4,
+        )
+
+        ok, est, reason = preflight_vram_for_intent(intent, vram_limit_mb=8000.0)
+
+        self.assertFalse(ok)
+        self.assertGreater(est, 8000.0)
+        self.assertIn("VRAM_PREFLIGHT", reason)
+
+    def test_preflight_vram_for_intent_only_counts_enabled_external_draft(self):
+        from autoresearch.core.llama_runner import preflight_vram_for_intent
+
+        with tempfile.TemporaryDirectory() as tmp:
+            draft = Path(tmp) / "draft.gguf"
+            draft.write_bytes(b"x" * (10 * 1024 * 1024))
+            common = dict(
+                model_path=Path("models/base.gguf"),
+                ctx_size=2048,
+                kv_cache="q4_0",
+                flash_attn="on",
+                spec_draft_model=str(draft),
+                spec_draft_n_max=2,
+            )
+
+            disabled = preflight_vram_for_intent(ServerIntent(**common), 10000.0)[1]
+            enabled = preflight_vram_for_intent(ServerIntent(**common, spec_type="draft"), 10000.0)[
+                1
+            ]
+
+        self.assertAlmostEqual(enabled - disabled, 1034.0, places=1)
 
     def test_preflight_vram_passes_large_moe_with_n_cpu_moe(self):
         from autoresearch.core.llama_runner import preflight_vram

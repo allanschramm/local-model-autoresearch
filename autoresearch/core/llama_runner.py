@@ -243,6 +243,10 @@ VRAM_KB_PER_TOKEN_F16 = 80.0
 VRAM_OVERHEAD_MB = 300.0
 """Typical baseline VRAM overhead for CUDA runtime and system operations (in megabytes)."""
 
+VRAM_SPECULATIVE_BASE_MB = 512.0
+VRAM_SPECULATIVE_PER_DRAFT_TOKEN_MB = 256.0
+"""Conservative speculative-decoding runtime/workspace allowance."""
+
 VRAM_DEFAULT_QUANT_FACTOR = 0.3
 """Fallback quantization multiplier for unknown/default KV cache types."""
 
@@ -283,6 +287,8 @@ def estimate_vram_mb(
     base_kv_cache: str = "q4_0",
     draft_path: Path | str | None = None,
     n_cpu_moe: int | None = None,
+    spec_type: str | None = None,
+    spec_draft_n_max: int = 0,
 ) -> float:
     try:
         model_size_mb = model_path.stat().st_size / (1024 * 1024)
@@ -332,8 +338,15 @@ def estimate_vram_mb(
     kv_base_mb = c_size * VRAM_KB_PER_TOKEN_F16 / 1024.0
     kv_est_mb = (kv_base_mb / 2.0) * kf + (kv_base_mb / 2.0) * vf
 
-    # Baseline system/CUDA overhead (+ draft file size when speculative)
-    return model_size_mb + draft_mb + kv_est_mb + VRAM_OVERHEAD_MB
+    spec_enabled = bool(spec_type and spec_type.lower() != "none" and spec_draft_n_max > 0)
+    spec_workspace_mb = (
+        VRAM_SPECULATIVE_BASE_MB + VRAM_SPECULATIVE_PER_DRAFT_TOKEN_MB * spec_draft_n_max
+        if spec_enabled
+        else 0.0
+    )
+
+    # Baseline system/CUDA overhead (+ draft weights and speculative workspace).
+    return model_size_mb + draft_mb + kv_est_mb + VRAM_OVERHEAD_MB + spec_workspace_mb
 
 
 def preflight_vram(
@@ -344,6 +357,8 @@ def preflight_vram(
     draft_path: Path | str | None = None,
     vram_limit_mb: float | None = None,
     n_cpu_moe: int | None = None,
+    spec_type: str | None = None,
+    spec_draft_n_max: int = 0,
 ) -> tuple[bool, float, str]:
     """Return (ok, estimate_mb, reason). reason non-empty when rejected."""
     limit = resolve_vram_limit_mb(vram_limit_mb)
@@ -354,6 +369,8 @@ def preflight_vram(
         kv_cache_v=kv_cache_v,
         draft_path=draft_path,
         n_cpu_moe=n_cpu_moe,
+        spec_type=spec_type,
+        spec_draft_n_max=spec_draft_n_max,
     )
     if est > limit:
         return False, est, f"VRAM_PREFLIGHT est={est:.0f}MB > limit={limit:.0f}MB"
@@ -364,14 +381,20 @@ def preflight_vram_for_intent(
     intent: "ServerIntent",
     vram_limit_mb: float | None = None,
 ) -> tuple[bool, float, str]:
+    spec_type = intent.spec_type
+    if spec_type is None and "MTP" in intent.model_path.name.upper():
+        spec_type = "mtp"
+    spec_enabled = bool(spec_type and spec_type.lower() != "none" and intent.spec_draft_n_max > 0)
     return preflight_vram(
         intent.model_path,
         intent.ctx_size,
         kv_cache_k=intent.kv_cache_k or intent.kv_cache,
         kv_cache_v=intent.kv_cache_v or intent.kv_cache,
-        draft_path=intent.spec_draft_model,
+        draft_path=intent.spec_draft_model if spec_enabled else None,
         vram_limit_mb=vram_limit_mb,
         n_cpu_moe=intent.n_cpu_moe,
+        spec_type=spec_type,
+        spec_draft_n_max=intent.spec_draft_n_max,
     )
 
 

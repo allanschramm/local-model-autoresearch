@@ -9,6 +9,52 @@ from autoresearch.runners import run
 
 
 class TestRun(unittest.TestCase):
+    @patch("autoresearch.runners.evaluation.LlamaServerRunner")
+    @patch(
+        "autoresearch.runners.evaluation.preflight_vram_for_intent",
+        return_value=(False, 8108.0, "VRAM_PREFLIGHT est=8108MB > limit=7900MB"),
+    )
+    def test_run_trial_rejects_peak_estimate_before_server(self, _mock_preflight, mock_server):
+        from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
+
+        result = ExperimentRunner(Path("models")).run_trial(
+            {"MODEL": "test.gguf", "CTX_SIZE": 131072, "FLASH_ATTN": "on"},
+            skip_bench=True,
+        )
+
+        self.assertEqual(result.outcome, TrialOutcome.MODEL_REJECTED)
+        self.assertEqual(result.diagnostic, "VRAM_PREFLIGHT est=8108MB > limit=7900MB")
+        self.assertAlmostEqual(result.peak_vram_gb, 8108.0 / 1024.0)
+        mock_server.assert_not_called()
+
+    @patch(
+        "autoresearch.runners.evaluation.preflight_host_memory_for_intent",
+        return_value=(True, 7000.0, 12000.0, ""),
+    )
+    @patch(
+        "autoresearch.runners.evaluation.preflight_vram_for_intent",
+        return_value=(True, 6543.0, ""),
+    )
+    @patch("autoresearch.runners.evaluation.run_llama_perplexity_validation", return_value=5.0)
+    @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=30.0)
+    def test_bench_only_peak_uses_effective_mtp_preflight_estimate(
+        self, _mock_bench, _mock_ppl, _mock_vram, _mock_host
+    ):
+        from autoresearch.runners.evaluation import ExperimentRunner
+
+        result = ExperimentRunner(Path("models")).run_trial(
+            {
+                "MODEL": "embedded-MTP.gguf",
+                "CTX_SIZE": 131072,
+                "FLASH_ATTN": "on",
+                "SPEC_TYPE": None,
+                "SPEC_DRAFT_N_MAX": 4,
+                "INCLUDE_PERPLEXITY": True,
+            }
+        )
+
+        self.assertAlmostEqual(result.peak_vram_gb, 6543.0 / 1024.0)
+
     @patch("autoresearch.runners.evaluation.subprocess.run")
     @patch("autoresearch.runners.evaluation.resolve_llama_cli", return_value=Path("llama-cli.exe"))
     def test_llama_bench_forwards_n_cpu_moe(self, mock_resolve, mock_subprocess):

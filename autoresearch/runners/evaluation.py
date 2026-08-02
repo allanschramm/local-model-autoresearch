@@ -20,7 +20,6 @@ from autoresearch.core.llama_runner import (
     ConfigError,
     LlamaServerRunner,
     ServerIntent,
-    estimate_vram_mb,
     preflight_host_memory_for_intent,
     preflight_vram_for_intent,
     resolve_llama_cli,
@@ -564,19 +563,8 @@ class ExperimentRunner:
             else:
                 res.val_score = 0.0
 
-            # Estimate peak VRAM from config since server wasn't started
-            k_val = intent.kv_cache_k or intent.kv_cache
-            v_val = intent.kv_cache_v or intent.kv_cache
-            res.peak_vram_gb = (
-                estimate_vram_mb(
-                    intent.model_path,
-                    intent.ctx_size,
-                    k_val,
-                    v_val,
-                    draft_path=intent.spec_draft_model,
-                )
-                / 1024.0
-            )
+            # Server was not started; preserve the effective preflight decision.
+            res.peak_vram_gb = est_vram / 1024.0
             res.elapsed_sec = time.time() - trial_start
             return res
 
