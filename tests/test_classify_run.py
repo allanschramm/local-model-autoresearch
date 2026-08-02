@@ -55,7 +55,7 @@ def args(**over) -> SimpleNamespace:
         desc="integration",
         model="M.gguf",
         kv="turbo2",
-        ctx_size=131072,
+        ctx_size=config.CTX_SIZE,  # mirror the mutable Baseline; never pin a default
         include_coding=False,
         agentic_quick=False,
         agentic_full=False,
@@ -93,7 +93,9 @@ def test_full_complete_writes_keep_with_axes(run_env, monkeypatch):
     assert rows[0]["status"] == "keep"  # on_front persisted alias
     assert rows[0]["agentic"] == "0.6000"
     assert rows[0]["coding"] == "0.750000"
-    assert rows[0]["ctx"] == "131072"
+    # Row ctx comes from the mutable Baseline (config.py CTX_SIZE) — root AGENTS
+    # lets the user lower it to trade context for speed; never pin a hardcoded default.
+    assert rows[0]["ctx"] == str(config.CTX_SIZE)
 
 
 def test_failure_writes_rejected_and_exits(run_env, monkeypatch):
