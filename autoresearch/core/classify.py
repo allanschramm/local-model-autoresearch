@@ -151,15 +151,3 @@ def plan_write(
         and row_bucket(row) == bucket_gb
     }
     return status, flips
-
-
-def flip_rows(rows: list[dict[str, Any]], flips: Mapping[str, str]) -> list[dict[str, Any]]:
-    """New row list with the flipped trial statuses applied (alias persisted)."""
-    out = []
-    for row in rows:
-        row = dict(row)
-        status = flips.get(row.get("trial_id", ""))
-        if status is not None:
-            row["status"] = persist_status(status)
-        out.append(row)
-    return out

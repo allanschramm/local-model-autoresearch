@@ -162,6 +162,51 @@ def test_idempotent_run_twice(store):
     assert read_store(store) == first == {"a": "dominated", "b": "keep"}
 
 
+def test_model_scope_keeps_two_models_in_one_bucket_on_front(store):
+    # Bucket scope: A dominates B -> B dominated. Model scope: each model's
+    # own front -> both on_front (per-model lens, ADR 0006 Search/Neighbors).
+    a = row(
+        trial_id="a",
+        model="A.gguf",
+        tps="40.0",
+        agentic="0.7",
+        coding="0.7",
+        config_json=cfg_json(MODEL="A"),
+    )
+    b = row(
+        trial_id="b",
+        model="B.gguf",
+        tps="30.0",
+        agentic="0.6",
+        coding="0.6",
+        config_json=cfg_json(MODEL="B"),
+    )
+    write_store(store, [a, b])
+    run.recompute_statuses(store)
+    assert read_store(store) == {"a": "keep", "b": "dominated"}
+    out = {
+        r["trial_id"]: r["status"]
+        for r in recompute.recompute_rows(run.read_rows(store), scope="model")
+    }
+    assert out == {"a": "keep", "b": "keep"}
+
+
+def test_model_scope_respects_bucket_isolation(store):
+    # Same model, two buckets: the 8GB point must not be demoted by the 16GB
+    # point in the per-model lens either (domination never crosses budgets).
+    rows = [
+        row(trial_id="a8", tps="30.0", agentic="0.6", coding="0.6"),
+        row(trial_id="b16", memory_gb="16.0", tps="40.0", agentic="0.7", coding="0.7"),
+    ]
+    out = {r["trial_id"]: r["status"] for r in recompute.recompute_rows(rows, scope="model")}
+    assert out == {"a8": "keep", "b16": "keep"}
+
+
+def test_invalid_scope_rejected():
+    with pytest.raises(ValueError):
+        recompute.recompute_rows([], scope="machine")
+
+
 def test_recompute_rows_pure_and_idempotent():
     rows = [
         row(trial_id="a", tps="30.0", agentic="0.6", coding="0.6", config_json=cfg_json(MODEL="A")),
@@ -183,6 +228,36 @@ def test_cli_runs_from_repo_root(store):
     assert proc.returncode == 0
     assert "statuses refreshed" in proc.stdout
     assert read_store(store) == {"a": "keep"}
+
+
+def test_cli_model_scope_prints_without_rewrite(store):
+    a = row(
+        trial_id="a",
+        model="A.gguf",
+        tps="40.0",
+        agentic="0.7",
+        coding="0.7",
+        config_json=cfg_json(MODEL="A"),
+    )
+    b = row(
+        trial_id="b",
+        model="B.gguf",
+        tps="30.0",
+        agentic="0.6",
+        coding="0.6",
+        config_json=cfg_json(MODEL="B"),
+    )
+    write_store(store, [a, b])
+    proc = subprocess.run(
+        [sys.executable, "scripts/recompute_status.py", "--scope", "model", str(store)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0
+    assert "a\tA.gguf\tkeep" in proc.stdout
+    assert "b\tB.gguf\tkeep" in proc.stdout
+    # Read-only: stored statuses unchanged.
+    assert read_store(store) == {"a": "incomplete", "b": "incomplete"}
 
 
 def test_cli_help_exits_zero():

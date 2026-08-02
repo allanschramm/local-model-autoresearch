@@ -7,7 +7,6 @@ import json
 from autoresearch.core.classify import (
     bucket,
     classify_trial,
-    flip_rows,
     fp_from_baseline,
     fp_from_config_json,
     plan_write,
@@ -212,14 +211,3 @@ def test_rejected_rows_excluded_from_merge():
     status, flips = plan_write([rejected], fp=fp, vector=v(ctx=131072, coding=0.5), bucket_gb=8)
     assert status == "incomplete"  # a rejected partial never fills the new Trial's axes
     assert flips == {}
-
-
-def test_flip_rows_persists_on_front_as_keep_alias():
-    out = flip_rows([row(trial_id="a"), row(trial_id="b")], {"a": "on_front", "b": "dominated"})
-    assert [r["status"] for r in out] == ["keep", "dominated"]
-    assert out[0]["trial_id"] == "a"  # untouched fields survive
-
-
-def test_flip_rows_ignores_unknown_trial_ids():
-    out = flip_rows([row(trial_id="a")], {"nope": "dominated"})
-    assert out[0]["status"] == "incomplete"

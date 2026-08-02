@@ -6,6 +6,10 @@
 
 Front membership is plain Pareto non-domination on the four axes ([ADR 0006](../adr/0006-pareto-frontier-search.md)); this note only covers which point(s) to pick *off* an already-computed front.
 
+## Status recompute (issue #5)
+
+Stored statuses (`results.tsv`) are refreshed after every Trial write and via `scripts/recompute_status.py`: a new `on_front` point demotes rows it dominates to `dominated`. Each row's status derives from its (hardware+budget bucket, fingerprint) merged vector ([`autoresearch/core/recompute.py`](../../autoresearch/core/recompute.py)); incomplete and rejected rows never compete; rows without a `config_json` fingerprint (legacy keep/discard) are left untouched. The recompute is pure and idempotent. The canonical stored status is the global-by-bucket front across models; a per-model lens is available read-only (`scripts/recompute_status.py --scope model`, no rewrite).
+
 ## Why a scalar pick, not full multi-criteria decision-making (MCDM)
 
 Picking a single point from a Pareto Set is the classic **a posteriori** MCDM problem: generate the whole front first, then apply a decision-maker preference to choose one point ("generate-first, choose-later"). The literature offers a spectrum from one-line scalarizations to full interactive optimization. This repo's front is small (roughly one row per candidate model/config, teachable as a leaderboard table), so the right tool is the cheapest scalarization that is still theoretically grounded — not a library.

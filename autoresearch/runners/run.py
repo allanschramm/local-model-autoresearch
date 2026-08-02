@@ -400,21 +400,6 @@ def read_rows(results_file: Path) -> list[dict[str, str]]:
         return [dict(row) for row in csv.DictReader(f, delimiter="\t")]
 
 
-def _apply_flips(results_file: Path, flips: dict[str, str]) -> None:
-    """Persist flipped statuses of prior rows (fingerprint merge, issue #4)."""
-    if not flips or not results_file.exists():
-        return
-    with open(results_file, encoding="utf-8") as f:
-        rows = [dict(r) for r in csv.DictReader(f, delimiter="\t")]
-    rows = classify.flip_rows(rows, flips)
-    with open(results_file, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
-        )
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def recompute_statuses(results_file: Path) -> None:
     """Store-wide status refresh after a Trial write (issue #5).
 
@@ -745,6 +730,7 @@ def handle_single_run(args):
             tps_source=res.get("tps_source", ""),
             **_result_config(),
         )
+        recompute_statuses(RESULTS_FILE)  # literal "after every write", issue #5
         sys.exit(1)
 
     val_score = res["val_score"]

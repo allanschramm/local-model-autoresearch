@@ -1,19 +1,18 @@
-"""Integration tests: handle_single_run + _apply_flips over a real results.tsv.
+"""Integration tests: handle_single_run + store recompute over a real results.tsv.
 
-Issue #4 — classifier wired into the single Trial completion path. No GPU:
+Issue #4/#5 — classifier wired into the single Trial completion path. No GPU:
 run_evaluation is mocked, file I/O hits a real tmp results.tsv.
 """
 
 from __future__ import annotations
 
-import csv
 import json
 from types import SimpleNamespace
 
 import pytest
 
 import autoresearch.runners.run as run
-from autoresearch.core import classify, config
+from autoresearch.core import config
 
 
 def cfg_json(baseline: dict | None = None) -> str:
@@ -136,26 +135,3 @@ def test_merge_never_crosses_buckets_across_runs(run_env, monkeypatch):
     assert len(rows) == 2
     # No cross-budget merge: the 8GB partial is not completed by the 16GB point.
     assert [r["status"] for r in rows] == ["incomplete", "keep"]
-
-
-def test_apply_flips_updates_only_matching_fp_incomplete_rows(run_env):
-    fp2 = classify.fp_from_baseline(dict(config.load_config(), THREADS=8))
-    assert classify.fp_from_baseline(config.load_config()) != fp2
-    seed = [
-        {"trial_id": "a", "status": "incomplete", "memory_gb": "8.0", "config_json": cfg_json()},
-        {
-            "trial_id": "b",
-            "status": "incomplete",
-            "memory_gb": "8.0",
-            "config_json": cfg_json(dict(config.load_config(), THREADS=8)),
-        },
-    ]
-    with open(run_env, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f, fieldnames=run.CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
-        )
-        writer.writeheader()
-        writer.writerows(seed)
-    run._apply_flips(run_env, {"a": "on_front"})
-    out = {r["trial_id"]: r["status"] for r in run.read_rows(run_env)}
-    assert out == {"a": "keep", "b": "incomplete"}
