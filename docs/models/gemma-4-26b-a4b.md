@@ -32,7 +32,7 @@
 - **`general.name` = `Gemma-4-26B-A4B-It`**, file_type=15 (Q4_K_M), quantization_version=2
 - 658 tensors total
 - **NO MTP tensors in this GGUF** (verified via GGUFReader). MTP ships as a **separate `mtp-*` GGUF in the same HF repo tree** — not embedded, and not a sub-folder inside the main file (Unsloth updated the Gemma 4 repos so `mtp-*` files sit beside the main GGUFs; pair with `--spec-draft-model`).
-- **Local MTP draft (2026-08-02, GGUF-verified):** `mtp-gemma-4-26B-A4B-it.gguf` (251,939,328 B) is on disk — `general.architecture='gemma4-assistant'`, `block_count=4`, `nextn_predict_layers=4`, `embedding_length_out=2816` (pairs with the main model's hidden 2816), real MTP tensors `nextn.pre_projection.weight` / `nextn.post_projection.weight` (Q4_0). Pair via `--spec-draft-model`. Embedded sampling matches the card: `TEMP=1.0, TOP_P=0.95, TOP_K=64`.
+- **Local MTP draft (GGUF-verified 2026-08-02):** `mtp-gemma-4-26B-A4B-it.gguf` (251,939,328 B) — GGUF header read with venv `gguf_dump` (`PYTHONUTF8=1`): `general.architecture='gemma4-assistant'`, `block_count=4`, `nextn_predict_layers=4`, `embedding_length_out=2816` (pairs with the main model's hidden 2816), real MTP tensors `nextn.pre_projection.weight` / `nextn.post_projection.weight` (Q4_0). Pair via `--spec-draft-model`. Embedded sampling matches the card: `TEMP=1.0, TOP_P=0.95, TOP_K=64`.
 
 ## Variant lineup (Gemma 4 family)
 | Variant | Type | Best fit |
@@ -113,7 +113,7 @@ MTP: `--spec-type draft-mtp` (the accepted spelling — bare `mtp` is rejected; 
 ## Our config baseline
 - `CTX_SIZE`: **65536** (atualizado em commit `78d54e2`; Validar se valor ótimo para 26B-A4B é o mesmo ou se precisa reduzir)
 - `KV_CACHE_K = KV_CACHE_V`: `q4_0` primeiro; [Validar quais TurboQuant types nosso build expõe para KV cache]
-- `SPEC_TYPE`: `none` por ora — o draft MTP foi verificado (2026-08-02), mas o main 26B-A4B ainda não está disponível localmente; ativar MTP só depois que o main estiver disponível e o par for validado com `--spec-draft-model`.
+- `SPEC_TYPE`: `none` por ora — o draft MTP foi verificado (2026-08-02); ativar MTP só depois que o main 26B-A4B for baixado e o par for validado com `--spec-draft-model`.
 - `SPEC_DRAFT_N_MAX = 2` (se MTP funcionar)
 - `THREADS = 8`
 - `BATCH_SIZE = 512` `UBATCH_SIZE = 128`
@@ -146,12 +146,8 @@ MTP: `--spec-type draft-mtp` (the accepted spelling — bare `mtp` is rejected; 
 - Unsloth MTP guide (https://unsloth.ai/docs/models/mtp, re-extracted 2026-08-02 — MTP packaging = separate `mtp-*` GGUF in same repo)
 
 ## Open questions
-1. **[Resolvido 2026-08-02]** `--spec-type draft-mtp` é o flag aceito no build standard/upstream (mapa `common_speculative_type_from_name_map` no llama.cpp checked-out); `--spec-type mtp` é rejeitado nesse build (forks turboquant podem aceitar `mtp` — harness probeia `--help` por build).
-2. **[Resolvido 2026-08-02]** MTP é um `mtp-*` GGUF separado no mesmo repo HF (não sub-pasta do arquivo principal). Config: parear com `--spec-draft-model`.
-3. Validar: exato valor de `--n-gpu-layers` para 4B-active MoE em 8 GB VRAM. Commit `2bd795b` rodou Gemma 4 só com `--n-cpu-moe 15`, sem anotar o `--n-gpu-layers` exato.
-4. **[Resolvido 2026-08-02]** "🦙 llama.cpp Guide" e "Recommended Settings" do Unsloth doc re-extraídos (ver seções Recommended Settings / Sampling acima).
-5. **[Resolvido 2026-08-02]** Sampling: `TEMP=1.0, TOP_P=0.95, TOP_K=64`.
-6. **[Resolvido 2026-08-02]** Draft MTP `mtp-gemma-4-26B-A4B-it.gguf` baixado e verificado (arch `gemma4-assistant`, `nextn_predict_layers=4`, tensores `nextn.*`; `embedding_length_out=2816` casa com o hidden do main). **Aberto:** o main 26B-A4B (14.2 GB) sem inspeção local disponível → baixar antes de um Trial de MTP ativo.
+1. Validar: exato valor de `--n-gpu-layers` para 4B-active MoE em 8 GB VRAM. Commit `2bd795b` rodou Gemma 4 só com `--n-cpu-moe 15`, sem anotar o `--n-gpu-layers` exato.
+2. Baixar o main 26B-A4B (14.2 GB) e validar o par main + draft com `--spec-draft-model` antes de ativar MTP num Trial (draft GGUF-verificado 2026-08-02).
 
 ## Notes on prior runs
 Earlier 9B-MTP tuner runs included Gemma-4-E4B and Gemma-4-12B in `results.tsv` — both lost badly to Qwen3.5-9B on Coding/Retrieval. The 26B-A4B is the first large Gemma we test; expect different ranking.
