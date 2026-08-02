@@ -34,7 +34,7 @@ E4M3 vs E8M0 scaling: E8M0 snaps the scale to nearest 2ⁿ (cheap, can blow up e
 
 - Quantize: TensorRT Model Optimizer, LLM Compressor (PTQ / QAT)
 - Export: Unified Hugging Face checkpoint; ONNX for non-LLM models
-- Serve: TensorRT-LLM and vLLM (early NVFP4 support), SGLang upcoming
+- Serve: TensorRT-LLM and vLLM (early NVFP4 support), SGLang upcoming — in vLLM the NVFP4 path is NVIDIA Model Optimizer (see [vllm-quantization.md](./vllm-quantization.md) for the full vLLM quant matrix)
 - Pre-quantized HF checkpoints: DeepSeek-R1-0528, Llama 3, FLUX.1-dev
 
 ## Relevance to this repo

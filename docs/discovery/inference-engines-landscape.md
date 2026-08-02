@@ -28,6 +28,7 @@ This guide surveys the primary inference engines, analyzing their memory manager
 - **Core Mechanism**: Introduced **PagedAttention**, dividing KV cache into fixed-size physical memory blocks, eliminating external memory fragmentation and reducing internal fragmentation to under 4%.
 - **Scheduling**: Continuous Batching (iteration-level scheduling) ensuring decode steps execute without waiting for full sequence completion.
 - **Hardware & Architecture**: Broadest support across NVIDIA, AMD (ROCm), Intel Gaudi, and Google TPU. Supports over 400+ model architectures.
+- **Quantization Support**: AWQ, GPTQ, bitsandbytes, GGUF (GPU-only), FP8/INT8/INT4 via LLM Compressor, NVFP4 via NVIDIA Model Optimizer. Full matrix: [vllm-quantization.md](./vllm-quantization.md).
 - **Strengths**: Enterprise standard, robust OpenAI API server compatibility, seamless multi-GPU Tensor Parallelism (TP) and Pipeline Parallelism (PP).
 
 ### 2. SGLang (RadixAttention & Structured Decoding)

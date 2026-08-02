@@ -49,6 +49,8 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 
 ### 3. Inference Engines & Speculative Runtimes
 - [`inference-engines-landscape.md`](./inference-engines-landscape.md) — technical comparison & taxonomy guide of LLM inference engines (vLLM, SGLang, TensorRT-LLM, LMDeploy, llama.cpp, Colibrì, TGI).
+- [`vllm-quantization.md`](./vllm-quantization.md) — vLLM quantization formats, hardware compatibility matrix, out-of-tree quant plugin API.
+- [`vllm-quant-deep-dive.md`](./vllm-quant-deep-dive.md) — per-format quantization mechanics from vLLM source: kernels, group sizes, min SMs, NVFP4 status, config flags, repo relevance.
 - [`colibri-inference-engine.md`](./colibri-inference-engine.md) — architectural & performance guide for Colibrì zero-dependency C streaming MoE runtime.
 - [`speculative-decoding-formats.md`](./speculative-decoding-formats.md) — architectural and performance comparison of speculative formats (MTP vs Eagle vs DFlash vs N-gram).
 - [`mtp-baseline-guide.md`](./mtp-baseline-guide.md) — guide on verifying and benchmarking MTP speculative decoding with llama-bench/llama-cli.
