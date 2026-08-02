@@ -14,9 +14,16 @@ class TestAutoLoop(unittest.TestCase):
         temp_file = Path(self._state_dir.name) / "state.json"
         self._state_patch = patch("autoresearch.core.config.STATE_FILE", temp_file)
         self._state_patch.start()
+        # Keep classification hermetic: never read/flip the real results.tsv.
+        self._rows_patch = patch("autoloop.read_rows", return_value=[])
+        self._rows_patch.start()
+        self._flips_patch = patch("autoloop._apply_flips")
+        self._flips_patch.start()
 
     def tearDown(self):
         self._state_patch.stop()
+        self._rows_patch.stop()
+        self._flips_patch.stop()
         self._state_dir.cleanup()
 
     def test_get_neighbors(self):
@@ -556,6 +563,67 @@ class TestAutoLoop(unittest.TestCase):
             autoloop.main()
 
         self.assertGreaterEqual(mock_runner.run_trial.call_count, 1)
+
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
+    @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
+    @patch("autoloop.ExperimentRunner")
+    @patch("autoloop.load_config")
+    @patch("autoloop.SearchState.update_baseline")
+    @patch("autoloop.get_git_commit", return_value="abc123")
+    @patch("autoloop.write_row")
+    def test_autoloop_trials_are_classified_not_keep_discard(
+        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg, mock_runner_cls, _mock_models
+    ):
+        """AutoLoop trials write ADR 0006 statuses, never scalar keep/discard (issue #4)."""
+        mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
+        mock_runner = MagicMock()
+        # No agentic tier, no coding -> partial vector -> incomplete (never keep).
+        mock_runner.run_trial.return_value = self._make_trial_result()
+        mock_runner_cls.return_value = mock_runner
+
+        with patch.object(SearchStrategy, "get_neighbors", return_value=[]):
+            with patch.object(SearchStrategy, "random_restart", return_value=None):
+                autoloop.main()
+
+        baseline_status = mock_write_row.call_args.args[7]
+        self.assertIn(baseline_status, {"incomplete", "on_front", "dominated", "rejected"})
+        self.assertNotIn(baseline_status, {"keep", "discard"})
+
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
+    @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
+    @patch("autoloop.ExperimentRunner")
+    @patch("autoloop.load_config")
+    @patch("autoloop.SearchState.update_baseline")
+    @patch("autoloop.get_git_commit", return_value="abc123")
+    @patch("autoloop.write_row")
+    @patch("autoloop.estimate_vram_mb")
+    def test_autoloop_rejected_baseline_writes_rejected_and_restarts(
+        self,
+        mock_vram,
+        mock_write_row,
+        mock_git,
+        mock_wcfg,
+        mock_lcfg,
+        mock_runner_cls,
+        _mock_models,
+    ):
+        """MODEL_REJECTED baseline lands as rejected and triggers Random Restart."""
+        from autoresearch.runners.evaluation import TrialOutcome
+
+        mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
+        mock_vram.return_value = 1000.0
+        mock_runner = MagicMock()
+        mock_runner.run_trial.return_value = self._make_trial_result(
+            outcome=TrialOutcome.MODEL_REJECTED, status="FAIL: VRAM_LIMIT_EXCEEDED"
+        )
+        mock_runner_cls.return_value = mock_runner
+
+        with patch.object(SearchStrategy, "get_neighbors", return_value=[]):
+            with patch.object(SearchStrategy, "random_restart", return_value=None):
+                autoloop.main()
+
+        self.assertEqual(mock_write_row.call_args.args[7], "rejected")
+        self.assertEqual(mock_write_row.call_args.kwargs["outcome"], "MODEL_REJECTED")
 
 
 if __name__ == "__main__":

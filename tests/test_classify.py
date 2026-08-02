@@ -50,6 +50,17 @@ def row(**kw) -> dict:
     return base
 
 
+def test_fp_from_config_json_rejects_non_object_json():
+    assert fp_from_config_json("[]") is None
+    assert fp_from_config_json("42") is None
+    assert fp_from_config_json("[1, 2]") is None
+
+
+def test_fp_ignores_non_baseline_keys():
+    # Extra keys (AutoLoop bench INCLUDE_* flags) must not split the Fingerprint.
+    assert fp_from_baseline({**BASELINE, "INCLUDE_CODING": True}) == fp_from_baseline(BASELINE)
+
+
 def test_bucket_rounds_memory_gb():
     assert bucket(7.9) == 8
     assert bucket(16.0) == 16

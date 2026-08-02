@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from autoresearch.core import classify
 from autoresearch.core.config import (
     ENGINE_DEFAULTS,
     SAMPLER_DEFAULTS,
@@ -32,7 +33,9 @@ from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
 from autoresearch.runners.run import (
     MODELS_DIR,
     RESULTS_FILE,
+    _apply_flips,
     get_git_commit,
+    read_rows,
     tsv_fields_from_cfg,
     write_row,
 )
@@ -224,6 +227,32 @@ def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) ->
         print(f"  [ALIAS] Automatically updated alias config at {yaml_path}")
     except Exception as e:
         print(f"  [WARNING] Failed to auto-update alias config: {e}")
+
+
+def _objective_vector(cfg: dict[str, Any], res) -> classify.ObjectiveVector:
+    """Objective Vector of a Trial; blank axis = not measured (ADR 0006)."""
+    return classify.ObjectiveVector(
+        ctx=cfg.get("CTX_SIZE"),
+        tps=getattr(res, "avg_tps", None) or None,
+        agentic=getattr(res, "agentic_val", None)
+        if getattr(res, "agentic_tier", "") == "full"
+        else None,
+        coding=getattr(res, "coding_val", None) if bool(cfg.get("INCLUDE_CODING", False)) else None,
+    )
+
+
+def _classify(cfg: dict[str, Any], res) -> tuple[str, dict[str, str], classify.ObjectiveVector]:
+    """Classify an AutoLoop Trial vs the known Set (issue #4)."""
+    vector = _objective_vector(cfg, res)
+    status, flips = classify.plan_write(
+        read_rows(RESULTS_FILE),
+        fp=classify.fp_from_baseline(cfg),
+        vector=vector,
+        bucket_gb=classify.bucket(getattr(res, "peak_vram_gb", 0.0)),
+        failed=getattr(res, "outcome", TrialOutcome.OK)
+        in (TrialOutcome.INVALID_CONFIG, TrialOutcome.MODEL_REJECTED),
+    )
+    return status, flips, vector
 
 
 def trial_config(
@@ -491,12 +520,7 @@ def main():
             baseline_score = baseline_res.val_score
             baseline_tps = baseline_res.avg_tps
             baseline_vram = baseline_res.peak_vram_gb
-            baseline_outcome = getattr(baseline_res, "outcome", TrialOutcome.OK)
-            baseline_status = (
-                "discard"
-                if baseline_outcome in (TrialOutcome.INVALID_CONFIG, TrialOutcome.MODEL_REJECTED)
-                else "keep"
-            )
+            baseline_status, baseline_flips, baseline_vector = _classify(baseline_cfg, baseline_res)
 
             if cli_args.mode == "tps":
                 tsv_category = "engine-tps"
@@ -519,6 +543,8 @@ def main():
                 f"TPS={baseline_tps:.1f} PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}",
                 lcb_score=baseline_res.lcb_val,
                 bigcode_score=baseline_res.bigcode_val,
+                agentic=baseline_vector.agentic,
+                coding=baseline_vector.coding,
                 category=tsv_category,
                 tps=baseline_tps,
                 bench_tg=getattr(baseline_res, "bench_tg_tps", None),
@@ -535,6 +561,8 @@ def main():
                 },
             )
 
+            _apply_flips(RESULTS_FILE, baseline_flips)
+
             ppl_str = (
                 f" PPL={getattr(baseline_res, 'bench_ppl', 0.0):.4f}"
                 if (is_tps_mode or cli_args.perplexity_val)
@@ -544,7 +572,7 @@ def main():
                 f"[BASELINE] Score={baseline_score:.6f} TPS={baseline_tps:.1f}{ppl_str} VRAM={baseline_vram:.1f}GB"
             )
 
-            if baseline_status == "discard":
+            if baseline_status == "rejected":
                 print(f"[BASELINE] Rejected ({baseline_res.status}); attempting Random Restart.")
                 new_baseline = search_strategy.random_restart(state_manager.visited, baseline_cfg)
                 if new_baseline and preflight_vram_ok(new_baseline, vram_limit):
@@ -612,7 +640,7 @@ def main():
                             f"Perplexity degraded too much (PPL={n_ppl:.4f} vs base={b_ppl:.4f})"
                         )
 
-                status = "keep" if is_improvement else "discard"
+                status, flips, vec = _classify(neighbor.config, res)
 
                 write_row(
                     RESULTS_FILE,
@@ -627,6 +655,8 @@ def main():
                     f"{search_strategy.format_config_summary(neighbor.config)} TPS={tps:.1f} PPL={getattr(res, 'bench_ppl', 0.0):.4f} Δ={delta:+.6f}",
                     lcb_score=res.lcb_val,
                     bigcode_score=res.bigcode_val,
+                    agentic=vec.agentic,
+                    coding=vec.coding,
                     category=tsv_category,
                     tps=tps,
                     bench_tg=getattr(res, "bench_tg_tps", None),
@@ -642,6 +672,7 @@ def main():
                         "config_json": json.dumps(neighbor.config, sort_keys=True, default=repr),
                     },
                 )
+                _apply_flips(RESULTS_FILE, flips)
 
                 if is_improvement:
                     print(f"  >>> IMPROVEMENT! {changed}: {old_val} -> {new_val} ({reason})")

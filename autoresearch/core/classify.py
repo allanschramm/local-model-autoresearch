@@ -11,7 +11,13 @@ import json
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
+from autoresearch.core.config import DEFAULTS
 from autoresearch.core.pareto import ObjectiveVector, Trial, dominates, fingerprint, merge
+
+# Fingerprint identity = ENGINE_DEFAULTS + SAMPLER_DEFAULTS only (ADR 0006).
+# Extra keys (e.g. bench INCLUDE_* flags in AutoLoop configs) must not split
+# two write paths that share the same engine+sampler Baseline.
+_IDENTITY_KEYS = frozenset(str(k).lower() for k in DEFAULTS)
 
 # Hardware+budget identity of the known Set (ADR 0006: the global front is
 # ranked per hardware+budget). The TSV has no hardware column; peak VRAM
@@ -48,7 +54,7 @@ def fp_from_baseline(baseline: Mapping[str, Any]) -> str:
     Keys are lowercased so the live config dict and the persisted config_json
     cell hash identically (ADR 0006: engine + sampler, not model-only).
     """
-    canonical = {str(k).lower(): v for k, v in baseline.items()}
+    canonical = {str(k).lower(): v for k, v in baseline.items() if str(k).lower() in _IDENTITY_KEYS}
     return fingerprint({"baseline": canonical}, {})
 
 
@@ -57,9 +63,12 @@ def fp_from_config_json(config_json: Any) -> str | None:
     if not config_json:
         return None
     try:
-        return fp_from_baseline(json.loads(config_json))
+        loaded = json.loads(config_json)
     except (TypeError, ValueError):
         return None
+    if not isinstance(loaded, dict):
+        return None
+    return fp_from_baseline(loaded)
 
 
 def persist_status(status: str) -> str:
