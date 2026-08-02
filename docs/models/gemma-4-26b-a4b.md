@@ -120,7 +120,7 @@ MTP: `--spec-type draft-mtp` (the accepted spelling — bare `mtp` is rejected; 
 - `FLASH_ATTN = "on"`
 - `--n-gpu-layers`: Validar (autoloop vai descobrir)
 - `--n-cpu-moe`: **30** (keeps all 30 layers of routed experts on CPU/RAM to avoid GPU memory swapping/thrashing on 8 GB VRAM at 65k context).
-- Sampling: Validar — Unsloth doc truncado antes da seção "Recommended Settings"
+- Sampling: `TEMP=1.0`, `TOP_P=0.95`, `TOP_K=64` (verified 2026-08-02; see Recommended Settings above)
 
 ### Teste real (commit `2bd795b`)
 - Rodou `gemma-4-26B-A4B-it-UD-Q4_K_M.gguf` no nosso rig (8 GB VRAM) com VITRIOL (`--n-cpu-moe 15`)
