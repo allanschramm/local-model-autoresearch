@@ -36,6 +36,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - [`2026-08-02-qwythos-v2-normal-100k-vram.md`](./2026-08-02-qwythos-v2-normal-100k-vram.md) — Qwythos v2 normal 100k Trial rejected at the physical-VRAM gate with batch/ubatch 32/16.
 - [`2026-08-02-qwythos-v2-mtp-n4-preflight.md`](./2026-08-02-qwythos-v2-mtp-n4-preflight.md) — Qwythos v2 MTP n=4 rejection at 100k by the physical-VRAM preflight gate.
 - [`2026-08-02-qwythos-v2-mtp-100k.md`](./2026-08-02-qwythos-v2-mtp-100k.md) — Complete Qwythos v2 embedded-MTP pipeline at 100k with Turbo2 and batch/ubatch 32/16.
+- [`2026-08-02-research-gap-closure.md`](./2026-08-02-research-gap-closure.md) — Primary-source closure of the repo's web-resolvable TBD/data gaps (model cards, vLLM deep-dive, 8 GB guide); local-only gaps listed separately.
 - [`2026-08-01-ornith-turboquant-131k.md`](./2026-08-01-ornith-turboquant-131k.md) — Complete Ornith 131k pipeline on TurboQuant+ Turbo2, including MTP failures and the 7.2 GB no-spec winner.
 - [`2026-08-01-ornith-turboquant-100k.md`](./2026-08-01-ornith-turboquant-100k.md) — TurboQuant+ release Trials for Ornith embedded MTP at 100k, including effective KV/MTP flags and VRAM-gate results.
 - [`2026-08-01-turboquant-release-research.md`](./2026-08-01-turboquant-release-research.md) — Official TurboQuant+ prebuilt release, Windows/CUDA assets, KV tiers, MTP support, and upstream relationship.

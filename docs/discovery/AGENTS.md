@@ -35,6 +35,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`coding-leaderboard.md`](./coding-leaderboard.md) — ranked coding-10 (HE/MBPP/LCB/BC) scores on this 8 GB rig.
 - [`pareto-leaderboard.md`](./pareto-leaderboard.md) — global Pareto Set (ctx × TPS × agentic × coding) + Day/Night picks (ADR 0006/0008). Live recompute: `scripts/rank_results.py`.
 - [`pareto-selection.md`](./pareto-selection.md) — method note: maximin/Chebyshev Night + ε-constraint IQ band Day ([ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md)).
+- [`best-model-8gb-vram.md`](./best-model-8gb-vram.md) — web-sourced selection guide: fastest + smartest model fitting 8 GB VRAM (primary publisher cards only; no local measurements).
 - [`agent-shell-hard-gates.md`](./agent-shell-hard-gates.md) — live gate inventory, disable/rollback playbook (§3), threat model (Cursor + Claude Code).
 - [`../models/README.md`](../../models/README.md) — nested GGUF store shared with LM Studio.
 
