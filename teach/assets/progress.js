@@ -51,7 +51,7 @@
     {
       id: "s1d4",
       href: "lessons/s1d4-usecase-fluxo-zero.html",
-      title: "Semana 1 · Dia 4 — Samplers / qualidade",
+      title: "Semana 1 · Dia 4 — Samplers + Day/Night",
     },
     {
       id: "s2d1",
