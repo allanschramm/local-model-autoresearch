@@ -33,9 +33,9 @@ from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
 from autoresearch.runners.run import (
     MODELS_DIR,
     RESULTS_FILE,
-    _apply_flips,
     get_git_commit,
     read_rows,
+    recompute_statuses,
     tsv_fields_from_cfg,
     write_row,
 )
@@ -266,7 +266,7 @@ def _write_trial(
     Returns the ADR 0006 status. Every non-OK outcome (including
     INFRA_ERROR / CODE_ERROR) lands as `rejected` — no Trial disappears.
     """
-    status, flips, vector = _classify(cfg, res)
+    status, _, vector = _classify(cfg, res)
     write_row(
         RESULTS_FILE,
         get_git_commit(),
@@ -296,7 +296,7 @@ def _write_trial(
             "config_json": json.dumps(cfg, sort_keys=True, default=repr),
         },
     )
-    _apply_flips(RESULTS_FILE, flips)
+    recompute_statuses(RESULTS_FILE)
     return status
 
 

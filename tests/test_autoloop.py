@@ -17,7 +17,7 @@ class TestAutoLoop(unittest.TestCase):
         # Keep classification hermetic: never read/flip the real results.tsv.
         self._rows_patch = patch("autoloop.read_rows", return_value=[])
         self._rows_patch.start()
-        self._flips_patch = patch("autoloop._apply_flips")
+        self._flips_patch = patch("autoloop.recompute_statuses")
         self._flips_patch.start()
 
     def tearDown(self):

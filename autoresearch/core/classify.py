@@ -95,7 +95,7 @@ def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[Ob
     for row in rows:
         if row.get("status") == "rejected":
             continue  # rejected Trials never compete for the front
-        if _row_bucket(row) != bucket_gb:
+        if row_bucket(row) != bucket_gb:
             continue
         fp = fp_from_config_json(row.get("config_json"))
         if fp is None:
@@ -109,7 +109,7 @@ def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[Ob
     return known
 
 
-def _row_bucket(row: Mapping[str, Any]) -> int | None:
+def row_bucket(row: Mapping[str, Any]) -> int | None:
     """Bucket of a results.tsv row (None when the memory cell is unset)."""
     mem = _cell_float(row.get(BUCKET_PROXY))
     return None if mem is None else bucket(mem)
@@ -137,7 +137,7 @@ def plan_write(
         for row in rows
         if row.get("status") != "rejected"
         and fp_from_config_json(row.get("config_json")) == fp
-        and _row_bucket(row) == bucket_gb
+        and row_bucket(row) == bucket_gb
     ]
     merged = merge([Trial(fp=fp, vector=v) for v in [*prior, vector]])[0].vector
     status = classify_trial(failed=False, vector=merged, known=_known_vectors(rows, bucket_gb))
@@ -148,7 +148,7 @@ def plan_write(
         for row in rows
         if row.get("status") == "incomplete"
         and fp_from_config_json(row.get("config_json")) == fp
-        and _row_bucket(row) == bucket_gb
+        and row_bucket(row) == bucket_gb
     }
     return status, flips
 

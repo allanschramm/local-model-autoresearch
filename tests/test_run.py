@@ -103,8 +103,8 @@ class TestRun(unittest.TestCase):
                 run.handle_single_run(args)
                 mock_exit.assert_not_called()
 
-        # File should have been opened for appending
-        mock_file.assert_called_with(run.RESULTS_FILE, "a", newline="", encoding="utf-8")
+        # File should have been opened for appending (recompute also reads after).
+        mock_file.assert_any_call(run.RESULTS_FILE, "a", newline="", encoding="utf-8")
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")

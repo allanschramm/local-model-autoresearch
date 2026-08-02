@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from autoresearch.benchmarks import bench_config, format_agentic_benchmarks, format_claw_tiers
-from autoresearch.core import classify, config
+from autoresearch.core import classify, config, recompute
 from autoresearch.runners.evaluation import ExperimentRunner, resolve_tps_floor
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -415,6 +415,26 @@ def _apply_flips(results_file: Path, flips: dict[str, str]) -> None:
         writer.writerows(rows)
 
 
+def recompute_statuses(results_file: Path) -> None:
+    """Store-wide status refresh after a Trial write (issue #5).
+
+    A new on_front point demotes rows it dominates to dominated; incomplete
+    and rejected rows are left out; legacy keep/discard rows without a
+    config_json fingerprint are untouched. Idempotent: rerunning changes
+    nothing, so a no-change store is not rewritten.
+    """
+    rows = read_rows(results_file)
+    updated = recompute.recompute_rows(rows)
+    if updated == rows:
+        return
+    with open(results_file, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
+        )
+        writer.writeheader()
+        writer.writerows(updated)
+
+
 def get_previous_best(results_file: Path, model_name: str | None = None) -> float:
     if not results_file.exists():
         return 0.0
@@ -744,7 +764,7 @@ def handle_single_run(args):
     _ensure_category_column(RESULTS_FILE)
     rows = read_rows(RESULTS_FILE)
     fp = classify.fp_from_baseline(config.load_config())
-    status, flips = classify.plan_write(
+    status, _ = classify.plan_write(
         rows,
         fp=fp,
         vector=vector,
@@ -783,7 +803,7 @@ def handle_single_run(args):
         tps_source=res.get("tps_source", ""),
         **_result_config(),
     )
-    _apply_flips(RESULTS_FILE, flips)
+    recompute_statuses(RESULTS_FILE)
 
     print("\n" + "=" * 40)
     print("EVALUATION COMPLETE")

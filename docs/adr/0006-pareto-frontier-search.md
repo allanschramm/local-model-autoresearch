@@ -20,6 +20,7 @@ Day vs night use differs: supervised daytime wants speed; unsupervised night `/l
 5. **Status vocabulary:** `on_front` | `dominated` | `incomplete` | `rejected`. Do not overload `keep`/`discard` with new meaning (`keep` may remain a deprecated alias of `on_front` during migration).
 6. **No TPS Floor on frontier membership.** TPS remains an axis. Day/Night apply throughput (and Night ctx floor) only when *selecting* a point. Legacy `TPS_FLOOR` may remain for smoke/tooling until removed.
 7. **Ship cut:** Phase 0 (done 2026-07-25) = domain docs (`CONTEXT.md` + this ADR + AGENTS preferences). Phase 1 = frontier nucleus (domination, fingerprint merge, status, leaderboard/TSV). Phase 2 = Search/autoloop profile pick + honest peak preflight / dynamic headroom. No big-bang eval rewrite.
+8. **Recompute (issue #5):** after each Trial write (and via `scripts/recompute_status.py`) the store's statuses are refreshed so a new `on_front` point demotes rows it dominates to `dominated`. Each row's status derives from its (bucket, fingerprint) merged vector; incomplete and rejected rows never compete; rows without a `config_json` fingerprint (legacy keep/discard) are left untouched. The recompute is a pure, idempotent function over the store.
 
 ## Consequences
 

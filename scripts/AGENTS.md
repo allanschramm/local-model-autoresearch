@@ -20,6 +20,7 @@ Repository operators and developers.
 - Use `check_hardware.py` to diagnose hardware on **Windows, macOS, and Linux**: RAM, NVIDIA VRAM (`discrete_gpu`) or unified memory / no discrete NVIDIA (`unified_memory`, including Apple Silicon Metal). Report memory class + model pool; give conservative GGUF/context guidance. Dense must fit the detected pool (VRAM or unified RAM with OS headroom); Metal uses `-ngl 99`, true CPU-only uses `-ngl 0`; never suggest partial dense offload. Agents treat this script as local fit authority over whichllm/llmfit rankings.
 - Use `verify_setup.py` to validate local API server health and benchmark real-time TPS. Its default port matches `serve-config.py` (18080).
 - Use `lcb_only.py` to re-measure LiveCodeBench (10 tasks) against current Baseline — gambiarra when coding HE/MBPP/BC already logged but LCB cache failed.
+- Use `recompute_status.py` to refresh Trial statuses in a `results.tsv` after the fact (Pareto Set recompute, issue #5). Write paths (`run.py`, `autoloop.py`) already recompute after every Trial; the script covers retroactive refreshes. Idempotent, no GPU.
 - Use `rank_results.py` to print Pareto / Day / Night / claw / coding rankings from `results.tsv`. Agents must use this CLI for model rankings — no ad-hoc temp filter scripts.
 - Maintain helper commands documented in README.md.
 
@@ -33,6 +34,7 @@ Repository operators and developers.
 - [bench_openvino.py](bench_openvino.py) — optional OpenVINO GenAI CPU/iGPU benchmark with separate prefill/decode TPS output.
 - [run_pytest_hook.py](run_pytest_hook.py) — pre-commit local entry for venv pytest.
 - [lcb_only.py](lcb_only.py) — LCB-only remeasure helper (`scripts/lcb_only.py`).
+- [recompute_status.py](recompute_status.py) — store-wide Pareto status recompute over a results.tsv (issue #5; `autoresearch/core/recompute.py` owns the logic).
 - [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0008).
 - Hard-gates (Claude): [../.claude/hooks/](../.claude/hooks/) + [../docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md).
 - Git pre-commit: [../.pre-commit-config.yaml](../.pre-commit-config.yaml) + [../pyproject.toml](../pyproject.toml).
