@@ -1,5 +1,5 @@
 /**
- * S2D1 restaurant sampler simulator (file:// friendly, no modules).
+ * S1D4 restaurant sampler simulator (file:// friendly, no modules).
  * 1 prompt → filtered menu (K/P/Min-P + penalties) → 3 sampled next words.
  */
 (function () {

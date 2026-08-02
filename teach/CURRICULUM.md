@@ -4,7 +4,7 @@
 >
 > **Gate:** “Concluir” exige quiz + prática. Simulação conta; prática real local é opcional.
 >
-> **Nota de implementação:** slots/filenames estáveis; conteúdo-alvo abaixo. HTML ainda pode refletir a ordem antiga até a reordenação descrita em SPEC.
+> **Nota de implementação:** slots/filenames estáveis; conteúdo segue o SPEC. Swap S1D4/S2D1 concluído (samplers → S1D4; skills → S2D1).
 
 ## Checklist de preparação (multiplataforma)
 
@@ -40,7 +40,7 @@
 | **Dia 1** | Motores, baixar/escolher modelos, API local | [s1d1](lessons/s1d1-lmstudio-avisos-motores-api.html) |
 | **Dia 2** | llama.cpp + flags TPS | [s1d2](lessons/s1d2-llamacpp-flags-tps.html) |
 | **Dia 3** | MoE maior que a GPU (offload) | [s1d3](lessons/s1d3-moe-maior-que-a-vram.html) |
-| **Dia 4** | Samplers + conceito Day/Night (uso) | [s1d4](lessons/s1d4-usecase-fluxo-zero.html) |
+| **Dia 4** | Samplers + conceito Day/Night (uso) | [s1d4](lessons/s1d4-usecase-fluxo-zero.html) | Publicado (swap) |
 
 ---
 
@@ -48,7 +48,7 @@
 
 | Slot | Foco (alvo SPEC) | Lição HTML | Status |
 |---|---|---|---|
-| **Dia 1** | Skills (`skills.sh`, Matt Pocock) + transpor | [s2d1](lessons/s2d1-parametros-qualidade.html) | Alvo SPEC (HTML ainda samplers até swap) |
+| **Dia 1** | Skills (`skills.sh`, Matt Pocock) + transpor | [s2d1](lessons/s2d1-parametros-qualidade.html) | Publicado (swap) |
 | **Dia 2** | MCP + Context7; arco + transpor | [s2d2](lessons/s2d2-mcp-ferramentas.html) | Publicado (ajuste leve pendente) |
 | **Dia 3** | Guardrails + hooks; arco + transpor | [s2d3](lessons/s2d3-sandbox-hooks-gates.html) | Publicado (ajuste leve pendente) |
 | **Dia 4** | Aplicação Day/Night + checklist do repo | [s2d4](lessons/s2d4-usecase-completo.html) | Publicado |

@@ -42,7 +42,7 @@ Course operator / instructors. Not part of the autotuning runtime loop.
 - [GLOSSARY.md](GLOSSARY.md) — canonical terms (HTML: `reference/glossario.html`).
 - [NOTES.md](NOTES.md) — instructor scratch / preferences.
 - [learning-records/](learning-records/) — decision-grade teaching insights.
-- [assets/sampler-sim.js](assets/sampler-sim.js) — S2D1 restaurant sampler (until content swap completes, sim follows sampler lesson slot).
+- [assets/sampler-sim.js](assets/sampler-sim.js) — S1D4 restaurant sampler (sim follows sampler lesson slot).
 - [assets/mcp-sim.js](assets/mcp-sim.js) — S2D2 kitchen MCP sim.
 - [assets/guardrails-sim.js](assets/guardrails-sim.js) — S2D3 nightclub door sim.
 - [lessons/s2d4-usecase-completo.html](lessons/s2d4-usecase-completo.html) — S2D4 Day/Night full application (inline flow sim).

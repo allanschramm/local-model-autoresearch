@@ -14,8 +14,8 @@
     s1d1: ["s1d1-q1", "s1d1-q2", "s1d1-q3"],
     s1d2: ["s1d2-q1", "s1d2-q2"],
     s1d3: ["s1d3-q1", "s1d3-q2"],
-    s1d4: ["s1d4-q1", "s1d4-q2", "s1d4-q3"],
-    s2d1: ["s2d1-q1", "s2d1-q2", "s2d1-q3", "s2d1-q4"],
+    s1d4: ["s1d4-q1", "s1d4-q2", "s1d4-q3", "s1d4-q4"],
+    s2d1: ["s2d1-q1", "s2d1-q2", "s2d1-q3"],
     s2d2: ["s2d2-q1", "s2d2-q2", "s2d2-q3", "s2d2-q4"],
     s2d3: ["s2d3-q1", "s2d3-q2", "s2d3-q3", "s2d3-q4"],
     s2d4: ["s2d4-q1", "s2d4-q2", "s2d4-q3", "s2d4-q4"],
@@ -51,12 +51,12 @@
     {
       id: "s1d4",
       href: "lessons/s1d4-usecase-fluxo-zero.html",
-      title: "Semana 1 · Dia 4 — Skills (Matt Pocock)",
+      title: "Semana 1 · Dia 4 — Samplers / qualidade",
     },
     {
       id: "s2d1",
       href: "lessons/s2d1-parametros-qualidade.html",
-      title: "Semana 2 · Dia 1 — Samplers / qualidade",
+      title: "Semana 2 · Dia 1 — Skills (Matt Pocock)",
     },
     {
       id: "s2d2",
