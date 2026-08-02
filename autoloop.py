@@ -632,11 +632,6 @@ def main():
                         include_ppl=(is_tps_mode or cli_args.perplexity_val),
                     )
                 )
-                if getattr(res, "outcome", TrialOutcome.OK) in (
-                    TrialOutcome.INFRA_ERROR,
-                    TrialOutcome.CODE_ERROR,
-                ):
-                    raise RuntimeError(f"Search stopped: {res.status}")
                 score = res.val_score
                 tps = res.avg_tps
                 vram = res.peak_vram_gb

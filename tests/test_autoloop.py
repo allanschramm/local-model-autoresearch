@@ -652,6 +652,48 @@ class TestAutoLoop(unittest.TestCase):
         self.assertEqual(mock_write_row.call_args.args[7], "rejected")
         self.assertEqual(mock_write_row.call_args.kwargs["outcome"], "INFRA_ERROR")
 
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
+    @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
+    @patch("autoloop.ExperimentRunner")
+    @patch("autoloop.load_config")
+    @patch("autoloop.SearchState.update_baseline")
+    @patch("autoloop.get_git_commit", return_value="abc123")
+    @patch("autoloop.write_row")
+    @patch("autoloop.estimate_vram_mb")
+    def test_autoloop_neighbor_infra_error_is_recorded_then_stops(
+        self,
+        mock_vram,
+        mock_write_row,
+        mock_git,
+        mock_wcfg,
+        mock_lcfg,
+        mock_runner_cls,
+        _mock_models,
+    ):
+        """A neighbor INFRA_ERROR is persisted as rejected before the loop stops."""
+        from autoresearch.runners.evaluation import TrialOutcome
+
+        mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
+        mock_vram.return_value = 1000.0
+        mock_runner = MagicMock()
+        mock_runner.run_trial.side_effect = [
+            self._make_trial_result(),  # baseline OK
+            self._make_trial_result(outcome=TrialOutcome.INFRA_ERROR, status="FAIL: crashed"),
+        ]
+        mock_runner_cls.return_value = mock_runner
+
+        base_config = self._full_config(MODEL="test.gguf")
+        strategy = SearchStrategy(autoloop.SEARCH_SPACE, use_pareto_tiebreaker=True)
+        with patch.object(SearchStrategy, "get_neighbors") as mock_gn:
+            nbr = strategy.get_neighbors(base_config)[0]
+            mock_gn.return_value = [nbr]
+            with self.assertRaises(RuntimeError):
+                autoloop.main()
+
+        # Last write = the neighbor Trial, recorded as rejected before the raise.
+        self.assertEqual(mock_write_row.call_args.args[7], "rejected")
+        self.assertEqual(mock_write_row.call_args.kwargs["outcome"], "INFRA_ERROR")
+
 
 if __name__ == "__main__":
     unittest.main()

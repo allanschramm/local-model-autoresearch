@@ -93,6 +93,8 @@ def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[Ob
     """Complete points already in this hardware+budget bucket, merged per Fingerprint."""
     by_fp: dict[str, list[ObjectiveVector]] = {}
     for row in rows:
+        if row.get("status") == "rejected":
+            continue  # rejected Trials never compete for the front
         if _row_bucket(row) != bucket_gb:
             continue
         fp = fp_from_config_json(row.get("config_json"))
@@ -133,7 +135,9 @@ def plan_write(
     prior = [
         vector_from_row(row)
         for row in rows
-        if fp_from_config_json(row.get("config_json")) == fp and _row_bucket(row) == bucket_gb
+        if row.get("status") != "rejected"
+        and fp_from_config_json(row.get("config_json")) == fp
+        and _row_bucket(row) == bucket_gb
     ]
     merged = merge([Trial(fp=fp, vector=v) for v in [*prior, vector]])[0].vector
     status = classify_trial(failed=False, vector=merged, known=_known_vectors(rows, bucket_gb))

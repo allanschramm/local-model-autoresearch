@@ -185,6 +185,35 @@ def test_merge_and_flips_are_bucket_scoped():
     assert flips == {}
 
 
+def test_rejected_rows_excluded_from_known_set():
+    fp = fp_from_baseline(BASELINE)
+    rejected_strong = row(
+        trial_id="rej",
+        status="rejected",
+        config_json=cfg_json(dict(BASELINE, THREADS=8)),
+        ctx="131072",
+        tps="40.0",
+        agentic="0.7",
+        coding="0.7",
+    )
+    status, flips = plan_write(
+        [rejected_strong],
+        fp=fp,
+        vector=v(ctx=131072, tps=30.0, agentic=0.6, coding=0.6),
+        bucket_gb=8,
+    )
+    assert status == "on_front"  # a rejected point never dominates
+    assert flips == {}
+
+
+def test_rejected_rows_excluded_from_merge():
+    fp = fp_from_baseline(BASELINE)
+    rejected = row(trial_id="rej", status="rejected", ctx="131072", tps="30.0", agentic="0.6")
+    status, flips = plan_write([rejected], fp=fp, vector=v(ctx=131072, coding=0.5), bucket_gb=8)
+    assert status == "incomplete"  # a rejected partial never fills the new Trial's axes
+    assert flips == {}
+
+
 def test_flip_rows_persists_on_front_as_keep_alias():
     out = flip_rows([row(trial_id="a"), row(trial_id="b")], {"a": "on_front", "b": "dominated"})
     assert [r["status"] for r in out] == ["keep", "dominated"]
