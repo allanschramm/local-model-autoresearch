@@ -1,6 +1,16 @@
 import unittest
 
+from autoresearch.core.pareto import ObjectiveVector
 from autoresearch.core.search import SearchStrategy
+
+VEC = dict(ctx=131072, tps=30.0, agentic=0.6, coding=0.4)
+
+
+def vec(**overrides) -> ObjectiveVector:
+    """Fake Trial outcome; complete by default, override axes per test."""
+    values = dict(VEC)
+    values.update(overrides)
+    return ObjectiveVector(**values)
 
 
 class TestSearchStrategy(unittest.TestCase):
@@ -108,6 +118,66 @@ class TestSearchStrategy(unittest.TestCase):
         neighbors = strategy.get_neighbors({"BATCH_SIZE": 256, "UBATCH_SIZE": 256})
         for n in neighbors:
             self.assertLessEqual(n.config["UBATCH_SIZE"], n.config["BATCH_SIZE"])
+
+
+class TestSearchStrategyParetoSet(unittest.TestCase):
+    """Issue #7: Neighbor acceptance = non-dominated improvement on the per-model Set."""
+
+    def test_first_trial_joins_empty_set(self):
+        # A single complete point is its own front.
+        strategy = SearchStrategy({})
+        self.assertTrue(strategy.improves_set(vec()))
+
+    def test_dominating_neighbor_improves_set(self):
+        strategy = SearchStrategy({}, known=[vec()])
+        # Same tradeoff, strictly faster TPS → dominates the known member.
+        self.assertTrue(strategy.improves_set(vec(tps=35.0)))
+
+    def test_dominated_neighbor_does_not_improve_set(self):
+        strategy = SearchStrategy({}, known=[vec()])
+        # Slower TPS, everything else equal → dominated, no improvement.
+        self.assertFalse(strategy.improves_set(vec(tps=25.0)))
+
+    def test_incomparable_neighbor_joins_set(self):
+        strategy = SearchStrategy({}, known=[vec()])
+        # Better TPS, worse ctx → incomparable → joins the front.
+        self.assertTrue(strategy.improves_set(vec(ctx=65536, tps=45.0)))
+
+    def test_incomplete_neighbor_never_competes(self):
+        # ADR 0006: incomplete merges, never dominates, never joins the front.
+        strategy = SearchStrategy({}, known=[vec()])
+        self.assertFalse(strategy.improves_set(vec(agentic=None)))
+        self.assertFalse(strategy.improves_set(vec(tps=None, coding=None)))
+
+    def test_record_keeps_every_trial_but_front_only_complete_non_dominated(self):
+        strategy = SearchStrategy({}, known=[vec()])
+        strategy.record(vec(tps=25.0))  # dominated
+        strategy.record(vec(agentic=None))  # incomplete
+        front = strategy.pareto_set
+        self.assertEqual(len(front), 1)
+        self.assertEqual(front[0], vec())
+
+    def test_improvement_shrinks_front_when_it_dominates_members(self):
+        strategy = SearchStrategy({}, known=[vec(tps=30.0), vec(tps=35.0, agentic=0.5)])
+        candidate = vec(tps=36.0, agentic=0.7)
+        self.assertTrue(strategy.improves_set(candidate))
+        strategy.record(candidate)
+        self.assertEqual(strategy.pareto_set, [candidate])
+
+    def test_local_maximum_when_no_neighbor_improves(self):
+        strategy = SearchStrategy({}, known=[vec()])
+        dominated = [vec(tps=25.0), vec(tps=20.0, agentic=0.4)]
+        self.assertTrue(strategy.is_local_maximum(dominated))
+
+    def test_not_local_maximum_when_neighbor_joins(self):
+        strategy = SearchStrategy({}, known=[vec()])
+        neighbors = [vec(tps=25.0), vec(ctx=65536, tps=45.0)]
+        self.assertFalse(strategy.is_local_maximum(neighbors))
+
+    def test_known_vectors_from_constructor_seed_the_front(self):
+        strategy = SearchStrategy({}, known=[vec(), vec(tps=25.0)])
+        self.assertEqual(len(strategy.pareto_set), 1)
+        self.assertEqual(strategy.pareto_set[0], vec())
 
 
 if __name__ == "__main__":

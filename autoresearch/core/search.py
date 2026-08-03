@@ -1,6 +1,17 @@
+"""Hill-Climbing Search Strategy over the per-model Pareto Set (ADR 0006).
+
+Neighbor generation and Random Restarts live here; Trial acceptance no longer
+uses scalar Val Score — a Neighbor improves when it joins or improves the
+per-model Pareto Set (issue #7). autoloop is not wired yet; the legacy scalar
+keep rules stay as a compat shim for it.
+"""
+
 import random
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
+
+from autoresearch.core.pareto import ObjectiveVector, dominates, pareto_set
 
 Config = dict[str, Any]
 
@@ -16,13 +27,24 @@ class Neighbor:
 class SearchStrategy:
     """
     Deep module encapsulating the Hill-Climbing Search logic.
-    Provides leverage by standardising Neighbor generation, the Pareto Tie-Breaker,
-    and Random Restarts across different search spaces.
+    Provides leverage by standardising Neighbor generation, per-model Pareto Set
+    updates, and Random Restarts across different search spaces.
     """
 
-    def __init__(self, search_space: dict[str, list[Any]], use_pareto_tiebreaker: bool = False):
+    def __init__(
+        self,
+        search_space: dict[str, list[Any]],
+        *,
+        known: Iterable[ObjectiveVector] = (),
+        use_pareto_tiebreaker: bool = False,
+    ):
         self.search_space = search_space
+        # Legacy flag consumed only by the not-yet-wired scalar keep rules
+        # (autoloop compat; issue #7 keeps autoloop out of scope).
         self.use_pareto_tiebreaker = use_pareto_tiebreaker
+        # Per-model Pareto Set state: every Trial outcome recorded, merged per
+        # Fingerprint by the caller. The front is derived, never stored.
+        self.known = list(known)
 
     def get_config_key(self, cfg: Config) -> str:
         """Deterministically serialize the search-space parameters of a config."""
@@ -93,6 +115,41 @@ class SearchStrategy:
                 return new_cfg
         return None
 
+    @property
+    def pareto_set(self) -> list[ObjectiveVector]:
+        """Current per-model front: complete, mutually non-dominated vectors.
+
+        Incomplete vectors never join the front (ADR 0006 merge rule) but stay
+        in `known` so they compete once their axes fill in.
+        """
+        return pareto_set(self.known)
+
+    def record(self, vector: ObjectiveVector) -> None:
+        """Record a Trial outcome into the per-model Set.
+
+        Every Trial is kept (results-store semantics); statuses derive from the
+        front instead of being decided at write time.
+        """
+        self.known.append(vector)
+
+    def improves_set(self, vector: ObjectiveVector) -> bool:
+        """Neighbor acceptance: joins or improves the per-model Pareto Set.
+
+        Replaces the scalar Val Score / Pareto Tie-Breaker keep rules: a
+        Neighbor improves the Set iff its Objective Vector is non-dominated by
+        the current front. Joining (incomparable) counts, and so does improving
+        (dominating older members shrinks the front). Incomplete vectors never
+        compete (ADR 0006: incomplete merges, does not dominate). Caller merges
+        repeated measurements per Fingerprint before recording, so an exact
+        duplicate never reaches the Set (equal vectors would judge each other as
+        joining, not dominating).
+        """
+        return vector.complete and not any(dominates(other, vector) for other in self.pareto_set)
+
+    def is_local_maximum(self, candidates: Iterable[ObjectiveVector]) -> bool:
+        """Local Maxima = no Neighbor joins or improves the per-model Set."""
+        return not any(self.improves_set(candidate) for candidate in candidates)
+
     def is_improvement(
         self,
         baseline_score: float,
@@ -103,7 +160,9 @@ class SearchStrategy:
         new_vram: float,
     ) -> tuple[bool, str]:
         """
-        Evaluate if the new trial beats the baseline.
+        LEGACY scalar keep rules — autoloop is not yet wired to the per-model
+        Pareto Set (issue #7 scope). Kept so autoloop keeps running until its
+        wiring ticket; the Search keep truth is `improves_set` / the Set.
         Rules (Allan's matrix):
           Score+  Speed+  → KEEP
           Score+  Speed-  → KEEP
