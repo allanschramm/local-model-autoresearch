@@ -10,6 +10,25 @@ Front membership is plain Pareto non-domination on the four axes ([ADR 0006](../
 
 Stored statuses (`results.tsv`) are refreshed after every Trial write and via `scripts/recompute_status.py`: a new `on_front` point demotes rows it dominates to `dominated`. Each row's status derives from its (hardware+budget bucket, fingerprint) merged vector ([`autoresearch/core/recompute.py`](../../autoresearch/core/recompute.py)); incomplete and rejected rows never compete; rows without a `config_json` fingerprint (legacy keep/discard) are left untouched. The recompute is pure and idempotent. The canonical stored status is the global-by-bucket front across models; a per-model lens is available read-only (`scripts/recompute_status.py --scope model`, no rewrite).
 
+## Agent contract: Trial-a-Trial workflow (issue #9)
+
+Agent-facing step list for driving a model toward the front one Trial at a time, no autoloop required. Same rules that autoloop follows, spelled out for a manual loop.
+
+1. **Profile pick** — choose the job profile the Trial must serve (agentic/general vs coding); before the first Trial on a model, seed `SAMPLER_DEFAULTS` from the model card's Recommended settings for that profile.
+2. **Edit Baseline** — set the knobs in `autoresearch/core/config.py` (`ENGINE_DEFAULTS` / `SAMPLER_DEFAULTS`), never as CLI flags. `config.py` is the only mutable Baseline; harnesses and `program.md` stay fixed.
+3. **Run the Trial** — invoke a harness (validation smoke → TPS exploration → complete the Objective Vector: Claw full + coding-10 on the same Fingerprint). A Trial is one `results.tsv` row keyed by (hardware+budget bucket, Fingerprint).
+4. **Read the status** — `scripts/recompute_status.py` refreshes statuses after every Trial write; a point with a complete, non-dominated vector is what can become `on_front` ([ADR 0006](../adr/0006-pareto-frontier-search.md), [CONTEXT.md](../../CONTEXT.md)).
+5. **Merge by Fingerprint** — rows sharing a Fingerprint are the same point; later Trials on it complete the vector, they do not spawn new points. Different GGUF basenames = different points.
+
+### States for agents
+
+- **incomplete** — vector missing axes (e.g. no Claw full or no coding-10 yet). Normal mid-work state, not a failure.
+- **on_front** — complete vector and non-dominated on ctx × TPS × agentic × coding; a candidate for the Day/Night pick below.
+- **dominated** — complete vector but another front point beats it on every axis; recompute demotes rows a new `on_front` dominates.
+- **rejected** — a preflight or harness gate refused the Trial (e.g. host-memory preflight). Does not compete. Low eval scores are never a rejection reason.
+
+Keep/discard is retired as Search truth: membership comes only from the four-axis non-domination test. A weak but measured point stays as `on_front` or `dominated` — data stays valuable.
+
 ## Why a scalar pick, not full multi-criteria decision-making (MCDM)
 
 Picking a single point from a Pareto Set is the classic **a posteriori** MCDM problem: generate the whole front first, then apply a decision-maker preference to choose one point ("generate-first, choose-later"). The literature offers a spectrum from one-line scalarizations to full interactive optimization. This repo's front is small (roughly one row per candidate model/config, teachable as a leaderboard table), so the right tool is the cheapest scalarization that is still theoretically grounded — not a library.
