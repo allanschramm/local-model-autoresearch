@@ -18,6 +18,7 @@ One markdown file per GGUF model we run on this rig. Cards are the canonical loc
 - **Architecture class (MoE vs dense):** state it explicitly in the Architecture section (`expert_count > 1` ⇒ MoE). Harness `is_moe_model` / VITRIOL / `N_CPU_MOE` gates read **GGUF metadata only** — never filename tokens (`A3B`, `ORNITH`, `LAGUNA`, …). Cards must match the GGUF; do not invent a parallel name filter.
 - **MoE config baseline:** start with `N_CPU_MOE=None` (harness → GGUF `block_count`) unless the quant fits physical VRAM — then `N_CPU_MOE=0`. Record the resolved N and measured TPS/VRAM after validation.
 - **Sampler seed before Trials:** § Recommended settings is the source of truth for `SAMPLER_DEFAULTS`. Match the profile to the upcoming job (agentic/general vs coding). Only change sampler after an intentional quality experiment — never as the first Search mutation.
+- **Universal sampler fallback:** when a card has **no** § Recommended settings section, seed `SAMPLER_DEFAULTS` from `UNIVERSAL_FALLBACK_SAMPLER` (defined in `autoresearch/core/config.py` and `config.py.example` — llama.cpp server defaults, neutral start for agentic/general). Never run Trials on the old arbitrary template (`TEMP=0.4`). A card's Recommended settings always win when present.
 - **Mark TBDs explicitly.** Anything we couldn't verify (extraction truncated, doc missing) gets a `**TBD:**` marker and a row in the "Open questions" section. Never invent values.
 
 ## Work Guidance

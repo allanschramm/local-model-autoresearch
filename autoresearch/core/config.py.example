@@ -57,13 +57,26 @@ ENGINE_DEFAULTS = {
 }
 
 # Generation/Sampling — seed from the model card "Recommended settings"
-# for the job (agentic/general vs coding) BEFORE the first Trial. Do not
-# leave the template TEMP=0.4 when the publisher recommends something else.
-SAMPLER_DEFAULTS = {
-    'TEMP': 0.4,
+# for the job (agentic/general vs coding) BEFORE the first Trial. When the
+# card has no "Recommended settings" section, seed from
+# UNIVERSAL_FALLBACK_SAMPLER below (never the template values).
+# llama.cpp server defaults — neutral start for agentic/general jobs; a real
+# card's Recommended settings always win when present.
+UNIVERSAL_FALLBACK_SAMPLER = {
+    'TEMP': 0.8,
     'TOP_P': 0.95,
-    'TOP_K': 20,
-    'MIN_P': 0.0,
+    'TOP_K': 40,
+    'MIN_P': 0.05,
+    'REPEAT_PENALTY': 1.0,
+    'PRESENCE_PENALTY': 0.0,
+    'FREQUENCY_PENALTY': None,
+}
+
+SAMPLER_DEFAULTS = {
+    'TEMP': 0.8,
+    'TOP_P': 0.95,
+    'TOP_K': 40,
+    'MIN_P': 0.05,
     'REPEAT_PENALTY': 1.0,
     'PRESENCE_PENALTY': 0.0,
     'FREQUENCY_PENALTY': None,
