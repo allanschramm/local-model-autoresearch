@@ -131,6 +131,16 @@ Harness: `benchmark_search.py --validation` (claw-quick only; coding off). Runti
 
 Only T010_contact_lookup passed in both runs. TPS identical because Combined TPS comes from `llama-cli` bench (already GPU); VRAM/wall-time change is server-side expert placement.
 
+## Measured (validation + coding-10, 2026-08-03)
+
+`N_CPU_MOE=0`, ctx 65k, KV q4_0 (upstream CUDA), coding-10 on:
+
+| Run | bench_tg | peak VRAM | Claw-quick | Coding | lcb | he | mbpp | bigcode | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| A | 171.2 | 6.8 GB | 0.20 (1/5) | **0.3800** | 0.4000 | 0.1000 | 0.8000 | 0.1000 | incomplete |
+
+Combined TPS 186.9 (≥15.0). Only T010 passed again — consistent with prior claw-quick 0.20. Coding axis now measured; agentic axis still needs Claw full for a complete Objective Vector.
+
 ## Measured (claw-full, 2026-07-24)
 
 `N_CPU_MOE=0`, ctx 65k, KV q4_0 (upstream CUDA):
