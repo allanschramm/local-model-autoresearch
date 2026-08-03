@@ -220,6 +220,50 @@ def test_build_vectors_uses_axis_columns_when_populated():
     assert incomplete == []
 
 
+def test_pick_returns_fingerprint_loadable_as_baseline():
+    # ADR 0006: Day/Night pick must carry the full Fingerprint so the caller
+    # can resolve it back to a Baseline config without re-searching.
+    from autoresearch.core.classify import fp_from_config_json
+
+    rows = [
+        {
+            "model": "M.gguf",
+            "category": "agentic-full",
+            "outcome": "OK",
+            "val_score": "0.600000",
+            "bench_tg": "42.1",
+            "tps": "42.1",
+            "ctx": "65536",
+            "config_json": CJ,
+            "description": "",
+        },
+        {
+            "model": "M.gguf",
+            "category": "10-task",
+            "outcome": "OK",
+            "val_score": "0.570000",
+            "bench_tg": "40.0",
+            "tps": "40.0",
+            "ctx": "65536",
+            "config_json": CJ,
+            "description": "",
+        },
+    ]
+    complete, _ = rr.build_vectors(rows)
+    assert len(complete) == 1
+    expected_fp = fp_from_config_json(CJ)
+    assert complete[0].fp == expected_fp
+    assert complete[0].fp is not None
+    day = rr.pick_day(complete)
+    night = rr.pick_night(complete)
+    assert day is not None and night is not None
+    assert day.fp == expected_fp
+    assert night.fp == expected_fp
+    # Legacy point (no config_json) carries fp=None, never loadable.
+    legacy = rr.Point("L.gguf", ctx=65536, tps=10.0, agentic=0.5, coding=0.5)
+    assert legacy.fp is None
+
+
 def test_day_and_night_tables_are_aligned_columns():
     front = [
         rr.Point("POCKET.gguf", ctx=65536, tps=35.7, agentic=0.6667, coding=0.6150),

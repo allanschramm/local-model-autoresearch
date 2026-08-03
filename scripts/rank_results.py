@@ -55,6 +55,7 @@ class Point:
     tps: float
     agentic: float
     coding: float
+    fp: str | None = None
 
     @property
     def iq_min(self) -> float:
@@ -224,10 +225,12 @@ def build_vectors(
         ]
         ctx = max(ctx_candidates) if ctx_candidates else 0
         point = Point(
-            model=model, ctx=ctx, tps=tps, agentic=max(agentic, 0.0), coding=max(coding, 0.0)
+            model=model, ctx=ctx, tps=tps, agentic=max(agentic, 0.0), coding=max(coding, 0.0), fp=fp
         )
         if fp is not None and ag and cod:
-            complete.append(Point(model=model, ctx=ctx, tps=tps, agentic=agentic, coding=coding))
+            complete.append(
+                Point(model=model, ctx=ctx, tps=tps, agentic=agentic, coding=coding, fp=fp)
+            )
         else:
             incomplete.append(point)
     return complete, incomplete
