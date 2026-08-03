@@ -123,6 +123,8 @@ Default section order:
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
+- **Read the benchmark-run docs before any Trial (hard)**: Before running any Trial/benchmark, read how to run benchmarks the right way first — `docs/discovery/good-enough-tuning.md` (default recipe: seed Baseline from card → smoke → hill-climb speed → complete the Objective Vector), `docs/discovery/discover-models.md` (end-to-end workflow), and the harness rules in `autoresearch/AGENTS.md` (use the harness, never raw binaries). Never launch a Trial from memory or an assumed procedure; `--dry-run` first and read the `[cli-bench]` command before burning GPU hours.
+
 - **`results.tsv` is ground truth**: Measured Trial rows beat docs, memory, and heuristics. Leaderboards / Day-Night ranks / “incomplete” claims must be derived from TSV (or explicitly marked missing in TSV) via `scripts/rank_results.py` — never ad-hoc temp filter scripts. Never omit a measured model because it is weak, deleted from disk, dominated, or “not worth keeping” — data stays valuable; docs are a secondary view of that data.
 - **Tracked docs = scores + basenames only**: Do not write which GGUFs are present, kept, or deleted on this machine into tracked docs or session logs. Machine-private notes live under gitignored `models/` (e.g. `REMOVED.md`, `aliases/REMOVED.md`) — not a parallel session tree.
 - **Quants are distinct Trials**: Different GGUF basenames = different points (e.g. deepreinforce `ornith-1.0-9b-Q4_K_M` ≠ Unsloth `Ornith-1.0-9B-UD-Q4_K_XL`; MTP ≠ non-MTP). Do not call non-UD “legacy” or skip claw/coding because a sibling quant already has a complete vector.
