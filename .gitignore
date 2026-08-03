@@ -1,6 +1,9 @@
 # Logs
 *.log
 
+# Git-commit permission token (human-created, TTL 30 min)
+.claude/hooks/.git-commit-allow
+
 # Local benchmark results
 results.tsv
 *.bak

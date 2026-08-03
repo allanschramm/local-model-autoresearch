@@ -1,6 +1,6 @@
 # Agent shell hard-gates
 
-**Date:** 2026-07-29 (updated: hooks under `.claude/hooks/` per Claude Code convention)  
+**Date:** 2026-07-29 (updated: 2026-08-03 — added `block-git-commit.ps1` git-commit guardrail)  
 **Audience:** operators + next coding agent + anyone who clones  
 **Purpose:** What is installed, what it blocks, how a **human** turns it off. Clone-and-use — no OS admin rituals.
 
@@ -15,6 +15,8 @@
 |---|---|---|
 | Shell policy | `.claude/hooks/block-adhoc-eval.ps1` | PreToolUse Bash\|PowerShell: cwd check; python allowlist; deny Baseline CLI overrides / `-c` / raw llama / shell rewrite of gates |
 | Gate-file policy | `.claude/hooks/block-gate-tamper.ps1` | PreToolUse Edit\|Write\|Delete: deny wiring paths |
+| Git-commit guardrail | `.claude/hooks/block-git-commit.ps1` | PreToolUse Bash\|PowerShell: deny `git commit` / `git push` unless a fresh human token (`.claude/hooks/.git-commit-allow`, TTL 30 min) exists |
+| Pi git-commit guard | `.pi/extensions/git-commit-guard.ts` | pi `tool_call` hook: block `git commit` / `git push` in the bash tool unless the user confirms in the TUI (headless → always block) |
 | Post-tool audit | `.claude/hooks/audit-post-tool.ps1` | PostToolUse Bash\|PowerShell\|Edit\|Write: append `.claude/hooks-audit.log` (fail-open; `*.log` gitignored) |
 | Claude wiring | `.claude/settings.json` | `allow` / `ask` / `deny` + `disableBypassPermissionsMode` + PreToolUse + PostToolUse (Claude-only) |
 | Claude local | `.claude/settings.local.json` | Machine-only allow extras (gitignored). Keep empty or narrow — never `python.exe *` / CLI soup |
@@ -36,6 +38,7 @@
 - Baseline overrides on `benchmark_search.py` (`--model`, `--threads`, `--n-cpu-moe`, batch/KV/sampler flags, etc.); edit `autoresearch/core/config.py` instead
 - `cwd` (or `cd` to absolute path) outside `workspace_roots` / `CLAUDE_PROJECT_DIR`
 - Shell rewrite of gate paths (`Set-Content`, redirects, `Remove-Item`, …)
+- `git commit` / `git push` (incl. `--amend`, `--force`) without a fresh permission token — see §3.6 for the grant command
 
 **Shell — python allowlist:**
 
@@ -116,6 +119,28 @@ git log --oneline -- .claude/settings.json .claude/hooks
 
 **Do not use for this repo.** Not supported. See §7.
 
+### 3.6 Git-commit guardrail (permission + rollback)
+
+`block-git-commit.ps1` blocks `git commit` / `git push` unless a **human-created token** exists. Grant (PowerShell, repo root):
+
+```powershell
+New-Item -ItemType File -Force .claude/hooks/.git-commit-allow | Out-Null
+```
+
+- Token auto-expires after 30 minutes (TTL). Re-create it for each batch of commits you approve.
+- Agents cannot create the token: `.claude/hooks/**` is denied to Edit/Write/Shell rewrite, and the token is gitignored (`git status` stays clean).
+- Commit flow: you say “commit” → you create the token → agent runs `git commit` → hook allows.
+- **Rollback / disable:** `Remove-Item -Force .claude/hooks/.git-commit-allow` removes the token; deleting `block-git-commit.ps1` + its PreToolUse entries in `.claude/settings.json` removes the guardrail (wiring edits require explicit unlock).
+
+### 3.7 Pi agent guardrail (interactive confirm)
+
+`.pi/extensions/git-commit-guard.ts` blocks `git commit` / `git push` in the **pi** agent's bash tool:
+
+- TUI session → `ctx.ui.confirm` prompts you for every commit/push. Deny = blocked.
+- Headless / no UI → always blocked (no silent commits).
+- No token file needed. Non-git commands (`git status`, `git log`, `git diff`) pass.
+- **Rollback / disable:** delete `.pi/extensions/git-commit-guard.ts` (or the whole `.pi/extensions/` dir) and restart pi.
+
 ---
 
 ## 4. Script for the next agent — “teach me to disable”
@@ -137,6 +162,7 @@ In-repo hooks = strong friction, not a vault. Residual: user disables hooks; obf
 | Control | Claude Code (this repo) |
 |---|---|
 | Block shell | `PreToolUse` exit 2 (`block-adhoc-eval.ps1`) |
+| Block git commit/push | Claude Code: `PreToolUse` exit 2 (`block-git-commit.ps1`) — fresh human token required. Pi: `tool_call` block (`.pi/extensions/git-commit-guard.ts`) — user confirm required |
 | Block file edit | `permissions.deny` + PreToolUse (`block-gate-tamper.ps1`) |
 | Audit after tool | `PostToolUse` (`audit-post-tool.ps1`) → `.claude/hooks-audit.log` |
 | Soft ask | `permissions.ask` (download / serve / Trial) |
@@ -170,6 +196,8 @@ If hooks do not fire: restart Claude Code; confirm project trust / that settings
 - Claude Code Hooks / Settings: https://code.claude.com/docs/en/hooks , https://code.claude.com/docs/en/settings , https://code.claude.com/docs/en/permissions — 2026-07-29  
 - Smoke (2026-07-21): deny `python -c`, scratch `.py`, llama-cli, Baseline CLI overrides, foreign cwd, Set-Content gate; allow config-driven `benchmark_search.py`, `-m pytest`, `nvidia-smi`; deny Write gate files; allow Write `README.md`.  
 - Smoke (2026-07-29): hooks under `.claude/hooks/`; Allow/Ask/Deny + PostToolUse audit; pedagogical `.env` + `rm` + path-tolerant `*python* -c *`; live demo: Bash tool required for Pre-hook (chat-only “I ran it” does not fire hooks).
+- Smoke (2026-08-03): `block-git-commit.ps1` — deny `git commit`/`git push` without token; allow `git status`/`git log --grep commit`; allow with fresh token; deny with 61-min-old (stale) token. All six cases exit as expected (Claude payloads).
+- Smoke (2026-08-03): `.pi/extensions/git-commit-guard.ts` — block commit/push with no UI; allow `git status`/`git log --grep commit`; block push on user deny; allow commit on user allow; non-bash tools untouched (node type-strip run with fake pi).
 
 ---
 
