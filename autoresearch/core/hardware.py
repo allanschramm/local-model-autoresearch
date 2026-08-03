@@ -104,6 +104,36 @@ def detect_nvidia() -> tuple[str | None, float, bool]:
     return None, 0.0, False
 
 
+def detect_free_vram_mb() -> float | None:
+    """Free VRAM in MiB on the first NVIDIA GPU, or None if unavailable.
+
+    Used for dynamic Trial headroom (issue #10): effective budget = free-at-start
+    minus a safety margin, so Trials on a dirty GPU fail early instead of
+    spuriously killing mid-eval.
+    """
+    try:
+        res = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=memory.free",
+                "--format=csv,noheader,nounits",
+                "-i",
+                "0",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        raw = (res.stdout or "").strip()
+        if res.returncode == 0 and raw:
+            lines = [line.strip() for line in raw.splitlines() if line.strip()]
+            if lines:
+                return float(lines[0])
+    except Exception:
+        pass
+    return None
+
+
 def has_discrete_nvidia() -> bool:
     return detect_nvidia()[2]
 

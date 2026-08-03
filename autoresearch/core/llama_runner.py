@@ -28,6 +28,7 @@ _MODEL_SEARCH_SKIP = frozenset({".cache", "aliases", "huggingface"})
 
 from autoresearch.core import config
 from autoresearch.core.config import ConfigError, is_dense_model, validate_config
+from autoresearch.core.hardware import detect_free_vram_mb
 from autoresearch.core.model_arch import gguf_block_count, gguf_is_moe, resolve_n_cpu_moe
 
 
@@ -271,6 +272,8 @@ VRAM_MOE_NON_EXPERT_FRAC = 0.28
 VRAM_MOE_OFFLOAD_LAYER_REF = 32.0
 
 DEFAULT_VRAM_LIMIT_MB = 7900.0
+# Safety margin subtracted from free VRAM at Trial start (issue #10).
+DEFAULT_VRAM_HEADROOM_MB = 512.0
 
 
 def resolve_vram_limit_mb(limit: float | int | None = None) -> float:
@@ -281,6 +284,36 @@ def resolve_vram_limit_mb(limit: float | int | None = None) -> float:
     if env:
         return float(env)
     return float(config.DEFAULTS.get("VRAM_LIMIT_MB", DEFAULT_VRAM_LIMIT_MB))
+
+
+def resolve_vram_headroom_mb(headroom_mb: float | int | None = None) -> float:
+    """Resolve safety margin: explicit arg > env AUTORESEARCH_VRAM_HEADROOM_MB > config > default."""
+    if headroom_mb is not None:
+        return float(headroom_mb)
+    env = os.environ.get("AUTORESEARCH_VRAM_HEADROOM_MB")
+    if env:
+        return float(env)
+    val = config.DEFAULTS.get("VRAM_HEADROOM_MB")
+    if val is not None:
+        return float(val)
+    return float(DEFAULT_VRAM_HEADROOM_MB)
+
+
+def effective_vram_limit_mb(
+    configured_mb: float,
+    free_vram_mb: float | None = None,
+    headroom_mb: float | int | None = None,
+) -> float:
+    """Effective Trial budget: min(configured, free-at-start - headroom).
+
+    Free VRAM is measured at Trial start; the headroom absorbs measurement noise
+    and concurrent-process drift so dirty-GPU Trials fail early instead of
+    spuriously. Unknown free -> configured unchanged.
+    """
+    if free_vram_mb is None or free_vram_mb <= 0:
+        return float(configured_mb)
+    headroom = resolve_vram_headroom_mb(headroom_mb)
+    return min(float(configured_mb), max(0.0, float(free_vram_mb) - headroom))
 
 
 def estimate_vram_mb(
@@ -381,6 +414,50 @@ def preflight_vram(
     return True, est, ""
 
 
+def preflight_vram_effective(
+    model_path: Path,
+    ctx_size: int,
+    kv_cache_k: str | None = None,
+    kv_cache_v: str | None = None,
+    draft_path: Path | str | None = None,
+    vram_limit_mb: float | None = None,
+    n_cpu_moe: int | None = None,
+    spec_type: str | None = None,
+    spec_draft_n_max: int = 0,
+    headroom_mb: float | int | None = None,
+    free_vram_mb: float | None = None,
+) -> tuple[bool, float, str]:
+    """Headroom wrapper around preflight_vram (issue #10).
+
+    Effective budget = min(configured, free VRAM at Trial start - headroom).
+    The reject reason records both configured and effective budgets.
+    """
+    configured = resolve_vram_limit_mb(vram_limit_mb)
+    if free_vram_mb is None:
+        free_vram_mb = detect_free_vram_mb()
+    effective = effective_vram_limit_mb(configured, free_vram_mb, headroom_mb)
+    ok, est, reason = preflight_vram(
+        model_path,
+        ctx_size,
+        kv_cache_k=kv_cache_k,
+        kv_cache_v=kv_cache_v,
+        draft_path=draft_path,
+        vram_limit_mb=effective,
+        n_cpu_moe=n_cpu_moe,
+        spec_type=spec_type,
+        spec_draft_n_max=spec_draft_n_max,
+    )
+    if ok or effective == configured:
+        return ok, est, reason
+    headroom = resolve_vram_headroom_mb(headroom_mb)
+    return (
+        False,
+        est,
+        f"VRAM_PREFLIGHT est={est:.0f}MB > effective={effective:.0f}MB "
+        f"(configured={configured:.0f}MB free={free_vram_mb:.0f}MB headroom={headroom:.0f}MB)",
+    )
+
+
 def resolve_spec_estimate_args(
     model_name: str,
     spec_type: str | None,
@@ -402,6 +479,7 @@ def resolve_spec_estimate_args(
 def preflight_vram_for_intent(
     intent: "ServerIntent",
     vram_limit_mb: float | None = None,
+    headroom_mb: float | int | None = None,
 ) -> tuple[bool, float, str]:
     spec_type, _, draft_path = resolve_spec_estimate_args(
         intent.model_path.name,
@@ -409,7 +487,7 @@ def preflight_vram_for_intent(
         intent.spec_draft_n_max,
         intent.spec_draft_model,
     )
-    return preflight_vram(
+    return preflight_vram_effective(
         intent.model_path,
         intent.ctx_size,
         kv_cache_k=intent.kv_cache_k or intent.kv_cache,
@@ -419,6 +497,7 @@ def preflight_vram_for_intent(
         n_cpu_moe=intent.n_cpu_moe,
         spec_type=spec_type,
         spec_draft_n_max=intent.spec_draft_n_max,
+        headroom_mb=headroom_mb,
     )
 
 

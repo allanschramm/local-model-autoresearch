@@ -362,8 +362,15 @@ class ExperimentRunner:
         print(_format_arch_line(intent))
         vram_limit_mb = resolve_vram_limit_mb(norm.get("vram_limit_mb"))
 
-        ok_vram, est_vram, vram_reason = preflight_vram_for_intent(intent, vram_limit_mb)
-        print(f"  [vram-preflight] est={est_vram:.0f}MB limit={vram_limit_mb:.0f}MB ok={ok_vram}")
+        ok_vram, est_vram, vram_reason = preflight_vram_for_intent(
+            intent, vram_limit_mb, headroom_mb=norm.get("VRAM_HEADROOM_MB")
+        )
+        if vram_reason:
+            print(f"  [vram-preflight] est={est_vram:.0f}MB ok={ok_vram} — {vram_reason}")
+        else:
+            print(
+                f"  [vram-preflight] est={est_vram:.0f}MB limit={vram_limit_mb:.0f}MB ok={ok_vram}"
+            )
         if not ok_vram:
             moe_reject = _moe_vram_reject(intent, est_vram, vram_limit_mb)
             reason = moe_reject or vram_reason

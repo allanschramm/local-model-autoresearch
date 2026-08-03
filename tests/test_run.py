@@ -55,6 +55,24 @@ class TestRun(unittest.TestCase):
 
         self.assertAlmostEqual(result.peak_vram_gb, 6543.0 / 1024.0)
 
+    @patch(
+        "autoresearch.runners.evaluation.preflight_host_memory_for_intent",
+        return_value=(True, 1.0, 1.0, ""),
+    )
+    def test_run_trial_vram_headroom_rejects_with_both_budgets(self, _mock_host):
+        """Issue #10: effective budget = free-at-start minus headroom (mocked free VRAM)."""
+        from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
+
+        with patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=6000.0):
+            result = ExperimentRunner(Path("models")).run_trial(
+                {"MODEL": "test.gguf", "CTX_SIZE": 131072, "FLASH_ATTN": "on"},
+                skip_bench=True,
+            )
+
+        self.assertEqual(result.outcome, TrialOutcome.MODEL_REJECTED)
+        self.assertIn("effective=5488MB", result.diagnostic)
+        self.assertIn("configured=7900MB", result.diagnostic)
+
     @patch("autoresearch.runners.evaluation.subprocess.run")
     @patch("autoresearch.runners.evaluation.resolve_llama_cli", return_value=Path("llama-cli.exe"))
     def test_llama_bench_forwards_n_cpu_moe(self, mock_resolve, mock_subprocess):
@@ -72,8 +90,9 @@ class TestRun(unittest.TestCase):
     @patch("autoresearch.runners.evaluation.run_coding")
     @patch("autoresearch.runners.run.get_git_commit")
     @patch("autoresearch.runners.run.open", new_callable=mock_open)
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
     def test_single_run_improved(
-        self, mock_file, mock_commit, mock_coding, mock_runner, mock_bench
+        self, _mock_free, mock_file, mock_commit, mock_coding, mock_runner, mock_bench
     ):
         # Setup mocks
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
@@ -140,7 +159,8 @@ class TestRun(unittest.TestCase):
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_rejected_coding_preflight_keeps_peak_vram(self, mock_coding, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_rejected_coding_preflight_keeps_peak_vram(self, _mock_free, mock_coding, mock_runner):
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4096)
         mock_coding.return_value = BenchmarkResult(
             val_score=0.0, val_pass1=0.0, val_pass2=0.0, avg_tps=40.0
@@ -243,7 +263,8 @@ class TestRun(unittest.TestCase):
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_include_agentic_full_key_enables_claw(self, mock_coding, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_include_agentic_full_key_enables_claw(self, _mock_free, mock_coding, mock_runner):
         """bench_config INCLUDE_AGENTIC_FULL lowercases to include_agentic_full — must enable."""
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
         with patch("autoresearch.runners.evaluation.get_full_tier_tasks", return_value=["T002"]):
@@ -270,7 +291,8 @@ class TestRun(unittest.TestCase):
         self.assertEqual(res["outcome"], "OK")
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
-    def test_skip_bench_without_coding_does_not_floor_reject(self, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_skip_bench_without_coding_does_not_floor_reject(self, _mock_free, mock_runner):
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
         with patch("autoresearch.runners.evaluation.get_full_tier_tasks", return_value=["T002"]):
             with patch(
@@ -288,7 +310,8 @@ class TestRun(unittest.TestCase):
         self.assertNotEqual(res["outcome"], "MODEL_REJECTED")
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
-    def test_agentic_quick_low_score_does_not_reject(self, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_agentic_quick_low_score_does_not_reject(self, _mock_free, mock_runner):
         """Quick smoke reports score; only TPS Floor rejects — no score cut."""
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
         with patch("autoresearch.runners.evaluation.get_quick_tier_tasks", return_value=["T002"]):

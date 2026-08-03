@@ -805,5 +805,65 @@ class TestLlamaRunner(unittest.TestCase):
         proc.kill.assert_called()
 
 
+class TestVramHeadroomPreflight(unittest.TestCase):
+    """Issue #10: dynamic VRAM headroom from free-at-start."""
+
+    def test_effective_limit_caps_by_free_minus_headroom(self):
+        limit = llama_runner.effective_vram_limit_mb(7900.0, free_vram_mb=6000.0, headroom_mb=512.0)
+        self.assertEqual(limit, 5488.0)
+
+    def test_effective_limit_uses_configured_when_free_unknown(self):
+        limit = llama_runner.effective_vram_limit_mb(7900.0, free_vram_mb=None, headroom_mb=512.0)
+        self.assertEqual(limit, 7900.0)
+
+    def test_effective_limit_never_exceeds_configured(self):
+        limit = llama_runner.effective_vram_limit_mb(4000.0, free_vram_mb=6000.0, headroom_mb=0.0)
+        self.assertEqual(limit, 4000.0)
+
+    def test_preflight_effective_rejects_and_records_both_budgets(self):
+        with patch.object(llama_runner, "detect_free_vram_mb", return_value=6000.0):
+            ok, est, reason = llama_runner.preflight_vram_effective(
+                Path("models/non-existent.gguf"),
+                131072,
+                "q4_0",
+                "q4_0",
+                vram_limit_mb=7900.0,
+                headroom_mb=512.0,
+            )
+        self.assertFalse(ok)
+        self.assertIn("effective=5488MB", reason)
+        self.assertIn("configured=7900MB", reason)
+        self.assertIn("free=6000MB", reason)
+
+    def test_preflight_effective_passes_when_configured_binds(self):
+        # free - headroom far above configured -> configured wins, no rewrite
+        with patch.object(llama_runner, "detect_free_vram_mb", return_value=20000.0):
+            ok, est, reason = llama_runner.preflight_vram_effective(
+                Path("models/non-existent.gguf"),
+                2048,
+                "q4_0",
+                "q4_0",
+                vram_limit_mb=7900.0,
+                headroom_mb=512.0,
+            )
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
+
+    def test_preflight_for_intent_uses_free_vram(self):
+        intent = ServerIntent(
+            model_path=Path("models/test-model.gguf"),
+            ctx_size=131072,
+            kv_cache="q4_0",
+            flash_attn="on",
+        )
+        with patch.object(llama_runner, "detect_free_vram_mb", return_value=5000.0):
+            ok, _, reason = llama_runner.preflight_vram_for_intent(
+                intent, 7900.0, headroom_mb=512.0
+            )
+        self.assertFalse(ok)
+        self.assertIn("effective=4488MB", reason)
+        self.assertIn("configured=7900MB", reason)
+
+
 if __name__ == "__main__":
     unittest.main()
