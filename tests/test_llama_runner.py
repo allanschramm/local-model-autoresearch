@@ -4,7 +4,12 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from autoresearch.core import llama_runner
-from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent, resolve_llama_server
+from autoresearch.core.llama_runner import (
+    LlamaServerRunner,
+    ServerIntent,
+    engine_version_tag,
+    resolve_llama_server,
+)
 
 
 class TestLlamaRunner(unittest.TestCase):
@@ -51,7 +56,24 @@ class TestLlamaRunner(unittest.TestCase):
 
         with patch("autoresearch.core.llama_runner.LLAMA_SERVER_CANDIDATES", (mock_cuda,)):
             path = resolve_llama_server()
-            self.assertEqual(path, Path("/fake/cuda"))
+        self.assertEqual(path, Path("/fake/cuda"))
+
+    def test_engine_version_tag_fork_release(self):
+        server = Path(
+            "D:/repo/llama.cpp-releases/turboquant/tqp-v0.3.0/build-cuda/bin/llama-server.exe"
+        )
+        self.assertEqual(engine_version_tag(server), "turboquant@tqp-v0.3.0")
+
+    def test_engine_version_tag_stock_submodule(self):
+        server = Path("D:/repo/llama.cpp/build-cuda/bin/llama-server.exe")
+        self.assertEqual(engine_version_tag(server), "")
+
+    def test_engine_version_tag_deep_nested_engine(self):
+        server = Path("llama.cpp-releases/some-fork/v1.2.3-rc/bin/llama-server.exe")
+        self.assertEqual(engine_version_tag(server), "some-fork@v1.2.3-rc")
+
+    def test_engine_version_tag_unknown_path(self):
+        self.assertEqual(engine_version_tag(Path("/usr/bin/llama-server")), "")
 
     def test_resolve_llama_server_not_found(self):
         mock_fail = MagicMock(spec=Path)

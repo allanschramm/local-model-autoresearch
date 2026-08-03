@@ -11,7 +11,11 @@ from __future__ import annotations
 
 import csv
 
-from autoresearch.runners.run import TRIAL_STATUSES, get_previous_best, write_row
+from autoresearch.runners.run import (
+    TRIAL_STATUSES,
+    get_previous_best,
+    write_row,
+)
 
 
 def _read(tmp_tsv) -> list[dict]:
@@ -48,6 +52,20 @@ def test_write_row_persists_objective_vector_axes(tmp_path):
     assert row["tps"] == "30.5"
     assert row["agentic"] == "0.6000"
     assert row["coding"] == "0.650000"
+
+
+def test_write_row_preserves_engine_version_tag(tmp_path, monkeypatch):
+    """Trial evidence carries engine@tag when the server comes from a fork release."""
+    from pathlib import Path
+
+    from autoresearch.runners import run
+
+    tsv = tmp_path / "results.tsv"
+    fork = Path("llama.cpp-releases/turboquant/tqp-v0.3.0/build-cuda/bin/llama-server.exe")
+    monkeypatch.setattr(run, "resolve_llama_server", lambda: fork)
+    _write_row(tsv, ctx=100000, tps=158.5)
+    row = _read(tsv)[0]
+    assert row["binary_version"] == "turboquant@tqp-v0.3.0"
 
 
 def test_partial_axes_render_blank(tmp_path):

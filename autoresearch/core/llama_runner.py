@@ -584,6 +584,23 @@ def resolve_llama_server() -> Path:
     )
 
 
+def engine_version_tag(server: Path) -> str:
+    """Engine identity for Trial evidence: `engine@tag` for versioned fork
+    releases (`llama.cpp-releases/<engine>/<tag>/`), `""` for the stock
+    submodule.
+
+    AGENTS.md runtime policy: alternate engines land as versioned prebuilt
+    releases under `llama.cpp-releases/<engine>/<tag>/`, selected via
+    `AUTORESEARCH_LLAMA_CPP_ROOT`. Trials must preserve engine/tag so rows
+    from different forks stay distinguishable.
+    """
+    parts = server.parts
+    for i, part in enumerate(parts):
+        if part == "llama.cpp-releases" and i + 2 < len(parts):
+            return f"{parts[i + 1]}@{parts[i + 2]}"
+    return ""
+
+
 def resolve_llama_bench() -> Path:
     for candidate in LLAMA_BENCH_CANDIDATES:
         if candidate.exists():

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from autoresearch.benchmarks import bench_config, format_agentic_benchmarks, format_claw_tiers
-from autoresearch.core import classify, config, recompute
+from autoresearch.core import classify, config, engine_version_tag, recompute, resolve_llama_server
 from autoresearch.runners.evaluation import ExperimentRunner, resolve_tps_floor
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -529,6 +529,18 @@ def _tsv_cell(value: Any, fmt: str | None = None) -> str:
     return format(value, fmt) if fmt else str(value)
 
 
+def _engine_version() -> str:
+    """Engine identity for the Trial evidence (binary_version cell).
+
+    Resolves the engine actually used; falls back to empty when no
+    llama-server is resolvable (e.g. pure row-serialization contexts).
+    """
+    try:
+        return engine_version_tag(resolve_llama_server())
+    except FileNotFoundError:
+        return ""
+
+
 def write_row(
     results_file: Path,
     commit: str,
@@ -644,7 +656,7 @@ def write_row(
                 separators=(",", ":"),
                 sort_keys=True,
             ),
-            "binary_version": "",
+            "binary_version": _engine_version(),
             "tps_source": tps_source,
             "description": description,
         }

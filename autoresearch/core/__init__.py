@@ -12,6 +12,7 @@ from autoresearch.core.llama_runner import (
     ROOT_DIR,
     LlamaServerRunner,
     ServerIntent,
+    engine_version_tag,
     estimate_vram_mb,
     preflight_vram,
     preflight_vram_for_intent,
@@ -53,6 +54,7 @@ __all__ = [
     "is_moe_model",
     "resolve_llama_server",
     "resolve_llama_bench",
+    "engine_version_tag",
     "run_sglang_bench_validation",
     "ROOT_DIR",
 ]
