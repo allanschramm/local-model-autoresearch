@@ -1,6 +1,6 @@
 # Discover Models for Your Hardware
 
-End-to-end workflow: **find models that fit your rig, filter for coding quality, run the autoloop on the Pareto-optimal pick.**
+End-to-end workflow: **find models that fit your rig, filter for coding quality, run the autoloop on the Pareto-optimal pick.** Start it with `autoloop.py --profile day|night` to continue from the current Day/Night pick off `results.tsv` (issue #8).
 
 ## Step 0 — Detect local hardware (`check_hardware`)
 

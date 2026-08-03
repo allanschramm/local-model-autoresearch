@@ -2,9 +2,13 @@
 """
 Autonomous Hill-Climbing Evaluation Loop.
 
-Reads Baseline from autoresearch/core/config.py →
-runs active benchmarks → perturbs one flag → if improved, writes Baseline
-back to config.py → loops forever.
+Reads Baseline from autoresearch/core/config.py — or starts from a Day/Night
+Usage Profile pick off the results.tsv Pareto front (issue #8) — then runs
+active benchmarks → perturbs one flag → if the Neighbor joins or improves the
+per-model Pareto Set, writes Baseline back to config.py → loops forever. The
+legacy scalar keep rule survives only for incomplete vectors (engine-only /
+quality-only modes never measure agentic+coding, so they cannot compete on
+the four-axis front; ADR 0006).
 
 Stop with Ctrl+C (SIGINT). Visited memory persists in .autoresearch_state.json;
 Baseline persists in config.py; results in results.tsv.
@@ -40,6 +44,7 @@ from autoresearch.runners.run import (
     tsv_fields_from_cfg,
     write_row,
 )
+from scripts.rank_results import build_vectors, pareto_front, pick_day, pick_night
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -101,6 +106,36 @@ def _signal_handler(_sig, _frame):
 
 signal.signal(signal.SIGINT, _signal_handler)
 signal.signal(signal.SIGTERM, _signal_handler)
+
+
+def pick_baseline(profile: str) -> tuple[str, dict[str, Any]]:
+    """Day/Night Usage Profile pick → (model, Baseline cfg) from results.tsv.
+
+    Issue #8: the pick (ADR 0006/0008) returns a Point — model + full
+    ENGINE+SAMPLER Fingerprint. The Baseline is reconstructed from the row
+    that carries that Fingerprint's config_json, so the loop can continue
+    searching from exactly the picked point.
+    """
+    rows = read_rows(RESULTS_FILE)
+    complete, _ = build_vectors(rows)
+    front = pareto_front(complete)
+    pick = pick_day(front) if profile == "day" else pick_night(front)
+    if pick is None:
+        raise RuntimeError(
+            f"No complete front point for profile '{profile}'. "
+            "Complete an Objective Vector (Claw full + coding-10) first."
+        )
+    for row in rows:
+        fp = classify.fp_from_config_json(row.get("config_json"))
+        if fp is None or fp != pick.fp:
+            continue
+        try:
+            cfg = json.loads(row["config_json"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError(f"Unparseable config_json for pick: {exc}")
+        if isinstance(cfg, dict):
+            return pick.model, cfg
+    raise RuntimeError(f"Pick '{pick.model}' has no config_json row to load as Baseline.")
 
 
 def load_config(baseline_cfg: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -439,6 +474,17 @@ def main():
         default="both",
         help="Optimization mode: 'tps' (speed), 'quality' (accuracy), 'both' (everything)",
     )
+    parser.add_argument(
+        "--profile",
+        choices=["day", "night"],
+        help="Start from the Day/Night Usage Profile pick off the results.tsv Pareto front "
+        "(sets Baseline from the picked row; ignores --models)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Smoke path: print the plan (profile pick, baseline, neighbors) without running benchmarks",
+    )
     cli_args = parser.parse_args()
 
     max_rounds = cli_args.max_rounds
@@ -455,45 +501,68 @@ def main():
         print("[AUTOLOOP] Error: No GGUF models found in models/ directory!")
         sys.exit(1)
 
-    selected_models = []
-    if cli_args.models:
-        for m in cli_args.models:
-            if m not in available_models:
-                matches = [am for am in available_models if m.lower() in am.lower()]
-                if matches:
-                    selected_models.append(matches[0])
-                else:
-                    print(f"[AUTOLOOP] Error: Model '{m}' not found in models/.")
-                    sys.exit(1)
-            else:
-                selected_models.append(m)
-    elif sys.stdin.isatty():
-        print("\nAvailable models in models/:")
-        for idx, m in enumerate(available_models, 1):
-            print(f"  {idx}) {m}")
-        print(
-            "\nChoose 1 or more models to run the loop (comma-separated numbers, e.g. 1,3 or 'all'):"
-        )
-        while True:
-            choice = input("Choice: ").strip()
-            if not choice:
-                continue
-            if choice.lower() == "all":
-                selected_models = available_models
-                break
-            try:
-                indices = [int(i.strip()) for i in choice.split(",")]
-                selected_models = [
-                    available_models[i - 1] for i in indices if 1 <= i <= len(available_models)
-                ]
-                if selected_models:
-                    break
-            except Exception:
-                pass
-            print("Invalid choice, try again.")
-    else:
+    if cli_args.profile:
+        if cli_args.models:
+            print("[AUTOLOOP] Error: --profile and --models are mutually exclusive.")
+            sys.exit(1)
+        try:
+            pick_model, pick_cfg = pick_baseline(cli_args.profile)
+        except RuntimeError as exc:
+            print(f"[AUTOLOOP] Error: {exc}")
+            sys.exit(1)
+        if pick_model not in available_models:
+            print(f"[AUTOLOOP] Error: pick '{pick_model}' not found in models/.")
+            sys.exit(1)
         baseline_cfg = load_config(state_manager.get_baseline())
-        selected_models = [baseline_cfg.get("MODEL", "g4-opt-it-Q4_K_M.gguf")]
+        baseline_cfg.update(pick_cfg)
+        baseline_cfg["MODEL"] = pick_model
+        if not cli_args.dry_run:
+            state_manager.update_baseline(baseline_cfg)
+        selected_models = [pick_model]
+        print(
+            f"[AUTOLOOP] Profile '{cli_args.profile}' pick: {pick_model} "
+            "(Baseline loaded from results.tsv row)"
+        )
+    else:
+        selected_models = []
+        if cli_args.models:
+            for m in cli_args.models:
+                if m not in available_models:
+                    matches = [am for am in available_models if m.lower() in am.lower()]
+                    if matches:
+                        selected_models.append(matches[0])
+                    else:
+                        print(f"[AUTOLOOP] Error: Model '{m}' not found in models/.")
+                        sys.exit(1)
+                else:
+                    selected_models.append(m)
+        elif sys.stdin.isatty():
+            print("\nAvailable models in models/:")
+            for idx, m in enumerate(available_models, 1):
+                print(f"  {idx}) {m}")
+            print(
+                "\nChoose 1 or more models to run the loop (comma-separated numbers, e.g. 1,3 or 'all'):"
+            )
+            while True:
+                choice = input("Choice: ").strip()
+                if not choice:
+                    continue
+                if choice.lower() == "all":
+                    selected_models = available_models
+                    break
+                try:
+                    indices = [int(i.strip()) for i in choice.split(",")]
+                    selected_models = [
+                        available_models[i - 1] for i in indices if 1 <= i <= len(available_models)
+                    ]
+                    if selected_models:
+                        break
+                except Exception:
+                    pass
+                print("Invalid choice, try again.")
+        else:
+            baseline_cfg = load_config(state_manager.get_baseline())
+            selected_models = [baseline_cfg.get("MODEL", "g4-opt-it-Q4_K_M.gguf")]
 
     print("=" * 60)
     print("  AUTONOMOUS HILL-CLIMBING LOOP")
@@ -504,7 +573,6 @@ def main():
 
     print(f"[AUTOLOOP] Loaded {len(state_manager.visited)} previously visited configs.")
 
-    runner = ExperimentRunner(MODELS_DIR)
     _defaults = {
         "port": 18080,
         "host": "127.0.0.1",
@@ -524,6 +592,21 @@ def main():
 
     search_strategy = SearchStrategy(active_search_space, use_pareto_tiebreaker=True)
 
+    if cli_args.dry_run:
+        print("\n[DRY-RUN] No benchmarks will be executed.")
+        for model_name in selected_models:
+            cfg = load_config(state_manager.get_baseline())
+            cfg["MODEL"] = model_name
+            print(f"  model: {model_name}")
+            print(f"  baseline: {search_strategy.format_config_summary(cfg)}")
+            neighbors = search_strategy.get_neighbors(cfg)
+            print(f"  neighbor candidates: {len(neighbors)}")
+            for n in neighbors[:10]:
+                print(f"    - {n.changed}: {n.old} -> {n.new}")
+        print("[DRY-RUN] Done.")
+        return
+
+    runner = ExperimentRunner(MODELS_DIR)
     for model_name in selected_models:
         if _stop_requested:
             break
@@ -568,6 +651,8 @@ def main():
             baseline_score = baseline_res.val_score
             baseline_tps = baseline_res.avg_tps
             baseline_vram = baseline_res.peak_vram_gb
+            baseline_vector = _objective_vector(baseline_cfg, baseline_res)
+            search_strategy.record(baseline_vector)
 
             if cli_args.mode == "tps":
                 tsv_category = "engine-tps"
@@ -646,10 +731,25 @@ def main():
 
                 delta = score - baseline_score
 
-                # Pareto tie-breaker logic
-                is_improvement, reason = search_strategy.is_improvement(
-                    baseline_score, baseline_tps, baseline_vram, score, tps, vram
-                )
+                neighbor_vector = _objective_vector(neighbor.config, res)
+                search_strategy.record(neighbor_vector)
+
+                # Search truth (issue #7/#8): Neighbor improves iff it joins or
+                # improves the per-model Pareto Set. Incomplete vectors never
+                # join the front (ADR 0006), so engine-only / quality-only
+                # modes keep the legacy scalar rule — they measure no
+                # agentic/coding axes to compete on.
+                if neighbor_vector.complete:
+                    is_improvement = search_strategy.improves_set(neighbor_vector)
+                    reason = (
+                        "joins/improves per-model Pareto Set"
+                        if is_improvement
+                        else "dominated by per-model front"
+                    )
+                else:
+                    is_improvement, reason = search_strategy.is_improvement(
+                        baseline_score, baseline_tps, baseline_vram, score, tps, vram
+                    )
 
                 # Apply Perplexity Quality Ceiling Constraint
                 if is_tps_mode or cli_args.perplexity_val:

@@ -14,6 +14,8 @@ Stored statuses (`results.tsv`) are refreshed after every Trial write and via `s
 
 Agent-facing step list for driving a model toward the front one Trial at a time, no autoloop required. Same rules that autoloop follows, spelled out for a manual loop.
 
+> **Autoloop shortcut (issue #8):** `autoloop.py --profile day|night` replaces steps 1–3's Baseline start — it picks the Day/Night point off the `results.tsv` front (`pick_day`/`pick_night`), loads that row's `config_json` as the Baseline, and runs rounds from there. Neighbor acceptance inside the loop is the same Pareto rule as step 4 (`improves_set`); the legacy scalar keep only applies to incomplete vectors (engine-only / quality-only modes). `--dry-run` prints the plan (pick, baseline, neighbors) without running benchmarks.
+
 1. **Profile pick** — choose the job profile the Trial must serve (agentic/general vs coding); before the first Trial on a model, seed `SAMPLER_DEFAULTS` from the model card's Recommended settings for that profile.
 2. **Edit Baseline** — set the knobs in `autoresearch/core/config.py` (`ENGINE_DEFAULTS` / `SAMPLER_DEFAULTS`), never as CLI flags. `config.py` is the only mutable Baseline; harnesses and `program.md` stay fixed.
 3. **Run the Trial** — invoke a harness (validation smoke → TPS exploration → complete the Objective Vector: Claw full + coding-10 on the same Fingerprint). A Trial is one `results.tsv` row keyed by (hardware+budget bucket, Fingerprint).

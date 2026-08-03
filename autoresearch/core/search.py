@@ -2,8 +2,9 @@
 
 Neighbor generation and Random Restarts live here; Trial acceptance no longer
 uses scalar Val Score — a Neighbor improves when it joins or improves the
-per-model Pareto Set (issue #7). autoloop is not wired yet; the legacy scalar
-keep rules stay as a compat shim for it.
+per-model Pareto Set (issue #7), and autoloop drives the Set (issue #8). The
+legacy scalar keep rules stay as a compat shim for incomplete-vector modes
+(engine-only / quality-only, which measure no agentic/coding axes).
 """
 
 import random
@@ -39,8 +40,8 @@ class SearchStrategy:
         use_pareto_tiebreaker: bool = False,
     ):
         self.search_space = search_space
-        # Legacy flag consumed only by the not-yet-wired scalar keep rules
-        # (autoloop compat; issue #7 keeps autoloop out of scope).
+        # Legacy flag consumed only by the scalar keep fallback for
+        # incomplete-vector modes (autoloop --mode tps|quality; issue #8).
         self.use_pareto_tiebreaker = use_pareto_tiebreaker
         # Per-model Pareto Set state: every Trial outcome recorded, merged per
         # Fingerprint by the caller. The front is derived, never stored.
@@ -160,9 +161,10 @@ class SearchStrategy:
         new_vram: float,
     ) -> tuple[bool, str]:
         """
-        LEGACY scalar keep rules — autoloop is not yet wired to the per-model
-        Pareto Set (issue #7 scope). Kept so autoloop keeps running until its
-        wiring ticket; the Search keep truth is `improves_set` / the Set.
+        LEGACY scalar keep rules — kept for incomplete-vector modes (autoloop
+        `--mode tps|quality`, which measure no agentic/coding axes and so can
+        never join the four-axis front; ADR 0006). The Search keep truth is
+        `improves_set` / the per-model Set (issue #7, wired by issue #8).
         Rules (Allan's matrix):
           Score+  Speed+  → KEEP
           Score+  Speed-  → KEEP
