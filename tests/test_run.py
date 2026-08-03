@@ -691,6 +691,23 @@ class TestRun(unittest.TestCase):
         finally:
             path.unlink(missing_ok=True)
 
+    def test_moe_vram_reject_only_when_est_exceeds_limit(self):
+        """_moe_vram_reject must not fire when est is under the limit (issue #10 regression)."""
+        from autoresearch.core.llama_runner import ServerIntent
+        from autoresearch.runners.evaluation import _moe_vram_reject
+
+        intent = ServerIntent(
+            model_path=MagicMock(spec=Path),
+            ctx_size=2048,
+            kv_cache="q4_0",
+            flash_attn="on",
+            n_cpu_moe=0,
+        )
+        intent.model_path.is_file.return_value = True
+        with patch("autoresearch.runners.evaluation.gguf_is_moe", return_value=True):
+            self.assertIsNone(_moe_vram_reject(intent, 6650.0, 7900.0))
+            self.assertIsNotNone(_moe_vram_reject(intent, 8000.0, 7900.0))
+
     def test_vram_kill_during_enter_is_model_rejected(self):
         from autoresearch.core.llama_runner import ServerIntent
         from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome

@@ -119,6 +119,68 @@ def gguf_block_count(path: Path) -> int:
     return block_count
 
 
+def gguf_kv_bytes_per_token_f16(path: Path) -> float | None:
+    """KV cache bytes per token at f16 from GGUF metadata, or None if unknown.
+
+    Mirrors llama.cpp: `n_head_kv` defaults to `head_count` when the key is
+    absent; an explicit `head_count_kv = 0` marks recurrent layers -> no KV
+    cache (e.g. LFM2.5-8B-A1B, head_count_kv=0, measured KV ~0). Bytes per
+    token = n_layer * n_head_kv * (key_length + value_length), key/value
+    lengths defaulting to head_dim = embedding_length / head_count.
+    """
+    try:
+        from gguf import GGUFReader
+    except ImportError:
+        return None
+    try:
+        reader = GGUFReader(str(path))
+        arch = str(_field_contents(reader.fields.get("general.architecture")) or "").lower()
+        if not arch:
+            return None
+
+        def _num(key: str) -> int | None:
+            raw = _field_contents(reader.fields.get(key))
+            try:
+                return int(raw) if raw is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        n_layer = _num(f"{arch}.block_count")
+        n_embd = _num(f"{arch}.embedding_length")
+        n_head = _num(f"{arch}.attention.head_count")
+        if n_layer is None or n_embd is None or n_head is None or n_head == 0:
+            return None
+
+        kv_raw = _field_contents(reader.fields.get(f"{arch}.attention.head_count_kv"))
+        if kv_raw is None:
+            # llama.cpp default: kv heads = query heads on every layer
+            n_head_kv_total = n_head * n_layer
+        else:
+            vals = kv_raw if isinstance(kv_raw, (list, tuple)) else [kv_raw]
+            try:
+                per_layer = [int(v) for v in vals]
+            except (TypeError, ValueError):
+                per_layer = []
+            if not per_layer:
+                n_head_kv_total = n_head * n_layer
+            elif len(per_layer) == 1:
+                n_head_kv_total = per_layer[0] * n_layer
+            else:
+                # sparse-GQA per-layer array (e.g. LFM2.5: 8 on attn layers, 0 on conv)
+                n_head_kv_total = sum(per_layer)
+
+        head_dim = n_embd / n_head
+        k_len = _num(f"{arch}.attention.key_length")
+        v_len = _num(f"{arch}.attention.value_length")
+        if k_len is None:
+            k_len = int(head_dim)
+        if v_len is None:
+            v_len = int(head_dim)
+        return float(n_head_kv_total) * (k_len + v_len)
+    except Exception:
+        return None
+
+
 def is_moe_model(ref: str | Path, *, models_dir: Path | None = None) -> bool:
     """Classify MoE from GGUF metadata. Missing/unreadable file → not MoE (dense-safe)."""
     path = resolve_model_file(ref, models_dir=models_dir)

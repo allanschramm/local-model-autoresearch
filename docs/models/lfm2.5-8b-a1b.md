@@ -141,6 +141,19 @@ Only T010_contact_lookup passed in both runs. TPS identical because Combined TPS
 
 Combined TPS 186.9 (≥15.0). Only T010 passed again — consistent with prior claw-quick 0.20. Coding axis now measured; agentic axis still needs Claw full for a complete Objective Vector.
 
+## Real peak VRAM (2026-08, gate bypass)
+
+Measured with `scripts/measure_vram_peak.py` (harness `LlamaServerRunner`, NVML 20 ms sampler, preflight bypassed):
+
+| Stage | used | free |
+|---|---|---|
+| pre | 1622 MB (desktop) | 6335 MB |
+| post-load | 7021 MB (+5399) | 936 MB |
+| post-gen (534 tok, 171.3 t/s) | 7015 MB | 942 MB |
+| **peak** | **7260 MB** (total; llama's own ≈ 5638) | — |
+
+Model fits physical VRAM with ~700 MB spare in a dirty-GPU state — no shared-memory spill. This exposed the KV estimator over-charge (flat 80 KB/token): this arch has `head_count_kv = 0` (per-layer sparse GQA array, KV only on 6 attention layers) so real KV @ 65k q4_0 ≈ 480–720 MB, not 1434. Estimator now derives KV bytes/token from GGUF metadata (`n_layer × n_head_kv × (k_len+v_len)`, per-layer array supported) — est 5324 MB vs real 5399/5638 MB (2026-08-08).
+
 ## Measured (claw-full, 2026-07-24)
 
 `N_CPU_MOE=0`, ctx 65k, KV q4_0 (upstream CUDA):

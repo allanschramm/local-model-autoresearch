@@ -805,6 +805,93 @@ class TestLlamaRunner(unittest.TestCase):
         proc.kill.assert_called()
 
 
+class TestKvCalibration(unittest.TestCase):
+    """GGUF-derived KV cache sizing (sparse-GQA fix, measured 2026-08)."""
+
+    class _FakeField:
+        def __init__(self, value):
+            self._value = value
+
+        def contents(self):
+            return self._value
+
+    def _kv_bytes(self, fields):
+        from autoresearch.core.model_arch import gguf_kv_bytes_per_token_f16
+
+        fake_fields = {k: self._FakeField(v) for k, v in fields.items()}
+
+        class FakeReader:
+            def __init__(self, _path):
+                self.fields = fake_fields
+
+        with patch("gguf.GGUFReader", FakeReader):
+            return gguf_kv_bytes_per_token_f16(Path("m.gguf"))
+
+    def test_dense_scalar_head_count_kv(self):
+        # llama default path: scalar kv heads on every layer
+        b = self._kv_bytes(
+            {
+                "general.architecture": "llama",
+                "llama.block_count": 32,
+                "llama.embedding_length": 4096,
+                "llama.attention.head_count": 32,
+                "llama.attention.head_count_kv": 8,
+            }
+        )
+        self.assertEqual(b, 32 * 8 * (128 + 128))
+
+    def test_sparse_gqa_per_layer_array(self):
+        # LFM2.5-8B-A1B: head_count_kv is a per-layer array (8 on attn, 0 on conv)
+        b = self._kv_bytes(
+            {
+                "general.architecture": "lfm2moe",
+                "lfm2moe.block_count": 24,
+                "lfm2moe.embedding_length": 2048,
+                "lfm2moe.attention.head_count": 32,
+                "lfm2moe.attention.head_count_kv": [
+                    0,
+                    0,
+                    8,
+                    0,
+                    0,
+                    0,
+                    8,
+                    0,
+                    0,
+                    0,
+                    8,
+                    0,
+                    0,
+                    0,
+                    8,
+                    0,
+                    0,
+                    0,
+                    8,
+                    0,
+                    0,
+                    8,
+                    0,
+                    0,
+                ],
+            }
+        )
+        self.assertEqual(b, 48 * (64 + 64))
+
+    @unittest.skipUnless(
+        Path("models/LiquidAI/LFM2.5-8B-A1B-GGUF/LFM2.5-8B-A1B-Q4_K_M.gguf").exists(),
+        "LFM2.5-8B-A1B GGUF not downloaded",
+    )
+    def test_real_lfm_file_matches_measured_kv(self):
+        from autoresearch.core.llama_runner import estimate_vram_mb
+
+        p = Path("models/LiquidAI/LFM2.5-8B-A1B-GGUF/LFM2.5-8B-A1B-Q4_K_M.gguf")
+        # est 65k q4_0 ~ 5324MB vs measured load 5399 / peak 5638 (2026-08)
+        est = estimate_vram_mb(p, 65536, "q4_0", "q4_0")
+        self.assertLess(est, 5600.0)
+        self.assertGreater(est, 5000.0)
+
+
 class TestVramHeadroomPreflight(unittest.TestCase):
     """Issue #10: dynamic VRAM headroom from free-at-start."""
 

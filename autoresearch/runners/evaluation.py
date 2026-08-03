@@ -66,6 +66,8 @@ def _format_arch_line(intent: ServerIntent) -> str:
 
 def _moe_vram_reject(intent: ServerIntent, est_mb: float, limit_mb: float) -> str | None:
     """Explicit reject when MoE model exceeds physical VRAM budget."""
+    if est_mb <= limit_mb:
+        return None
     path = intent.model_path
     if not path.is_file():
         return None

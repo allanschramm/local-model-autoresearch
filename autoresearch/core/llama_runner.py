@@ -29,7 +29,12 @@ _MODEL_SEARCH_SKIP = frozenset({".cache", "aliases", "huggingface"})
 from autoresearch.core import config
 from autoresearch.core.config import ConfigError, is_dense_model, validate_config
 from autoresearch.core.hardware import detect_free_vram_mb
-from autoresearch.core.model_arch import gguf_block_count, gguf_is_moe, resolve_n_cpu_moe
+from autoresearch.core.model_arch import (
+    gguf_block_count,
+    gguf_is_moe,
+    gguf_kv_bytes_per_token_f16,
+    resolve_n_cpu_moe,
+)
 
 
 def resolve_model_path(models_dir: Path, ref: str | Path) -> Path:
@@ -355,25 +360,13 @@ def estimate_vram_mb(
     except Exception:
         c_size = 16384
 
-    base_kv = base_kv_cache if base_kv_cache is not None else "q4_0"
-    k_type = kv_cache_k if kv_cache_k is not None else base_kv
-    v_type = kv_cache_v if kv_cache_v is not None else base_kv
-
-    def get_quant_factor(q_type: Any) -> float:
-        if q_type is None or not isinstance(q_type, str):
-            return VRAM_DEFAULT_QUANT_FACTOR
-        q = q_type.lower()
-        for key, factor in VRAM_QUANT_FACTORS.items():
-            if key in q:
-                return factor
-        return VRAM_DEFAULT_QUANT_FACTOR
-
-    kf = get_quant_factor(k_type)
-    vf = get_quant_factor(v_type)
-
-    # Calibrated KV cache size per token at f16 is ~80 KB
-    kv_base_mb = c_size * VRAM_KB_PER_TOKEN_F16 / 1024.0
-    kv_est_mb = (kv_base_mb / 2.0) * kf + (kv_base_mb / 2.0) * vf
+    kv_est_mb = _kv_est_mb(
+        c_size,
+        kv_cache_k=kv_cache_k,
+        kv_cache_v=kv_cache_v,
+        base_kv_cache=base_kv_cache,
+        model_path=model_path,
+    )
 
     spec_enabled = bool(spec_type and spec_type.lower() != "none" and spec_draft_n_max > 0)
     spec_workspace_mb = (
@@ -506,7 +499,14 @@ def _kv_est_mb(
     kv_cache_k: str | None = None,
     kv_cache_v: str | None = None,
     base_kv_cache: str = "q4_0",
+    model_path: Path | None = None,
 ) -> float:
+    """KV cache estimate in MiB.
+
+    Prefers GGUF-derived bytes/token (n_layer * n_head_kv * (k_len + v_len));
+    falls back to the flat VRAM_KB_PER_TOKEN_F16 calibration when metadata is
+    unavailable. head_count_kv=0 (recurrent archs like LFM2.5-8B-A1B) -> 0.
+    """
     try:
         c_size = int(ctx_size)
     except Exception:
@@ -526,7 +526,15 @@ def _kv_est_mb(
 
     kf = get_quant_factor(k_type)
     vf = get_quant_factor(v_type)
+
     kv_base_mb = c_size * VRAM_KB_PER_TOKEN_F16 / 1024.0
+    if model_path is not None:
+        try:
+            kv_bytes = gguf_kv_bytes_per_token_f16(model_path)
+            if kv_bytes is not None:
+                kv_base_mb = c_size * kv_bytes / (1024.0 * 1024.0)
+        except Exception:
+            pass
     return (kv_base_mb / 2.0) * kf + (kv_base_mb / 2.0) * vf
 
 
@@ -556,6 +564,7 @@ def estimate_host_memory_mb(
         kv_cache_k=kv_cache_k,
         kv_cache_v=kv_cache_v,
         base_kv_cache=base_kv_cache,
+        model_path=model_path,
     )
     return model_size_mb + draft_mb + kv_est_mb + VRAM_OVERHEAD_MB
 
