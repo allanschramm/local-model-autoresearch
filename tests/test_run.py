@@ -199,6 +199,48 @@ class TestRun(unittest.TestCase):
         self.assertEqual(res["val_score"], 0.6)
         self.assertEqual(res["agentic_tier"], "quick")
 
+    @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=42.0)
+    @patch("autoresearch.runners.evaluation.LlamaServerRunner")
+    @patch("autoresearch.runners.evaluation.run_coding")
+    def test_validation_never_runs_coding_even_when_default_on(
+        self, mock_coding, mock_runner, mock_bench
+    ):
+        """Validation = smoke gates only: global INCLUDE_CODING=True (issue #8) must
+        not leak coding-10 into a --validation run (issue #9 user rule)."""
+        mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
+
+        args = MagicMock()
+        args.kv_k = "q4_0"
+        args.kv_v = "q4_0"
+        args.threads = 12
+        args.threads_batch = None
+        args.batch_size = 512
+        args.ubatch_size = 128
+        args.spec_draft_n_max = 1
+        args.spec_type = None
+        args.coding_task_limit = 30
+
+        mock_coding.return_value = BenchmarkResult(
+            val_score=0.75, val_pass1=0.6, val_pass2=0.8, val_pass3=0.7, val_pass4=0.5, avg_tps=40.0
+        )
+        with patch("autoresearch.runners.evaluation.get_quick_tier_tasks", return_value=["task-1"]):
+            with patch(
+                "autoresearch.runners.evaluation.run_agentic_eval",
+                return_value={"score": 0.6, "total": 1},
+            ):
+                res = run.run_evaluation(
+                    args,
+                    model="g4-opt-it-Q4_K_M.gguf",
+                    kv="q4_0",
+                    max_tokens=1024,
+                    include_coding=True,  # global default; validation must still suppress it
+                    validation=True,
+                )
+
+        mock_coding.assert_not_called()
+        self.assertEqual(res["coding_val"], 0.0)
+        self.assertEqual(res["agentic_tier"], "quick")
+
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
     def test_include_agentic_full_key_enables_claw(self, mock_coding, mock_runner):

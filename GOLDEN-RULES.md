@@ -82,7 +82,7 @@ When asked to "validate a model", follow this exact procedure:
 3. **What the --validation flag does** — Gates 0–2, always:
    - **Gate 0 (arch + VRAM):** dense vs MoE from GGUF, resolve `N_CPU_MOE`, VRAM preflight (MoE full-GPU over limit → reject).
    - **Step 1 (speed check):** `llama-bench` with `prompt=512`, `gen=128`, 3 repeats. If `tg_tps < TPS_FLOOR` (config.py; default 20.0), FAILs immediately — no agentic eval runs.
-   - **Step 2 (agentic smoke):** Claw-Eval quick scores local tool use with deterministic rule-based grading (no pass/fail cut on that score). Optional direct-coding preflight always uses exactly 10 tasks per dataset.
+   - **Step 2 (agentic smoke):** Claw-Eval quick scores local tool use with deterministic rule-based grading (no pass/fail cut on that score). Validation never runs coding-10 — coding is canonical-Trial work (complete Objective Vector); `--validation` is smoke-only (issue #9 user rule; `INCLUDE_CODING=True` default does not leak into validation).
 
 4. **One model at a time** — Never run multiple validations in parallel. All models share the same GPU (CUDA device 0) and default port 18080. Each validation must finish (PASS or FAIL) before the next starts.
 

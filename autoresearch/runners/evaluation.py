@@ -402,6 +402,9 @@ class ExperimentRunner:
         if is_validation:
             agentic_quick = True
             agentic_full = False
+            include_coding = (
+                False  # validation = smoke gates only; coding-10 is canonical-Trial work
+            )
         if include_coding and (task_limit_val, lcb_limit_val, bigcode_limit_val) != (10, 10, 10):
             res.status = "FAIL: Coding preflight requires exactly 10 tasks per dataset"
             res.outcome = TrialOutcome.INVALID_CONFIG

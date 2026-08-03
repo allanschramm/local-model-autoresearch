@@ -750,7 +750,12 @@ def handle_single_run(args):
     # Classify via the Pareto nucleus (issue #4): rejected on hard failure,
     # incomplete while any axis is missing, else on_front/dominated vs the
     # known Set for this hardware+budget bucket.
-    coding_measured = getattr(args, "include_coding", False) is True
+    # coding-10 is canonical-Trial work; validation = smoke gates only (run_trial
+    # forces include_coding off). Mirror that so the vector never claims a
+    # 0.0 coding axis on a validation row.
+    coding_measured = getattr(args, "include_coding", False) is True and not getattr(
+        args, "validation", False
+    )
     # Claw quick is smoke, not the agentic axis (ADR 0006: agentic = Claw full).
     agentic_full = res.get("agentic_tier") == "full"
     vector = classify.ObjectiveVector(
