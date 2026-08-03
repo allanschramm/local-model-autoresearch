@@ -243,6 +243,10 @@ VRAM_KB_PER_TOKEN_F16 = 80.0
 VRAM_OVERHEAD_MB = 300.0
 """Typical baseline VRAM overhead for CUDA runtime and system operations (in megabytes)."""
 
+# Residual risk: estimator can under-read peak. Measured dense 65k coding overshoot:
+# est 7584 MB → peak 7931 MB (qwen3.5-9b, 2026-07-27). Runtime VRAM sampler is the
+# final kill guard; keep the preflight margin conservative for new model arches.
+
 VRAM_SPECULATIVE_BASE_MB = 512.0
 VRAM_SPECULATIVE_PER_DRAFT_TOKEN_MB = 256.0
 """Conservative speculative-decoding runtime/workspace allowance."""

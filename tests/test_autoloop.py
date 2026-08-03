@@ -87,6 +87,26 @@ class TestAutoLoop(unittest.TestCase):
         # Should fall back to "q4_0" default
         self.assertIn("q4_0", str(mock_estimate.call_args))
 
+    @patch("autoloop.preflight_host_ok", return_value=True)
+    @patch("autoloop.estimate_vram_mb")
+    def test_preflight_vram_ok_infers_mtp_like_eval(self, mock_estimate, _host):
+        """MTP-in-name models pass spec args so autoloop and eval preflight agree."""
+        mock_estimate.return_value = 5000.0
+        cfg = {"MODEL": "embedded-MTP.gguf", "CTX_SIZE": 131072, "SPEC_DRAFT_N_MAX": 4}
+
+        self.assertTrue(autoloop.preflight_vram_ok(cfg, 9999.0))
+        kwargs = mock_estimate.call_args.kwargs
+        self.assertEqual(kwargs["spec_type"], "mtp")
+        self.assertEqual(kwargs["spec_draft_n_max"], 4)
+        self.assertIsNone(kwargs["draft_path"])  # embedded MTP: no external draft
+
+        mock_estimate.reset_mock()
+        cfg2 = {"MODEL": "plain.gguf", "CTX_SIZE": 131072, "SPEC_DRAFT_N_MAX": 0}
+        self.assertTrue(autoloop.preflight_vram_ok(cfg2, 9999.0))
+        kwargs2 = mock_estimate.call_args.kwargs
+        self.assertIsNone(kwargs2["spec_type"])
+        self.assertEqual(kwargs2["spec_draft_n_max"], 0)
+
     def test_signal_handler(self):
         autoloop._stop_requested = False
         autoloop._signal_handler(None, None)

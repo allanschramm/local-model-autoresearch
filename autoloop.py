@@ -337,8 +337,15 @@ def preflight_vram_ok(cfg: dict[str, Any], vram_limit: float | None) -> bool:
     if not kv_v:
         kv_v = "q4_0"
     draft = cfg.get("SPEC_DRAFT_MODEL")
-    draft_path = resolve_model_path(MODELS_DIR, draft) if draft else None
     model_path = resolve_model_path(MODELS_DIR, model)
+    # Mirror ServerIntent MTP inference so autoloop and eval preflight agree.
+    spec_type = cfg.get("SPEC_TYPE")
+    if spec_type is None and "MTP" in model_path.name.upper():
+        spec_type = "mtp"
+    spec_enabled = bool(
+        spec_type and spec_type.lower() != "none" and int(cfg.get("SPEC_DRAFT_N_MAX", 0) or 0) > 0
+    )
+    draft_path = resolve_model_path(MODELS_DIR, draft) if (draft and spec_enabled) else None
 
     if vram_limit is not None:
         n_cpu_moe, _ = resolve_n_cpu_moe(model_path, cfg.get("N_CPU_MOE"))
@@ -350,6 +357,8 @@ def preflight_vram_ok(cfg: dict[str, Any], vram_limit: float | None) -> bool:
             kv_v,
             draft_path=draft_path,
             n_cpu_moe=n_cpu_moe,
+            spec_type=spec_type,
+            spec_draft_n_max=int(cfg.get("SPEC_DRAFT_N_MAX", 0) or 0),
         )
         if est > vram_limit:
             return False
