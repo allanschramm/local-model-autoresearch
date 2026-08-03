@@ -92,16 +92,19 @@ Don't try to autotune every candidate. Pick the Pareto-optimal point that matche
 
 Once picked, download the GGUF and place it where `local-model-autotuning` expects.
 
-## Step 5 — Hand off to tuning (speed first)
+## Step 5 — Hand off: Pareto Set → Baseline via Profile
 
-Do **not** burn overnight Claw full while hunting flags. Default path:
+Do **not** burn overnight Claw full while hunting flags. Default path — the picked point joins the measured **Pareto Set** ([ADR 0006](../adr/0006-pareto-frontier-search.md)):
 
-1. Seed `MODEL` in `autoresearch/core/config.py`
-2. Follow [`good-enough-tuning.md`](./good-enough-tuning.md): `--validation` → `autoloop.py --mode tps` → champion `--agentic-full`
+1. Seed the FULL Baseline (ENGINE + SAMPLER) in `autoresearch/core/config.py` from the model card's Recommended settings
+2. Follow [`good-enough-tuning.md`](./good-enough-tuning.md): `--validation` → `autoloop.py --mode tps` → **complete the Objective Vector** (`--agentic-full` + coding-10 on the same Fingerprint)
+3. Read status (`on_front` / `dominated` / `incomplete` / `rejected`) via `scripts/recompute_status.py` — `on_front` requires a complete, non-dominated vector; partial vectors merge by Fingerprint
+4. **Baseline via Profile**: `autoloop.py --profile day|night` starts from the Day/Night pick off the `results.tsv` front, loading that row's `config_json` as the Baseline (issue #8)
 
 ```bash
 # Edit autoresearch/core/config.py
 MODEL = '<your-chosen-model-filename>.gguf'
+# Seed SAMPLER_DEFAULTS + ENGINE_DEFAULTS from docs/models/<card>.md Recommended settings
 
 # Optional: point at a non-default llama.cpp tree (upstream submodule is default)
 export AUTORESEARCH_LLAMA_CPP_ROOT=/path/to/your/llama.cpp
@@ -112,7 +115,7 @@ cd local-model-autotuning
 
 The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on keep, and appends rows to `results.tsv` (gitignored, stays local).
 
-**Only after TPS is acceptable**, run Claw full / coding-10 on the champion (see good-enough-tuning.md §4). Overnight `--mode both` is for quality search *after* speed, not the default first pass.
+**Only after TPS is acceptable**, complete the Objective Vector (Claw full + coding-10) on the same Fingerprint (good-enough-tuning.md §4). Overnight `--mode both` is for quality search *after* speed, not the default first pass.
 
 **Expected behavior (TPS mode)**:
 - Cheap Trials (bench + PPL ceiling) — minutes, not Claw-full hours
@@ -128,12 +131,13 @@ The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on keep, and app
 - [ ] Cross-reference SWE-bench Verified / Aider for each
 - [ ] Plot Pareto frontier on tok/s vs coding-quality axes
 - [ ] Pick the Pareto-optimal point matching your preference **and** local pool
-- [ ] Download GGUF, place in models/, set `MODEL` in config.py
+- [ ] Download GGUF, place in models/, seed FULL Baseline in config.py from the card
 - [ ] Set `AUTORESEARCH_LLAMA_CPP_ROOT` if using a non-upstream llama.cpp fork
 - [ ] Smoke: `benchmark_search.py --validation`
 - [ ] Speed search: `autoloop.py --mode tps` ([good-enough-tuning.md](./good-enough-tuning.md))
-- [ ] Champion quality: `--agentic-full` (optional coding-10)
-- [ ] Read `results.tsv`
+- [ ] Complete Objective Vector: `--agentic-full` + coding-10 (same Fingerprint)
+- [ ] Read status: `scripts/recompute_status.py` → `on_front` needs a complete vector ([ADR 0006](../adr/0006-pareto-frontier-search.md))
+- [ ] Baseline via Profile: `autoloop.py --profile day|night` (issue #8)
 
 ## Common pitfalls
 
@@ -144,6 +148,7 @@ The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on keep, and app
 4. **Wrong `AUTORESEARCH_LLAMA_CPP_ROOT`** — autoloop silently fails to find llama-server.
 5. **Not watching VRAM at startup** — use Baseline `VRAM_LIMIT_MB` (or whatever your budget) to skip configs that would OOM.
 6. **Downloading before hardware is known** — agents must not `hf download` or run validation until pool is detected and explained.
+7. **Treating keep/Val Score as Search truth** — membership is four-axis non-domination on a complete Objective Vector ([ADR 0006](../adr/0006-pareto-frontier-search.md)); Val Score is legacy display and `keep` a deprecated alias of `on_front`. Read `scripts/recompute_status.py` statuses instead of a scalar.
 
 ## Related docs
 

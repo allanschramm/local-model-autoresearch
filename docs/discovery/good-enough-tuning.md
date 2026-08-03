@@ -2,7 +2,7 @@
 
 **Goal:** find a runtime config that is *fast enough* on your rig, quickly — not the global optimum.
 
-This is the **default path** for new agents and humans when the question is “what flags should I use for this GGUF?”. Use Claw-Eval full / coding-10 only to **validate a champion**, not to search.
+This is the **default path** for new agents and humans when the question is “what flags should I use for this GGUF?”. Claw-Eval full / coding-10 complete the **Objective Vector** on one Fingerprint — a point only reaches `on_front` when that vector is complete ([ADR 0006](../adr/0006-pareto-frontier-search.md)). They are not a per-neighbor search signal.
 
 ## Cost–benefit rule
 
@@ -10,9 +10,9 @@ This is the **default path** for new agents and humans when the question is “w
 |---|---|---|
 | **Autoloop `--mode tps`** (default here) | Few speed knobs; want “good enough” fast | Low — bench + PPL, no Claw full per Trial |
 | Manual A/B via `config.py` | Closing 2–3 rivals after a plateau | Medium — one explicit Baseline at a time |
-| Autoloop `--mode both` / quality overnight | After speed is acceptable | High — Claw full / agentic Val Score |
+| Autoloop `--mode both` / quality overnight | After speed is acceptable | High — Claw full + coding-10 (complete the Objective Vector) |
 
-**Do not** run Claw full or coding-10 on every neighbor. That is champion validation, not search.
+**Do not** run Claw full or coding-10 on every neighbor. Quality axes complete the Objective Vector once on the final Fingerprint; they are not a per-neighbor search step.
 
 ## Knobs that usually matter for speed
 
@@ -59,22 +59,25 @@ Set `VRAM_LIMIT_MB` in `config.py`; the same Baseline value governs preflight an
 
 Optional: small manual A/B of 2–3 configs via `config.py` + `--validation` if you already know the candidates.
 
-### 4. Validate the champion (quality)
+### 4. Complete the Objective Vector (same Fingerprint)
 
-Only after TPS looks acceptable:
+Only after TPS looks acceptable — and on the **same** `config.py` Fingerprint the TPS Trials used:
 
 ```bash
-# Edit config.py: enable INCLUDE_AGENTIC_FULL (and optional INCLUDE_CODING=10 tasks)
-.\venv\Scripts\python.exe benchmark_search.py --agentic-full --desc "champion claw-full"
+# Edit config.py: enable INCLUDE_AGENTIC_FULL and INCLUDE_CODING=10 tasks
+.\venv\Scripts\python.exe benchmark_search.py --agentic-full --desc "<model> objective-vector"
 ```
 
-Compare Val Score / coding-10 in `results.tsv`. Keep or revert `config.py`.
+- Claw full = agentic axis; coding-10 = coding axis; both must land on the same Fingerprint.
+- A point becomes `on_front` **only** when the Objective Vector is complete and non-dominated ([ADR 0006](../adr/0006-pareto-frontier-search.md)). Partial vectors stay `incomplete` and merge by Fingerprint — later Trials complete the point, they do not spawn new ones.
+- Read status, not a scalar: `scripts/recompute_status.py` → `on_front` | `dominated` | `incomplete` | `rejected`. Val Score / keep is legacy display, never Search truth.
+- Day/Night pick off the front: `autoloop.py --profile day|night` ([pareto-selection.md](./pareto-selection.md)).
 
 ## Anti-patterns
 
 1. **Overnight `autoloop` default/`both` before a TPS pass** — burns hours on slow configs.
 2. **CLI sweep flags** — every Trial must edit `config.py` first.
-3. **Coding-10 / Claw full inside the search loop** — use for the winner only.
+3. **Coding-10 / Claw full inside the TPS search loop** — complete the Objective Vector once, on the final Fingerprint; do not re-run quality axes per neighbor.
 4. **Dense models spilling to shared GPU memory** — cut `CTX_SIZE` / KV / draft, or reject; never “spill and hope”.
 5. **Parallel validations** — one Trial at a time on the shared GPU/port.
 
@@ -82,6 +85,8 @@ Compare Val Score / coding-10 in `results.tsv`. Keep or revert `config.py`.
 
 - [`agent-onboarding.md`](./agent-onboarding.md) — bootstrap for agents
 - [`discover-models.md`](./discover-models.md) — pick which GGUF first (Pareto), then this guide
+- [`pareto-selection.md`](./pareto-selection.md) — Objective Vector, Fingerprint merge, Day/Night pick
+- [`../adr/0006-pareto-frontier-search.md`](../adr/0006-pareto-frontier-search.md) — Pareto Set membership (four axes, non-domination)
 - [`agent-shell-hard-gates.md`](./agent-shell-hard-gates.md) — config.py-only Baseline
 - `GOLDEN-RULES.md` — validation gates and harness rules
 - `program.md` — Search terminology and Trial logging
