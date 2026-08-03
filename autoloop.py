@@ -25,6 +25,7 @@ from autoresearch.core.llama_runner import (
     estimate_vram_mb,
     preflight_host_memory,
     resolve_model_path,
+    resolve_spec_estimate_args,
 )
 from autoresearch.core.model_arch import resolve_n_cpu_moe
 from autoresearch.core.search import SearchStrategy
@@ -338,14 +339,12 @@ def preflight_vram_ok(cfg: dict[str, Any], vram_limit: float | None) -> bool:
         kv_v = "q4_0"
     draft = cfg.get("SPEC_DRAFT_MODEL")
     model_path = resolve_model_path(MODELS_DIR, model)
-    # Mirror ServerIntent MTP inference so autoloop and eval preflight agree.
-    spec_type = cfg.get("SPEC_TYPE")
-    if spec_type is None and "MTP" in model_path.name.upper():
-        spec_type = "mtp"
-    spec_enabled = bool(
-        spec_type and spec_type.lower() != "none" and int(cfg.get("SPEC_DRAFT_N_MAX", 0) or 0) > 0
+    spec_type, _, draft_path = resolve_spec_estimate_args(
+        model_path.name,
+        cfg.get("SPEC_TYPE"),
+        int(cfg.get("SPEC_DRAFT_N_MAX", 0) or 0),
+        resolve_model_path(MODELS_DIR, draft) if draft else None,
     )
-    draft_path = resolve_model_path(MODELS_DIR, draft) if (draft and spec_enabled) else None
 
     if vram_limit is not None:
         n_cpu_moe, _ = resolve_n_cpu_moe(model_path, cfg.get("N_CPU_MOE"))

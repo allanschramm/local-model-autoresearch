@@ -381,20 +381,40 @@ def preflight_vram(
     return True, est, ""
 
 
+def resolve_spec_estimate_args(
+    model_name: str,
+    spec_type: str | None,
+    spec_draft_n_max: int,
+    draft_path: Path | str | None,
+) -> tuple[str | None, bool, Path | str | None]:
+    """Resolve effective speculative args for VRAM estimation (MTP-aware).
+
+    Mirrors ServerIntent MTP inference: embedded-MTP GGUFs with no explicit
+    SPEC_TYPE estimate with speculative workspace; external drafts only count
+    when speculation is enabled.
+    """
+    if spec_type is None and "MTP" in model_name.upper():
+        spec_type = "mtp"
+    spec_enabled = bool(spec_type and spec_type.lower() != "none" and spec_draft_n_max > 0)
+    return spec_type, spec_enabled, draft_path if spec_enabled else None
+
+
 def preflight_vram_for_intent(
     intent: "ServerIntent",
     vram_limit_mb: float | None = None,
 ) -> tuple[bool, float, str]:
-    spec_type = intent.spec_type
-    if spec_type is None and "MTP" in intent.model_path.name.upper():
-        spec_type = "mtp"
-    spec_enabled = bool(spec_type and spec_type.lower() != "none" and intent.spec_draft_n_max > 0)
+    spec_type, _, draft_path = resolve_spec_estimate_args(
+        intent.model_path.name,
+        intent.spec_type,
+        intent.spec_draft_n_max,
+        intent.spec_draft_model,
+    )
     return preflight_vram(
         intent.model_path,
         intent.ctx_size,
         kv_cache_k=intent.kv_cache_k or intent.kv_cache,
         kv_cache_v=intent.kv_cache_v or intent.kv_cache,
-        draft_path=intent.spec_draft_model if spec_enabled else None,
+        draft_path=draft_path,
         vram_limit_mb=vram_limit_mb,
         n_cpu_moe=intent.n_cpu_moe,
         spec_type=spec_type,
