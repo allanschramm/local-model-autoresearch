@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 # Benchmarks to run
-INCLUDE_CODING = False
+INCLUDE_CODING = True  # coding-10 → complete Objective Vector (Pareto acceptance; issue #8)
 INCLUDE_NEXUS = False
 INCLUDE_CLAW = False
 INCLUDE_AGENTIC_QUICK = True  # smoke validation before the canonical Trial
