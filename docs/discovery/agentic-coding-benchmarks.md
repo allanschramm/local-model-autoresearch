@@ -5,7 +5,8 @@ This repo evaluates local models across two tiers:
 * **Preflight (direct code gen):** HumanEval+, MBPP+, LiveCodeBench, BigCodeBench.
   Optional single-turn checks. Exactly 10 tasks per dataset when enabled.
 * **Agentic (multi-turn, tool use):** Claw-Eval quick/full tiers via `ClawEvalAdapter`
-  in `autoresearch/runners/evaluation.py`. Canonical Val Score for Search.
+  in `autoresearch/runners/evaluation.py`. Claw full = the agentic Objective Vector axis
+  ([ADR 0006](../adr/0006-pareto-frontier-search.md)); Val Score is legacy display, not Search truth.
 
 ## Tier Structure
 
@@ -18,7 +19,7 @@ This repo evaluates local models across two tiers:
 - English-only tasks (no zh variants)
 - Rule-based scoring only (no `llm_judge` — fully local, no API keys)
 - Quick tier: `difficulty=easy`, ≤2 mock services — observational smoke (no score-floor reject), not fair cross-model score
-- Full tier: `difficulty=easy` first, then fills with `medium` — canonical Val Score
+- Full tier: `difficulty=easy` first, then fills with `medium` — the agentic axis of the Objective Vector
 - Discovered at runtime from `claw-eval/tasks/` (local vendor tree)
 
 ## Current Code Hook
