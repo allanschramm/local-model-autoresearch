@@ -464,9 +464,11 @@
       </dd>
     </dl>
     <p>
-      Escolher “qual modelo em cada modo” é uma <strong>medição</strong>, não um chute.
-      Este repositório mede cada candidato e guarda os resultados. Os números abaixo são
-      fixos (gerados com <code>scripts/rank_results.py</code> a partir de
+      Escolher “qual modelo em cada modo” é uma <strong>medição</strong>, não um chute — e
+      não existe um único “melhor modelo”. Este repositório mede cada candidato e guarda os
+      resultados numa <strong>fronteira Pareto</strong>: nenhum modelo ganha em tudo
+      (velocidade × contexto × agente × código), cada candidato é um ponto dessa frente. Os
+      números abaixo são fixos (gerados com <code>scripts/rank_results.py</code> a partir de
       <code>results.tsv</code>): nota de <em>agente</em> (trabalho autônomo) e nota de
       <em>código</em>, de 0 a 1.
     </p>
@@ -484,16 +486,24 @@
       </tbody>
     </table>
     <p>
-      Leia assim: no <strong>Day</strong>, o campeão é rápido (63,7 TPS) com contexto
-      suficiente para o trabalho supervisionado. No <strong>Night</strong>, o campeão é
-      mais forte (maior nota de agente e código) — vale mais tempo de processamento,
-      porque ele trabalha sozinho e você revisa de manhã.
+      Leia assim: no <strong>Day</strong>, o ponto escolhido é rápido (63,7 TPS) com
+      contexto suficiente para o trabalho supervisionado. No <strong>Night</strong>, o ponto
+      escolhido é mais forte (maior nota de agente e código) — vale mais tempo de
+      processamento, porque ele trabalha sozinho e você revisa de manhã. Os dois pontos
+      vêm da mesma frente medida: cada modo escolhe o ponto que casa com o jeito de usar.
     </p>
     <div class="note">
       <strong>Prática real opcional (não conta para liberar a aula):</strong>
       se a sua máquina roda modelos (Semana 1 · Dia 1), suba o candidato Day e o Night e
       compare na sua mão. Sem hardware, o caminho simulado do restaurante + quiz já
       libera a aula — a prática real é só um extra.
+    </div>
+    <div class="note">
+      <strong>Para depois — receita padrão deste repositório:</strong> achar candidato
+      (<code>docs/discovery/discover-models.md</code>) → medir e completar o vetor
+      (<code>docs/discovery/good-enough-tuning.md</code>) → baseline via perfil
+      (<code>autoloop.py --profile day|night</code>). Pareto Set + escolha Day/Night,
+      não um único campeão por nota.
     </div>
 
     <section class="practice" data-practice data-lesson="s1d4">

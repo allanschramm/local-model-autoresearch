@@ -162,6 +162,9 @@ Uso do modelo local de dia, com você no volante: rápido o bastante para o trab
 **Night**:
 Uso do modelo local sozinho (ex.: fila de issues enquanto você dorme). De manhã vem o humano: review, teste, PR. Night sem manhã vira bagunça.
 
+**Fronteira Pareto**:
+Lista medida de candidatos onde nenhum domina o outro em tudo (velocidade × contexto × agente × código). Não existe “o melhor modelo” — Day e Night escolhem pontos diferentes dessa frente.
+
 **Issue**:
 Ticket de trabalho (ex.: GitHub Issues): problema, tarefa ou pedido registrado. No Night, a fila de issues é o combustível do loop.
 

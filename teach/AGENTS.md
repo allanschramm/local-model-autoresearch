@@ -15,7 +15,7 @@ Course operator / instructors. Not part of the autotuning runtime loop.
 - Student workflow: 100% local checkout. Entrypoints: `/teach` tutor and `teach/index.html`.
 - Lesson HTML nav: Guia = `../index.html`; prev/next lesson HTML only. Never link `MISSION.md` / `CURRICULUM.md` / `SPEC.md` from student-facing HTML.
 - Student-facing HTML surface: `index.html` + `reference/glossario.html` + lessons under `lessons/`. Prefer glossary over `docs/*.md` in lesson bodies.
-- Day/Night in student HTML = usage language only. Pareto selection math stays in `CONTEXT.md` / `docs/discovery/` / ADR 0008.
+- Day/Night in student HTML = usage language; the **Pareto Set concept** (no single “best model”; Day/Night pick their points off the measured front) is in scope. Selection math stays in `CONTEXT.md` / `docs/discovery/` / ADR 0008. Default recipe taught = **Pareto Set + Day/Night pick** — never a scalar Val Score champion as truth.
 - Fixed Day/Night example numbers: `results.tsv` via `scripts/rank_results.py` (basenames + scores). No aliases / GGUF inventory in tracked docs.
 - Learners without capable hardware: conceptual path complete; real local practice optional; never gate “Concluir”.
 - **Zero meta no HTML do aluno (hard gate):** never leak planning, curriculum decisions, or agent↔instructor scaffolding into `lessons/*.html`, `index.html`, `reference/*.html`. Full rule list unchanged — teachable concept contrast OK; draft banner on unpublished lessons OK.

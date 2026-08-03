@@ -31,7 +31,7 @@ Slot ids and current filenames stay. Content moves to match the table.
 
 | Slot | Filename (stable) | Target content |
 |---|---|---|
-| S1D4 | `lessons/s1d4-usecase-fluxo-zero.html` | Samplers + Day/Night usage |
+| S1D4 | `lessons/s1d4-usecase-fluxo-zero.html` | Samplers + Day/Night usage (picks from the measured Pareto front) |
 | S2D1 | `lessons/s2d1-parametros-qualidade.html` | Skills (`skills.sh`, Matt Pocock chain) |
 | S2D2 | `lessons/s2d2-mcp-ferramentas.html` | MCP + Context7; light arc + transpose framing |
 | S2D3 | `lessons/s2d3-sandbox-hooks-gates.html` | Guardrails; light arc + transpose framing |
@@ -45,6 +45,8 @@ In lesson HTML and the student glossary, Day/Night means **usage**:
 
 - **Day** — supervised local model for daytime work; good enough and fast enough; reduces subscription-token spend.
 - **Night** — stronger / longer-context local model for unsupervised overnight loops (e.g. open issues); morning = review, test, open PR.
+
+The **default recipe taught is Pareto Set + Day/Night pick**: the repo measures candidates into a Pareto front — no single “best model”, each candidate is a point on four axes (ctx × TPS × agentic × coding) — and each usage mode picks its point off that front ([ADR 0006](../docs/adr/0006-pareto-frontier-search.md)). Lessons teach that concept in usage language; never a scalar “Val Score champion” as truth.
 
 Do not put Pareto selection math (`DAY_IQ_RATIO`, maximin, TSV schema) in lesson bodies. Selection-lens detail stays in `CONTEXT.md`, [ADR 0008](../docs/adr/0008-day-iq-epsilon-then-tps.md), and `docs/discovery/`. Optional “go deeper” links from the guide are allowed.
 

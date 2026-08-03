@@ -15,6 +15,12 @@
   Flags neste checkout. Use for: tunar TPS no Dia 2.
 - [docs/discovery/quantization-cascade.md](../docs/discovery/quantization-cascade.md)
   Escolha de quant vs VRAM. Use for: escolher modelo (performance).
+- [docs/discovery/discover-models.md](../docs/discovery/discover-models.md)
+  Receita padrão: achar candidato (whichllm/llmfit) → fronteira Pareto → escolha. Use for: escolher modelo (Pareto).
+- [docs/discovery/good-enough-tuning.md](../docs/discovery/good-enough-tuning.md)
+  Receita padrão: smoke → TPS → vetor objetivo completo num Fingerprint. Use for: medir o ponto escolhido.
+- [docs/discovery/pareto-selection.md](../docs/discovery/pareto-selection.md)
+  Como Day/Night escolhem pontos da frente medida (uso). Use for: entender os picks.
 - [docs/models/vitriol-technique.md](../docs/models/vitriol-technique.md)
   MoE / offload. Use for: Dia 3.
 - [skills.sh](https://skills.sh/)
