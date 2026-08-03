@@ -34,6 +34,7 @@ def _ensure_repo_root_on_sys_path() -> None:
 
 _ensure_repo_root_on_sys_path()
 
+from autoresearch.core.classify import fp_from_config_json
 from autoresearch.core.pareto import pareto_set
 
 DEFAULT_TSV = REPO_ROOT / "results.tsv"
@@ -137,60 +138,82 @@ def load_rows(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
+def _axis_values(row: dict[str, str]) -> tuple[float | None, float | None]:
+    """agentic/coding axis values of one row: columns when populated, else category.
+
+    The modern write path records a combined vector (agentic-full + coding-10
+    measured in one run) with both columns populated; the split form stores
+    agentic-full / 10-task category rows. Legacy rows have neither.
+    """
+    agentic = _valid_score(row.get("agentic"))
+    coding = _valid_score(row.get("coding"))
+    score = _valid_score(row.get("val_score"))
+    category = (row.get("category") or "").strip()
+    if agentic is None and category == "agentic-full":
+        agentic = score
+    if coding is None and category == "10-task":
+        coding = score
+    return agentic, coding
+
+
 def build_vectors(
     rows: Sequence[dict[str, str]],
 ) -> tuple[list[Point], list[Point]]:
-    """Merge best valid agentic-full + coding-10 per model basename.
+    """Merge best valid agentic + coding per (model, full Fingerprint).
 
-    Uses outcome=OK (or empty) and val_score in [0, 1]. Ignores legacy
-    keep/discard — that flag is Search history, not measurement validity.
+    Point identity is the full ENGINE+SAMPLER Fingerprint recomputed from
+    config_json (ADR 0006), not the model basename: same basename under
+    different configs never merges. Rows without config_json (legacy) carry
+    no Fingerprint and can never form a complete vector. Uses outcome=OK (or
+    empty); ignores legacy keep/discard — that flag is Search history, not
+    measurement validity.
     """
-    ag_best: dict[str, dict[str, Any]] = {}
-    cod_best: dict[str, dict[str, Any]] = {}
-    tps_fallback: dict[str, float] = {}
+    ag_best: dict[tuple[str, str | None], dict[str, Any]] = {}
+    cod_best: dict[tuple[str, str | None], dict[str, Any]] = {}
+    tps_fallback: dict[tuple[str, str | None], float] = {}
 
     for row in rows:
         model = (row.get("model") or "").strip()
         if not model:
             continue
+        fp = fp_from_config_json(row.get("config_json"))
+        key = (model, fp)
         tps = _tps_of(row)
         if tps is not None:
-            prev = tps_fallback.get(model)
+            prev = tps_fallback.get(key)
             if prev is None or tps > prev:
-                tps_fallback[model] = tps
+                tps_fallback[key] = tps
 
         if not _is_measurement_row(row):
             continue
-        score = _valid_score(row.get("val_score"))
-        if score is None:
+        agentic, coding = _axis_values(row)
+        if agentic is None and coding is None:
             continue
-        category = (row.get("category") or "").strip()
-        ctx = _ctx_of(row)
-        payload = {"score": score, "tps": tps, "ctx": ctx}
-
-        if category == "agentic-full":
-            prev = ag_best.get(model)
-            if prev is None or score > prev["score"]:
-                ag_best[model] = payload
-        elif category == "10-task":
-            prev = cod_best.get(model)
-            if prev is None or score > prev["score"]:
-                cod_best[model] = payload
+        payload = {"agentic": agentic, "coding": coding, "tps": tps, "ctx": _ctx_of(row)}
+        if agentic is not None:
+            prev = ag_best.get(key)
+            if prev is None or agentic > prev["agentic"]:
+                ag_best[key] = payload
+        if coding is not None:
+            prev = cod_best.get(key)
+            if prev is None or coding > prev["coding"]:
+                cod_best[key] = payload
 
     complete: list[Point] = []
     incomplete: list[Point] = []
-    for model in sorted(set(ag_best) | set(cod_best)):
-        ag = ag_best.get(model)
-        cod = cod_best.get(model)
-        agentic = float(ag["score"]) if ag else -1.0
-        coding = float(cod["score"]) if cod else -1.0
+    for key in sorted(set(ag_best) | set(cod_best), key=lambda k: (k[0], k[1] or "")):
+        model, fp = key
+        ag = ag_best.get(key)
+        cod = cod_best.get(key)
+        agentic = float(ag["agentic"]) if ag else -1.0
+        coding = float(cod["coding"]) if cod else -1.0
         tps = 0.0
         if ag and ag["tps"] is not None:
             tps = float(ag["tps"])
         elif cod and cod["tps"] is not None:
             tps = float(cod["tps"])
         else:
-            tps = float(tps_fallback.get(model, 0.0))
+            tps = float(tps_fallback.get(key, 0.0))
         ctx_candidates = [
             c
             for c in (
@@ -203,7 +226,7 @@ def build_vectors(
         point = Point(
             model=model, ctx=ctx, tps=tps, agentic=max(agentic, 0.0), coding=max(coding, 0.0)
         )
-        if ag and cod:
+        if fp is not None and ag and cod:
             complete.append(Point(model=model, ctx=ctx, tps=tps, agentic=agentic, coding=coding))
         else:
             incomplete.append(point)

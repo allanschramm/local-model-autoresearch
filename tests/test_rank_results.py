@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import json
+
 from scripts import rank_results as rr
+
+CJ = json.dumps({"CTX_SIZE": 65536, "TEMP": 0.4, "TOP_P": 0.95, "TOP_K": 20})
 
 
 def test_pareto_front_keeps_non_dominated_only():
@@ -50,7 +54,7 @@ def test_build_vectors_merges_best_valid_scores_ignores_keep_and_pollution():
             "bench_tg": "42.1",
             "tps": "42.1",
             "ctx": "65536",
-            "config_json": "",
+            "config_json": CJ,
             "description": "",
         },
         {
@@ -62,7 +66,7 @@ def test_build_vectors_merges_best_valid_scores_ignores_keep_and_pollution():
             "bench_tg": "",
             "tps": "",
             "ctx": "65536",
-            "config_json": "",
+            "config_json": CJ,
             "description": "",
         },
         {
@@ -73,8 +77,8 @@ def test_build_vectors_merges_best_valid_scores_ignores_keep_and_pollution():
             "val_score": "0.570000",
             "bench_tg": "40.0",
             "tps": "50.0",
-            "ctx": "32768",
-            "config_json": "",
+            "ctx": "65536",
+            "config_json": CJ,
             "description": "",
         },
         {
@@ -111,7 +115,7 @@ def test_build_vectors_reads_tps_ctx_from_description_when_columns_empty():
             "bench_tg": "",
             "tps": "",
             "ctx": "",
-            "config_json": "",
+            "config_json": CJ,
             "description": "L.gguf kv=f16 ctx=65536 TPS=166.4 bench_tg=166.4 | claw-full",
         },
         {
@@ -123,7 +127,7 @@ def test_build_vectors_reads_tps_ctx_from_description_when_columns_empty():
             "bench_tg": "",
             "tps": "",
             "ctx": "",
-            "config_json": "",
+            "config_json": CJ,
             "description": "",
         },
     ]
@@ -131,6 +135,89 @@ def test_build_vectors_reads_tps_ctx_from_description_when_columns_empty():
     assert len(complete) == 1
     assert complete[0].tps == 166.4
     assert complete[0].ctx == 65536
+
+
+def test_build_vectors_same_basename_different_fingerprints_never_merge():
+    # M.gguf measured at two different configs: agentic at fpA, coding at fpB.
+    fp_a = json.dumps({"CTX_SIZE": 65536, "TEMP": 0.4})
+    fp_b = json.dumps({"CTX_SIZE": 32768, "TEMP": 0.6})
+    rows = [
+        {
+            "model": "M.gguf",
+            "category": "agentic-full",
+            "outcome": "OK",
+            "val_score": "0.600000",
+            "ctx": "65536",
+            "config_json": fp_a,
+            "description": "",
+        },
+        {
+            "model": "M.gguf",
+            "category": "10-task",
+            "outcome": "OK",
+            "val_score": "0.570000",
+            "ctx": "32768",
+            "config_json": fp_b,
+            "description": "",
+        },
+    ]
+    complete, incomplete = rr.build_vectors(rows)
+    assert complete == []  # no Fingerprint has both axes -> no complete point
+    assert len(incomplete) == 2  # two single-axis Fingerprints, same basename
+    assert {p.model for p in incomplete} == {"M.gguf"}
+
+
+def test_build_vectors_legacy_rows_without_config_json_never_complete():
+    # Both axes measured but no config_json -> legacy, no Fingerprint -> incomplete.
+    rows = [
+        {
+            "model": "L.gguf",
+            "category": "agentic-full",
+            "outcome": "OK",
+            "val_score": "0.600000",
+            "ctx": "65536",
+            "config_json": "",
+            "description": "",
+        },
+        {
+            "model": "L.gguf",
+            "category": "10-task",
+            "outcome": "OK",
+            "val_score": "0.570000",
+            "ctx": "65536",
+            "config_json": "",
+            "description": "",
+        },
+    ]
+    complete, incomplete = rr.build_vectors(rows)
+    assert complete == []
+    assert [p.model for p in incomplete] == ["L.gguf"]
+
+
+def test_build_vectors_uses_axis_columns_when_populated():
+    # Combined modern write path: agentic-full row with both columns populated,
+    # no separate 10-task row. Same Fingerprint -> complete vector.
+    rows = [
+        {
+            "model": "M.gguf",
+            "category": "agentic-full",
+            "outcome": "OK",
+            "status": "keep",
+            "val_score": "0.466700",
+            "agentic": "0.4667",
+            "coding": "0.490000",
+            "ctx": "100000",
+            "tps": "47.3",
+            "config_json": CJ,
+            "description": "",
+        },
+    ]
+    complete, incomplete = rr.build_vectors(rows)
+    assert [p.model for p in complete] == ["M.gguf"]
+    assert complete[0].agentic == 0.4667
+    assert complete[0].coding == 0.49
+    assert complete[0].ctx == 100000
+    assert incomplete == []
 
 
 def test_day_and_night_tables_are_aligned_columns():
