@@ -334,21 +334,21 @@
         win: [
           { label: "1. Instalar Python (se não instalado):", cmd: "winget install Python.Python.3.12" },
           { label: "2. Criar Ambiente Virtual (venv):", cmd: "python -m venv venv" },
-          { label: "3. Instalar Dependências do Repo:", cmd: ".\\venv\\Scripts\\pip install -r requirements.txt" },
+          { label: "3. Instalar Dependências do Repo:", cmd: "uv pip install --python .\\venv\\Scripts\\python.exe -r requirements.txt" },
           { label: "4. Executar Diagnóstico de Hardware:", cmd: ".\\venv\\Scripts\\python.exe scripts/check_hardware.py" },
           { label: "5. (Depois do server na 18080) Validar API & TPS — pule até a Semana 1:", cmd: ".\\venv\\Scripts\\python.exe scripts/verify_setup.py --port 18080", optional: true }
         ],
         mac: [
           { label: "1. Instalar Python (se não instalado):", cmd: "brew install python" },
           { label: "2. Criar Ambiente Virtual (venv):", cmd: "python3 -m venv venv" },
-          { label: "3. Instalar Dependências do Repo:", cmd: "./venv/bin/pip install -r requirements.txt" },
+          { label: "3. Instalar Dependências do Repo:", cmd: "uv pip install --python ./venv/bin/python -r requirements.txt" },
           { label: "4. Executar Diagnóstico de Hardware:", cmd: "./venv/bin/python scripts/check_hardware.py" },
           { label: "5. (Depois do server na 18080) Validar API & TPS — pule até a Semana 1:", cmd: "./venv/bin/python scripts/verify_setup.py --port 18080", optional: true }
         ],
         linux: [
           { label: "1. Instalar Python (se não instalado):", cmd: "sudo apt update && sudo apt install -y python3 python3-venv" },
           { label: "2. Criar Ambiente Virtual (venv):", cmd: "python3 -m venv venv" },
-          { label: "3. Instalar Dependências do Repo:", cmd: "./venv/bin/pip install -r requirements.txt" },
+          { label: "3. Instalar Dependências do Repo:", cmd: "uv pip install --python ./venv/bin/python -r requirements.txt" },
           { label: "4. Executar Diagnóstico de Hardware:", cmd: "./venv/bin/python scripts/check_hardware.py" },
           { label: "5. (Depois do server na 18080) Validar API & TPS — pule até a Semana 1:", cmd: "./venv/bin/python scripts/verify_setup.py --port 18080", optional: true }
         ]
