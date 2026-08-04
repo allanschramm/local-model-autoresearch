@@ -127,3 +127,18 @@ def test_keep_only_reader_still_finds_on_front_rows(tmp_path):
     _write_row(tsv, status="on_front", val_score=0.42)
     _write_row(tsv, status="discard", val_score=0.10)
     assert get_previous_best(tsv) == 0.42
+
+
+def test_previous_best_reader_accepts_raw_on_front_cell(tmp_path):
+    """TSV rows carrying a literal on_front status (new writers) still count."""
+    tsv = tmp_path / "results.tsv"
+    rows = [
+        {"trial_id": "a", "model": "m.gguf", "status": "keep", "val_score": "0.30"},
+        {"trial_id": "b", "model": "m.gguf", "status": "on_front", "val_score": "0.55"},
+        {"trial_id": "c", "model": "m.gguf", "status": "discard", "val_score": "0.90"},
+    ]
+    with open(tsv, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0]), delimiter="\t")
+        writer.writeheader()
+        writer.writerows(rows)
+    assert get_previous_best(tsv) == 0.55

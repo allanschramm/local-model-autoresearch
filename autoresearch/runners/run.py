@@ -428,7 +428,7 @@ def get_previous_best(results_file: Path, model_name: str | None = None) -> floa
         with open(results_file, encoding="utf-8") as f:
             reader = csv.DictReader(f, delimiter="\t")
             for row in reader:
-                if row.get("status") == "keep":
+                if classify.is_on_front(row.get("status")):
                     if model_name:
                         row_model = row.get("model", "")
                         if row_model and row_model != model_name:

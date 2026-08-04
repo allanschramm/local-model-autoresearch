@@ -76,6 +76,11 @@ def persist_status(status: str) -> str:
     return "keep" if status == "on_front" else status
 
 
+def is_on_front(status: Any) -> bool:
+    """True for `on_front` and the legacy `keep` alias (issue #12 reader compat)."""
+    return status in ("on_front", "keep")
+
+
 def classify_trial(
     *, failed: bool, vector: ObjectiveVector, known: Iterable[ObjectiveVector]
 ) -> str:

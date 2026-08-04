@@ -9,6 +9,7 @@ from autoresearch.core.classify import (
     classify_trial,
     fp_from_baseline,
     fp_from_config_json,
+    is_on_front,
     plan_write,
     vector_from_row,
 )
@@ -77,6 +78,16 @@ def test_vector_from_row_blank_axes_are_none():
     assert (vec.ctx, vec.tps, vec.agentic) == (131072, 30.0, 0.6)
     assert vec.coding is None
     assert not vec.complete
+
+
+def test_is_on_front_accepts_on_front_and_legacy_keep():
+    assert is_on_front("on_front")
+    assert is_on_front("keep")
+    assert not is_on_front("discard")
+    assert not is_on_front("dominated")
+    assert not is_on_front("incomplete")
+    assert not is_on_front("rejected")
+    assert not is_on_front(None)
 
 
 def test_classify_trial_all_statuses():
