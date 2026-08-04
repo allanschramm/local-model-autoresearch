@@ -137,3 +137,44 @@ def test_merge_never_crosses_buckets_across_runs(run_env, monkeypatch):
     assert len(rows) == 2
     # No cross-budget merge: the 8GB partial is not completed by the 16GB point.
     assert [r["status"] for r in rows] == ["incomplete", "keep"]
+
+
+def test_lower_val_score_kept_when_on_front(run_env, monkeypatch):
+    """Issue #13: completion no longer decides keep solely by beating the
+    previous best val_score. A complete Trial whose val_score is BELOW the
+    stored best but whose vector joins the Pareto front is still kept."""
+    seed_baseline = dict(config.load_config())
+    seed_baseline["TEMP"] = 1.2  # distinct Fingerprint from the live Baseline
+    run.write_row(
+        run_env,
+        "seed",
+        0.9,  # previous best val_score
+        0.0,
+        0.9,
+        0.7,
+        7.9,
+        "keep",
+        "previous best",
+        agentic=0.6,
+        coding=0.9,
+        ctx=config.CTX_SIZE,
+        tps=30.0,
+        config_json=json.dumps(
+            {k.lower(): v for k, v in seed_baseline.items()},
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
+    )
+    # New Trial: same 8GB bucket, complete, lower val_score, higher TPS.
+    monkeypatch.setattr(
+        run,
+        "run_evaluation",
+        lambda *a, **k: eval_res(val_score=0.55, coding_val=0.55, agentic_val=0.6, avg_tps=55.0),
+    )
+    run.handle_single_run(args(include_coding=True, agentic_full=True))
+    rows = run.read_rows(run_env)
+    assert len(rows) == 2
+    # Kept as the on_front alias even though val_score (0.55) < stored best (0.9).
+    assert float(rows[0]["val_score"]) == 0.9
+    assert float(rows[1]["val_score"]) == 0.55
+    assert rows[1]["status"] == "keep"

@@ -89,12 +89,14 @@ class TestRun(unittest.TestCase):
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
     @patch("autoresearch.runners.run.get_git_commit")
-    @patch("autoresearch.runners.run.open", new_callable=mock_open)
     @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
-    def test_single_run_improved(
-        self, _mock_free, mock_file, mock_commit, mock_coding, mock_runner, mock_bench
+    def test_single_run_coding_only_classifies_incomplete(
+        self, _mock_free, mock_commit, mock_coding, mock_runner, mock_bench
     ):
-        # Setup mocks
+        """Issue #13: Trial Status, not scalar beat-the-previous-best. A coding-only
+        Trial (agentic axis missing) is INCOMPLETE even though 0.75 > previous best."""
+        import tempfile
+
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
         mock_commit.return_value = "abcdefg"
 
@@ -103,27 +105,31 @@ class TestRun(unittest.TestCase):
             val_score=0.75, val_pass1=0.6, val_pass2=0.8, val_pass3=0.7, val_pass4=0.5, avg_tps=40.0
         )
 
-        # Mock get_previous_best to return 0.5 (so we improve)
-        with patch("autoresearch.runners.run.get_previous_best", return_value=0.5):
-            args = MagicMock()
-            args.desc = "Tweak test prompt"
-            args.model = "g4-opt-it-Q4_K_M.gguf"
-            args.kv = "q4_0"
-            args.max_tokens = 512
-            args.ctx_size = 131072
-            args.port = 18080
-            args.threads = 12
-            args.ngl = 99
-            args.context_tokens = 8192
-            args.include_coding = True
-            args.grid = False
+        args = MagicMock()
+        args.desc = "Tweak test prompt"
+        args.model = "g4-opt-it-Q4_K_M.gguf"
+        args.kv = "q4_0"
+        args.max_tokens = 512
+        args.ctx_size = 131072
+        args.port = 18080
+        args.threads = 12
+        args.ngl = 99
+        args.context_tokens = 8192
+        args.include_coding = True
+        args.grid = False
 
-            with patch("sys.exit") as mock_exit:
-                run.handle_single_run(args)
-                mock_exit.assert_not_called()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "results.tsv"
+            with patch.object(run, "RESULTS_FILE", path):
+                with patch("sys.exit") as mock_exit:
+                    run.handle_single_run(args)
+                    mock_exit.assert_not_called()
+            with open(path, encoding="utf-8") as f:
+                row = next(csv.DictReader(f, delimiter="\t"))
 
-        # File should have been opened for appending (recompute also reads after).
-        mock_file.assert_any_call(run.RESULTS_FILE, "a", newline="", encoding="utf-8")
+        # Status reflects the Objective Vector, not a previous-best comparison.
+        self.assertEqual(row["status"], "incomplete")
+        self.assertEqual(row["val_score"], "0.750000")
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
@@ -180,7 +186,8 @@ class TestRun(unittest.TestCase):
     @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=42.0)
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_run_evaluation_validation_mode(self, mock_coding, mock_runner, mock_bench):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_run_evaluation_validation_mode(self, _mock_free, mock_coding, mock_runner, mock_bench):
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
 
         args = MagicMock()
@@ -222,8 +229,9 @@ class TestRun(unittest.TestCase):
     @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=42.0)
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
     def test_validation_never_runs_coding_even_when_default_on(
-        self, mock_coding, mock_runner, mock_bench
+        self, _mock_free, mock_coding, mock_runner, mock_bench
     ):
         """Validation = smoke gates only: global INCLUDE_CODING=True (issue #8) must
         not leak coding-10 into a --validation run (issue #9 user rule)."""
@@ -567,9 +575,8 @@ class TestRun(unittest.TestCase):
         self.assertEqual(row["tps_source"], "llama-bench")
 
     @patch("autoresearch.runners.run.run_evaluation")
-    @patch("autoresearch.runners.run.get_previous_best", return_value=0.0)
     @patch("autoresearch.runners.run.get_git_commit", return_value="abcdefg")
-    def test_successful_single_run_logs_throughput_columns(self, mock_commit, mock_best, mock_eval):
+    def test_successful_single_run_logs_throughput_columns(self, mock_commit, mock_eval):
         """Successful single-run must populate tps/bench_tg/tps_source on the TSV row."""
         import tempfile
 
@@ -608,9 +615,8 @@ class TestRun(unittest.TestCase):
         self.assertEqual(row["task_ids"], "he-1,mbpp-2")
 
     @patch("autoresearch.runners.run.run_evaluation")
-    @patch("autoresearch.runners.run.get_previous_best", return_value=0.0)
     @patch("autoresearch.runners.run.get_git_commit", return_value="abcdefg")
-    def test_failed_single_run_logs_complete_baseline(self, mock_commit, mock_best, mock_eval):
+    def test_failed_single_run_logs_complete_baseline(self, mock_commit, mock_eval):
         mock_eval.return_value = {
             "status": "FAIL: bench tg 7.4 < threshold 20.0",
             "peak_vram_gb": 0.0,
@@ -625,6 +631,8 @@ class TestRun(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 run.handle_single_run(args)
 
+        # Issue #13: hard failures write the `rejected` Trial Status, not scalar discard.
+        self.assertEqual(mock_write.call_args.args[7], "rejected")
         recorded = json.loads(mock_write.call_args.kwargs["config_json"])
         self.assertEqual(recorded["model"], args.model)
         self.assertEqual(recorded["ctx_size"], args.ctx_size)

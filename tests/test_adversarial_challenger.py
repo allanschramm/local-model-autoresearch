@@ -106,7 +106,8 @@ class TestAdversarialChallenger(unittest.TestCase):
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_run_evaluation_crashy_config_property(self, mock_coding, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_run_evaluation_crashy_config_property(self, _mock_free, mock_coding, mock_runner):
         """Check that run_evaluation does not crash when a property raises a non-AttributeError exception."""
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
         mock_coding.return_value = BenchmarkResult(
@@ -120,7 +121,8 @@ class TestAdversarialChallenger(unittest.TestCase):
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_run_evaluation_dict_non_string_keys(self, mock_coding, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_run_evaluation_dict_non_string_keys(self, _mock_free, mock_coding, mock_runner):
         """Check if run_evaluation handles dicts with non-string keys safely."""
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
 
@@ -131,7 +133,8 @@ class TestAdversarialChallenger(unittest.TestCase):
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_run_evaluation_none_config(self, mock_coding, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_run_evaluation_none_config(self, _mock_free, mock_coding, mock_runner):
         """Check if run_evaluation handles None config safely."""
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
 
@@ -143,7 +146,8 @@ class TestAdversarialChallenger(unittest.TestCase):
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_run_evaluation_list_config(self, mock_coding, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_run_evaluation_list_config(self, _mock_free, mock_coding, mock_runner):
         """Check if run_evaluation handles list config safely."""
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
 
@@ -167,7 +171,8 @@ class TestAdversarialChallenger(unittest.TestCase):
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_run_evaluation_bad_key(self, mock_coding, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_run_evaluation_bad_key(self, _mock_free, mock_coding, mock_runner):
         """Verify run_evaluation does not crash on dict with a key that raises on __str__."""
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
         cfg = {BadKey(): "value", "model": "bad-key-model.gguf"}
@@ -177,7 +182,8 @@ class TestAdversarialChallenger(unittest.TestCase):
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_run_evaluation_bad_dict_class(self, mock_coding, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_run_evaluation_bad_dict_class(self, _mock_free, mock_coding, mock_runner):
         """Verify run_evaluation does not crash on class that raises on __dict__ access."""
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
         cfg = BadDictClass()
@@ -189,7 +195,8 @@ class TestAdversarialChallenger(unittest.TestCase):
 
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_run_evaluation_bad_dir_class(self, mock_coding, mock_runner):
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
+    def test_run_evaluation_bad_dir_class(self, _mock_free, mock_coding, mock_runner):
         """Verify run_evaluation does not crash on class that raises on dir() call."""
         mock_runner.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4000)
         cfg = BadDirClass()
