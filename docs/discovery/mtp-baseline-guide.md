@@ -19,9 +19,11 @@ Prefer the harness gate (`run_llama_bench_validation`) over raw `llama-bench` â€
 
 ## 2. Test MTP Speedup via `llama-cli`
 
+> Paths below assume a prebuilt release under `llama.cpp-releases/upstream/<tag>/build-cuda/bin/` (release first â€” see [`docs/llamacpp-toolset.md`](../llamacpp-toolset.md) â†’ Install). Adjust `<tag>` to the release you extracted.
+
 ### Embedded MTP (Qwen) â€” WITH:
 ```bash
-./llama.cpp/build-cuda/bin/llama-cli.exe \
+llama.cpp-releases/upstream/<tag>/build-cuda/bin/llama-cli.exe \
   -m models/Qwen3.5-9B-UD-Q4_K_XL.gguf \
   --spec-type draft-mtp \
   --spec-draft-n-max 4 \
@@ -31,7 +33,7 @@ Prefer the harness gate (`run_llama_bench_validation`) over raw `llama-bench` â€
 
 ### Gemma external draft â€” WITH:
 ```bash
-./llama.cpp/build-cuda/bin/llama-cli.exe \
+llama.cpp-releases/upstream/<tag>/build-cuda/bin/llama-cli.exe \
   -m models/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf \
   --spec-type draft-mtp \
   --spec-draft-n-max 4 \
@@ -42,7 +44,7 @@ Prefer the harness gate (`run_llama_bench_validation`) over raw `llama-bench` â€
 
 ### WITHOUT MTP (Baseline):
 ```bash
-./llama.cpp/build-cuda/bin/llama-cli.exe \
+llama.cpp-releases/upstream/<tag>/build-cuda/bin/llama-cli.exe \
   -m models/Qwen3.5-9B-UD-Q4_K_XL.gguf \
   -p "Explain quantum computing in one sentence." \
   -n 64 -ngl 99 -fa on -ctk q4_0 -ctv q4_0 --single-turn
@@ -59,21 +61,21 @@ To benchmark the base raw performance of the models at a specific context depth 
 
 ### Test 9B Model at 65k context depth:
 ```bash
-./llama.cpp/build-cuda/bin/llama-bench.exe \
+llama.cpp-releases/upstream/<tag>/build-cuda/bin/llama-bench.exe \
   -m models/Qwen3.5-9B-UD-Q4_K_XL.gguf \
   -ngl 99 -fa on -ctk q4_0 -ctv q4_0 -d 65000 -p 0 -n 128
 ```
 
 ### Test 35B MoE Model at 65k context depth (CPU Offload):
 ```bash
-./llama.cpp/build-cuda/bin/llama-bench.exe \
+llama.cpp-releases/upstream/<tag>/build-cuda/bin/llama-bench.exe \
   -m models/Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf \
   -ngl 99 -ncmoe 40 -fa on -ctk q4_0 -ctv q4_0 -d 65000 -p 0 -n 128
 ```
 
 ### Test 26B MoE Model at 65k context depth (CPU Offload):
 ```bash
-./llama.cpp/build-cuda/bin/llama-bench.exe \
+llama.cpp-releases/upstream/<tag>/build-cuda/bin/llama-bench.exe \
   -m models/gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf \
   -ngl 99 -ncmoe 30 -fa on -ctk q4_0 -ctv q4_0 -d 65000 -p 0 -n 128
 ```

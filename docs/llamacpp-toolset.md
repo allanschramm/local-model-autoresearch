@@ -1,10 +1,24 @@
 # llama.cpp Toolset Reference
 
-Vendored runtime at `./llama.cpp/` (repo root). Built with CUDA in `build-cuda/`.
+Vendored runtime at `./llama.cpp/` (repo root). Built with CUDA in `build-cuda/` — **or use a prebuilt release (recommended)**.
 
 **Path resolution:** The autoloop resolves `llama-server` via `autoresearch/core/llama_runner.py`. If your build is elsewhere, set `export AUTORESEARCH_LLAMA_CPP_ROOT=/path/to/llama.cpp`.
 
-## Build
+## Install (release first)
+
+Do **not** compile llama.cpp to start — no Visual Studio, no CUDA Toolkit, no cmake.
+
+1. Grab the latest tag from [ggml-org/llama.cpp/releases](https://github.com/ggml-org/llama.cpp/releases) (e.g. `b10247`).
+2. Download the matching asset (Windows NVIDIA: `cudart-llama-bin-win-cuda-12.4-x64.zip` — CUDA runtime bundled, only the NVIDIA driver is needed).
+3. Extract under `llama.cpp-releases/<engine>/<tag>/build-cuda/bin/` (harness looks for `build-cuda/bin`, `build-cpu/bin`, `build/bin`).
+4. Point the harness at it: `export AUTORESEARCH_LLAMA_CPP_ROOT=<repo>/llama.cpp-releases/<engine>/<tag>` — or pin per alias with `llama_cpp_root` in `models/aliases/<name>/config.yaml` (`model-up`). Keep engine and release tag in Trial evidence.
+5. Verify: `python scripts/serve-config.py print-cmd` shows the resolved `llama-server`.
+
+Examples installed: `llama.cpp-releases/turboquant/tqp-v0.3.0/` and `llama.cpp-releases/prismml/prism-b9599-9ca265a/` (Windows CUDA 12.4 prebuilts).
+
+## Build (only to fix something urgent)
+
+Compile from source **only** when no release covers the need (unpublished bugfix, experimental flag).
 
 Windows toolchain (installed 2026-07-17): VS 2022 Build Tools (MSVC 14.44, VCTools workload), NVIDIA CUDA Toolkit 13.3, Ninja. nvcc on Windows requires MSVC host compiler; configure must run inside `vcvars64.bat` env. Helper `llama.cpp/rebuild-cuda.bat` (untracked, machine-specific) wraps this: `rebuild-cuda.bat configure` = full configure+build, `rebuild-cuda.bat` = incremental build. Keep `build-cuda/` as a real in-repo directory (no external junctions).
 
@@ -40,7 +54,7 @@ All binaries → `$LLAMA_CPP/build-cuda/bin/` or `$LLAMA_CPP/build-cpu/bin/` (or
 ## Hardware
 
 - GPU: RTX 4060 (8 GB VRAM, CUDA 8.9) — adapt paths and flags for your hardware
-- Only `llama.cpp/` remains a source clone/submodule. Alternate runtimes are downloaded release archives, extracted under `llama.cpp-releases/<engine>/<tag>/build-cuda/bin/`, and never built locally.
+- **Release first**: the runtime is a prebuilt release under `llama.cpp-releases/<engine>/<tag>/build-cuda/bin/` (see Install above). `llama.cpp/` stays as the source clone/submodule but is not the default binary source — build it only for urgent fixes.
 - Point the harness at a release root via `AUTORESEARCH_LLAMA_CPP_ROOT`, or pin the same root per alias with `llama_cpp_root` in `models/aliases/<name>/config.yaml` (`model-up`). Keep engine and release tag in Trial evidence.
 - Installed examples: `llama.cpp-releases/turboquant/tqp-v0.3.0/` and `llama.cpp-releases/prismml/prism-b9599-9ca265a/` (Windows CUDA 12.4 prebuilts).
 

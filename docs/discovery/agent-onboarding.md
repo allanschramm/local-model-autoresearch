@@ -23,6 +23,7 @@ Bootstrap context for agents working on this repo.
 4. **Sampler seed**: Before first Trial on a model, copy Recommended settings from `docs/models/<card>.md` into `SAMPLER_DEFAULTS` (agentic/general vs coding). Do not start from template `TEMP=0.4` when the card differs.
 5. **DOX Framework**: Read the `AGENTS.md` hierarchy path to any file before touching it.
 6. **Hardware before download (students / new clones)**: Run `scripts/check_hardware.py` first. Explain `discrete_gpu` vs `unified_memory` in plain language. Confirm RAM/VRAM/pool with the user. **Never** `hf download` or run `benchmark_search --validation` with a large GGUF before that. whichllm/llmfit are candidates only — reject oversized #1 on unified RAM (e.g. ~12 GB model on 16 GB Mac). If detection is incomplete, guide About This Mac / `sysctl`, Task Manager, or `nvidia-smi`.
+7. **Runtime = prebuilt release first**: Do **not** build `llama.cpp` from source on a new clone (no VS/CUDA toolkit setup). Point the harness at a prebuilt release instead: extract a GitHub release zip under `llama.cpp-releases/<engine>/<tag>/build-cuda/bin/` (Windows CUDA asset `cudart-llama-bin-win-cuda-12.4-x64.zip` bundles its runtime — no toolkit needed) and set `AUTORESEARCH_LLAMA_CPP_ROOT=<repo>/llama.cpp-releases/<engine>/<tag>` (or pin per-alias `llama_cpp_root` in `models/aliases/<name>/config.yaml`). Keep engine/tag in Trial evidence. Build from source **only** when fixing something urgent that no release covers.
 
 ## Student / first-day checklist
 
@@ -39,6 +40,13 @@ Bootstrap context for agents working on this repo.
 # Hardware diagnose (Win / macOS / Linux) — before any model download
 .\venv\Scripts\python.exe scripts\check_hardware.py
 # ./venv/bin/python scripts/check_hardware.py
+
+# Runtime (release first — no local build): extract GitHub release zip to
+#   llama.cpp-releases/<engine>/<tag>/build-cuda/bin/
+# then point the harness at it:
+export AUTORESEARCH_LLAMA_CPP_ROOT="<repo>/llama.cpp-releases/<engine>/<tag>"
+# Windows PowerShell: $env:AUTORESEARCH_LLAMA_CPP_ROOT="..."
+# Verify: .\venv\Scripts\python.exe scripts\serve-config.py print-cmd
 
 # Setup check
 bash scripts/setup-check.sh

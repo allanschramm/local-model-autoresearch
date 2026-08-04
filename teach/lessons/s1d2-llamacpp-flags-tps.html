@@ -33,7 +33,7 @@
     <table>
       <thead><tr><th>Conceito</th><th>App com interface (Dia 1)</th><th>Dia 2 neste repo</th></tr></thead>
       <tbody>
-        <tr><td>Motor</td><td>App que carrega o GGUF</td><td><code>llama-cli</code> / <code>llama-server</code> em <code>llama.cpp/build-cuda/bin/</code></td></tr>
+        <tr><td>Motor</td><td>App que carrega o GGUF</td><td><code>llama-cli</code> / <code>llama-server</code> do release em <code>llama.cpp-releases/…/build-cuda/bin/</code> (baixado, não compilado)</td></tr>
         <tr><td>Pesos GGUF</td><td>Biblioteca do app</td><td><code>models/*.gguf</code> (via <code>hf download</code>)</td></tr>
         <tr><td>Modelo denso</td><td>GPU offload completo</td><td>Deve caber inteiro na VRAM física</td></tr>
         <tr><td>Contexto</td><td>Context length</td><td><code>CTX_SIZE</code> em <code>config.py</code></td></tr>

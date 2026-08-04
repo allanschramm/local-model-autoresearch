@@ -1,5 +1,7 @@
 # CPU Inference Optimization Guide for llama.cpp
 
+> **Release first:** most users should run a prebuilt release, not build. This guide is for when you deliberately want a native-optimized build (max CPU speed on one rig) — compile only when you know you need it, or to fix something urgent. Install steps: [`docs/llamacpp-toolset.md`](../llamacpp-toolset.md) → Install.
+
 *See also: [`docs/llamacpp-toolset.md`](../llamacpp-toolset.md) for llama.cpp build targets and CLI flags, and [`advanced-inference-optimizations.md`](./advanced-inference-optimizations.md) for general runtime & memory optimizations (including why `tcmalloc` / `jemalloc` help).*
 
 ## 1. Build Configuration

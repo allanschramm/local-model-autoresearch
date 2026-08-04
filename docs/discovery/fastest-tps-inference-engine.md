@@ -57,7 +57,7 @@ Historical TPS context (ExLlamaV2-era, **4090**, primary README tables): Llama-7
 2. **Model coverage gaps**: top TPS models on this rig are MoE (LFM2.5-8B-A1B) and MTP-packaged (gemma-4-E4B, Qwen3.5-MTP). Gemma-4 E2B/E4B is explicitly unsupported; MTP-head behavior on Qwen3.5 unverified. ExLlamaV3's win condition (dense Llama/Qwen EXL3 4bpw) is exactly the class that's *slower* than MoE/MTP on this rig under llama.cpp.
 3. **Context regime mismatch**: this repo's Pareto runs 65k–131k ctx (KV-heavy). ExLlamaV3 targets shorter-context consumer chat; KV quant helps but no evidence at 131k on 8 GB.
 4. **Harness contract**: benchmark_search/validation run llama-server only; ExLlamaV3 (TabbyAPI/OpenAI server) is a different process, no `config.py` Baseline path, would violate "no ad-hoc eval" until a harness adapter exists (not requested).
-5. **Windows build burden**: CUDA toolkit + VS Build Tools + flash-attn wheel + triton-windows for a JIT-compiled torch extension — vs the already-built vendored llama.cpp CUDA.
+5. **Windows build burden**: CUDA toolkit + VS Build Tools + flash-attn wheel + triton-windows for a JIT-compiled torch extension — vs llama.cpp prebuilt release (download, no build).
 
 ## 4. Why the others lose on this rig
 

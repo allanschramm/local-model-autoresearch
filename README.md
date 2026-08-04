@@ -66,8 +66,8 @@ Instale **antes** de configurar o projeto:
 | Dep | Comando / Instalação | Por quê |
 |---|---|---|
 | Python 3.11+ | `sudo apt install python3.11 python3.11-venv` (Linux) / Instalador oficial (Windows) | runtime do autoloop |
-| CUDA Toolkit | `nvidia-smi` + driver NVIDIA | llama.cpp precisa de `-DGGML_CUDA=ON` |
-| build-essential + cmake >= 3.14 | `sudo apt install build-essential cmake` | compilar llama.cpp |
+| (Opcional) CUDA Toolkit | `nvidia-smi` + driver NVIDIA | só para build próprio do llama.cpp (`-DGGML_CUDA=ON`) — releases pré-compilados já vêm com runtime CUDA embutido |
+| (Opcional) build-essential + cmake >= 3.14 | `sudo apt install build-essential cmake` | só para build próprio do llama.cpp |
 | llmfit | `cargo install llmfit` (ou `scoop install llmfit`) | dimensionamento principal de hardware e CLI/TUI Rust |
 | uvx / whichllm | `pip install uv` | fallback opcional (`uvx whichllm@latest`) |
 | huggingface_hub[cli] | `pip install huggingface_hub[cli]` | baixar GGUFs |
@@ -100,7 +100,7 @@ python3 -m venv venv
 # uv pip install --python ./venv/bin/python -r requirements.txt
 ```
 
-Depois clone e compile o `llama.cpp` (ver [seção Build](#build-do-llamacpp-com-cuda) abaixo).
+Depois baixe o runtime `llama.cpp` (ver [seção Runtime (release)](#runtime-do-llamacpp-release-primeiro) abaixo).
 
 
 ### Baseline local (`config.py`)
@@ -187,12 +187,52 @@ HE+/MBPP+/LCB/BigCode ficam como preflight rápido opcional, não como medida fi
 
 ---
 
-## Build do llama.cpp (CUDA ou CPU)
+## Runtime do llama.cpp (release primeiro)
 
-Clone dentro da pasta raiz do repo pra detecção automática:
+**Não compile o llama.cpp para começar.** Baixe um release pré-compilado — sem Visual Studio, sem CUDA Toolkit, sem cmake.
+
+### 1. Baixar o release
+
+Abra o GitHub Releases do llama.cpp ([ggml-org/llama.cpp/releases](https://github.com/ggml-org/llama.cpp/releases)), pegue o **último tag** (ex.: `b10247`) e baixe o asset do seu sistema:
+
+| Sistema | Asset | Notas |
+|---|---|---|
+| Windows + NVIDIA | `cudart-llama-bin-win-cuda-12.4-x64.zip` (ou `13.3`) | runtime CUDA embutido — driver NVIDIA basta, sem CUDA Toolkit |
+| Linux + NVIDIA | `llama-<tag>-bin-ubuntu-x64.tar.gz` | veja os assets do release |
+| macOS | `llama-<tag>-bin-macos-arm64.tar.gz` (Apple Silicon) | |
+| Sem GPU | use o asset CPU/Vulkan equivalente | |
+
+### 2. Extrair no layout do harness
+
+O harness procura `build-cuda/bin/` (ou `build-cpu/bin/`) dentro do diretório raiz:
 
 ```bash
-git clone https://github.com/ggerganov/llama.cpp.git
+mkdir -p llama.cpp-releases/upstream/<tag>/build-cuda/bin
+# Extraia o zip/tar.gz e copie o conteúdo da pasta bin do release para:
+#   llama.cpp-releases/upstream/<tag>/build-cuda/bin/
+# Ex.: llama-server.exe, llama-server-impl.dll, llama-cli.exe, llama-bench.exe
+```
+
+### 3. Apontar o harness para o release
+
+```bash
+export AUTORESEARCH_LLAMA_CPP_ROOT="$(pwd)/llama.cpp-releases/upstream/<tag>"
+# Windows PowerShell:
+#   $env:AUTORESEARCH_LLAMA_CPP_ROOT = "D:\Dev\Nexus-System\local-model-autotuning\llama.cpp-releases\upstream\<tag>"
+```
+
+Verifique se o binário resolve:
+
+```bash
+python scripts/serve-config.py print-cmd
+```
+
+### Build próprio (só quando precisar consertar algo urgente)
+
+Compile a partir do fonte **apenas** se nenhum release cobrir o que você precisa (ex.: bugfix não publicado, flag experimental).
+
+```bash
+git clone https://github.com/ggml-org/llama.cpp.git
 cd llama.cpp
 
 # Opção A: Build com aceleração CUDA (GPU NVIDIA)
@@ -232,7 +272,7 @@ python scripts\serve-config.py serve
 
 O resolver procura `llama-server.exe` e `llama-bench.exe` em `build-cuda\bin`, `build-cpu\bin`, `build\bin` (e subpastas `Release`/`Debug`) e no `PATH`. O diretorio `models\` deve apontar para modelos locais do Windows, nao para paths `/mnt/...` ou WSL.
 
-Runtime canônico: submodule `llama.cpp/` (upstream). Forks externos (TurboQuant/MTP) não ficam no repo — se precisar, clone à parte e aponte `AUTORESEARCH_LLAMA_CPP_ROOT`.
+Runtime canônico: release pré-compilado em `llama.cpp-releases/` (release primeiro). O submodule `llama.cpp/` é só fonte de referência — não o binário padrão. Forks externos (TurboQuant/MTP) também entram via release em `llama.cpp-releases/`; não clone/compile à parte.
 
 ---
 
