@@ -26,7 +26,7 @@ from typing import Any
 _LLAMA_SERVER_HELP_CACHE = None
 _MODEL_SEARCH_SKIP = frozenset({".cache", "aliases", "huggingface"})
 
-from autoresearch.core import config
+import autoresearch.core.config as config
 from autoresearch.core.config import ConfigError, is_dense_model, validate_config
 from autoresearch.core.hardware import detect_free_vram_mb
 from autoresearch.core.model_arch import (

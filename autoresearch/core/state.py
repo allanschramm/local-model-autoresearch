@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from autoresearch.core import config
+import autoresearch.core.config as config
 from autoresearch.core.config import ConfigError, validate_config, write_baseline
 
 
