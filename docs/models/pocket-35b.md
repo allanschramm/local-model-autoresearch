@@ -103,11 +103,12 @@ TOP_P = 0.95
 TOP_K = 20
 ```
 
-| Metric | Value |
-|---|---|
-| Bench tg | **35.2–35.7 t/s** |
-| Peak VRAM | **3.6–3.7 GB** |
-| Claw quick (5) | **0.8000** |
+| Metric | Value | Notes |
+|---|---|---|
+| Bench tg (`mmap` baseline) | **33.7 t/s** | Peak VRAM 3.4 GB |
+| Bench tg (`--no-mmap`) | **37.4 t/s** | +11.0% speedup |
+| Bench tg (`--no-mmap --mlock`) | **38.1 t/s** | **+13.1% speedup**, peak VRAM 3.4 GB |
+| Claw quick (5) | **1.0000** | 5/5 passed |
 | Claw full (15) | **0.6667** (10/15) — ties Laguna ceiling |
 | Coding-10 | **0.6150** (HE 0.80 / MBPP 0.90 / LCB 0.50 / BC 0.10) |
 | Session | [2026-07-26-pocket-35b-pipeline.md](../sessions/2026-07-26-pocket-35b-pipeline.md) |

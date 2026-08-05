@@ -59,3 +59,17 @@ On Windows, when VRAM usage approaches 100%, the NVIDIA driver automatically red
 *   **Solution:** 
     - Set the number of GPU offloaded layers (`-ngl` / `--n-gpu-layers`) conservatively, leaving at least **500 MB to 1 GB of headroom** for the OS and context growth.
     - If using MoEs, allocate CPU experts (`--n-cpu-moe`) to keep physical VRAM usage around **7.0 GB** on an 8 GB card.
+
+---
+
+## 6. Host Memory Pinning & Page-Fault Elimination (`--no-mmap` & `--mlock`)
+
+When running MoE models with expert CPU offloading (`--n-cpu-moe N`), standard `mmap` lazy loading causes OS page-fault overhead as active experts cycle per token.
+
+*   **`--no-mmap`:** Forces `llama.cpp` to allocate system memory explicitly and load all host weights upfront into RAM. Eliminates disk I/O stuttering during generation.
+*   **`--mlock`:** Locks allocated host memory using system calls (`mlock()` / `VirtualLock()`), preventing the OS from paging out idle expert blocks to swap (`pagefile.sys`).
+*   **Empirical Result (POCKET-35B MoE @ 65k context):**
+    - `mmap` baseline: **33.7 t/s**
+    - `--no-mmap`: **37.4 t/s (+11.0% speedup)**
+    - `--no-mmap --mlock`: **38.1 t/s (+13.1% speedup)**
+*   **Safety Guard:** Always verify host RAM headroom via `HOST_MEMORY_PREFLIGHT` before enabling `--mlock` to avoid system OOM.

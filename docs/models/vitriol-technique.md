@@ -63,6 +63,18 @@ Exact rows: `results.tsv` + model cards. `TPS_FLOOR` default 20 — lower for he
 ### Upstream knobs still worth hill-climbing
 - `--n-cpu-moe` sweep (partial vs full) — VRAM ↔ TPS trade  
 - KV quant (`cache-type-k/v`) — measure; do not cargo-cult VITRIOL’s “V must be f16” onto stock without a Trial  
+
+### Host RAM Pinning (`--no-mmap` & `--mlock`) — Empirical MoE Impact (2026-08-04)
+
+When MoE experts sit in CPU RAM (`--n-cpu-moe N`), standard OS `mmap` lazy-loading introduces page-fault overhead during token-by-token expert activation. Pre-loading and locking host memory eliminates this bottleneck:
+
+| Strategy | POCKET-35B-Q3_K_M (`N_CPU_MOE=40`) @65k | Delta |
+|---|---|---|
+| Baseline (`mmap`, no mlock) | 33.7 t/s | Baseline |
+| **`--no-mmap`** | 37.4 t/s | **+11.0%** (pre-loads experts upfront, no disk I/O) |
+| **`--no-mmap --mlock`** | **38.1 t/s** | **+13.1%** (pins 15.6 GB in physical RAM, zero OS paging) |
+
+*Rule:* Use `NO_MMAP=True` and `MLOCK=True` in `config.py` when system host RAM has sufficient headroom (validated via `HOST_MEMORY_PREFLIGHT`). On small dense models (e.g. LFM2.5 1.2B), `--no-mmap` yields ~3% speedup.
 - MTP / `--spec-type draft-mtp` — on **this** path, speculative + heavy CPU experts can **hurt** (sync); validate per model (see `local-models-low-vram-configs.md`)  
 - `--n-cpu-moe-draft` when draft is MoE  
 - Fit-first: `N_CPU_MOE=0` when preflight says full GPU fits  
