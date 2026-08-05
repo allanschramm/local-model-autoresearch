@@ -3,6 +3,11 @@
 
 The optional ``openvino_genai`` dependency is imported only when the benchmark
 runs, so normal repository tooling does not require OpenVINO.
+
+Prefill TPS is measured from a single-token generation (wall-clock dominated
+by prompt processing); decode TPS derives from subtracting the measured
+prefill time out of a full generation run. Token counts come from the model
+tokenizer when available, with a word-count fallback.
 """
 
 from __future__ import annotations
@@ -27,6 +32,23 @@ def _load_runtime():
     return ov_genai
 
 
+def _get_tokenizer(pipe):
+    try:
+        return pipe.get_tokenizer()
+    except Exception:
+        return None
+
+
+def _token_count(text: str, tokenizer) -> int:
+    if tokenizer is not None:
+        try:
+            ids = tokenizer.encode(text)
+            return max(len(list(getattr(ids, "input_ids", ids))), 1)
+        except Exception:
+            pass
+    return max(len(text.split()), 1)
+
+
 def benchmark(model: str, prompt: str, new_tokens: int, device: str) -> dict[str, float]:
     if new_tokens <= 0:
         raise ValueError("--new-tokens must be greater than zero")
@@ -36,21 +58,27 @@ def benchmark(model: str, prompt: str, new_tokens: int, device: str) -> dict[str
 
     ov_genai = _load_runtime()
     pipe = ov_genai.LLMPipeline(str(model_path), device)
-    streamer = None
+    tokenizer = _get_tokenizer(pipe)
+    prompt_tokens = _token_count(prompt, tokenizer)
+
+    pipe.generate(prompt, max_new_tokens=1)
     prefill_start = time.perf_counter()
-    result = pipe.generate(prompt, max_new_tokens=new_tokens, streamer=streamer)
-    elapsed = time.perf_counter() - prefill_start
-    text = str(result)
-    output_tokens = max(len(text.split()), 1)
-    # GenAI exposes aggregate generation through generate(); report the
-    # measured end-to-end rate and label it decode TPS. Prefill is represented
-    # by prompt token processing, using the same wall-clock operation.
-    prompt_tokens = max(len(prompt.split()), 1)
+    pipe.generate(prompt, max_new_tokens=1)
+    prefill_elapsed = time.perf_counter() - prefill_start
+    prefill_tps = prompt_tokens / prefill_elapsed
+
+    total_start = time.perf_counter()
+    result = pipe.generate(prompt, max_new_tokens=new_tokens)
+    total_elapsed = time.perf_counter() - total_start
+    output_tokens = _token_count(str(result), tokenizer)
+    decode_elapsed = max(total_elapsed - prefill_elapsed, 1e-9)
+    decode_tps = output_tokens / decode_elapsed
+
     return {
-        "prefill_tps": prompt_tokens / elapsed,
-        "decode_tps": output_tokens / elapsed,
+        "prefill_tps": prefill_tps,
+        "decode_tps": decode_tps,
         "output_tokens": float(output_tokens),
-        "elapsed_seconds": elapsed,
+        "elapsed_seconds": total_elapsed,
     }
 
 

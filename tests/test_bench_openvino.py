@@ -29,10 +29,13 @@ class TestBenchOpenVino(unittest.TestCase):
             tempfile.TemporaryDirectory() as tmp,
             patch.object(bench_openvino, "_load_runtime", return_value=runtime),
         ):
-            with patch.object(bench_openvino.time, "perf_counter", side_effect=[1.0, 2.0]):
+            with patch.object(
+                bench_openvino.time, "perf_counter", side_effect=[1.0, 2.0, 3.0, 5.0]
+            ):
                 metrics = bench_openvino.benchmark(tmp, "hello world", 2, "CPU")
         self.assertEqual(metrics["prefill_tps"], 2.0)
         self.assertEqual(metrics["decode_tps"], 2.0)
+        self.assertEqual(metrics["output_tokens"], 2.0)
 
     def test_missing_model_is_rejected(self):
         with self.assertRaises(FileNotFoundError):

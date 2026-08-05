@@ -30,7 +30,12 @@ optimum-cli export openvino --model <model-id> --task text-generation-with-past 
   --weight-format int8 ov-model-int8
 ```
 
-INT8 is a good CPU starting point. INT4 can reduce memory further, but may reduce quality and is model/transformer-version dependent. Validate quality before selecting it for production. Keep the exported directory, tokenizer, and configuration together.
+```bash
+optimum-cli export openvino --model <model-id> --task text-generation-with-past \
+  --weight-format int4 --group-size 128 --ratio 0.8 ov-model-int4
+```
+
+INT8 is a good CPU starting point. INT4 (weight compression with a group size and ratio) can reduce memory further, but may reduce quality and is model/transformer-version dependent. Validate quality before selecting it for production. Keep the exported directory, tokenizer, and configuration together.
 
 ## 3. Select a Device
 
@@ -55,7 +60,7 @@ venv/Scripts/python.exe scripts/bench_openvino.py ov-model "Explain photosynthes
   --new-tokens 128 --device CPU
 ```
 
-Repeat each configuration after a warm-up, use the same prompt and token limit, and record device, precision, model revision, and runtime versions. Compare CPU and iGPU only with identical exported weights and generation settings. Prefill TPS reflects prompt processing; decode TPS reflects generated-token throughput. Do not compare these directly with llama.cpp GGUF results without documenting the different model format and tokenization path.
+Repeat each configuration after a warm-up, use the same prompt and token limit, and record device, precision, model revision, and runtime versions. Compare CPU and iGPU only with identical exported weights and generation settings. The script times prefill from a single-token generation (wall-clock dominated by prompt processing) and derives decode by subtracting the measured prefill from a full generation run, so keep prompt length and token limits fixed across comparisons. Do not compare these directly with llama.cpp GGUF results without documenting the different model format and tokenization path.
 
 If `openvino_genai` is absent, the script exits nonzero with an installation command. Missing model directories and invalid token limits also exit nonzero.
 
