@@ -1,6 +1,8 @@
 """Host hardware detection for fit gates (Win / macOS / Linux).
 
 Shared by check_hardware recommendations and harness host-memory preflight.
+`detect_hardware_capabilities()` is the source-of-truth probe for the Search
+loop (has_gpu / physical_cores / ram_mb).
 """
 
 from __future__ import annotations
@@ -134,8 +136,79 @@ def detect_free_vram_mb() -> float | None:
     return None
 
 
+def detect_physical_cores() -> int | None:
+    """Physical core count, or None if undetectable (best-effort).
+
+    Windows reads `wmic cpu get NumberOfCores`; macOS reads
+    `sysctl -n hw.physicalcpu`; Linux dedupes (physical id, core id) pairs from
+    /proc/cpuinfo. Falls back to `os.cpu_count()` (logical count) when a
+    platform-specific read fails, so logical-vs-physical is best-effort there.
+    """
+    system = sys.platform
+    if system == "win32":
+        try:
+            res = subprocess.run(
+                ["wmic", "cpu", "get", "NumberOfCores"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            lines = [line.strip() for line in res.stdout.splitlines() if line.strip().isdigit()]
+            if lines:
+                return int(lines[0])
+        except Exception:
+            pass
+    elif system == "darwin":
+        try:
+            res = subprocess.run(
+                ["sysctl", "-n", "hw.physicalcpu"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            raw = (res.stdout or "").strip()
+            if raw.isdigit():
+                return int(raw)
+        except Exception:
+            pass
+    else:
+        try:
+            pairs = set()
+            phys = core = None
+            with open("/proc/cpuinfo", encoding="utf-8") as fh:
+                for line in fh:
+                    if line.startswith("physical id"):
+                        phys = line.split(":", 1)[1].strip()
+                    elif line.startswith("core id"):
+                        core = line.split(":", 1)[1].strip()
+                    elif line.strip() == "" and phys is not None and core is not None:
+                        pairs.add((phys, core))
+                        phys = core = None
+            if pairs:
+                return len(pairs)
+        except Exception:
+            pass
+    return os.cpu_count()
+
+
 def has_discrete_nvidia() -> bool:
     return detect_nvidia()[2]
+
+
+def detect_hardware_capabilities() -> dict[str, Any]:
+    """Source-of-truth hardware probe for the Search loop (issue #17).
+
+    Returns has_gpu / physical_cores / ram_mb. Never raises: each probe
+    degrades to a safe default on failure. Reuses the existing NVIDIA/Metal
+    probe path and the host RAM probe; adds a stdlib physical-core read.
+    """
+    _, _, has_cuda = detect_nvidia()
+    has_metal, _ = detect_apple_metal()
+    return {
+        "has_gpu": bool(has_cuda or has_metal),
+        "physical_cores": detect_physical_cores(),
+        "ram_mb": detect_host_ram_mb(),
+    }
 
 
 def detect_apple_metal() -> tuple[bool, str | None]:

@@ -4,6 +4,7 @@ This is the contract boundary. Benchmarks consume this API and NEVER the reverse
 The running project MUST NOT import from autoresearch.benchmarks or autoresearch.runners.
 """
 
+from autoresearch.core.hardware import detect_hardware_capabilities
 from autoresearch.core.llama_client import (
     GenerationParams,
     LlamaClient,
@@ -52,6 +53,7 @@ __all__ = [
     "resolve_vram_limit_mb",
     "is_dense_model",
     "is_moe_model",
+    "detect_hardware_capabilities",
     "resolve_llama_server",
     "resolve_llama_bench",
     "engine_version_tag",
