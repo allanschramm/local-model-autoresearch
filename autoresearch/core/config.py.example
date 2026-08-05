@@ -56,7 +56,7 @@ ENGINE_DEFAULTS = {
     # Optional host-memory preflight reserve (MiB). None = auto from hardware class.
     # Override also via env AUTORESEARCH_HOST_HEADROOM_MB.
     'HOST_MEMORY_HEADROOM_MB': None,
-    # Min tg t/s for Trial keep. MoE on 8GB often lands 15–19 — lower per model if needed.
+    # Min tg t/s for Trial reject gate. MoE on 8GB often lands 15–19 — lower per model if needed.
     'TPS_FLOOR': 20.0,
 }
 

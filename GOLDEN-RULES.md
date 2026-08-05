@@ -37,7 +37,7 @@
 
 ## 4. Loop Agent Constraints
 
-*   **Mutable Baseline**: `autoresearch/core/config.py` (`ENGINE_DEFAULTS` = performance, `SAMPLER_DEFAULTS` = quality). The Search loop writes keeps here via `write_baseline`.
+*   **Mutable Baseline**: `autoresearch/core/config.py` (`ENGINE_DEFAULTS` = performance, `SAMPLER_DEFAULTS` = quality). The Search loop writes the Baseline here via `write_baseline`.
 *   **Visited memory**: Ignored `.autoresearch_state.json` tracks visited Neighbors only — never Baseline.
 *   **Fixed protocol**: `program.md` and `autoresearch/benchmarks/*` stay fixed unless the user explicitly requests a change.
 *   **No Code Edits**: The looping agent is strictly forbidden from editing codebase source code (e.g., `run.py`, benchmarks, tests) under any circumstances. If any error, bug, or exception occurs during the Search, the agent MUST NOT attempt to edit code to fix it. Instead, the agent MUST immediately stop execution, print the full traceback/error, and warn the user.
