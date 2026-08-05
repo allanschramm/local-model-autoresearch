@@ -167,6 +167,7 @@ def run_llama_bench_validation(
     ctx_size: int = 131072,
     threads_batch: int | None = None,
     no_mmap: bool = False,
+    mlock: bool = False,
     cont_batching: bool = False,
     spec_type: str | None = None,
     spec_draft_n_max: int = 0,
@@ -202,6 +203,10 @@ def run_llama_bench_validation(
         "-ctv",
         cache_type_v,
         "--no-mmap" if no_mmap else "--mmap",
+    ]
+    if mlock:
+        cmd += ["--mlock"]
+    cmd += [
         "--no-warmup",
         "--simple-io",
         "--single-turn",
@@ -476,6 +481,7 @@ class ExperimentRunner:
                         ctx_size=intent.ctx_size,
                         threads_batch=intent.threads_batch,
                         no_mmap=intent.no_mmap,
+                        mlock=intent.mlock,
                         cont_batching=intent.cont_batching,
                         spec_type=intent.spec_type,
                         spec_draft_n_max=intent.spec_draft_n_max,

@@ -161,6 +161,7 @@ class ServerIntent:
     threads_batch: int | None = None
     spec_draft_n_max: int = 1
     no_mmap: bool = False
+    mlock: bool = False
     jinja: bool = False
     reasoning_budget: int | None = None
     reasoning_budget_message: str | None = None
@@ -228,6 +229,7 @@ class ServerIntent:
             threads_batch=norm.get("threads_batch"),
             spec_draft_n_max=norm.get("spec_draft_n_max", 1),
             no_mmap=norm.get("no_mmap", False),
+            mlock=norm.get("mlock", False),
             jinja=norm.get("jinja", False),
             reasoning_budget=norm.get("reasoning_budget"),
             reasoning_budget_message=norm.get("reasoning_budget_message"),
@@ -792,6 +794,8 @@ class LlamaServerRunner:
 
         if self.intent.no_mmap:
             cmd += ["--no-mmap"]
+        if self.intent.mlock:
+            cmd += ["--mlock"]
         if self.intent.jinja:
             cmd += ["--jinja"]
         if self.intent.reasoning_budget is not None:
