@@ -2,11 +2,11 @@
 
 Direct-coding score (optional Search preflight):  
 `coding = 0.35*LCB + 0.25*HE + 0.25*MBPP + 0.15*BigCode`  
-Exactly **10 tasks** per dataset. Ground truth: `results.tsv` (`category=10-task` / `scoring_benchmark=coding`). Docs are a secondary view — include every fair 10-task KEEP/best row from TSV, including deleted GGUFs.
+Exactly **10 tasks** per dataset. Ground truth: `results.tsv` (`category=10-task` / `scoring_benchmark=coding`). Docs are a secondary view — include every fair 10-task row from TSV (`on_front` | `dominated` | `incomplete` | `rejected`), including deleted GGUFs.
 
 Hardware: RTX 4060 **8 GB**, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.
 
-Claw-Eval full is the agentic axis — see [claw-eval-leaderboard.md](claw-eval-leaderboard.md). Global keep surface: [pareto-leaderboard.md](pareto-leaderboard.md).
+Claw-Eval full is the agentic axis — see [claw-eval-leaderboard.md](claw-eval-leaderboard.md). Global Pareto Set (`on_front`): [pareto-leaderboard.md](pareto-leaderboard.md).
 
 ## Ranked (best per model/quant, fair 10-task)
 

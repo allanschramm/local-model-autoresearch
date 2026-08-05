@@ -111,7 +111,7 @@ O Baseline mutável **não vem no git** (fica só na sua máquina). Depois do cl
 cp autoresearch/core/config.py.example autoresearch/core/config.py
 ```
 
-Edite `MODEL` (basename do GGUF em `models/`) e os knobs ENGINE/SAMPLER. O autoloop reescreve esse arquivo a cada keep — **não faça commit** dele.
+Edite `MODEL` (basename do GGUF em `models/`) e os knobs ENGINE/SAMPLER. O autoloop reescreve esse arquivo a cada aceitação do Neighbor — **não faça commit** dele.
 
 ### Verificar se tá tudo pronto
 
@@ -141,7 +141,7 @@ Este repositório inclui uma jornada publicada de 6 aulas em HTML (Módulo 0 + S
 2. Valida throughput e roda o smoke test Claw-Eval quick
 3. Roda Claw-Eval full e calcula o Val Score agentic (+ TPS floor)
 4. Muta um param -> gera config Neighbor
-5. Avalia Neighbor -> keep se melhorou (ou Pareto tie-break)
+5. Avalia Neighbor -> aceita se melhorar o Pareto Set per-model (`improves_set`; engine-only usa keep escalar) — ou Pareto tie-break
 6. Se local maxima -> random restart
 7. Loop pra sempre até Ctrl+C
 
@@ -161,7 +161,7 @@ Este repositório inclui uma jornada publicada de 6 aulas em HTML (Módulo 0 + S
 
 ### Val Score
 
-O Claw-Eval full é a métrica canônica para decisões de keep/discard. HE+, MBPP+, LCB e BigCodeBench são preflight opcional e, quando ativados, sempre usam 10 tarefas por dataset.
+O Claw-Eval full é o eixo agentic do Objective Vector; a admissão no Pareto Set usa os quatro eixos (ctx × TPS × agentic × coding), status `on_front` | `dominated` | `incomplete` | `rejected`. HE+, MBPP+, LCB e BigCodeBench são preflight opcional e, quando ativados, sempre usam 10 tarefas por dataset.
 
 TPS Floor = `TPS_FLOOR` no Baseline (`config.py`, default 20 tok/s). Abaixo disso -> score zerado. MoE grande em 8GB: baixe o floor (ex.: 15).
 

@@ -6,7 +6,7 @@ Hardware: RTX 4060 **8 GB**, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp`
 
 Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (historical Autoloop pollution — TPS leaked into score). Global frontier: [pareto-leaderboard.md](pareto-leaderboard.md). Leaderboard text is a view of TSV — never drop a measured GGUF because it is weak or deleted.
 
-## Claw-Eval full (n=15) — ranked KEEP / best discards
+## Claw-Eval full (n=15) — ranked by agentic score
 
 | Rank | Model | Val Score | bench_tg | peak VRAM | ctx | Session / note |
 | :---: | :--- | :---: | :---: | :---: | :---: | :--- |

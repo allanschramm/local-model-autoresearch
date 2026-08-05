@@ -86,7 +86,7 @@ When asked to "validate a model", follow this exact procedure:
 
 4. **One model at a time** — Never run multiple validations in parallel. All models share the same GPU (CUDA device 0) and default port 18080. Each validation must finish (PASS or FAIL) before the next starts.
 
-5. **Result in results.tsv** — Written with category `validation` and status `discard` (validation runs never "keep"). Read the latest entry per model for comparison.
+5. **Result in results.tsv** — Written with category `validation` and Trial Status `incomplete` (smoke-only; missing agentic/coding axes never join the front) — or `rejected` when a hard gate fails. Read the latest entry per model for comparison.
 
 **RULES**:
 - Do NOT run `llama-server` or `llama-bench` directly. The harness handles everything.

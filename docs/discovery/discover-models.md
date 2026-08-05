@@ -113,16 +113,16 @@ cd local-model-autotuning
 .\venv\Scripts\python.exe autoloop.py --mode tps --vram-limit-mb=<your-VRAM-budget-in-MB>
 ```
 
-The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on keep, and appends rows to `results.tsv` (gitignored, stays local).
+The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (engine-only vectors use the legacy scalar keep; complete vectors use `improves_set`), and appends rows to `results.tsv` (gitignored, stays local).
 
 **Only after TPS is acceptable**, complete the Objective Vector (Claw full + coding-10) on the same Fingerprint (good-enough-tuning.md §4). Overnight `--mode both` is for quality search *after* speed, not the default first pass.
 
 **Expected behavior (TPS mode)**:
 - Cheap Trials (bench + PPL ceiling) — minutes, not Claw-full hours
 - Each Trial writes 1 row to `results.tsv` with TPS / VRAM / status
-- On keep, `config.py` rewrites with the better config
+- On acceptance, `config.py` rewrites with the better config
 - SIGINT handler saves state — kill any time, resume later
-- TPS Floor (`TPS_FLOOR` in Baseline `config.py`, default 20): configs below the floor are auto-discarded; lower it for large MoE on constrained VRAM
+- TPS Floor (`TPS_FLOOR` in Baseline `config.py`, default 20): configs below the floor are auto-`rejected`; lower it for large MoE on constrained VRAM
 
 ## Quick checklist
 
