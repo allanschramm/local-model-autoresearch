@@ -29,6 +29,10 @@ CONFIG_PATH = Path(__file__).resolve()
 ENGINE_DEFAULTS = {
     'MODEL': 'model.gguf',
     'CTX_SIZE': 131072,
+    # GPU/CPU split: -1 = Auto (let the harness choose), 0 = CPU-only, N>0 = N layers on GPU.
+    'N_GPU_LAYERS': -1,
+    # NUMA bind mode: None (off), 'distribute', or 'isolate' (llama.cpp --numa).
+    'NUMA': None,
     'KV_CACHE': 'q4_0',
     'KV_CACHE_K': 'q4_0',
     'KV_CACHE_V': 'q4_0',
@@ -126,6 +130,18 @@ def validate_config(cfg: dict) -> dict:
     tps_floor = float(tps_floor)
     if not math.isfinite(tps_floor) or tps_floor <= 0:
         raise ConfigError(f"TPS_FLOOR must be a positive finite number; got {tps_floor}")
+    n_gpu_layers = normalized.get("n_gpu_layers", normalized.get("N_GPU_LAYERS", DEFAULTS.get("N_GPU_LAYERS", -1)))
+    if isinstance(n_gpu_layers, bool) or not isinstance(n_gpu_layers, int):
+        raise ConfigError(
+            f"N_GPU_LAYERS must be -1 (Auto), 0 (CPU-only), or a positive int; got {n_gpu_layers!r}"
+        )
+    if n_gpu_layers < -1:
+        raise ConfigError(
+            f"N_GPU_LAYERS must be -1 (Auto), 0 (CPU-only), or a positive int; got {n_gpu_layers}"
+        )
+    numa = normalized.get("numa", normalized.get("NUMA", DEFAULTS.get("NUMA")))
+    if numa is not None and numa not in ("distribute", "isolate"):
+        raise ConfigError(f"NUMA must be None, 'distribute', or 'isolate'; got {numa!r}")
     for key, value in normalized.items():
         if isinstance(value, float) and not math.isfinite(value):
             raise ConfigError(f"{key} must be finite")
@@ -134,6 +150,8 @@ def validate_config(cfg: dict) -> dict:
     if vram_limit is not None:
         normalized["VRAM_LIMIT_MB"] = vram_limit
     normalized["TPS_FLOOR"] = tps_floor
+    normalized["N_GPU_LAYERS"] = n_gpu_layers
+    normalized["NUMA"] = numa
     return normalized
 
 STATE_SCHEMA_VERSION = 2

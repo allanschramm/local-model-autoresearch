@@ -82,6 +82,8 @@ CORE_PASSTHROUGH = [
     "SPEC_DRAFT_MODEL",
     "FREQUENCY_PENALTY",
     "N_CPU_MOE",
+    "N_GPU_LAYERS",
+    "NUMA",
 ]
 # Bench params (in autoresearch.benchmarks.bench_config)
 BENCH_PASSTHROUGH = [

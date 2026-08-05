@@ -1,5 +1,7 @@
+import importlib.util
 import tempfile
 import unittest
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -143,6 +145,67 @@ class TestRuntimeInvariants(unittest.TestCase):
         args = run.parse_args()
         self.assertFalse(args.agentic_quick)
         self.assertFalse(args.agentic_full)
+
+
+class TestNGpuLayersAndNuma(unittest.TestCase):
+    """Issue #16: config surface for N_GPU_LAYERS + NUMA.
+
+    Runs against the tracked config.py.example template (the local
+    config.py Baseline is gitignored and machine-local, so it is not the
+    contract under test).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        example_path = (
+            Path(__file__).resolve().parents[1] / "autoresearch" / "core" / "config.py.example"
+        )
+        loader = SourceFileLoader("_example_config_template", str(example_path))
+        spec = importlib.util.spec_from_loader("_example_config_template", loader)
+        cls.example = importlib.util.module_from_spec(spec)
+        loader.exec_module(cls.example)
+
+    def test_engine_defaults_example_has_new_knobs(self):
+        self.assertIn("N_GPU_LAYERS", self.example.ENGINE_DEFAULTS)
+        self.assertEqual(self.example.ENGINE_DEFAULTS["N_GPU_LAYERS"], -1)
+        self.assertIn("NUMA", self.example.ENGINE_DEFAULTS)
+        self.assertIsNone(self.example.ENGINE_DEFAULTS["NUMA"])
+
+    def test_accepts_valid_n_gpu_layers(self):
+        for value in (-1, 0, 1, 40, 999):
+            cfg = self.example.load_config()
+            cfg["N_GPU_LAYERS"] = value
+            out = self.example.validate_config(cfg)
+            self.assertEqual(out["N_GPU_LAYERS"], value)
+
+    def test_accepts_valid_numa(self):
+        for value in (None, "distribute", "isolate"):
+            cfg = self.example.load_config()
+            cfg["NUMA"] = value
+            out = self.example.validate_config(cfg)
+            self.assertEqual(out["NUMA"], value)
+
+    def test_accepts_lowercase_key_override(self):
+        cfg = self.example.load_config()
+        cfg["n_gpu_layers"] = 0
+        cfg["numa"] = "isolate"
+        out = self.example.validate_config(cfg)
+        self.assertEqual(out["N_GPU_LAYERS"], 0)
+        self.assertEqual(out["NUMA"], "isolate")
+
+    def test_rejects_bad_n_gpu_layers(self):
+        for value in (-2, -100, None, 2.5, "5", True, []):
+            cfg = self.example.load_config()
+            cfg["N_GPU_LAYERS"] = value
+            with self.assertRaises(self.example.ConfigError):
+                self.example.validate_config(cfg)
+
+    def test_rejects_bad_numa(self):
+        for value in ("DISTRIBUTE", "distributed", "isolated", "", "numa", 0, False):
+            cfg = self.example.load_config()
+            cfg["NUMA"] = value
+            with self.assertRaises(self.example.ConfigError):
+                self.example.validate_config(cfg)
 
 
 if __name__ == "__main__":

@@ -61,6 +61,10 @@ class TestAutoLoop(unittest.TestCase):
         self.assertNotIn("CTX_SIZE", autoloop.SEARCH_SPACE)
         self.assertIn("CTX_SIZE", autoloop.PASSTHROUGH_PARAMS)
 
+    def test_core_passthrough_surfaces_gpu_and_numa(self):
+        self.assertIn("N_GPU_LAYERS", autoloop.CORE_PASSTHROUGH)
+        self.assertIn("NUMA", autoloop.CORE_PASSTHROUGH)
+
     @patch("autoloop.preflight_host_ok", return_value=True)
     @patch("autoloop.estimate_vram_mb")
     def test_preflight_vram_ok(self, mock_estimate, _host):
