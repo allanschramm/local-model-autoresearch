@@ -1,8 +1,221 @@
 #!/usr/bin/env python3
 """Dashboard shell server for localhost 18765."""
 
+from __future__ import annotations
+
+import importlib
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
+
+from .run_log import run_state_and_tail
+from .trial_reader import format_trial_for_ui, read_last_50_trials
+
+# Baseline engine keys to surface on the live panel (#24).
+_ENGINE_KEYS = (
+    "MODEL",
+    "CTX_SIZE",
+    "KV_CACHE",
+    "KV_CACHE_K",
+    "KV_CACHE_V",
+    "THREADS",
+    "THREADS_BATCH",
+    "BATCH_SIZE",
+    "UBATCH_SIZE",
+    "FLASH_ATTN",
+    "SPEC_DRAFT_N_MAX",
+    "SPEC_DRAFT_MODEL",
+    "N_GPU_LAYERS",
+    "NUMA",
+    "N_CPU_MOE",
+    "VRAM_LIMIT_MB",
+    "VRAM_HEADROOM_MB",
+    "HOST_MEMORY_HEADROOM_MB",
+    "TPS_FLOOR",
+)
+
+
+def _load_baseline() -> dict[str, Any]:
+    """Read live Baseline from config.py (ENGINE + SAMPLER), never state JSON."""
+    config_module = importlib.import_module("autoresearch.core.config")
+    config_module = importlib.reload(config_module)
+    engine = getattr(config_module, "ENGINE_DEFAULTS", {}) or {}
+    sampler = getattr(config_module, "SAMPLER_DEFAULTS", {}) or {}
+    baseline: dict[str, Any] = {key: engine.get(key) for key in _ENGINE_KEYS}
+    baseline["SAMPLER_DEFAULTS"] = dict(sampler)
+    return baseline
+
+
+_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Dashboard</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1.5rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+  th { background: #f4f4f4; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+  dt { font-weight: 600; }
+  .empty { color: #666; }
+  #run-state { font-weight: 700; }
+  #run-state.running { color: #0a7a2f; }
+  #run-state.idle { color: #666; }
+  #log-tail {
+    background: #111; color: #ddd; padding: 0.75rem; max-height: 20rem;
+    overflow: auto; white-space: pre-wrap; font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+<h1>Dashboard</h1>
+<p>Estado: <span id="run-state" class="idle">—</span></p>
+<p id="status">Carregando status...</p>
+<section>
+  <h2>Baseline</h2>
+  <p id="baseline-empty" class="empty" hidden></p>
+  <dl id="baseline"></dl>
+</section>
+<section>
+  <h2>Últimos Trials</h2>
+  <p id="trials-empty" class="empty" hidden></p>
+  <table id="trials-table" hidden>
+    <thead>
+      <tr>
+        <th>Status</th><th>Outcome</th><th>ctx</th><th>TPS</th>
+        <th>agentic</th><th>coding</th><th>memory</th><th>elapsed</th>
+        <th>diagnostic</th><th>description</th>
+      </tr>
+    </thead>
+    <tbody id="trials-body"></tbody>
+  </table>
+</section>
+<section>
+  <h2>Log do servidor (Trial)</h2>
+  <p id="log-empty" class="empty" hidden></p>
+  <pre id="log-tail"></pre>
+</section>
+<script>
+  const statusEl = document.getElementById('status');
+  const runStateEl = document.getElementById('run-state');
+  const baselineEl = document.getElementById('baseline');
+  const baselineEmpty = document.getElementById('baseline-empty');
+  const trialsEmpty = document.getElementById('trials-empty');
+  const trialsTable = document.getElementById('trials-table');
+  const trialsBody = document.getElementById('trials-body');
+  const logEmpty = document.getElementById('log-empty');
+  const logTail = document.getElementById('log-tail');
+
+  const renderRunState = (d) => {
+    const state = d.run_state || 'Idle';
+    runStateEl.textContent = state;
+    runStateEl.className = state === 'Em execução' ? 'running' : 'idle';
+  };
+
+  const renderLog = (d) => {
+    if (d.log_tail == null || d.log_tail === '') {
+      logEmpty.hidden = false;
+      logEmpty.textContent = 'Log do servidor: nenhum arquivo encontrado.';
+      logTail.textContent = '';
+      return;
+    }
+    logEmpty.hidden = true;
+    logTail.textContent = d.log_tail;
+  };
+
+  const renderBaseline = (d) => {
+    baselineEl.innerHTML = '';
+    if (d.error) {
+      baselineEmpty.hidden = false;
+      baselineEmpty.textContent = d.error;
+      return;
+    }
+    const baseline = d.baseline || {};
+    const keys = Object.keys(baseline);
+    if (keys.length === 0) {
+      baselineEmpty.hidden = false;
+      baselineEmpty.textContent = 'Baseline: Nenhum dado encontrado.';
+      return;
+    }
+    baselineEmpty.hidden = true;
+    for (const key of keys) {
+      const dt = document.createElement('dt');
+      dt.textContent = key;
+      const dd = document.createElement('dd');
+      const value = baseline[key];
+      dd.textContent = (value !== null && typeof value === 'object')
+        ? JSON.stringify(value)
+        : String(value);
+      baselineEl.appendChild(dt);
+      baselineEl.appendChild(dd);
+    }
+  };
+
+  const cell = (text) => {
+    const td = document.createElement('td');
+    td.textContent = text == null || text === '' ? '—' : String(text);
+    return td;
+  };
+
+  const renderTrials = (d) => {
+    trialsBody.innerHTML = '';
+    if (d.error) {
+      trialsEmpty.hidden = false;
+      trialsEmpty.textContent = d.error;
+      trialsTable.hidden = true;
+      return;
+    }
+    const trials = d.trials || [];
+    if (trials.length === 0) {
+      trialsEmpty.hidden = false;
+      trialsEmpty.textContent = 'Nenhum dado de Trial encontrado.';
+      trialsTable.hidden = true;
+      return;
+    }
+    trialsEmpty.hidden = true;
+    trialsTable.hidden = false;
+    for (const t of trials) {
+      const tr = document.createElement('tr');
+      for (const key of ['status','outcome','ctx','tps','agentic','coding','memory','elapsed','diagnostic','description']) {
+        tr.appendChild(cell(t[key]));
+      }
+      trialsBody.appendChild(tr);
+    }
+  };
+
+  const poll = () => {
+    fetch('/api/status')
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          statusEl.textContent = d.error;
+        } else {
+          statusEl.textContent = 'Status: OK';
+        }
+        renderRunState(d);
+        renderBaseline(d);
+        renderTrials(d);
+        renderLog(d);
+      })
+      .catch(() => {
+        statusEl.textContent = 'Erro ao carregar status.';
+        runStateEl.textContent = 'Idle';
+        runStateEl.className = 'idle';
+        baselineEmpty.hidden = false;
+        baselineEmpty.textContent = 'Erro ao carregar Baseline.';
+        trialsEmpty.hidden = false;
+        trialsEmpty.textContent = 'Erro ao carregar Trials.';
+        logEmpty.hidden = false;
+        logEmpty.textContent = 'Erro ao carregar log.';
+        trialsTable.hidden = true;
+        baselineEl.innerHTML = '';
+        trialsBody.innerHTML = '';
+        logTail.textContent = '';
+      });
+  };
+  poll();
+  setInterval(poll, 2500);
+</script>
+</body></html>"""
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -11,44 +224,29 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            html = """<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="UTF-8"><title>Dashboard</title></head>
-<body>
-<h1>Dashboard</h1>
-<p id="status">Carregando status...</p>
-<script>
-  const poll = () => {
-    fetch('/api/status')
-      .then(r => r.json())
-      .then(d => {
-        const statusElement = document.getElementById('status');
-        if (Object.keys(d).length === 0) {
-          // Handle empty state in pt-BR
-          statusElement.textContent = "Status: Nenhum dado encontrado.";
-        } else {
-          // Display data if present
-          statusElement.textContent = JSON.stringify(d);
-        }
-      })
-      .catch(() => {
-        // Handle polling errors
-        document.getElementById('status').textContent = "Erro ao carregar status.";
-      });
-  };
-  poll();
-  setInterval(poll, 2500);
-</script>
-</body></html>"""
-            self.wfile.write(html.encode("utf-8"))
+            self.wfile.write(_HTML.encode("utf-8"))
         elif self.path == "/api/status":
+            try:
+                run_state, log_tail = run_state_and_tail()
+                payload = {
+                    "run_state": run_state,
+                    "log_tail": log_tail,
+                    "baseline": _load_baseline(),
+                    "trials": [format_trial_for_ui(t) for t in read_last_50_trials()],
+                }
+            except Exception as exc:  # noqa: BLE001 — surface any load failure to UI
+                payload = {"error": f"Falha ao carregar status: {exc}", "run_state": "Idle"}
+            body = json.dumps(payload, default=str).encode("utf-8")
             self.send_response(200)
-            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps({}).encode("utf-8"))
+            self.wfile.write(body)
         else:
             self.send_response(404)
             self.end_headers()
+
+    def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
+        return
 
 
 def main() -> None:
