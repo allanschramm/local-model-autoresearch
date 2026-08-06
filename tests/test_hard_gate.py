@@ -10,6 +10,7 @@ HOOK = ROOT / ".claude" / "hooks" / "block-adhoc-eval.ps1"
 
 class TestHardGate(unittest.TestCase):
     @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell required")
+    @unittest.skipUnless(HOOK.is_file(), "local .claude hard-gate hook required")
     def test_rejects_baseline_cli_overrides(self):
         payload = json.dumps(
             {
@@ -23,7 +24,15 @@ class TestHardGate(unittest.TestCase):
             }
         )
         result = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(HOOK)],
+            [
+                "powershell.exe",
+                "-NoLogo",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(HOOK),
+            ],
             input=payload,
             capture_output=True,
             text=True,
