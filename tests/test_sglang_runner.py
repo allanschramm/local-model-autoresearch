@@ -37,10 +37,17 @@ class TestSGLangRunner(unittest.TestCase):
         self.assertIn("Refusing bench/server validation", str(ctx.exception))
         mock_run.assert_called_once()
 
+    @patch(
+        "autoresearch.runners.evaluation.preflight_host_memory_for_intent",
+        return_value=(True, 7000.0, 12000.0, ""),
+    )
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.SGLangServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
-    def test_directory_model_uses_sglang_runner(self, mock_coding, mock_sglang, mock_llama):
+    def test_directory_model_uses_sglang_runner(
+        self, mock_coding, mock_sglang, mock_llama, _mock_vram, _mock_host
+    ):
         mock_sglang.return_value.__enter__.return_value = MagicMock(port=18080, peak_vram_mb=4096)
         mock_coding.return_value = BenchmarkResult(
             val_score=0.5,
@@ -64,11 +71,16 @@ class TestSGLangRunner(unittest.TestCase):
         mock_sglang.assert_called_once()
         mock_llama.assert_not_called()
 
+    @patch(
+        "autoresearch.runners.evaluation.preflight_host_memory_for_intent",
+        return_value=(True, 7000.0, 12000.0, ""),
+    )
+    @patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=20000.0)
     @patch("autoresearch.runners.evaluation.run_sglang_bench_validation", return_value=10.0)
     @patch("autoresearch.runners.evaluation.SGLangServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")
     def test_sglang_bench_below_threshold_fails_before_server(
-        self, mock_coding, mock_sglang, _mock_bench
+        self, mock_coding, mock_sglang, _mock_bench, _mock_vram, _mock_host
     ):
         with tempfile.TemporaryDirectory() as tmp:
             models_dir = Path(tmp)
