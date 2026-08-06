@@ -1,5 +1,6 @@
 """Tests for autoresearch.benchmarks.agentic_runner — Claw-Eval runner and scoring."""
 
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -128,6 +129,78 @@ def test_run_agentic_eval_missing_task(mock_llama_client: MagicMock):
     assert res["score"] == 0.0
     assert len(res["task_results"]) == 1
     assert res["task_results"][0]["details"] == "missing"
+
+
+def test_service_manager_sweeps_before_start(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Issue #39: ServiceManager runs the pre-flight orphan sweep before spawning."""
+    sweep = MagicMock()
+    monkeypatch.setattr("autoresearch.benchmarks.agentic_runner.sweep_leftover_processes", sweep)
+    guard = MagicMock()
+    monkeypatch.setattr("autoresearch.benchmarks.agentic_runner.ProcessGuard", lambda: guard)
+    monkeypatch.setattr(ServiceManager, "_wait_healthy", lambda *_: None)
+
+    mgr = ServiceManager(
+        tmp_path,
+        {
+            "services": [
+                {
+                    "name": "web",
+                    "port": 9113,
+                    "command": "python mock_services/web/server.py",
+                }
+            ]
+        },
+    )
+    mgr.start()
+
+    sweep.assert_called_once()
+    guard.spawn.assert_called_once()
+    assert mgr._guard is guard
+
+
+def test_service_manager_spawns_through_guard(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Issue #39: mock services are spawned via the Process Guard, not raw Popen."""
+    guard = MagicMock()
+    monkeypatch.setattr("autoresearch.benchmarks.agentic_runner.ProcessGuard", lambda: guard)
+    monkeypatch.setattr(ServiceManager, "_wait_healthy", lambda *_: None)
+
+    mgr = ServiceManager(
+        tmp_path,
+        {
+            "services": [
+                {
+                    "name": "web",
+                    "port": 9113,
+                    "command": "python mock_services/web/server.py",
+                },
+                {
+                    "name": "db",
+                    "port": 9114,
+                    "command": "python mock_services/db/server.py",
+                },
+            ]
+        },
+    )
+    mgr.start()
+
+    assert guard.spawn.call_count == 2
+    assert len(mgr._procs) == 2
+    for call in guard.spawn.call_args_list:
+        assert call.args[0][0] == sys.executable
+
+
+def test_service_manager_stop_tears_down_guard(monkeypatch: pytest.MonkeyPatch):
+    """Issue #39: ServiceManager.stop tears the Process Guard down and clears procs."""
+    guard = MagicMock()
+    monkeypatch.setattr("autoresearch.benchmarks.agentic_runner.ProcessGuard", lambda: guard)
+    mgr = ServiceManager(Path("dummy"), {"services": []})
+    proc = MagicMock()
+    mgr._procs.append(proc)
+
+    mgr.stop()
+
+    guard.teardown.assert_called_once()
+    assert mgr._procs == []
 
 
 def test_service_manager_starts_mock_with_utf8(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):

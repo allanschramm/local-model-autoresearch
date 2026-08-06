@@ -974,6 +974,73 @@ class TestKvCalibration(unittest.TestCase):
         self.assertGreater(est, 5000.0)
 
 
+class TestProcessGuardWiring(unittest.TestCase):
+    """Issue #39: Process Guard integration in LlamaServerRunner (pre-flight + spawn)."""
+
+    def setUp(self):
+        self.intent = ServerIntent(
+            model_path=Path("models/test-model.gguf"),
+            ctx_size=2048,
+            kv_cache="q4_0",
+            flash_attn="on",
+            port=18080,
+        )
+
+    def test_sweep_leftover_processes_delegates_to_cleanup(self):
+        with patch("autoresearch.core.llama_runner.cleanup_leftover_processes") as mock_cleanup:
+            mock_cleanup.return_value = [123, 456]
+            llama_runner.sweep_leftover_processes()
+        mock_cleanup.assert_called_once_with()
+
+    def test_sweep_leftover_processes_fail_open_on_error(self):
+        with patch(
+            "autoresearch.core.llama_runner.cleanup_leftover_processes",
+            side_effect=OSError("boom"),
+        ):
+            llama_runner.sweep_leftover_processes()  # must not raise
+
+    def test_sweep_leftover_processes_fail_open_when_nothing_matches(self):
+        with patch(
+            "autoresearch.core.llama_runner.cleanup_leftover_processes",
+            return_value=[],
+        ):
+            llama_runner.sweep_leftover_processes()  # must not raise
+
+    @patch("autoresearch.core.llama_runner.LlamaServerRunner._start_vram_sampler")
+    @patch("autoresearch.core.llama_runner.candidate_ports", return_value=[18080])
+    @patch("autoresearch.core.llama_runner.sweep_leftover_processes")
+    @patch("autoresearch.core.llama_runner.enforce_single_load", return_value=[])
+    @patch("autoresearch.core.llama_runner.ProcessGuard")
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_enter_sweeps_then_spawns_via_guard(
+        self, mock_resolve, mock_guard_cls, _mock_gate, mock_sweep, _mock_ports, _mock_sampler
+    ):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        guard = mock_guard_cls.return_value
+        runner = LlamaServerRunner(self.intent)
+        runner._wait_for_server = lambda port: True  # skip real health check
+        runner.__enter__()
+        mock_sweep.assert_called_once()
+        mock_guard_cls.assert_called_once()
+        guard.spawn.assert_called_once()
+        self.assertIs(runner._guard, guard)
+        self.assertIs(runner._server_proc, guard.spawn.return_value)
+        runner._cleanup_all()
+        guard.teardown.assert_called_once()
+        self.assertIsNone(runner._guard)
+
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_cleanup_all_tears_down_guard(self, mock_resolve):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        runner = LlamaServerRunner(self.intent)
+        guard = MagicMock()
+        runner._guard = guard
+        runner._server_proc = MagicMock()
+        runner._cleanup_all()
+        guard.teardown.assert_called_once()
+        self.assertIsNone(runner._guard)
+
+
 class TestVramHeadroomPreflight(unittest.TestCase):
     """Issue #10: dynamic VRAM headroom from free-at-start."""
 
