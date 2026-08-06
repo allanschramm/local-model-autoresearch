@@ -8,7 +8,12 @@ from typing import Any
 
 import requests
 
-from autoresearch.core.llama_runner import ROOT_DIR, ServerIntent
+from autoresearch.core.llama_runner import ROOT_DIR, ServerIntent, sweep_leftover_processes
+from autoresearch.core.process_guard import ProcessGuard
+from autoresearch.core.single_load import enforce_single_load, resolve_allow_multi
+
+# Module-level patch surface for runner tests (#39); the fail-open gate.
+assert_single_load = enforce_single_load
 
 IS_WINDOWS = os.name == "nt"
 REPO_ROOT = ROOT_DIR.parent.parent
@@ -143,6 +148,7 @@ class SGLangServerRunner:
         self._server_proc: subprocess.Popen[str] | None = None
         self._server_log: Any = None
         self._stop_event = threading.Event()
+        self._guard: ProcessGuard | None = None
 
     def _build_cmd(self, target_port: int) -> list[str]:
         print(
@@ -201,6 +207,16 @@ class SGLangServerRunner:
         server_env["SGLANG_MAMBA_CONV_DTYPE"] = "float16"
         server_env["SGLANG_MAMBA_SSM_DTYPE"] = "float16"
 
+        # Single-load gate (#41): refuse a second full server while one is
+        # live. The pre-flight orphan sweep would kill a live sibling on a
+        # harness port, so it only runs when the gate passes and allow-multi
+        # is off.
+        allow_multi = resolve_allow_multi()
+        assert_single_load(allow_multi=allow_multi)
+        if not allow_multi:
+            sweep_leftover_processes()
+        self._guard = ProcessGuard()
+
         startup_tail: list[str] = []
         for port in candidate_ports(self.intent.port):
             cmd = self._build_cmd(port)
@@ -208,7 +224,7 @@ class SGLangServerRunner:
                 continue
 
             print(f"Starting server: {' '.join(cmd)}")
-            self._server_proc = subprocess.Popen(
+            self._server_proc = self._guard.spawn(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -279,13 +295,17 @@ class SGLangServerRunner:
     def stop(self) -> None:
         self._stop_event.set()
 
-        if self._server_proc and self._server_proc.poll() is None:
+        if self._server_proc and self._server_proc.poll() is None and self._guard is None:
             _terminate_process_tree(self._server_proc)
 
             try:
                 self._server_proc.wait()
             except subprocess.TimeoutExpired:
                 self._server_proc.kill()
+
+        if self._guard:
+            self._guard.teardown()
+            self._guard = None
 
         if self._server_log and self._server_log != subprocess.DEVNULL:
             try:

@@ -23,6 +23,7 @@ def _ensure_repo_root_on_sys_path() -> None:
 _ensure_repo_root_on_sys_path()
 
 from autoresearch.core.llama_runner import IS_WINDOWS, resolve_llama_server, resolve_model_path
+from autoresearch.core.single_load import SingleLoadError, enforce_single_load
 
 ALIASES_DIR = REPO_ROOT / "models" / "aliases"
 STATE_DIR = (
@@ -381,7 +382,7 @@ def _pick_default_alias(aliases: list[AliasConfig]) -> AliasConfig | None:
     return aliases[0]
 
 
-def cmd_start(alias_name: str | None) -> int:
+def cmd_start(alias_name: str | None, allow_multi: bool = False) -> int:
     aliases = discover_aliases()
     if not aliases:
         print(f"No aliases found under {ALIASES_DIR}")
@@ -418,6 +419,15 @@ def cmd_start(alias_name: str | None) -> int:
         print(f"Port {cfg.port} is already in use.")
         return 1
 
+    # Single-load gate (#41): refuse a second full server while one is live.
+    # --allow-multi True bypasses; otherwise fall through to the env flag
+    # (None lets resolve_allow_multi read AUTORESEARCH_ALLOW_MULTI_SERVERS).
+    try:
+        enforce_single_load(allow_multi=(allow_multi or None))
+    except SingleLoadError as exc:
+        print(f"Refusing: {exc}")
+        return 1
+
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env["GGML_CUDA_NO_PINNED"] = "1"
@@ -450,15 +460,17 @@ def cmd_start(alias_name: str | None) -> int:
 
 
 def main(argv: list[str]) -> int:
+    allow_multi = "--allow-multi" in argv
+    argv = [arg for arg in argv if arg != "--allow-multi"]
     if not argv:
-        return cmd_start(None)
+        return cmd_start(None, allow_multi=allow_multi)
     if argv[0] == "list":
         return cmd_list()
     if argv[0] == "status":
         return cmd_status()
     if argv[0] in {"stop", "down"}:
         return cmd_stop()
-    return cmd_start(argv[0])
+    return cmd_start(argv[0], allow_multi=allow_multi)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,8 @@ from pathlib import Path
 import yaml
 
 from autoresearch.core.llama_client import GenerationParams, LlamaClient
+from autoresearch.core.llama_runner import sweep_leftover_processes
+from autoresearch.core.process_guard import ProcessGuard
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 
@@ -38,9 +40,11 @@ class ServiceManager:
         self.task_dir = task_dir
         self.task = task
         self._procs: list[subprocess.Popen] = []
+        self._guard = ProcessGuard()
 
     def start(self) -> None:
         """Start all mock services declared in the task's services block."""
+        sweep_leftover_processes()
         services = self.task.get("services", [])
         for svc in services:
             name = svc["name"]
@@ -58,7 +62,7 @@ class ServiceManager:
             env["PORT"] = str(port)
 
             print(f"    [service] starting {name} on :{port} ({script})")
-            proc = subprocess.Popen(
+            proc = self._guard.spawn(
                 [python_exe, str(script)],
                 cwd=str(CLAW_DIR),
                 env=env,
@@ -105,16 +109,9 @@ class ServiceManager:
                 pass
 
     def stop(self) -> None:
-        """Kill all mock service processes."""
-        for proc in self._procs:
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            try:
-                proc.wait(timeout=1.0)
-            except Exception:
-                pass
+        """Kill all mock service processes via the Process Guard."""
+        self._guard.teardown()
+        self._procs.clear()
 
     def __enter__(self):
         self.start()

@@ -35,6 +35,13 @@ from autoresearch.core.model_arch import (
     gguf_kv_bytes_per_token_f16,
     resolve_n_cpu_moe,
 )
+from autoresearch.core.process_guard import ProcessGuard, cleanup_leftover_processes
+from autoresearch.core.single_load import enforce_single_load, resolve_allow_multi
+
+# #39 runner tests patch this module-level name. It is the fail-open gate
+# (see enforce_single_load): refuses on a live-server detection, but logs and
+# moves on when detection tooling is unavailable, like the orphan sweep.
+assert_single_load = enforce_single_load
 
 
 def resolve_model_path(models_dir: Path, ref: str | Path) -> Path:
@@ -733,6 +740,23 @@ def candidate_ports(preferred: int) -> list[int]:
     return list(dict.fromkeys((preferred, preferred + 1, preferred + 2, 18080, 28080)))
 
 
+def sweep_leftover_processes() -> None:
+    """Best-effort pre-flight orphan sweep (ADR 0010 decision 2).
+
+    Kills leftover harness processes holding a harness port before a server
+    binds. Never blocks startup: a sweep failure (e.g. subprocess tooling
+    unavailable or mocked out) logs and moves on — the port bind would surface
+    EADDRINUSE on its own.
+    """
+    try:
+        killed = cleanup_leftover_processes()
+    except Exception as exc:
+        print(f"  [process-guard] pre-flight orphan sweep skipped: {exc}")
+        return
+    if killed:
+        print(f"  [process-guard] pre-flight killed leftover harness procs: {sorted(killed)}")
+
+
 class LlamaServerRunner:
     def __init__(
         self,
@@ -752,6 +776,7 @@ class LlamaServerRunner:
         self._server_log: Any = None
         self._stop_event = threading.Event()
         self._vram_thread: threading.Thread | None = None
+        self._guard: ProcessGuard | None = None
 
         self.llama_server = resolve_llama_server()
 
@@ -881,6 +906,16 @@ class LlamaServerRunner:
         )
         server_env["GGML_CUDA_NO_PINNED"] = "1"
 
+        # Single-load gate (#41): refuse a second full server while one is
+        # live. The pre-flight orphan sweep would kill a live sibling on a
+        # harness port, so it only runs when the gate passes and allow-multi
+        # is off.
+        allow_multi = resolve_allow_multi()
+        assert_single_load(allow_multi=allow_multi)
+        if not allow_multi:
+            sweep_leftover_processes()
+        self._guard = ProcessGuard()
+
         startup_tail: list[str] = []
         for port in candidate_ports(self.intent.port):
             cmd = self._build_cmd(port)
@@ -897,7 +932,7 @@ class LlamaServerRunner:
                     delete=True,
                 )
 
-            self._server_proc = subprocess.Popen(
+            self._server_proc = self._guard.spawn(
                 cmd,
                 stdout=self._server_log,
                 stderr=subprocess.STDOUT,
@@ -1049,3 +1084,6 @@ class LlamaServerRunner:
     def _cleanup_all(self):
         self._stop_event.set()
         self._cleanup_process()
+        if self._guard:
+            self._guard.teardown()
+            self._guard = None
