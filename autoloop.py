@@ -25,6 +25,7 @@ from autoresearch.core.config import (
     ENGINE_DEFAULTS,
     SAMPLER_DEFAULTS,
 )
+from autoresearch.core.hardware import detect_hardware_capabilities
 from autoresearch.core.llama_runner import (
     estimate_vram_mb,
     preflight_host_memory,
@@ -66,6 +67,7 @@ SEARCH_SPACE = {
     "MIN_P": [None, 0.0, 0.02, 0.05],
     "PRESENCE_PENALTY": [None, 0.0, 1.5],
     "REPEAT_PENALTY": [None, 1.0, 1.1],
+    "NUMA": [None, "distribute", "isolate"],
 }
 
 # Params not in search space but needed for config persistence
@@ -95,6 +97,40 @@ BENCH_PASSTHROUGH = [
     "INCLUDE_AGENTIC_FULL",
 ]
 PASSTHROUGH_PARAMS = CORE_PASSTHROUGH + BENCH_PASSTHROUGH
+
+# GPU-only speculative knobs (no effect with N_GPU_LAYERS==0); dropped from the
+# active Search Space on CPU-only hosts (issue #19).
+CPU_EXCLUDED_SEARCH_KEYS = {"SPEC_DRAFT_N_MAX"}
+
+
+def apply_cpu_preflight(cfg: dict[str, Any]) -> dict[str, Any] | None:
+    """CPU preflight seed (issue #19).
+
+    Baseline N_GPU_LAYERS Auto (-1) + no detected GPU -> return cfg with
+    N_GPU_LAYERS=0 (CPU-only first-class Baseline). A GPU present, or an
+    explicit N_GPU_LAYERS, -> None (leave Baseline untouched). Pure: callers
+    persist via StateManager.update_baseline (which writes through
+    config.write_baseline).
+    """
+    if cfg.get("N_GPU_LAYERS", -1) != -1:
+        return None
+    if detect_hardware_capabilities().get("has_gpu"):
+        return None
+    return {**cfg, "N_GPU_LAYERS": 0}
+
+
+def filter_search_space_for_cpu(
+    search_space: dict[str, list[Any]], n_gpu_layers: int
+) -> dict[str, list[Any]]:
+    """Drop GPU-only speculative knobs when the active Baseline is CPU-only.
+
+    N_GPU_LAYERS==0 excludes CPU_EXCLUDED_SEARCH_KEYS; Auto (-1) or GPU (N>0)
+    keeps the full space. Returns a copy, never mutating the input.
+    """
+    if n_gpu_layers == 0:
+        return {k: v for k, v in search_space.items() if k not in CPU_EXCLUDED_SEARCH_KEYS}
+    return dict(search_space)
+
 
 # ── Graceful shutdown ────────────────────────────────────────────────────
 _stop_requested = False
@@ -569,6 +605,13 @@ def main():
             baseline_cfg = load_config(state_manager.get_baseline())
             selected_models = [baseline_cfg.get("MODEL", "g4-opt-it-Q4_K_M.gguf")]
 
+    # ── CPU preflight (issue #19) ──────────────────────────────────────
+    # Decide the seed up-front (pure); persist after the dry-run gate below
+    # so a --dry-run stays side-effect-free. CPU-only hosts never keep
+    # N_GPU_LAYERS Auto (-1) burning Trials.
+    preflight_cfg = load_config(state_manager.get_baseline())
+    cpu_seed = apply_cpu_preflight(preflight_cfg)
+
     print("=" * 60)
     print("  AUTONOMOUS HILL-CLIMBING LOOP")
     print(f"  Target models: {', '.join(selected_models)}")
@@ -594,6 +637,9 @@ def main():
         active_search_space = {k: v for k, v in SEARCH_SPACE.items() if k in ENGINE_KEYS}
     elif cli_args.mode == "quality":
         active_search_space = {k: v for k, v in SEARCH_SPACE.items() if k in SAMPLER_KEYS}
+    active_search_space = filter_search_space_for_cpu(
+        active_search_space, (cpu_seed or preflight_cfg).get("N_GPU_LAYERS", -1)
+    )
 
     search_strategy = SearchStrategy(active_search_space, use_pareto_tiebreaker=True)
 
@@ -610,6 +656,10 @@ def main():
                 print(f"    - {n.changed}: {n.old} -> {n.new}")
         print("[DRY-RUN] Done.")
         return
+
+    if cpu_seed is not None:
+        state_manager.update_baseline(cpu_seed)
+        print("[AUTOLOOP] CPU-only host: N_GPU_LAYERS Auto (-1) -> 0 (CPU Baseline seeded).")
 
     runner = ExperimentRunner(MODELS_DIR)
     for model_name in selected_models:

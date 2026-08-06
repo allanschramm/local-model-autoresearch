@@ -840,7 +840,13 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")
     @patch("autoloop.load_config")
-    def test_main_dry_run_runs_no_trials(self, mock_lcfg, mock_runner_cls, _mock_models):
+    @patch(
+        "autoloop.detect_hardware_capabilities",
+        return_value={"has_gpu": False, "physical_cores": 8, "ram_mb": 16384.0},
+    )
+    def test_main_dry_run_runs_no_trials(
+        self, mock_detect, mock_lcfg, mock_runner_cls, _mock_models
+    ):
         """--dry-run prints the plan; no benchmarks, no runner, no writes."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
         with patch("autoloop.get_git_commit", return_value="abc"):
@@ -854,7 +860,13 @@ class TestAutoLoop(unittest.TestCase):
     @patch("autoloop.ExperimentRunner")
     @patch("autoloop.load_config")
     @patch("autoloop.SearchState.update_baseline")
-    def test_main_profile_dry_run(self, mock_wcfg, mock_lcfg, mock_runner_cls, _mock_models):
+    @patch(
+        "autoloop.detect_hardware_capabilities",
+        return_value={"has_gpu": False, "physical_cores": 8, "ram_mb": 16384.0},
+    )
+    def test_main_profile_dry_run(
+        self, mock_detect, mock_wcfg, mock_lcfg, mock_runner_cls, _mock_models
+    ):
         """--profile day --dry-run prints the pick plan; no Baseline write, no Trial."""
         mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
         picked = self._full_config(MODEL="test.gguf", THREADS=12)
@@ -993,6 +1005,169 @@ class TestAutoLoop(unittest.TestCase):
 
         mock_scalar.assert_called()
         mock_wcfg.assert_called()
+
+
+class TestAutoLoopCpuPreflight(TestAutoLoop):
+    """CPU preflight + CPU Search Space filtering (issue #19).
+
+    Inherits TestAutoLoop's hermetic setUp/tearDown and config factories.
+    """
+
+    def test_search_space_includes_numa(self):
+        self.assertIn("NUMA", autoloop.SEARCH_SPACE)
+        self.assertEqual(autoloop.SEARCH_SPACE["NUMA"], [None, "distribute", "isolate"])
+
+    @patch(
+        "autoloop.detect_hardware_capabilities",
+        return_value={"has_gpu": False, "physical_cores": 8, "ram_mb": 16384.0},
+    )
+    def test_apply_cpu_preflight_no_gpu_seeds_zero(self, _mock_detect):
+        """Auto (-1) on a GPU-less host -> seed N_GPU_LAYERS=0."""
+        out = autoloop.apply_cpu_preflight({"N_GPU_LAYERS": -1, "THREADS": 8})
+        self.assertEqual(out["N_GPU_LAYERS"], 0)
+        self.assertEqual(out["THREADS"], 8)
+
+    @patch(
+        "autoloop.detect_hardware_capabilities",
+        return_value={"has_gpu": True, "physical_cores": 8, "ram_mb": 16384.0},
+    )
+    def test_apply_cpu_preflight_gpu_keeps_auto(self, _mock_detect):
+        """Auto (-1) with a GPU present -> leave Auto (-1), no seed."""
+        self.assertIsNone(autoloop.apply_cpu_preflight({"N_GPU_LAYERS": -1}))
+
+    @patch("autoloop.detect_hardware_capabilities")
+    def test_apply_cpu_preflight_explicit_ngl_not_overridden(self, mock_detect):
+        """Explicit N_GPU_LAYERS (0 or N) is never overridden; no detection runs."""
+        self.assertIsNone(autoloop.apply_cpu_preflight({"N_GPU_LAYERS": 0}))
+        self.assertIsNone(autoloop.apply_cpu_preflight({"N_GPU_LAYERS": 42}))
+        mock_detect.assert_not_called()
+
+    def test_apply_cpu_preflight_missing_key_treated_as_auto(self):
+        """Stale baseline without N_GPU_LAYERS reads as Auto (-1)."""
+        with patch(
+            "autoloop.detect_hardware_capabilities",
+            return_value={"has_gpu": False, "physical_cores": 8, "ram_mb": 16384.0},
+        ):
+            out = autoloop.apply_cpu_preflight({"THREADS": 8})
+        self.assertEqual(out["N_GPU_LAYERS"], 0)
+
+    def test_filter_search_space_for_cpu_drops_speculative(self):
+        space = {
+            "SPEC_DRAFT_N_MAX": [0, 1, 2],
+            "THREADS": [6, 8],
+            "NUMA": [None, "distribute"],
+        }
+        out = autoloop.filter_search_space_for_cpu(space, 0)
+        self.assertNotIn("SPEC_DRAFT_N_MAX", out)
+        self.assertIn("THREADS", out)
+        self.assertIn("NUMA", out)
+
+    def test_filter_search_space_for_cpu_gpu_or_auto_keeps_speculative(self):
+        space = {"SPEC_DRAFT_N_MAX": [0, 1, 2], "THREADS": [6, 8]}
+        self.assertIn("SPEC_DRAFT_N_MAX", autoloop.filter_search_space_for_cpu(space, -1))
+        self.assertIn("SPEC_DRAFT_N_MAX", autoloop.filter_search_space_for_cpu(space, 1))
+
+    def test_filter_search_space_for_cpu_returns_copy(self):
+        space = {"THREADS": [6, 8]}
+        out = autoloop.filter_search_space_for_cpu(space, -1)
+        out["THREADS"] = [999]
+        self.assertEqual(space["THREADS"], [6, 8])
+
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
+    @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
+    @patch("autoloop.ExperimentRunner")
+    @patch("autoloop.load_config")
+    @patch("autoloop.get_git_commit", return_value="abc")
+    @patch("autoloop.write_row")
+    @patch("autoloop.estimate_vram_mb", return_value=1000.0)
+    @patch(
+        "autoloop.detect_hardware_capabilities",
+        return_value={"has_gpu": False, "physical_cores": 8, "ram_mb": 16384.0},
+    )
+    def test_main_cpu_preflight_seeds_baseline_and_filters_search_space(
+        self,
+        mock_detect,
+        mock_vram,
+        mock_write_row,
+        mock_git,
+        mock_lcfg,
+        mock_runner_cls,
+        _mock_models,
+    ):
+        """main() on a CPU host seeds N_GPU_LAYERS=0 and drops SPEC_DRAFT_N_MAX."""
+        mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
+        mock_runner = MagicMock()
+        mock_runner.run_trial.return_value = self._make_trial_result()
+        mock_runner_cls.return_value = mock_runner
+
+        captured = {}
+        real = autoloop.SearchStrategy
+
+        class Spy(real):
+            def __init__(self, search_space, **kwargs):
+                captured["search_space"] = search_space
+                super().__init__(search_space, **kwargs)
+
+        with patch("autoloop.SearchStrategy", Spy):
+            with patch.object(SearchStrategy, "get_neighbors", return_value=[]):
+                with patch.object(SearchStrategy, "random_restart", return_value=None):
+                    with patch("autoloop.SearchState.update_baseline") as mock_wcfg:
+                        autoloop.main()
+
+        # Preflight seeded N_GPU_LAYERS=0 into the Baseline via update_baseline.
+        self.assertTrue(
+            any(call.args[0].get("N_GPU_LAYERS") == 0 for call in mock_wcfg.call_args_list)
+        )
+        # Active Search Space excludes the GPU-only speculative knob.
+        self.assertIn("SPEC_DRAFT_N_MAX", autoloop.SEARCH_SPACE)
+        self.assertNotIn("SPEC_DRAFT_N_MAX", captured["search_space"])
+
+    @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
+    @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
+    @patch("autoloop.ExperimentRunner")
+    @patch("autoloop.load_config")
+    @patch("autoloop.get_git_commit", return_value="abc")
+    @patch("autoloop.write_row")
+    @patch("autoloop.estimate_vram_mb", return_value=1000.0)
+    @patch(
+        "autoloop.detect_hardware_capabilities",
+        return_value={"has_gpu": True, "physical_cores": 8, "ram_mb": 16384.0},
+    )
+    def test_main_gpu_keeps_auto_and_full_search_space(
+        self,
+        mock_detect,
+        mock_vram,
+        mock_write_row,
+        mock_git,
+        mock_lcfg,
+        mock_runner_cls,
+        _mock_models,
+    ):
+        """main() with a GPU keeps Auto (-1) and the full Search Space."""
+        mock_lcfg.return_value = self._full_config(MODEL="test.gguf")
+        mock_runner = MagicMock()
+        mock_runner.run_trial.return_value = self._make_trial_result()
+        mock_runner_cls.return_value = mock_runner
+
+        captured = {}
+        real = autoloop.SearchStrategy
+
+        class Spy(real):
+            def __init__(self, search_space, **kwargs):
+                captured["search_space"] = search_space
+                super().__init__(search_space, **kwargs)
+
+        with patch("autoloop.SearchStrategy", Spy):
+            with patch.object(SearchStrategy, "get_neighbors", return_value=[]):
+                with patch.object(SearchStrategy, "random_restart", return_value=None):
+                    with patch("autoloop.SearchState.update_baseline") as mock_wcfg:
+                        autoloop.main()
+
+        # No N_GPU_LAYERS=0 seed on a GPU host.
+        self.assertFalse(
+            any(call.args[0].get("N_GPU_LAYERS") == 0 for call in mock_wcfg.call_args_list)
+        )
+        self.assertIn("SPEC_DRAFT_N_MAX", captured["search_space"])
 
 
 if __name__ == "__main__":
