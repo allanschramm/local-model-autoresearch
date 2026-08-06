@@ -51,7 +51,9 @@ copilot-instructions.md
 .agents/
 .claude/
 .pi/
+.gemini/
 docs/agents/
+skills-lock.json
 
 # OS
 .DS_Store
