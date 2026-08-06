@@ -15,6 +15,7 @@ Baseline persists in config.py; results in results.tsv.
 """
 
 import json
+import re
 import signal
 import sys
 from pathlib import Path
@@ -191,117 +192,160 @@ def load_config(baseline_cfg: dict[str, Any] | None = None) -> dict[str, Any]:
     return result
 
 
+# ── Alias sync (issue #40) ──────────────────────────────────────────────
+# Trailing GGUF quant tag (Q4_K_M, IQ4_XS, Q8_0, BF16, ...). Stripped from the
+# family slug so a quant change overwrites the same alias (one per family).
+_QUANT_TAG_RE = re.compile(
+    r"[-_](?:[IQT]?[QK]?\d(?:_[A-Za-z0-9]+)+|BF16|FP\d+|F16|F32|E4M3|E5M2)$",
+    re.IGNORECASE,
+)
+
+
+def _family_slug(model_name: str) -> str:
+    """Kebab-case family slug from a GGUF basename (quant tag stripped).
+
+    'Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf' -> 'qwen3.6-35b-a3b-ud'
+    """
+    stem = model_name[:-5] if model_name.lower().endswith(".gguf") else model_name
+    stem = _QUANT_TAG_RE.sub("", stem)
+    slug = re.sub(r"[^a-z0-9.]+", "-", stem.lower()).strip("-")
+    return slug or "model"
+
+
+def _match_alias_dir(aliases_dir: Path, model_name: str) -> Path | None:
+    """Existing alias dir whose name is a lowercase prefix of the model basename."""
+    if not aliases_dir.exists():
+        return None
+    model_lower = model_name.lower()
+    for d in aliases_dir.iterdir():
+        if d.is_dir() and model_lower.startswith(d.name.lower()):
+            return d
+    return None
+
+
+def _compile_alias_flags(model_name: str, new_cfg: dict, existing_flags: list) -> list[str]:
+    """llama-server flags for the alias recipe from the record Trial Baseline."""
+    flags: list[str] = []
+    existing_ngl = next(
+        (
+            flag
+            for flag in existing_flags
+            if isinstance(flag, str) and flag.startswith(("--n-gpu-layers ", "-ngl "))
+        ),
+        None,
+    )
+    if new_cfg.get("JINJA"):
+        flags.append("--jinja")
+    if new_cfg.get("CTX_SIZE"):
+        flags.append(f"--ctx-size {new_cfg['CTX_SIZE']}")
+    configured_ngl = new_cfg.get("N_GPU_LAYERS")
+    if configured_ngl is not None:
+        flags.append(f"--n-gpu-layers {int(configured_ngl)}")
+    elif existing_ngl:
+        flags.append(existing_ngl)
+
+    model_path = resolve_model_path(MODELS_DIR, model_name)
+    n_cpu_moe, _ = resolve_n_cpu_moe(model_path, new_cfg.get("N_CPU_MOE"))
+    if n_cpu_moe is not None:
+        flags.append(f"--n-cpu-moe {n_cpu_moe}")
+
+    k_val = new_cfg.get("KV_CACHE_K") or new_cfg.get("KV_CACHE")
+    if k_val:
+        flags.append(f"--cache-type-k {k_val}")
+
+    v_val = new_cfg.get("KV_CACHE_V") or new_cfg.get("KV_CACHE")
+    if v_val:
+        flags.append(f"--cache-type-v {v_val}")
+
+    if new_cfg.get("FLASH_ATTN"):
+        flags.append(f"--flash-attn {new_cfg['FLASH_ATTN']}")
+    if new_cfg.get("THREADS"):
+        flags.append(f"--threads {new_cfg['THREADS']}")
+    if new_cfg.get("THREADS_BATCH"):
+        flags.append(f"--threads-batch {new_cfg['THREADS_BATCH']}")
+    if new_cfg.get("BATCH_SIZE"):
+        flags.append(f"--batch-size {new_cfg['BATCH_SIZE']}")
+    if new_cfg.get("UBATCH_SIZE"):
+        flags.append(f"--ubatch-size {new_cfg['UBATCH_SIZE']}")
+    if new_cfg.get("CONT_BATCHING"):
+        flags.append("--cont-batching")
+    if new_cfg.get("NO_MMAP"):
+        flags.append("--no-mmap")
+
+    spec_type = new_cfg.get("SPEC_TYPE")
+    if spec_type and spec_type != "none":
+        flags.append(f"--spec-type {spec_type}")
+        if new_cfg.get("SPEC_DRAFT_N_MAX", 0) > 0:
+            flags.append(f"--spec-draft-n-max {new_cfg['SPEC_DRAFT_N_MAX']}")
+        if new_cfg.get("SPEC_DRAFT_MODEL"):
+            flags.append(f"--spec-draft-model models/{new_cfg['SPEC_DRAFT_MODEL']}")
+
+    for p in ["TEMP", "TOP_P", "TOP_K", "MIN_P", "REPEAT_PENALTY", "PRESENCE_PENALTY"]:
+        val = new_cfg.get(p)
+        if val is not None:
+            flags.append(f"--{p.lower().replace('_', '-')} {val}")
+    return flags
+
+
+def _touch_metrics(data: dict, tps: float, marker: str) -> None:
+    """Stamp metrics on an alias config; `marker` is the autoloop notes tag."""
+    import datetime
+
+    if "metrics" not in data or not isinstance(data["metrics"], dict):
+        data["metrics"] = {}
+    data["metrics"]["tps"] = float(tps)
+    data["metrics"]["measured_at"] = datetime.date.today().strftime("%Y-%m-%d")
+    data["metrics"]["measured_by"] = "autoloop"
+    notes = data["metrics"].get("notes", "")
+    if notes and marker not in notes:
+        data["metrics"]["notes"] = f"{notes} {marker}"
+    elif not notes:
+        data["metrics"]["notes"] = marker
+
+
 def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) -> None:
-    """Resolve model alias in models/aliases/ and update its config.yaml with new flags and TPS."""
+    """Sync the family alias under models/aliases/ with the record Trial (issue #40).
+
+    Existing alias (lowercase-prefix family match) -> update flags + preferred
+    quant (model:) + metrics. Missing -> create the kebab-case family alias.
+    Quant changes overwrite the same alias: one preferred quant per family.
+    Never writes outside models/; config stays machine-local (gitignored).
+    """
     import yaml
 
     aliases_dir = Path(__file__).resolve().parent / "models" / "aliases"
-    if not aliases_dir.exists():
-        return
-
-    # Option A: Automatic convention matching (lowercase prefix)
-    model_lower = model_name.lower()
-    target_dir = None
-    for d in aliases_dir.iterdir():
-        if d.is_dir() and model_lower.startswith(d.name.lower()):
-            target_dir = d
-            break
-
-    if not target_dir:
-        return
-
-    yaml_path = target_dir / "config.yaml"
-    if not yaml_path.exists():
-        return
-
     try:
-        with open(yaml_path, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        target_dir = _match_alias_dir(aliases_dir, model_name)
+        created = target_dir is None
+        if target_dir is None:
+            target_dir = aliases_dir / _family_slug(model_name)
+            target_dir.mkdir(parents=True, exist_ok=True)
 
-        # 1. Compile flags from new_cfg
-        flags = []
-        existing_ngl = next(
-            (
-                flag
-                for flag in data.get("flags", [])
-                if isinstance(flag, str) and flag.startswith(("--n-gpu-layers ", "-ngl "))
-            ),
-            None,
+        yaml_path = target_dir / "config.yaml"
+        if yaml_path.exists():
+            with open(yaml_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+        else:
+            data = {
+                "alias": target_dir.name,
+                "port": 18080,
+                "host": "127.0.0.1",
+                "description": f"Alias for {model_name} (auto-created by autoloop).",
+                "status": "ready",
+            }
+
+        # Quant change -> preferred quant; flags/metrics follow the record Trial.
+        data["model"] = f"models/{model_name}"
+        data["flags"] = _compile_alias_flags(model_name, new_cfg, data.get("flags", []))
+        _touch_metrics(
+            data, tps, "Auto-created by autoloop" if created else "(Auto-updated by autoloop)"
         )
-        if new_cfg.get("JINJA"):
-            flags.append("--jinja")
-        if new_cfg.get("CTX_SIZE"):
-            flags.append(f"--ctx-size {new_cfg['CTX_SIZE']}")
-        configured_ngl = new_cfg.get("N_GPU_LAYERS")
-        if configured_ngl is not None:
-            flags.append(f"--n-gpu-layers {int(configured_ngl)}")
-        elif existing_ngl:
-            flags.append(existing_ngl)
 
-        model_path = resolve_model_path(MODELS_DIR, model_name)
-        n_cpu_moe, _ = resolve_n_cpu_moe(model_path, new_cfg.get("N_CPU_MOE"))
-        if n_cpu_moe is not None:
-            flags.append(f"--n-cpu-moe {n_cpu_moe}")
-
-        k_val = new_cfg.get("KV_CACHE_K") or new_cfg.get("KV_CACHE")
-        if k_val:
-            flags.append(f"--cache-type-k {k_val}")
-
-        v_val = new_cfg.get("KV_CACHE_V") or new_cfg.get("KV_CACHE")
-        if v_val:
-            flags.append(f"--cache-type-v {v_val}")
-
-        if new_cfg.get("FLASH_ATTN"):
-            flags.append(f"--flash-attn {new_cfg['FLASH_ATTN']}")
-        if new_cfg.get("THREADS"):
-            flags.append(f"--threads {new_cfg['THREADS']}")
-        if new_cfg.get("THREADS_BATCH"):
-            flags.append(f"--threads-batch {new_cfg['THREADS_BATCH']}")
-        if new_cfg.get("BATCH_SIZE"):
-            flags.append(f"--batch-size {new_cfg['BATCH_SIZE']}")
-        if new_cfg.get("UBATCH_SIZE"):
-            flags.append(f"--ubatch-size {new_cfg['UBATCH_SIZE']}")
-        if new_cfg.get("CONT_BATCHING"):
-            flags.append("--cont-batching")
-        if new_cfg.get("NO_MMAP"):
-            flags.append("--no-mmap")
-
-        spec_type = new_cfg.get("SPEC_TYPE")
-        if spec_type and spec_type != "none":
-            flags.append(f"--spec-type {spec_type}")
-            if new_cfg.get("SPEC_DRAFT_N_MAX", 0) > 0:
-                flags.append(f"--spec-draft-n-max {new_cfg['SPEC_DRAFT_N_MAX']}")
-            if new_cfg.get("SPEC_DRAFT_MODEL"):
-                flags.append(f"--spec-draft-model models/{new_cfg['SPEC_DRAFT_MODEL']}")
-
-        for p in ["TEMP", "TOP_P", "TOP_K", "MIN_P", "REPEAT_PENALTY", "PRESENCE_PENALTY"]:
-            val = new_cfg.get(p)
-            if val is not None:
-                flags.append(f"--{p.lower().replace('_', '-')} {val}")
-
-        data["flags"] = flags
-
-        # 2. Update metrics
-        if "metrics" not in data or not isinstance(data["metrics"], dict):
-            data["metrics"] = {}
-        data["metrics"]["tps"] = float(tps)
-
-        import datetime
-
-        data["metrics"]["measured_at"] = datetime.date.today().strftime("%Y-%m-%d")
-        data["metrics"]["measured_by"] = "autoloop"
-
-        notes = data["metrics"].get("notes", "")
-        if notes and "(Auto-updated by autoloop)" not in notes:
-            data["metrics"]["notes"] = f"{notes} (Auto-updated by autoloop)"
-        elif not notes:
-            data["metrics"]["notes"] = "Auto-updated by autoloop"
-
-        # 3. Write back with formatting preserved
         with open(yaml_path, "w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
 
-        print(f"  [ALIAS] Automatically updated alias config at {yaml_path}")
+        verb = "created" if created else "updated"
+        print(f"  [ALIAS] Auto-{verb} alias config at {yaml_path}")
     except Exception as e:
         print(f"  [WARNING] Failed to auto-update alias config: {e}")
 

@@ -620,6 +620,105 @@ class TestAutoLoop(unittest.TestCase):
             self.assertNotIn("--n-gpu-layers 42", updated["flags"])
             self.assertIn("--threads 4", updated["flags"])
 
+    def test_family_slug(self):
+        self.assertEqual(
+            autoloop._family_slug("Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"), "qwen3.6-35b-a3b-ud"
+        )
+        self.assertEqual(autoloop._family_slug("POCKET-35B-Q3_K_M.gguf"), "pocket-35b")
+        self.assertEqual(
+            autoloop._family_slug("LFM2.5-1.2B-Instruct-Q8_0.gguf"), "lfm2.5-1.2b-instruct"
+        )
+        self.assertEqual(autoloop._family_slug("Qwythos-9B-v2-Q4_K_M.gguf"), "qwythos-9b-v2")
+        self.assertEqual(
+            autoloop._family_slug("mtp-gemma-4-26B-A4B-it.gguf"), "mtp-gemma-4-26b-a4b-it"
+        )
+        # Quant tags never survive the slug: quants of a family map to one alias.
+        self.assertEqual(
+            autoloop._family_slug("Fam-9B-Q4_K_M.gguf"),
+            autoloop._family_slug("Fam-9B-Q3_K_XL.gguf"),
+        )
+
+    @patch("autoloop.Path")
+    def test_update_model_alias_creates_when_missing(self, mock_path_cls):
+        """First Trial for a family creates the kebab-case alias if missing."""
+        import yaml
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            aliases_dir = Path(tmpdir) / "models" / "aliases"
+            aliases_dir.mkdir(parents=True)
+
+            mock_path = MagicMock()
+            mock_path.resolve.return_value.parent = Path(tmpdir)
+            mock_path_cls.return_value = mock_path
+
+            new_cfg = {
+                "CTX_SIZE": 131072,
+                "JINJA": True,
+                "THREADS": 8,
+                "KV_CACHE_K": "q4_0",
+                "KV_CACHE_V": "q4_0",
+                "FLASH_ATTN": "on",
+                "N_CPU_MOE": 32,
+            }
+            autoloop.update_model_alias("TestFamily-9B-A3B-UD-Q4_K_M.gguf", new_cfg, 25.5, "tps")
+
+            alias_dir = aliases_dir / "testfamily-9b-a3b-ud"
+            self.assertTrue(alias_dir.is_dir())
+            yaml_path = alias_dir / "config.yaml"
+            self.assertTrue(yaml_path.exists())
+            with open(yaml_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+
+            self.assertEqual(data["alias"], "testfamily-9b-a3b-ud")
+            self.assertEqual(data["model"], "models/TestFamily-9B-A3B-UD-Q4_K_M.gguf")
+            self.assertEqual(data["port"], 18080)
+            self.assertEqual(data["host"], "127.0.0.1")
+            self.assertEqual(data["status"], "ready")
+            self.assertEqual(data["metrics"]["tps"], 25.5)
+            self.assertEqual(data["metrics"]["measured_by"], "autoloop")
+            self.assertIn("--jinja", data["flags"])
+            self.assertIn("--ctx-size 131072", data["flags"])
+            self.assertIn("--threads 8", data["flags"])
+            self.assertIn("--n-cpu-moe 32", data["flags"])
+            self.assertIn("--cache-type-k q4_0", data["flags"])
+
+    @patch("autoloop.Path")
+    def test_update_model_alias_quant_change_overwrites_same_alias(self, mock_path_cls):
+        """A new quant of the family overwrites the same alias, never a second one."""
+        import yaml
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            aliases_dir = Path(tmpdir) / "models" / "aliases"
+            alias_dir = aliases_dir / "testfamily-9b-a3b-ud"
+            alias_dir.mkdir(parents=True)
+            yaml_path = alias_dir / "config.yaml"
+            dummy = {
+                "alias": "testfamily-9b-a3b-ud",
+                "model": "models/TestFamily-9B-A3B-UD-Q4_K_M.gguf",
+                "flags": ["--n-gpu-layers 42"],
+                "metrics": {"tps": 20.0},
+            }
+            with open(yaml_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(dummy, f)
+
+            mock_path = MagicMock()
+            mock_path.resolve.return_value.parent = Path(tmpdir)
+            mock_path_cls.return_value = mock_path
+
+            autoloop.update_model_alias(
+                "TestFamily-9B-A3B-UD-Q4_K_XL.gguf", {"THREADS": 12, "N_GPU_LAYERS": 0}, 30.0, "tps"
+            )
+
+            with open(yaml_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+
+            self.assertEqual(len(list(aliases_dir.iterdir())), 1)
+            self.assertEqual(data["model"], "models/TestFamily-9B-A3B-UD-Q4_K_XL.gguf")
+            self.assertEqual(data["metrics"]["tps"], 30.0)
+            self.assertIn("--n-gpu-layers 0", data["flags"])
+            self.assertNotIn("--n-gpu-layers 42", data["flags"])
+            self.assertIn("--threads 12", data["flags"])
+
     @patch(
         "sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf", "--mode", "tps"]
     )
