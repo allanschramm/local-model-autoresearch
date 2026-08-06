@@ -39,6 +39,18 @@ Otimizador autônomo (hill-climbing) de flags de runtime de LLMs locais via `lla
 
 ---
 
+## Dashboard (operador, somente leitura)
+
+Painel local em **http://127.0.0.1:18765** (pt-BR) para acompanhar Baseline, últimos Trials e o log do Trial — sem controlar processos.
+
+```powershell
+.\venv\Scripts\python.exe -m ui
+```
+
+Detalhes: [ui/README.md](ui/README.md) · contrato: [ui/AGENTS.md](ui/AGENTS.md).
+
+---
+
 ## Quickstart (via Agente)
 
 Abra seu agente de coding (Claude Code, Codex, Pi Agent, OpenCode) e cole:

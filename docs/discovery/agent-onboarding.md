@@ -34,6 +34,15 @@ Bootstrap context for agents working on this repo.
 5. Only then download GGUF / `serve-config` / `verify_setup`
 6. Do **not** jump to claw validation with an oversized model
 
+## Operator dashboard (agent starts, human watches)
+
+Read-only UI at `http://127.0.0.1:18765` (`ui/`). **Agent** starts it when the human wants to monitor a Trial/Search; **human** watches the browser. Non-goals: no process control, no agent stdout panel, no Baseline/TSV mutation from the UI. See [ui/AGENTS.md](../../ui/AGENTS.md).
+
+```bash
+.\venv\Scripts\python.exe -m ui
+# ./venv/bin/python -m ui
+```
+
 ## Essential Commands
 
 ```bash

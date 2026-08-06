@@ -159,6 +159,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 - [autoresearch/AGENTS.md](autoresearch/AGENTS.md) — Core autotuning package (config, runners, benchmarks).
+- [ui/AGENTS.md](ui/AGENTS.md) — Read-only operator dashboard (localhost 18765, pt-BR).
 - `.agents/`, `.claude/`, `.cursor/`, `.pi/`, `.gemini/`, `docs/agents/`, `skills-lock.json` — machine-local harness (gitignored; not in clone).
 - [.pre-commit-config.yaml](.pre-commit-config.yaml) — Git pre-commit: Ruff + pytest (this repo only).
 - [pyproject.toml](pyproject.toml) — Ruff / pytest config for owned Python.
