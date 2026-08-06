@@ -249,6 +249,33 @@ class TestAutoLoop(unittest.TestCase):
         mock_write_row.assert_called()
         # "Exhausted random search space" reached → no crash
 
+    @patch(
+        "sys.argv",
+        ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf", "--mode", "tps"],
+    )
+    @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
+    @patch("autoloop.ExperimentRunner")
+    @patch("autoloop.load_config")
+    @patch("autoloop.SearchState.update_baseline")
+    @patch("autoloop.get_git_commit", return_value="abc123")
+    @patch("autoloop.write_row")
+    def test_main_defaults_use_config_n_gpu_layers(
+        self, mock_write_row, mock_git, mock_wcfg, mock_lcfg, mock_runner_cls, _mock_models
+    ):
+        """_defaults N_GPU_LAYERS comes from config, never a hardcoded 99."""
+        mock_lcfg.return_value = self._full_config(MODEL="test.gguf", N_GPU_LAYERS=0)
+        mock_runner = MagicMock()
+        mock_runner.run_trial.return_value = self._make_trial_result()
+        mock_runner_cls.return_value = mock_runner
+
+        with patch.object(SearchStrategy, "get_neighbors", return_value=[]):
+            with patch.object(SearchStrategy, "random_restart", return_value=None):
+                autoloop.main()
+
+        first_config = mock_runner.run_trial.call_args.args[0]
+        self.assertEqual(first_config["N_GPU_LAYERS"], 0)
+        self.assertNotIn("ngl", first_config)
+
     @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")
@@ -556,6 +583,42 @@ class TestAutoLoop(unittest.TestCase):
             self.assertIn("--n-cpu-moe 32", updated["flags"])
             self.assertIn("--no-mmap", updated["flags"])
             self.assertNotIn("--n-gpu-layers 99", updated["flags"])
+
+    @patch("autoloop.Path")
+    def test_update_model_alias_prefers_config_n_gpu_layers(self, mock_path_cls):
+        import yaml
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            aliases_dir = Path(tmpdir) / "models" / "aliases"
+            alias_dir = aliases_dir / "test-model"
+            alias_dir.mkdir(parents=True)
+
+            yaml_path = alias_dir / "config.yaml"
+            dummy_config = {
+                "alias": "test-model",
+                "model": "models/test-model-gguf",
+                "flags": ["--n-gpu-layers 42"],
+                "metrics": {"tps": 10.0},
+            }
+            with open(yaml_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(dummy_config, f)
+
+            mock_path = MagicMock()
+            mock_path.resolve.return_value.parent = Path(tmpdir)
+            mock_path_cls.return_value = mock_path
+
+            new_cfg = {
+                "THREADS": 4,
+                "N_GPU_LAYERS": 0,
+            }
+            autoloop.update_model_alias("test-model-v1.gguf", new_cfg, 25.5, "tps")
+
+            with open(yaml_path, encoding="utf-8") as f:
+                updated = yaml.safe_load(f)
+
+            self.assertIn("--n-gpu-layers 0", updated["flags"])
+            self.assertNotIn("--n-gpu-layers 42", updated["flags"])
+            self.assertIn("--threads 4", updated["flags"])
 
     @patch(
         "sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf", "--mode", "tps"]

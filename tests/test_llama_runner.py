@@ -137,6 +137,36 @@ class TestLlamaRunner(unittest.TestCase):
         self.assertIn("--n-cpu-moe", cmd)
         self.assertEqual(cmd[cmd.index("--n-cpu-moe") + 1], "0")
 
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_build_cmd_ngl_zero_cpu_only(self, mock_resolve):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        intent = ServerIntent(
+            model_path=Path("models/test-model.gguf"),
+            ctx_size=2048,
+            kv_cache="q4_0",
+            flash_attn="on",
+            ngl=0,
+        )
+        runner = LlamaServerRunner(intent)
+        cmd = runner._build_cmd(18080)
+        self.assertIn("--n-gpu-layers", cmd)
+        self.assertEqual(cmd[cmd.index("--n-gpu-layers") + 1], "0")
+
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_build_cmd_numa_distribute(self, mock_resolve):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        intent = ServerIntent(
+            model_path=Path("models/test-model.gguf"),
+            ctx_size=2048,
+            kv_cache="q4_0",
+            flash_attn="on",
+            numa="distribute",
+        )
+        runner = LlamaServerRunner(intent)
+        cmd = runner._build_cmd(18080)
+        self.assertIn("--numa", cmd)
+        self.assertEqual(cmd[cmd.index("--numa") + 1], "distribute")
+
     @patch("autoresearch.core.llama_runner.resolve_n_cpu_moe", return_value=(40, True))
     @patch("autoresearch.core.llama_runner.resolve_model_path")
     def test_from_config_auto_n_cpu_moe_from_block_count(self, mock_path, _mock_resolve_n):
@@ -175,6 +205,58 @@ class TestLlamaRunner(unittest.TestCase):
         self.assertFalse(intent.n_cpu_moe_auto)
         mock_resolve_n.assert_called_once()
         self.assertEqual(mock_resolve_n.call_args.args[1], 0)
+
+    @patch("autoresearch.core.llama_runner.resolve_n_cpu_moe", return_value=(None, False))
+    @patch("autoresearch.core.llama_runner.resolve_model_path")
+    def test_from_config_prefers_n_gpu_layers_over_legacy_ngl(self, mock_path, _mock_resolve_n):
+        mock_path.return_value = Path("models/model.gguf")
+        intent, _ = ServerIntent.from_config(
+            {
+                "MODEL": "model.gguf",
+                "CTX_SIZE": 4096,
+                "FLASH_ATTN": "on",
+                "BATCH_SIZE": 512,
+                "UBATCH_SIZE": 128,
+                "N_GPU_LAYERS": 0,
+                "ngl": 99,
+            },
+            Path("models"),
+        )
+        self.assertEqual(intent.ngl, 0)
+
+    @patch("autoresearch.core.llama_runner.resolve_n_cpu_moe", return_value=(None, False))
+    @patch("autoresearch.core.llama_runner.resolve_model_path")
+    def test_from_config_n_gpu_layers_minus_one_auto(self, mock_path, _mock_resolve_n):
+        mock_path.return_value = Path("models/model.gguf")
+        intent, _ = ServerIntent.from_config(
+            {
+                "MODEL": "model.gguf",
+                "CTX_SIZE": 4096,
+                "FLASH_ATTN": "on",
+                "BATCH_SIZE": 512,
+                "UBATCH_SIZE": 128,
+                "N_GPU_LAYERS": -1,
+            },
+            Path("models"),
+        )
+        self.assertEqual(intent.ngl, -1)
+
+    @patch("autoresearch.core.llama_runner.resolve_n_cpu_moe", return_value=(None, False))
+    @patch("autoresearch.core.llama_runner.resolve_model_path")
+    def test_from_config_numa(self, mock_path, _mock_resolve_n):
+        mock_path.return_value = Path("models/model.gguf")
+        intent, _ = ServerIntent.from_config(
+            {
+                "MODEL": "model.gguf",
+                "CTX_SIZE": 4096,
+                "FLASH_ATTN": "on",
+                "BATCH_SIZE": 512,
+                "UBATCH_SIZE": 128,
+                "NUMA": "distribute",
+            },
+            Path("models"),
+        )
+        self.assertEqual(intent.numa, "distribute")
 
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
     def test_build_cmd_traditional_speculative(self, mock_resolve):

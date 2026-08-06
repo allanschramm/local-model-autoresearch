@@ -196,7 +196,10 @@ def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) ->
             flags.append("--jinja")
         if new_cfg.get("CTX_SIZE"):
             flags.append(f"--ctx-size {new_cfg['CTX_SIZE']}")
-        if existing_ngl:
+        configured_ngl = new_cfg.get("N_GPU_LAYERS")
+        if configured_ngl is not None:
+            flags.append(f"--n-gpu-layers {int(configured_ngl)}")
+        elif existing_ngl:
             flags.append(existing_ngl)
 
         model_path = resolve_model_path(MODELS_DIR, model_name)
@@ -579,7 +582,7 @@ def main():
         "port": 18080,
         "host": "127.0.0.1",
         "parallel": 1,
-        "ngl": 99,
+        "N_GPU_LAYERS": load_config().get("N_GPU_LAYERS", -1),
         "max_tokens": 1024,
         "context_tokens": 131072,
     }

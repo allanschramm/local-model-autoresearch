@@ -156,6 +156,7 @@ class ServerIntent:
     threads: int = 8
     parallel: int = 1
     ngl: int = 999
+    numa: str | None = None
     kv_cache_k: str | None = None
     kv_cache_v: str | None = None
     threads_batch: int | None = None
@@ -219,7 +220,8 @@ class ServerIntent:
             flash_attn=norm.get("flash_attn", "on"),
             port=norm.get("port", 18080),
             host=norm.get("host", "127.0.0.1"),
-            ngl=norm.get("ngl", 99),
+            ngl=norm.get("n_gpu_layers", norm.get("ngl", 999)),
+            numa=norm.get("numa"),
             batch_size=norm.get("batch_size", 512),
             ubatch_size=norm.get("ubatch_size", 128),
             threads=norm.get("threads", 12),
@@ -781,6 +783,12 @@ class LlamaServerRunner:
             str(self.intent.parallel),
             "--n-gpu-layers",
             str(self.intent.ngl),
+        ]
+
+        if self.intent.numa:
+            cmd += ["--numa", self.intent.numa]
+
+        cmd += [
             "--cache-type-k",
             cache_type_k,
             "--cache-type-v",
