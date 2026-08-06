@@ -21,8 +21,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
   const poll = () => {
     fetch('/api/status')
       .then(r => r.json())
-      .then(d => document.getElementById('status').textContent = JSON.stringify(d))
-      .catch(() => {});
+      .then(d => {
+        const statusElement = document.getElementById('status');
+        if (Object.keys(d).length === 0) {
+          // Handle empty state in pt-BR
+          statusElement.textContent = "Status: Nenhum dado encontrado.";
+        } else {
+          // Display data if present
+          statusElement.textContent = JSON.stringify(d);
+        }
+      })
+      .catch(() => {
+        // Handle polling errors
+        document.getElementById('status').textContent = "Erro ao carregar status.";
+      });
   };
   poll();
   setInterval(poll, 2500);

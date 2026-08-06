@@ -1,0 +1,1 @@
+# No external dependencies needed for the dashboard shell.
