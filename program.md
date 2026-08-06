@@ -31,7 +31,7 @@ Once the setup is clean, begin the Search.
 
 ## Evaluation Suite
 
-The runner executes a unified Trial and reports a single Val Score based on agentic coding capability. Claw-Eval quick is smoke validation; Claw-Eval full is the canonical Search quality gate. Both use local rule-based grading without Docker, remote APIs, or an LLM judge.
+The runner executes a unified Trial and reports the Objective Vector (agentic + coding axes) and a Trial Status. Claw-Eval quick is smoke validation; Claw-Eval full is the agentic axis and the canonical Search quality gate; coding-10 is the coding axis. Claw-Eval (quick and full) and the coding-10 suites use local rule-based grading without Docker, remote APIs, or an LLM judge. Val Score is retained only as a legacy display scalar.
 
 ### HumanEval+
 Basic algorithmic reasoning and Python proficiency.
@@ -45,15 +45,15 @@ Contamination-resistant competitive programming tasks.
 ### BigCodeBench Hard
 Library-call and API-heavy programming tasks.
 
-### Val Score & Throughput
-Claw-Eval full supplies the canonical `Val Score`. HumanEval+, MBPP+, LiveCodeBench, and BigCodeBench Hard are optional preflight checks; when enabled, each runs exactly 10 tasks and does not replace the agentic Val Score.
+### Throughput & the Objective Vector
+Claw-Eval full is the agentic axis; HumanEval+, MBPP+, LiveCodeBench, and BigCodeBench Hard form the coding axis (each runs exactly 10 tasks when enabled). The legacy `Val Score` (Claw-Eval full) is retained for display/compat only and is not the Search keep rule.
 
-If a Trial falls below the **TPS Floor** (Baseline `TPS_FLOOR`, default 20.0 TPS), the `Val Score` is aggressively zeroed to ensure runtime viability for interactive agent usage. Lower it for large MoE on constrained VRAM when measured speed is still usable.
+If a Trial falls below the **TPS Floor** (Baseline `TPS_FLOOR`, default 20.0 TPS), the legacy `Val Score` scalar is aggressively zeroed to ensure runtime viability for interactive agent usage. This does not redefine Pareto membership. Lower it for large MoE on constrained VRAM when measured speed is still usable.
 
 ### Constraints
 - **Hardware target:** Agnostic (optimize for your local GPU/VRAM).
 - **VRAM Safety:** Monitor peak VRAM to ensure stability.
-- **CPU Offload:** Partial offload is acceptable if throughput stays above the TPS Floor. Prefer full GPU (`--n-gpu-layers 999`) but trade speed for Val Score when needed.
+- **CPU Offload:** Partial offload is acceptable if throughput stays above the TPS Floor. Prefer full GPU (`--n-gpu-layers 999`) but trade speed for quality (agentic/coding axes) when needed.
 - **Flash Attention:** Must always be `on` (`-fa on`).
 
 ## What you CAN do
@@ -74,9 +74,9 @@ Each Trial logs exclusively to the canonical results file `results.tsv`. No othe
 ### Autonomous mode (preferred)
 Run `python autoloop.py` to start the SearchStrategy loop:
 1. Reads current Baseline from `autoresearch/core/config.py`.
-2. Runs all active benchmarks in a unified Trial (Claw-Eval full = Val Score; quick = smoke).
+2. Runs all active benchmarks in a unified Trial (Claw-Eval full = agentic axis; quick = smoke).
 3. Generates Neighbors by mutating a single parameter within the Search Space.
-4. Evaluates each Neighbor via a new Trial. If improved (or won via Pareto Tie-Breaker) → writes new Baseline to `config.py`.
+4. Evaluates each Neighbor via a new Trial. If it joins or improves the per-model Pareto Set (`SearchStrategy.improves_set`) → writes new Baseline to `config.py` (engine-only / quality-only incomplete vectors fall back to the legacy scalar rule).
 5. If at a Local Maxima → triggers a Random Restart.
 6. Loops forever until `Ctrl+C` (SIGINT). Baseline persists in `config.py`; visited memory in `.autoresearch_state.json`; results in `results.tsv`.
 
@@ -99,9 +99,9 @@ Use these exact terms in your reasoning and commit messages:
 - **Trial**: One complete execution of all benchmarks against a single configuration.
 - **Baseline**: The current best-known configuration in `autoresearch/core/config.py`.
 - **Neighbor**: A configuration derived from the Baseline by changing exactly one parameter.
-- **Val Score**: The scalar metric used for keep/discard decisions.
-- **Pareto Tie-Breaker**: Keep a Neighbor if it matches Baseline score but improves TPS by >5% or reduces VRAM by >5%.
-- **Local Maxima**: When all valid Neighbors fail to improve the score.
+- **Val Score**: Legacy display scalar (historically Claw-Eval full). Retained for compat; not the Search keep rule. Canonical decision = Trial Status via the Pareto nucleus.
+- **Neighbor Acceptance**: A Neighbor is kept when it joins or improves the per-model Pareto Set (SearchStrategy.improves_set). Engine-only / quality-only incomplete vectors fall back to the legacy scalar rule (ADR 0006 decision 4). The scalar "TPS +5% / VRAM −5%" tie-breaker is superseded.
+- **Local Maxima**: When all valid Neighbors fail to improve the Pareto Set / Trial Status.
 - **Random Restart**: Generating a random configuration far from Baseline to escape Local Maxima.
 
 ## Model Acquisition & Troubleshooting
