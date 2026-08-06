@@ -20,8 +20,20 @@ def test_pareto_front_keeps_non_dominated_only():
     assert names == {"A", "B"}
 
 
+def test_day_pick_tps_floor_then_max_iq():
+    # Day TPS floor = 50.0; night (35 TPS) and kat (30 TPS) out; fast_smart (64 TPS, IQ 0.47) beats fast_weak (166 TPS, IQ 0.35)
+    front = [
+        rr.Point("night", ctx=65536, tps=35.0, agentic=0.67, coding=0.62),
+        rr.Point("fast_smart", ctx=32768, tps=64.0, agentic=0.47, coding=0.58),
+        rr.Point("fast_weak", ctx=65536, tps=166.0, agentic=0.60, coding=0.35),
+    ]
+    pick = rr.pick_day(front, day_tps_floor=50.0)
+    assert pick is not None
+    assert pick.model == "fast_smart"
+
+
 def test_day_pick_iq_band_then_max_tps():
-    # IQ_best = min(0.6,0.64)=0.6 → floor 0.45; A min=0.35 out; B wins TPS in band
+    # Legacy ratio override check: IQ_best = min(0.6,0.64)=0.6 → floor 0.45; A min=0.35 out; B wins TPS in band
     front = [
         rr.Point("night", ctx=65536, tps=35.0, agentic=0.67, coding=0.62),
         rr.Point("day", ctx=32768, tps=64.0, agentic=0.47, coding=0.58),

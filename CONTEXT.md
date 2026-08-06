@@ -35,16 +35,16 @@ Identity of a configuration for merge and frontier membership: the full `ENGINE_
 _Avoid_: model-only key, engine-only key
 
 **Usage Profile**:
-A selection lens over the Pareto Set, not a separate frontier. **Day** (supervised): among points with `min(agentic, coding) ≥ DAY_IQ_RATIO × max(min on the set)`, maximize TPS; ties → higher `min`, then ctx (default `DAY_IQ_RATIO=0.75`). Empty band → max `min(agentic, coding)` then TPS. **Night** requires `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`, with fallback to max ctx if none qualify (unsupervised long loops). Student-facing **usage** framing (no selection math) lives in [`teach/GLOSSARY.md`](teach/GLOSSARY.md) and [`teach/SPEC.md`](teach/SPEC.md).
-_Avoid_: separate day/night frontiers, Day = pure max TPS, Day = speed-band-first, TPS Floor as frontier rule
+A selection lens over the Pareto Set, not a separate frontier. **Day** (supervised): among points clearing `TPS ≥ DAY_TPS_FLOOR` (default `50.0 TPS`), maximize `min(agentic, coding)`; ties → higher TPS, then ctx ([ADR 0009](docs/adr/0009-day-profile-tps-floor.md)). Fallback if none clear floor → max TPS. **Night** requires `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`, with fallback to max ctx if none qualify (unsupervised long loops). Student-facing **usage** framing (no selection math) lives in [`teach/GLOSSARY.md`](teach/GLOSSARY.md) and [`teach/SPEC.md`](teach/SPEC.md).
+_Avoid_: separate day/night frontiers, Day = pure max TPS without speed floor, TPS Floor as frontier rule
+
+**DAY_TPS_FLOOR**:
+Minimum TPS required for Day profile selection (default 50.0 TPS; [ADR 0009](docs/adr/0009-day-profile-tps-floor.md)). Filters out slow models (< 50 TPS) for snappy daytime interactive terminal use. Day then maximizes `min(agentic, coding)` among points meeting the floor.
+_Avoid_: Day = 30 TPS models, Day = pure max TPS without floor
 
 **DAY_IQ_RATIO**:
-Fraction of the Pareto Set’s best `min(agentic, coding)` required to enter the Day IQ band (default 0.75). Day then maximizes TPS inside that band. Raise toward 0.8 when Day work is as quality-sensitive as Night.
-_Avoid_: absolute IQ floor, Day = max TPS, Day = speed band first
-
-**DAY_TPS_RATIO**:
-Deprecated Day gate from ADR 0007 (speed band first). Superseded by `DAY_IQ_RATIO` ([ADR 0008](docs/adr/0008-day-iq-epsilon-then-tps.md)).
-_Avoid_: using as current Day rule
+Legacy Day gate ratio from ADR 0008. Superseded by `DAY_TPS_FLOOR` ([ADR 0009](docs/adr/0009-day-profile-tps-floor.md)), available as an optional CLI flag override (`--day-iq-ratio`).
+_Avoid_: using as default Day rule
 
 **NIGHT_CTX_FLOOR**:
 Minimum configured `CTX_SIZE` for Night profile selection (default 65536). Revisitable when project architecture / ticket size / compaction change how much context night loops need.
