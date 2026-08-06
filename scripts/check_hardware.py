@@ -36,6 +36,16 @@ __all__ = [
 ]
 
 
+def _describe_cores(physical_cores: int | None, logical_cores: int | None) -> str:
+    if physical_cores and logical_cores:
+        return f"{physical_cores} físicos / {logical_cores} lógicos"
+    if physical_cores:
+        return f"{physical_cores} físicos"
+    if logical_cores:
+        return f"{logical_cores} lógicos"
+    return ""
+
+
 def generate_recommendations(info: dict[str, Any]) -> None:
     ram = float(info.get("ram_gb") or 0.0)
     vram = float(info.get("vram_gb") or 0.0)
@@ -47,6 +57,9 @@ def generate_recommendations(info: dict[str, Any]) -> None:
     pool = model_pool_gb({**info, "memory_class": memory_class})
     chip = info.get("chip")
     detection_ok = ram > 0.0
+    physical_cores = info.get("physical_cores")
+    logical_cores = info.get("logical_cores")
+    simd = info.get("simd_hints")
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -55,7 +68,13 @@ def generate_recommendations(info: dict[str, Any]) -> None:
     print(" [PC] RECOMENDADOR DE IA LOCAL (Diagnóstico de Hardware)")
     print("=" * 60)
     print(f" * Sistema: {info.get('platform') or sys.platform}" + (f" / {chip}" if chip else ""))
-    print(f" * Processador / RAM: {ram} GB RAM")
+    cores_desc = _describe_cores(physical_cores, logical_cores)
+    ram_line = f" * Processador / RAM: {ram} GB RAM"
+    if cores_desc:
+        ram_line += f" ({cores_desc})"
+    print(ram_line)
+    if simd:
+        print(f" * SIMD (CPU): {', '.join(simd)}")
     print(f" * Placa de Vídeo (GPU): {info.get('gpu_name')}")
     if not detection_ok:
         print(" * DETECÇÃO INCOMPLETA: RAM = 0 — confirme manualmente antes de baixar modelos")
@@ -135,6 +154,18 @@ def generate_recommendations(info: dict[str, Any]) -> None:
     print(f" Modelo recomendado: {model}")
     print(f" Flag recomendada -ngl: {ngl}")
     print(f" Tamanho de contexto -c: {ctx}")
+    if memory_class == MEMORY_CLASS_UNIFIED and not has_metal:
+        threads = physical_cores or logical_cores
+        print("\nRECOMENDAÇÕES CPU-ONLY:")
+        print(" -ngl 0 (Somente CPU — sem offload parcial em GPU)")
+        if threads:
+            print(f" -t {threads} (threads = núcleos físicos)")
+        else:
+            print(" -t <núcleos físicos> (quantidade física, não lógica)")
+        print(
+            " NUMA: defina NUMA=distribute ou isolate em autoresearch/core/config.py "
+            "se o host tiver múltiplos sockets"
+        )
     print(" Velocidade: meça no seu hardware; não use estimativas como resultado")
     if memory_class == MEMORY_CLASS_UNIFIED:
         print(

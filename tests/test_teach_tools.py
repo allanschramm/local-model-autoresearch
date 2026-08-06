@@ -34,6 +34,8 @@ def test_cpu_recommendation_remains_cpu_only(capsys):
             "has_cuda": False,
             "has_metal": False,
             "memory_class": "unified_memory",
+            "physical_cores": 8,
+            "logical_cores": 16,
         }
     )
 
@@ -41,6 +43,45 @@ def test_cpu_recommendation_remains_cpu_only(capsys):
     assert "-ngl: 0" in output
     assert "Somente CPU" in output
     assert "unificada" in output.lower() or "unificado" in output.lower()
+    assert "8 físicos / 16 lógicos" in output
+    assert "-t 8" in output
+    assert "NUMA" in output
+
+
+def test_cores_and_simd_lines(capsys):
+    generate_recommendations(
+        {
+            "ram_gb": 16.0,
+            "vram_gb": 0.0,
+            "gpu_name": "Não detectada (CPU)",
+            "has_cuda": False,
+            "has_metal": False,
+            "memory_class": "unified_memory",
+            "physical_cores": 8,
+            "logical_cores": 16,
+            "simd_hints": ["avx512f", "avx2", "sse4_2"],
+        }
+    )
+
+    output = capsys.readouterr().out
+    assert "SIMD (CPU): avx512f, avx2, sse4_2" in output
+
+
+def test_simd_line_omitted_when_absent(capsys):
+    generate_recommendations(
+        {
+            "ram_gb": 16.0,
+            "vram_gb": 0.0,
+            "gpu_name": "Não detectada (CPU)",
+            "has_cuda": False,
+            "has_metal": False,
+            "memory_class": "unified_memory",
+        }
+    )
+
+    output = capsys.readouterr().out
+    assert "SIMD" not in output
+    assert "-ngl: 0" in output
 
 
 def test_mac_unified_metal_uses_gpu_not_cpu_only(capsys):

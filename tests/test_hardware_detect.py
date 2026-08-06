@@ -46,6 +46,83 @@ class TestDetectPhysicalCores(unittest.TestCase):
                     self.assertEqual(hardware.detect_physical_cores(), 12)
 
 
+class TestDetectSimdHints(unittest.TestCase):
+    def test_linux_parses_cpuinfo_flags(self):
+        cpuinfo = "processor\t: 0\nflags\t\t: fpu vme sse4_2 avx2 avx512f avx512_vnni\n"
+        with patch("autoresearch.core.hardware.sys.platform", "linux"):
+            with patch("builtins.open", mock_open(read_data=cpuinfo)):
+                self.assertEqual(
+                    hardware.detect_simd_hints(),
+                    ["avx512_vnni", "avx512f", "avx2", "sse4_2"],
+                )
+
+    def test_darwin_normalizes_mac_style_flags(self):
+        proc = MagicMock(stdout="SSE4.2 AVX1.0 AVX2.0 AVX512F F16C")
+        with patch("autoresearch.core.hardware.sys.platform", "darwin"):
+            with patch("autoresearch.core.hardware.subprocess.run", return_value=proc) as run:
+                self.assertEqual(
+                    hardware.detect_simd_hints(),
+                    ["avx512f", "avx2", "avx", "sse4_2", "f16c"],
+                )
+        run.assert_called_once()
+
+    def test_windows_returns_empty_without_crash(self):
+        with patch("autoresearch.core.hardware.sys.platform", "win32"):
+            self.assertEqual(hardware.detect_simd_hints(), [])
+
+    def test_linux_read_failure_returns_empty(self):
+        with patch("autoresearch.core.hardware.sys.platform", "linux"):
+            with patch("builtins.open", side_effect=OSError("no /proc/cpuinfo")):
+                self.assertEqual(hardware.detect_simd_hints(), [])
+
+    def test_returns_empty_when_no_relevant_flags(self):
+        cpuinfo = "flags\t\t: fpu vme pse\n"
+        with patch("autoresearch.core.hardware.sys.platform", "linux"):
+            with patch("builtins.open", mock_open(read_data=cpuinfo)):
+                self.assertEqual(hardware.detect_simd_hints(), [])
+
+
+class TestGetSystemInfo(unittest.TestCase):
+    def test_consumes_detect_hardware_capabilities(self):
+        with patch(
+            "autoresearch.core.hardware.detect_hardware_capabilities",
+            return_value={"has_gpu": False, "physical_cores": 6, "ram_mb": 24576.0},
+        ):
+            with patch("autoresearch.core.hardware.detect_nvidia", return_value=(None, 0.0, False)):
+                with patch(
+                    "autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)
+                ):
+                    with patch("os.cpu_count", return_value=12):
+                        with patch("autoresearch.core.hardware.detect_simd_hints", return_value=[]):
+                            info = hardware.get_system_info()
+
+        self.assertEqual(info["ram_mb"], 24576.0)
+        self.assertEqual(info["ram_gb"], 24.0)
+        self.assertEqual(info["physical_cores"], 6)
+        self.assertEqual(info["logical_cores"], 12)
+        self.assertFalse(info["has_gpu"])
+
+    def test_has_gpu_true_keeps_cuda_meaning(self):
+        with patch(
+            "autoresearch.core.hardware.detect_hardware_capabilities",
+            return_value={"has_gpu": True, "physical_cores": 8, "ram_mb": 32768.0},
+        ):
+            with patch(
+                "autoresearch.core.hardware.detect_nvidia", return_value=("RTX 4060", 8.0, True)
+            ):
+                with patch(
+                    "autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)
+                ):
+                    with patch("os.cpu_count", return_value=16):
+                        with patch("autoresearch.core.hardware.detect_simd_hints", return_value=[]):
+                            info = hardware.get_system_info()
+
+        self.assertTrue(info["has_gpu"])
+        self.assertTrue(info["has_cuda"])
+        self.assertEqual(info["vram_gb"], 8.0)
+        self.assertEqual(info["memory_class"], "discrete_gpu")
+
+
 class TestDetectHardwareCapabilities(unittest.TestCase):
     def test_returns_expected_dict_shape(self):
         with patch("autoresearch.core.hardware.detect_nvidia", return_value=_nvidia_probe(True)):

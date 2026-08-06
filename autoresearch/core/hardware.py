@@ -191,6 +191,60 @@ def detect_physical_cores() -> int | None:
     return os.cpu_count()
 
 
+_SIMD_ALIASES: dict[str, tuple[str, ...]] = {
+    "avx512_vnni": ("avx512vnni",),
+    "avx512f": ("avx512f",),
+    "avx2": ("avx2", "avx20"),
+    "avx": ("avx", "avx10"),
+    "sse4_2": ("sse42",),
+    "fma": ("fma",),
+    "f16c": ("f16c",),
+    "neon": ("neon", "asimd"),
+}
+
+
+def _normalize_simd(flag: str) -> str:
+    return flag.replace(".", "").replace("_", "").lower()
+
+
+def detect_simd_hints() -> list[str]:
+    """Best-effort CPU SIMD flags from stdlib probes. Empty when unavailable.
+
+    Linux reads the `/proc/cpuinfo` `flags` line; macOS reads
+    `sysctl machdep.cpu.features` (normalizing the mac-style `AVX1.0`/`AVX2.0`
+    names). Windows has no stdlib probe — returns []. Never raises.
+    """
+    system = sys.platform
+    raw_flags: set[str] = set()
+    if system == "linux":
+        try:
+            with open("/proc/cpuinfo", encoding="utf-8") as fh:
+                for line in fh:
+                    if line.startswith("flags"):
+                        raw_flags = set(line.split(":", 1)[1].split())
+                        break
+        except Exception:
+            return []
+    elif system == "darwin":
+        try:
+            res = subprocess.run(
+                ["sysctl", "-n", "machdep.cpu.features"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            raw_flags = set((res.stdout or "").split())
+        except Exception:
+            return []
+    else:
+        return []
+
+    normalized = {_normalize_simd(f) for f in raw_flags}
+    return [
+        name for name, aliases in _SIMD_ALIASES.items() if any(a in normalized for a in aliases)
+    ]
+
+
 def has_discrete_nvidia() -> bool:
     return detect_nvidia()[2]
 
@@ -291,7 +345,17 @@ def model_pool_gb(info: dict[str, Any]) -> float:
 
 
 def get_system_info() -> dict[str, Any]:
-    ram_mb = detect_host_ram_mb()
+    """Rich host facts for check_hardware diagnostics.
+
+    Consumes the shared `detect_hardware_capabilities()` for the overlapping
+    fields (ram_mb / has_gpu / physical_cores) so the Search-loop source of
+    truth stays the single probe path; keeps its own GPU-name / VRAM / Metal /
+    chip probes and adds best-effort SIMD hints.
+    """
+    caps = detect_hardware_capabilities()
+    ram_mb = caps["ram_mb"]
+    has_gpu = caps["has_gpu"]
+    physical_cores = caps["physical_cores"]
     ram_gb = round(ram_mb / 1024.0, 1) if ram_mb else 0.0
     gpu_name, vram_gb, has_cuda = detect_nvidia()
     has_metal, chip = detect_apple_metal()
@@ -308,12 +372,16 @@ def get_system_info() -> dict[str, Any]:
     return {
         "ram_gb": ram_gb,
         "ram_mb": ram_mb,
+        "physical_cores": physical_cores,
+        "logical_cores": os.cpu_count(),
+        "has_gpu": has_gpu,
         "vram_gb": vram_gb if has_cuda else 0.0,
         "gpu_name": display_gpu,
         "has_cuda": has_cuda,
         "has_metal": has_metal,
         "memory_class": memory_class,
         "chip": chip,
+        "simd_hints": detect_simd_hints(),
         "platform": sys.platform,
         "detection_complete": ram_gb > 0.0,
     }
