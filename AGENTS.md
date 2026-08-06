@@ -145,7 +145,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - **config.py is the only mutable Baseline (local)**: Seed with `cp autoresearch/core/config.py.example autoresearch/core/config.py`. Agents and Search edit `ENGINE_DEFAULTS` / `SAMPLER_DEFAULTS` there. File is gitignored — do not commit machine Baseline. `program.md` and harnesses stay fixed. Do not drive Trials with CLI flag soup. `.autoresearch_state.json` is visited memory only.
 - **Every requested Trial edits `config.py` first**: For each user-requested test/run, set the Baseline in `config.py` (then invoke harness). Never pass the experiment knobs as CLI flags.
 - **No ad-hoc eval scripts**: Do not invent one-off Python/`python -c` Trial loops. Hooks deny them. Use harness CLIs only.
-- **Portable agent hard-gates only**: Ship Claude Code project settings + `.claude/hooks/` in-repo so any clone benefits. Do **not** require OS ACL (`icacls`), chmod lockdowns, enterprise managed hooks, or Cursor project hooks for normal users (including non-devs).
+- **Agent harness configs are machine-local**: `.agents/`, `.claude/`, `.cursor/`, `.pi/`, and `docs/agents/` are gitignored — skills, hooks, and harness wiring stay on the operator machine, not the clone. Hard-gates still apply where present locally. Do **not** require OS ACL (`icacls`), chmod lockdowns, or enterprise managed hooks for normal users.
 - **Detect hardware before any model download**: Run `scripts/check_hardware.py` (Windows / macOS / Linux). Classify `discrete_gpu` (NVIDIA VRAM) vs `unified_memory` (Apple Silicon / no discrete NVIDIA — one RAM pool). Explain the numbers to the user and confirm. On unified memory, GGUF + context must leave clear headroom for OS/IDE — do **not** fill most of RAM (e.g. reject ~12 GB GGUF on 16 GB Mac). **Never** download blind if detection is incomplete — guide About This Mac / `sysctl`, Task Manager, `nvidia-smi`.
 - **Harness host-memory hard gate**: Even if an agent skips docs, `benchmark_search` / validation / autoloop / `serve-config` reject Trials when full-GGUF host estimate exceeds `RAM − headroom` (`HOST_MEMORY_PREFLIGHT` → `MODEL_REJECTED`). No llama.cpp changes.
 - **Prefer llmfit over whichllm**: Always prefer `llmfit` for candidate discovery and hardware sizing. Keep `whichllm` only as an optional fallback (fewer models, outdated, poor performance on unified RAM). Note: neither is final fit authority — especially on `unified_memory`. Local `check_hardware` + conservative headroom win; discard unsafe #1 picks and explain why.
@@ -158,15 +158,10 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 - [autoresearch/AGENTS.md](autoresearch/AGENTS.md) — Core autotuning package (config, runners, benchmarks).
-- [.claude/hooks/block-adhoc-eval.ps1](.claude/hooks/block-adhoc-eval.ps1) — Shell hard-gate (allowlist + config-only Baseline + cwd).
-- [.claude/hooks/block-gate-tamper.ps1](.claude/hooks/block-gate-tamper.ps1) — Gate-file hard-gate (Edit/Write/Delete).
-- [.claude/hooks/block-git-commit.ps1](.claude/hooks/block-git-commit.ps1) — Git-commit guardrail (deny `git commit`/`git push` without fresh human token).
-- [.pi/extensions/git-commit-guard.ts](.pi/extensions/git-commit-guard.ts) — Pi git-commit guard (TUI confirm per commit/push; headless blocked).
-- [.claude/settings.json](.claude/settings.json) — Claude Code allow/ask/deny + Pre/PostToolUse (Claude-only; pedagogical `.env` deny + Trial hard-gates).
-- [.claude/hooks/audit-post-tool.ps1](.claude/hooks/audit-post-tool.ps1) — PostToolUse audit log (fail-open).
+- `.agents/`, `.claude/`, `.cursor/`, `.pi/`, `docs/agents/` — machine-local harness (gitignored; not in clone).
 - [.pre-commit-config.yaml](.pre-commit-config.yaml) — Git pre-commit: Ruff + pytest (this repo only).
 - [pyproject.toml](pyproject.toml) — Ruff / pytest config for owned Python.
-- [docs/discovery/agent-shell-hard-gates.md](docs/discovery/agent-shell-hard-gates.md) — Inventory + disable playbook.
+- [docs/discovery/agent-shell-hard-gates.md](docs/discovery/agent-shell-hard-gates.md) — Hard-gate inventory + disable playbook (local wiring).
 - [models/README.md](models/README.md) — Shared GGUF store layout (nested LM Studio + basename resolve).
 - [docs/AGENTS.md](docs/AGENTS.md) — Durable documentation contract.
   - [docs/models/AGENTS.md](docs/models/AGENTS.md) — Per-model GGUF specs (architecture, quant, settings).
@@ -183,19 +178,17 @@ When the user requests a durable behavior change, record it here or in the relev
  - [claw-eval/](claw-eval/) — Claw-Eval harness (**local vendor tree**, gitignored; not a submodule).
  - `llama.cpp-releases/` — versioned prebuilt alternate runtimes (**gitignored**, never source clones); select with `AUTORESEARCH_LLAMA_CPP_ROOT`.
  - `VITRIOL/` — separate Randozart MoE DMA study clone (**gitignored**; not a llama.cpp fork or default Trial engine). See [docs/models/vitriol-technique.md](docs/models/vitriol-technique.md).
-- [docs/agents/](docs/agents/) — Matt Pocock engineering-skills config (issue tracker, triage labels, domain docs).
-
 ## Agent skills
 
 ### Issue tracker
 
-GitHub Issues via `gh` (`allanschramm/local-model-autotuning`). See `docs/agents/issue-tracker.md`.
+GitHub Issues via `gh` (`allanschramm/local-model-autotuning`). Local skill config (gitignored): `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-Canonical roles = label strings: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+Canonical roles = label strings: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Local skill config (gitignored): `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+Single-context: root `CONTEXT.md` + `docs/adr/`. Local skill config (gitignored): `docs/agents/domain.md`.
 

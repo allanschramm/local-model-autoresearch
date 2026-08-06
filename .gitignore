@@ -40,16 +40,18 @@ venv-sglang/
 # IDE
 .vscode/
 .idea/
-.cursor/*
-# Portable agent hard-gates (must ship with clone)
-!.cursor/hooks.json
-!.cursor/rules/
-!.cursor/rules/harness-trials.mdc
+.cursor/
 .windsurf/
 .clinerules/
 .opencode/
 copilot-instructions.md
 .github/copilot-instructions.md
+
+# Agent harness configs + skills (machine-local; not shipped with clone)
+.agents/
+.claude/
+.pi/
+docs/agents/
 
 # OS
 .DS_Store
