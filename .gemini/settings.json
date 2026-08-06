@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "command(*rank_results.py*)",
+      "command(*check_hardware.py*)",
+      "command(*verify_setup.py*)"
+    ],
+    "ask": [
+      "command(*autoloop.py*)",
+      "command(*benchmark_search.py*)",
+      "command(*serve-config.py*)",
+      "command(*model_up.py*)"
+    ]
+  }
+}
