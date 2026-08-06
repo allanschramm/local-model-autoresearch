@@ -116,6 +116,10 @@ _Avoid_: EvalPlus, HumanEval
 A pure data object describing the full configuration for a Trial — model path, context size, KV cache types, threads, speculative draft tokens, etc.
 _Avoid_: config object, server config
 
+**Process Guard**:
+A cross-platform process lifecycle module (`autoresearch/core/process_guard.py`) that binds spawned subprocesses (`llama-server`, `llama-cli`, `llama-bench`, `llama-perplexity`, `sglang`, mock services) to OS-native parent lifecycle handles (Windows Job Objects with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, Linux `PR_SET_PDEATHSIG`, POSIX process groups) and executes pre-flight port/process cleanup to guarantee zero zombie processes on user machines.
+_Avoid_: daemon manager, watchdog script, background worker
+
 **SGLang Backend**:
 Directory model paths under `models/` are served through SGLang instead of `llama-server`. SGLang Trials still flow through the harness, run the same Coding benchmark, and use the configured CTX_SIZE.
 _Avoid_: raw SGLang run, direct server launch

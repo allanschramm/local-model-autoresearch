@@ -71,38 +71,39 @@ def _gguf_arch_info(path: Path) -> tuple[bool, int | None]:
 
     try:
         from gguf import GGUFReader
-    except ImportError as exc:
-        raise RuntimeError("gguf package required to classify model architecture") from exc
 
-    reader = GGUFReader(str(path))
-    is_moe = False
-    block_count: int | None = None
+        reader = GGUFReader(str(path))
+        is_moe = False
+        block_count: int | None = None
 
-    for key, field in reader.fields.items():
-        kl = str(key).lower()
-        if kl.endswith(".expert_count") or kl == "expert_count":
-            raw = _field_contents(field)
-            try:
-                if int(raw) > 1:
+        for key, field in reader.fields.items():
+            kl = str(key).lower()
+            if kl.endswith(".expert_count") or kl == "expert_count":
+                raw = _field_contents(field)
+                try:
+                    if int(raw) > 1:
+                        is_moe = True
+                except (TypeError, ValueError):
+                    pass
+            if block_count is None and (kl.endswith(".block_count") or kl == "block_count"):
+                raw = _field_contents(field)
+                try:
+                    block_count = int(raw)
+                except (TypeError, ValueError):
+                    pass
+
+        if not is_moe:
+            arch_field = reader.fields.get("general.architecture")
+            if arch_field is not None:
+                arch = str(_field_contents(arch_field) or "").lower()
+                if "moe" in arch:
                     is_moe = True
-            except (TypeError, ValueError):
-                pass
-        if block_count is None and (kl.endswith(".block_count") or kl == "block_count"):
-            raw = _field_contents(field)
-            try:
-                block_count = int(raw)
-            except (TypeError, ValueError):
-                pass
 
-    if not is_moe:
-        arch_field = reader.fields.get("general.architecture")
-        if arch_field is not None:
-            arch = str(_field_contents(arch_field) or "").lower()
-            if "moe" in arch:
-                is_moe = True
-
-    _ARCH_CACHE[cache_key] = (is_moe, block_count)
-    return is_moe, block_count
+        _ARCH_CACHE[cache_key] = (is_moe, block_count)
+        return is_moe, block_count
+    except Exception:
+        _ARCH_CACHE[cache_key] = (False, None)
+        return False, None
 
 
 def gguf_is_moe(path: Path) -> bool:
