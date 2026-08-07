@@ -1,8 +1,10 @@
 # Qwen3.6-35B-A3B - model card and GGUF inventory
 
-**Inventory date:** 2026-08-02
+## Status
 
-**Status:** publisher inventory refreshed 2026-08-02; a no-spec Trial at 100k was measured on the same date (see Measured Trial evidence). Publisher facts and local facts are kept separate.
+Publisher inventory refreshed 2026-08-02. Measured: no-spec Objective Vector @ 100k turbo3 (2026-08-02); validation speed matrix none / DFlash / MTP @ 32k upstream `b10286` (2026-08-07). Publisher facts and local facts are kept separate.
+
+**Inventory date:** 2026-08-02 (GGUF trees); speed matrix 2026-08-07.
 
 **Official source:** [Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B)
 **Unsloth base GGUF:** [unsloth/Qwen3.6-35B-A3B-GGUF](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF)
@@ -264,9 +266,9 @@ The Qwen/Unsloth cards use `chat_template_kwargs` with `{"enable_thinking": fals
 - **Inspected header evidence + tensor audit (2026-08-02):** both local files report `nextn_predict_layers=1` AND carry the MTP head tensors `blk.40.nextn.{eh_proj,enorm,hnorm,shared_head_norm}` (UD `eh_proj` Q8_0; SC117 `eh_proj` Q4_K). This confirms MTP-preserving weights on disk; it is not a runtime speed or acceptance-rate result.
 - **Integrated MTP targets:** Unsloth MTP files, ggml-org `Qwen3.6-35B-A3B-MTP-*`, Bahushruth `...-BF16-MTP.gguf`, SC117 APEX files, and AesSedai's updated specialist quants are documented by their publishers as MTP-preserving. Confirm `*.nextn_predict_layers` and related keys in the actual local GGUF; file naming alone is not proof.
 - **Separate MTP artifacts:** ggml-org base `mtp-*` files and Bartowski `mtp-*` files are separate basenames that need explicit pairing/metadata inspection.
-- **DFlash:** ggml-org `dflash-*` files correspond to the [z-lab DFlash project](https://github.com/z-lab/dflash), whose primary integration docs target vLLM/SGLang. This card does not claim a stock llama.cpp `draft-dflash` flag.
-- **llama.cpp:** use the current upstream spelling `--spec-type draft-mtp --spec-draft-n-max N` documented by [PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673). Flag acceptance was confirmed by the source probe below (2026-08-02); only the *measured-point* runtime behavior with speculative decoding remains to be verified in a Trial.
-- **Local runtime probe (2026-08-02, source-verified):** the checked-out llama.cpp `common/speculative.cpp` `common_speculative_type_from_name_map` accepts: `none`, `draft-simple`, `draft-eagle3`, `draft-mtp`, `draft-dflash`, `draft-dspark`, `ngram-simple`, `ngram-map-k`, `ngram-map-k4v`, `ngram-mod`, `ngram-cache`. **Bare `mtp` is NOT accepted in this tree** — keep `--spec-type draft-mtp`. Fork nuance (GOLDEN-RULES.md): TurboQuant/custom fork builds historically accept `mtp`; the harness probes `--help` at runtime and picks per build. Confirm the built binary matches this tree at first Trial.
+- **DFlash:** ggml-org ships `dflash-Qwen3.6-35B-A3B-{Q8_0,BF16}.gguf`. Upstream llama.cpp accepts `--spec-type draft-dflash` with `--spec-draft-model` pointing at those files. **Measured (2026-08-07, CTX 32k, upstream `b10286`):** Q8 draft + `SPEC_DRAFT_N_MAX=15` → **17.5 TPS** / 5.6 GB peak vs no-spec **27.2 TPS** / 4.1 GB on the same Fingerprint — DFlash **slower** (~−36%). Do not use DFlash as the default max-TPS seed on this MoE+`n-cpu-moe` path; keep it as an observational A/B only. Primary DFlash docs still target vLLM/SGLang ([z-lab/dflash](https://github.com/z-lab/dflash)).
+- **llama.cpp MTP:** `--spec-type draft-mtp --spec-draft-n-max N` ([PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673)). **Measured (2026-08-07):** embedded MTP `n_max=2` → **27.5 TPS** / 4.6 GB — ≈ flat vs no-spec (+0.3).
+- **Local runtime probe (2026-08-02, source-verified):** the checked-out llama.cpp `common/speculative.cpp` `common_speculative_type_from_name_map` accepts: `none`, `draft-simple`, `draft-eagle3`, `draft-mtp`, `draft-dflash`, `draft-dspark`, `ngram-simple`, `ngram-map-k`, `ngram-map-k4v`, `ngram-mod`, `ngram-cache`. **Bare `mtp` is NOT accepted in this tree** — keep `--spec-type draft-mtp`. Fork nuance (GOLDEN-RULES.md): TurboQuant/custom fork builds historically accept `mtp`; the harness probes `--help` at runtime and picks per build.
 - **TurboQuant/custom builds:** GGUF format compatibility does not prove MTP, DFlash, UD, IQ, or specialist-mixture support. The project runtime and release tag must be recorded and probed before relying on any speculative flag.
 
 ## MoE split (VITRIOL-compatible policy)
@@ -275,17 +277,19 @@ The repository policy is to keep dense models fully resident and to use expert C
 
 ## Our config baseline
 
-- `CTX_SIZE`: repository default `131072`; the measured no-spec point below used `100000`.
-- `SAMPLER_DEFAULTS`: the measured point used thinking/general `TEMP=1.0`, `TOP_P=0.95`, `TOP_K=20`, `MIN_P=0`, `REPEAT_PENALTY=1.0`, `PRESENCE_PENALTY=1.5`.
+- `CTX_SIZE`: repository default `131072`. Speed smokes (2026-08-07) used `32768`. Objective Vector point below used `100000`.
+- `SAMPLER_DEFAULTS`: thinking/general `TEMP=1.0`, `TOP_P=0.95`, `TOP_K=20`, `MIN_P=0`, `REPEAT_PENALTY=1.0`, `PRESENCE_PENALTY=1.5`.
 - `N_CPU_MOE=None`: harness auto-resolved to `41` for the measured basename.
-- Measured engine knobs: TurboQuant `tqp-v0.3.0`, KV K/V `turbo3/turbo3`, batch/ubatch `32/16`, and threads `6/8`.
-- `N_GPU_LAYERS` and flash-attention setting: **TBD**; they were not part of the supplied Trial evidence.
-- `SPEC_TYPE=None`: the measured point used no speculative decoding. MTP `SPEC_TYPE="draft-mtp"` and `SPEC_DRAFT_N_MAX=2` are the starting values now that the local probe (2026-08-02) confirmed `draft-mtp` is accepted in this tree; a speculative Trial is still required to confirm measured behavior.
+- Objective Vector engine knobs (2026-08-02): TurboQuant `tqp-v0.3.0`, KV K/V `turbo3/turbo3`, batch/ubatch `32/16`, threads `6/8`, `SPEC_TYPE=None`.
+- Speed-smoke knobs (2026-08-07): upstream `b10286`, KV `q4_0/q4_0`, batch/ubatch `512/128`, threads `8/8`. Spec matrix: none / `draft-dflash`+Q8 draft n=15 / `draft-mtp` n=2 — see Measured Trial evidence.
+- Max-TPS note: on this MoE+offload + Q4 Fingerprint @ 32k, **DFlash lost** to no-spec; MTP was ≈ flat. Next cheap levers (unmeasured here): lower CTX, lighter quant, `N_CPU_MOE` sweep, batch/KV — session log ranks them.
 - A point is not `on_front` until it has the same Fingerprint and complete Claw-full plus coding-10 Objective Vector. Fine-tunes and base quants are distinct Trial families.
 
 ## Measured Trial evidence
 
-Trial `76f6f780-dda3-4ba7-8a42-e6a267d95b1e` measured the following point for basename `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf`:
+### Objective Vector (2026-08-02) — no-spec @ 100k turbo3
+
+Trial `76f6f780-dda3-4ba7-8a42-e6a267d95b1e` for basename `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf`:
 
 | Field | Measured value |
 |---|---|
@@ -306,7 +310,15 @@ Trial `76f6f780-dda3-4ba7-8a42-e6a267d95b1e` measured the following point for ba
 | Elapsed | `7454 s` |
 | Result | `OK` |
 
-This is a measured no-spec baseline, not an MTP speed or runtime-compatibility result.
+### Validation speed matrix (2026-08-07) — CTX 32k, upstream `b10286`, same Q4 basename
+
+Incomplete vectors (smoke only). Session: [2026-08-07-qwen36-35b-dflash-tps.md](../sessions/2026-08-07-qwen36-35b-dflash-tps.md).
+
+| Trial | Spec | Bench tg | Peak VRAM |
+|---|---|---:|---:|
+| `ef3094b2-d634-4308-b6f4-cc300c4a6d2b` | none | **27.2** | 4.1 GB |
+| `3810c77b-f108-4874-8ffe-21c0ade7209a` | `draft-mtp` n_max=2 | **27.5** | 4.6 GB |
+| `06dce572-7122-45a3-a075-901c7460dda8` | `draft-dflash` n_max=15 + Q8 draft | **17.5** | 5.6 GB |
 
 ## Sources / verification
 
@@ -318,12 +330,13 @@ This is a measured no-spec baseline, not an MTP speed or runtime-compatibility r
 - Specialist/fine-tune inventories: [AesSedai](https://huggingface.co/AesSedai/Qwen3.6-35B-A3B-GGUF), [Hesamation](https://huggingface.co/hesamation/Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled-GGUF), [Bahushruth](https://huggingface.co/Bahushruth/Qwen3.6-35B-A3B-abliterated-v4-GGUF), and [SC117](https://huggingface.co/SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF), extracted 2026-08-02.
 - DFlash pairing and runtime scope: [z-lab/dflash](https://github.com/z-lab/dflash), extracted 2026-08-02.
 - GGUF header verification: project venv `gguf_dump` with `PYTHONUTF8=1`, exact basenames and fields recorded in the Architecture table above, extracted 2026-08-02. The card records basenames and header fields only.
-- Trial evidence: run `76f6f780-dda3-4ba7-8a42-e6a267d95b1e`, basename `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf`, measured 2026-08-02; flags, preflight, scores, and elapsed time are recorded above.
+- Trial evidence (Objective Vector): run `76f6f780-dda3-4ba7-8a42-e6a267d95b1e`, basename `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf`, measured 2026-08-02; flags, preflight, scores, and elapsed time are recorded above.
+- Trial evidence (DFlash / MTP speed smokes): runs `ef3094b2-…`, `06dce572-…`, `3810c77b-…`, measured 2026-08-07 on upstream `b10286` @ CTX 32768 — session [2026-08-07-qwen36-35b-dflash-tps.md](../sessions/2026-08-07-qwen36-35b-dflash-tps.md).
 
 ## Open questions
 
 - Should the SC117 uncensored candidate receive a separate Trial in addition to the measured Unsloth point?
-- Trial-time check: does the *built* binary (this source tree) accept `draft-mtp` for that exact file — the source map says yes; confirm at first run. Which custom/TurboQuant build (if any) is in scope?
 - What does the hardware preflight allow for the SC117 candidate, MTP state, `mmproj`, and other contexts?
-- Which candidate, if any, is authorized for a full Claw + coding-10 Objective Vector? Until then, candidate rows are inventory only.
+- Which candidate, if any, is authorized for a full Claw + coding-10 Objective Vector on a **spec** Fingerprint? Speed smokes stay `incomplete`.
 - No QAT-labelled Qwen3.6-35B-A3B artifact was found in the inspected official Qwen, Unsloth, or ggml-org inventories. Treat QAT as **not identified**, not as a claim that no third party can publish one later.
+- Unmeasured max-TPS ladder: Q3/IQ quant, `N_CPU_MOE` sweep, lower CTX, EXL3 study — see session brainstorm.

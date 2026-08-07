@@ -29,6 +29,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-07-qwen36-35b-dflash-tps.md`](./2026-08-07-qwen36-35b-dflash-tps.md) — Qwen3.6-35B Q4 DFlash vs MTP vs no-spec TPS smokes @ 32k; harness MoE VRAM fixes; max-TPS brainstorm.
 - [`2026-08-02-qwen36-35b-unsloth-100k.md`](./2026-08-02-qwen36-35b-unsloth-100k.md) — Complete Qwen3.6 35B-A3B Unsloth no-spec pipeline at 100k with full expert CPU offload.
 - [`2026-08-02-qwythos-claude-mythos-100k.md`](./2026-08-02-qwythos-claude-mythos-100k.md) — Complete Claude-Mythos pipeline at 100k and the feasible Qwythos comparison boundary.
 - [`2026-08-02-qwythos-v2-mtp-b16-vram.md`](./2026-08-02-qwythos-v2-mtp-b16-vram.md) — Strict Qwythos v2 MTP matching-batch A/B rejected at the physical-VRAM gate.

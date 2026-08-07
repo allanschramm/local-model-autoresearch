@@ -14,7 +14,7 @@ In `llama.cpp`, the format is specified using the `--spec-type` flag. These form
 | :--- | :--- | :--- | :---: | :--- |
 | **`draft-mtp`** | Multi-Token Prediction (MTP) | Neural (Assistant) | Medium | **High** (Native for Qwen3.5/3.6 and Gemma-4. Pre-trained drafts available). |
 | **`draft-eagle3`** | Eagle 3 tree-based drafting | Neural (Eagle Head) | Medium | **None** (No pre-trained Eagle drafts exist for Gemma-4/Qwen). |
-| **`draft-dflash`** / **`dspark`** | DeepSeek parallel block drafters | Neural (DeepSpec) | Medium | **Limited** (Used only for `Bonsai-27B` in the PrismML fork). |
+| **`draft-dflash`** / **`dspark`** | DeepSeek parallel block drafters | Neural (DeepSpec) | Medium | **Limited** — Qwen3.6-35B + ggml `dflash-*` **loads** on upstream llama.cpp (`b10286`) but measured **slower** than no-spec on this 8 GB MoE path ([session](../sessions/2026-08-07-qwen36-35b-dflash-tps.md)). Bonsai/DSpark historically PrismML-only. |
 | **`ngram-cache`** | KV Cache N-gram statistics | Statistical | None (0 MB) | **Universal** (Runs on any model without extra files). |
 | **`ngram-simple`** | Basic sliding window N-grams | Statistical | None (0 MB) | **Universal** (Runs on any model without extra files). |
 | **`none`** | Standard autoregressive decoding | None | None | **Universal** (Speculative decoding disabled). |
