@@ -63,7 +63,11 @@ class TestRun(unittest.TestCase):
         """Issue #10: effective budget = free-at-start minus headroom (mocked free VRAM)."""
         from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
 
-        with patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=6000.0):
+        # Pin default headroom: machine Baseline may set VRAM_HEADROOM_MB=0.
+        with (
+            patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=6000.0),
+            patch("autoresearch.core.llama_runner.resolve_vram_headroom_mb", return_value=512.0),
+        ):
             result = ExperimentRunner(Path("models")).run_trial(
                 {"MODEL": "test.gguf", "CTX_SIZE": 131072, "FLASH_ATTN": "on"},
                 skip_bench=True,

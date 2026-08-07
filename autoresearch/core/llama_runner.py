@@ -380,10 +380,16 @@ def estimate_vram_mb(
     )
 
     spec_enabled = bool(spec_type and spec_type.lower() != "none" and spec_draft_n_max > 0)
+    # MoE expert-CPU offload + external draft file: charge draft weights only.
+    # Flat workspace (512 + 256*n) false-rejects DFlash (measured ~4 GB peaks on 8 GB).
+    # Embedded MTP / dense targets keep the conservative workspace allowance.
+    moe_external_draft = (
+        n_cpu_moe is not None and int(n_cpu_moe) > 0 and bool(draft_path) and draft_mb > 0
+    )
     spec_workspace_mb = (
-        VRAM_SPECULATIVE_BASE_MB + VRAM_SPECULATIVE_PER_DRAFT_TOKEN_MB * spec_draft_n_max
-        if spec_enabled
-        else 0.0
+        0.0
+        if (not spec_enabled) or moe_external_draft
+        else VRAM_SPECULATIVE_BASE_MB + VRAM_SPECULATIVE_PER_DRAFT_TOKEN_MB * spec_draft_n_max
     )
 
     # Baseline system/CUDA overhead (+ draft weights and speculative workspace).
@@ -434,12 +440,19 @@ def preflight_vram_effective(
     """Headroom wrapper around preflight_vram (issue #10).
 
     Effective budget = min(configured, free VRAM at Trial start - headroom).
+    Exception: MoE with `n_cpu_moe > 0` uses configured only — OS-reserved VRAM
+    otherwise false-rejects expert-CPU offload (measured peaks far below free).
+    Runtime VRAM monitoring remains the OOM kill guard.
     The reject reason records both configured and effective budgets.
     """
     configured = resolve_vram_limit_mb(vram_limit_mb)
-    if free_vram_mb is None:
-        free_vram_mb = detect_free_vram_mb()
-    effective = effective_vram_limit_mb(configured, free_vram_mb, headroom_mb)
+    moe_offload = n_cpu_moe is not None and int(n_cpu_moe) > 0
+    if moe_offload:
+        effective = float(configured)
+    else:
+        if free_vram_mb is None:
+            free_vram_mb = detect_free_vram_mb()
+        effective = effective_vram_limit_mb(configured, free_vram_mb, headroom_mb)
     ok, est, reason = preflight_vram(
         model_path,
         ctx_size,

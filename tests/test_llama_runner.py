@@ -513,6 +513,48 @@ class TestLlamaRunner(unittest.TestCase):
         self.assertAlmostEqual(mtp_two - base, 1024.0)
         self.assertAlmostEqual(mtp_four - mtp_two, 512.0)
 
+    def test_estimate_vram_mb_moe_external_draft_skips_spec_workspace(self):
+        """MoE expert-CPU offload + external draft: charge draft weights only.
+
+        Flat speculative workspace (512 + 256*n) false-rejects DFlash on 8 GB
+        when measured peaks are ~4 GB. Embedded MTP (no draft file) keeps workspace.
+        """
+        from autoresearch.core.llama_runner import estimate_vram_mb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "moe.gguf"
+            draft = Path(tmp) / "dflash.gguf"
+            model.write_bytes(b"m" * (100 * 1024 * 1024))
+            draft.write_bytes(b"d" * (10 * 1024 * 1024))
+
+            with (
+                patch("autoresearch.core.llama_runner.gguf_is_moe", return_value=True),
+                patch("autoresearch.core.llama_runner.gguf_block_count", return_value=40),
+            ):
+                base = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=40)
+                with_dflash = estimate_vram_mb(
+                    model,
+                    2048,
+                    "q4_0",
+                    "q4_0",
+                    n_cpu_moe=40,
+                    draft_path=draft,
+                    spec_type="draft-dflash",
+                    spec_draft_n_max=15,
+                )
+                embedded_mtp = estimate_vram_mb(
+                    model,
+                    2048,
+                    "q4_0",
+                    "q4_0",
+                    n_cpu_moe=40,
+                    spec_type="draft-mtp",
+                    spec_draft_n_max=2,
+                )
+
+            self.assertAlmostEqual(with_dflash - base, 10.0, places=1)
+            self.assertAlmostEqual(embedded_mtp - base, 1024.0)
+
     def test_estimate_vram_mb_n_cpu_moe_shrinks_weight(self):
         from autoresearch.core.llama_runner import estimate_vram_mb
 
@@ -1099,6 +1141,30 @@ class TestVramHeadroomPreflight(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("effective=4488MB", reason)
         self.assertIn("configured=7900MB", reason)
+
+    def test_preflight_moe_offload_skips_free_vram_clamp(self):
+        """MoE n_cpu_moe>0 uses configured budget; free clamp would false-reject."""
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "moe.gguf"
+            model.write_bytes(b"x")
+            with (
+                patch("pathlib.Path.stat", return_value=MagicMock(st_size=14 * 1024 * 1024 * 1024)),
+                patch.object(llama_runner, "detect_free_vram_mb", return_value=5000.0),
+                patch("autoresearch.core.llama_runner.gguf_is_moe", return_value=True),
+                patch("autoresearch.core.llama_runner.gguf_block_count", return_value=40),
+            ):
+                ok, est, reason = llama_runner.preflight_vram_effective(
+                    model,
+                    2048,
+                    "q4_0",
+                    "q4_0",
+                    vram_limit_mb=7900.0,
+                    n_cpu_moe=40,
+                    headroom_mb=512.0,
+                )
+        self.assertTrue(ok, f"expected pass, est={est} reason={reason!r}")
+        self.assertEqual(reason, "")
+        self.assertLess(est, 7900.0)
 
 
 if __name__ == "__main__":
