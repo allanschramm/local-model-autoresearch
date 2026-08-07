@@ -13,7 +13,10 @@ Repository developers. Port and panels owned here — not by `autoresearch/` run
 - Baseline from `autoresearch/core/config.py` via import+reload — never `.autoresearch_state.json`.
 - Trials via `autoresearch.runners.run.read_rows` + `classify.is_on_front` (`keep` ≡ `on_front`). Never write TSV.
 - Log path pinned: `autoresearch/runners/llama_server.log`. `Em execução` when mtime within ~10s; else `Idle`. Missing log → pt-BR empty, no crash.
-- **stdlib-only** (`ui/requirements.txt`). No process control (no start/stop server, autoloop, or Search from the UI).
+- **No external runtime deps; vanilla JS only** (`ui/requirements.txt`). Static assets allowed under `ui/static/` (CSS + bundled OFL fonts) and served by the stdlib `http.server` (ADR 0011). No CSS/JS frameworks, CDN, or build step.
+- **AILOCAL design language** (ADR 0011): dark neutral base, accent-only blue `#339dff`, Inter + JetBrains Mono, static precision-grid, restrained motion. Blue is a highlight, never a dominant surface.
+- **pt-BR display of Trial Status**: canonical English labels stay in the data/API; the UI renders localized pills — `on_front` → "na fronteira", `dominated` → "dominado", `incomplete` → "incompleto", `rejected` → "rejeitado" (CONTEXT.md `Status de exibição`).
+- No process control (no start/stop server, autoloop, or Search from the UI).
 
 ## Work Guidance
 - Agent starts the dashboard when the human wants to monitor a Trial/Search session.

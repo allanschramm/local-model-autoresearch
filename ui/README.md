@@ -1,10 +1,10 @@
 # Dashboard (operador)
 
-Painel **somente leitura** em `http://127.0.0.1:18765` (pt-BR).
+Painel **somente leitura** em `http://127.0.0.1:18765` (pt-BR), com a linguagem visual AILOCAL (tema escuro, azul de acento, Inter + JetBrains Mono; ADR 0011).
 
 ## Instalar / iniciar
 
-Sem deps extras (`ui/requirements.txt` é stdlib). Com o venv do repo:
+Sem deps de runtime (`ui/requirements.txt` é vazio; assets estáticos ficam em `ui/static/`). Com o venv do repo:
 
 ```powershell
 .\venv\Scripts\python.exe -m ui

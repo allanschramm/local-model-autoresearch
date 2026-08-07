@@ -88,6 +88,10 @@ _Avoid_: bench-only, speed check, smoke test
 Canonical outcome labels: `on_front` (complete vector, non-dominated), `dominated` (complete vector, dominated), `incomplete` (missing axes; may merge into a Fingerprint), `rejected` (invalid config, infra/VRAM kill, crash). 
 _Avoid_: keep, discard (legacy; `keep` persists only as a deprecated TSV alias of `on_front`; `discard` superseded by `dominated`/`incomplete`/`rejected`)
 
+**Status de exibição (dashboard)**:
+Display convention of Trial Status on the pt-BR operator dashboard: the canonical English labels render localized — `on_front` → "na fronteira", `dominated` → "dominado", `incomplete` → "incompleto", `rejected` → "rejeitado". The canonical labels stay in the data/API; only the read-only UI translates (ADR 0011).
+_Avoid_: showing raw English canonical labels in pt-BR panels
+
 **Val Score**:
 Legacy scalar (historically Claw-Eval full) retained for display/compat only. Not the Search keep rule. Prefer the Objective Vector.
 _Avoid_: score, result, metric (when meaning frontier truth)
@@ -131,6 +135,12 @@ _Avoid_: quantized cache, compressed KV
 **Multi-Token Prediction (MTP)**:
 Speculative decoding using specialized draft heads (built into the model) to predict multiple tokens ahead, improving throughput. Distinct from "speculative decoding with separate draft model", which fails on MoE+SSM models. MTP is a Search dial (buy ctx or TPS), not a required default.
 _Avoid_: speculative decoding (when referring specifically to MTP)
+
+### Monitoring
+
+**Run State**:
+The live operational status of the dashboard: `Em execução` when the Trial server log (`autoresearch/runners/llama_server.log`) grew within the last ~10s, otherwise `Idle`. Missing log → `Idle`, never a crash. Primary visual badge of the dashboard (ADR 0011).
+_Avoid_: server status, process state, run status
 
 ### Generic Configuration Skeleton
 

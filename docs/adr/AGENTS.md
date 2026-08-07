@@ -38,3 +38,4 @@ Durable record of architecture decisions for the `local-model-autotuning` projec
 - [`0008-day-iq-epsilon-then-tps.md`](./0008-day-iq-epsilon-then-tps.md) — Day = IQ ε-band then max TPS; Night maximin unchanged.
 - [`0009-teach-day-night-agent-harness.md`](./0009-teach-day-night-agent-harness.md) — Teach path: Day/Night usage + Agent Harness arc (`teach/SPEC.md`).
 - [`0010-cross-platform-zombie-process-prevention.md`](./0010-cross-platform-zombie-process-prevention.md) — Cross-platform zombie process prevention (Job Objects, `PR_SET_PDEATHSIG`, process groups, pre-flight port checks).
+- [`0011-dashboard-ailocal-design.md`](./0011-dashboard-ailocal-design.md) — Dashboard adopts the AILOCAL design language; `ui/` widens to allow static assets (no external deps).
