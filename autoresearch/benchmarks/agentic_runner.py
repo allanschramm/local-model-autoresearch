@@ -20,7 +20,6 @@ from pathlib import Path
 import yaml
 
 from autoresearch.core.llama_client import GenerationParams, LlamaClient
-from autoresearch.core.llama_runner import sweep_leftover_processes
 from autoresearch.core.process_guard import ProcessGuard
 
 # ── Paths ────────────────────────────────────────────────────────────────────
@@ -43,8 +42,11 @@ class ServiceManager:
         self._guard = ProcessGuard()
 
     def start(self) -> None:
-        """Start all mock services declared in the task's services block."""
-        sweep_leftover_processes()
+        """Start all mock services declared in the task's services block.
+
+        No full harness-port orphan sweep here: it would kill the live
+        llama-server mid-Trial. Pre-flight sweep lives in LlamaServerRunner.
+        """
         services = self.task.get("services", [])
         for svc in services:
             name = svc["name"]

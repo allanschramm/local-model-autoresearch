@@ -131,10 +131,17 @@ def test_run_agentic_eval_missing_task(mock_llama_client: MagicMock):
     assert res["task_results"][0]["details"] == "missing"
 
 
-def test_service_manager_sweeps_before_start(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-    """Issue #39: ServiceManager runs the pre-flight orphan sweep before spawning."""
+def test_service_manager_does_not_sweep_before_start(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """Regression: ServiceManager.start must not run the harness-port orphan sweep.
+
+    The full harness sweep (name∩harness-port intersection) would kill the live
+    llama-server on :18080 mid-Trial, causing WinError 10061 and a 0.0 agentic
+    score. Pre-flight sweep lives in LlamaServerRunner, not here.
+    """
     sweep = MagicMock()
-    monkeypatch.setattr("autoresearch.benchmarks.agentic_runner.sweep_leftover_processes", sweep)
+    monkeypatch.setattr("autoresearch.core.llama_runner.sweep_leftover_processes", sweep)
     guard = MagicMock()
     monkeypatch.setattr("autoresearch.benchmarks.agentic_runner.ProcessGuard", lambda: guard)
     monkeypatch.setattr(ServiceManager, "_wait_healthy", lambda *_: None)
@@ -153,7 +160,7 @@ def test_service_manager_sweeps_before_start(monkeypatch: pytest.MonkeyPatch, tm
     )
     mgr.start()
 
-    sweep.assert_called_once()
+    sweep.assert_not_called()
     guard.spawn.assert_called_once()
     assert mgr._guard is guard
 
