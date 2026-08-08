@@ -100,6 +100,9 @@ models/sglang/
 # Local agent/auto scratch (session artifacts)
 .auto/
 
+# Coding-10 sandbox side effects (BigCodeBench relative paths if cwd leaks)
+/files.zip
+
 # Case harness (local runtime + interview artifacts)
 .case/
 CLAUDE.local.md

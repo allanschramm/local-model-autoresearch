@@ -12,6 +12,9 @@ Loaders fetch data on first use and cache to data/ subdir. No new pip deps:
   - HumanEval+/MBPP+  : evalplus (already required)
   - LiveCodeBench v6  : base64+zlib+pickle JSONL fetched via huggingface_hub
   - BigCodeBench Hard : HF datasets cache (datasets + pyarrow already installed)
+
+Coding test subprocesses always run with an isolated temp cwd so relative
+artifacts (notably BigCodeBench ``files.zip``) cannot leak into the repo root.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import textwrap
 import time
 import zlib
@@ -79,17 +83,24 @@ def _strip_code(text: str) -> str:
 
 
 def _run_subprocess(script: str, stdin_input: str | None = None) -> tuple[int, str, str]:
-    """Run a Python script in a sandboxed subprocess. Returns (returncode, stdout, stderr)."""
+    """Run a Python script in a sandboxed subprocess. Returns (returncode, stdout, stderr).
+
+    Always uses a private temp cwd. BigCodeBench (and bad model solutions) can
+    write relative paths such as ``files.zip``; without isolation those leak into
+    the repo root during coding-10 Trials.
+    """
     try:
-        result = subprocess.run(
-            [sys.executable, "-c", script],
-            input=stdin_input,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
-        )
-        return result.returncode, result.stdout, result.stderr
+        with tempfile.TemporaryDirectory(prefix="coding_sandbox_") as tmp:
+            result = subprocess.run(
+                [sys.executable, "-c", script],
+                input=stdin_input,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd=tmp,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return -1, "", "TIMEOUT"
     except Exception as e:

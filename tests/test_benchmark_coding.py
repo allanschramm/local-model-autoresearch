@@ -297,6 +297,26 @@ class TestBenchmarkCoding(unittest.TestCase):
             benchmark_coding._run_bigcode_tests(code, {"entry_point": "task_func", "test": ""})
         )
 
+    def test_run_subprocess_isolates_cwd_from_repo_root(self):
+        """BigCode relative files.zip must not land in the Trial cwd (repo root)."""
+        from pathlib import Path
+
+        repo_zip = Path.cwd() / "files.zip"
+        if repo_zip.exists():
+            repo_zip.unlink()
+        script = (
+            "from pathlib import Path\n"
+            "import os\n"
+            "Path('files.zip').write_bytes(b'PK\\x03\\x04leak')\n"
+            "print(os.getcwd())\n"
+        )
+        rc, out, err = benchmark_coding._run_subprocess(script)
+        self.assertEqual(rc, 0, msg=err)
+        self.assertFalse(repo_zip.exists(), "coding sandbox leaked files.zip into cwd")
+        sandbox_cwd = Path(out.strip()).resolve()
+        self.assertNotEqual(sandbox_cwd, Path.cwd().resolve())
+        self.assertTrue(sandbox_cwd.name.startswith("coding_sandbox_"))
+
     @patch("autoresearch.benchmarks.benchmark_coding.run_coding_eval")
     def test_bigcode_via_run_benchmark(self, mock_eval):
         """BigCode tasks feed through run_coding_eval as a BigCodeBenchTask instance."""
