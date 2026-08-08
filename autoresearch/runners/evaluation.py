@@ -566,6 +566,13 @@ class ExperimentRunner:
             repeat_penalty=norm.get("repeat_penalty"),
             presence_penalty=norm.get("presence_penalty"),
             frequency_penalty=norm.get("frequency_penalty"),
+            # GenerationParams defaults max_tokens=512; agentic loops need headroom
+            # for tool turns + thinking models (reasoning_content) or graders see "".
+            max_tokens=(
+                max(int(norm.get("max_tokens", 1024)), 2048)
+                if (agentic_quick or agentic_full)
+                else int(norm.get("max_tokens", 1024))
+            ),
         )
 
         trial_start = time.time()

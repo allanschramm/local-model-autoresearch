@@ -8,6 +8,9 @@ import pytest
 
 from autoresearch.benchmarks.agentic_runner import (
     ServiceManager,
+    _assistant_history_message,
+    _assistant_visible_text,
+    run_agent_loop,
     run_agentic_eval,
     score_task,
 )
@@ -290,3 +293,60 @@ scoring_components:
     assert len(res["task_results"]) == 1
     assert res["task_results"][0]["score"] == 1.0
     assert "check_success: PASS" in res["task_results"][0]["details"]
+
+
+def test_assistant_visible_text_falls_back_to_reasoning_content():
+    """Thinking models often leave content empty; graders need reasoning_content."""
+    assert _assistant_visible_text({"content": "final", "reasoning_content": "think"}) == "final"
+    assert _assistant_visible_text({"content": "", "reasoning_content": "needs reply FYI"}) == (
+        "needs reply FYI"
+    )
+    assert _assistant_visible_text({"content": None, "reasoning_content": None}) == ""
+
+
+def test_assistant_history_preserves_reasoning_content():
+    msg = {"content": "", "reasoning_content": "plan…"}
+    hist = _assistant_history_message(msg, tool_calls=[{"id": "c1"}])
+    assert hist["reasoning_content"] == "plan…"
+    assert hist["tool_calls"] == [{"id": "c1"}]
+    assert hist["content"] == ""
+
+
+def test_run_agent_loop_uses_reasoning_when_content_empty(monkeypatch, mock_llama_client):
+    """Final turn with empty content + reasoning_content must not score as blank."""
+    mock_llama_client.base_url = "http://127.0.0.1:18080"
+    final_payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": "",
+                    "reasoning_content": "categories: needs reply, FYI, spam. Summary follows.",
+                    "tool_calls": [],
+                }
+            }
+        ]
+    }
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            import json
+
+            return json.dumps(final_payload).encode()
+
+    monkeypatch.setattr(
+        "autoresearch.benchmarks.agentic_runner.urllib.request.urlopen",
+        lambda *a, **k: _Resp(),
+    )
+    text, calls, _elapsed = run_agent_loop(
+        mock_llama_client,
+        {"prompt": {"text": "triage"}, "tools": [], "tool_endpoints": []},
+        max_turns=2,
+    )
+    assert "needs reply" in text
+    assert calls == []

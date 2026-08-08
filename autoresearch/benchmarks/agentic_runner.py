@@ -167,6 +167,37 @@ def _call_mock_endpoint(endpoint: dict, arguments: dict) -> dict:
         return {"error": str(e)}
 
 
+def _assistant_visible_text(msg: dict) -> str:
+    """Surface text for graders: prefer content, fall back to reasoning_content.
+
+    Thinking models (Qwen3.5 / Ornith family) often park the turn in
+    ``reasoning_content`` while ``content`` is empty — coding-10 already
+    merges this; agentic must too or keyword graders see len=0.
+    """
+    content = (msg.get("content") or "").strip()
+    if content:
+        return msg.get("content") or ""
+    return msg.get("reasoning_content") or ""
+
+
+def _assistant_history_message(msg: dict, *, tool_calls: list | None = None) -> dict:
+    """Build an assistant history item, preserving reasoning_content when present.
+
+    Dropping reasoning mid-conversation makes later turns HTTP 400 on servers
+    that expect thinking-model message continuity.
+    """
+    out: dict = {
+        "role": "assistant",
+        "content": msg.get("content") or "",
+    }
+    reasoning = msg.get("reasoning_content")
+    if reasoning:
+        out["reasoning_content"] = reasoning
+    if tool_calls:
+        out["tool_calls"] = tool_calls
+    return out
+
+
 def run_agent_loop(
     client: LlamaClient,
     task: dict,
@@ -229,11 +260,11 @@ def run_agent_loop(
 
         # Check for tool calls
         tool_calls = msg.get("tool_calls") or []
-        content = msg.get("content") or ""
+        content = _assistant_visible_text(msg)
 
         if tool_calls:
-            # Model wants to use tools
-            messages.append({"role": "assistant", "content": content, "tool_calls": tool_calls})
+            # Model wants to use tools — keep reasoning_content for next turns.
+            messages.append(_assistant_history_message(msg, tool_calls=tool_calls))
 
             for tc in tool_calls:
                 func = tc.get("function", {})
@@ -267,16 +298,16 @@ def run_agent_loop(
                 )
         else:
             # Model produced final answer
-            messages.append({"role": "assistant", "content": content})
+            messages.append(_assistant_history_message(msg))
             elapsed = time.time() - t_start
             return content, all_tool_calls, elapsed
 
     elapsed = time.time() - t_start
-    # If we hit max_turns, use last assistant message content
+    # If we hit max_turns, use last assistant message visible text
     last_content = ""
     for m in reversed(messages):
         if m.get("role") == "assistant":
-            last_content = m.get("content", "")
+            last_content = _assistant_visible_text(m)
             break
     return last_content, all_tool_calls, elapsed
 

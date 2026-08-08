@@ -20,13 +20,35 @@ from autoresearch.core.pareto import ObjectiveVector, Trial, dominates, fingerpr
 _IDENTITY_KEYS = frozenset(str(k).lower() for k in DEFAULTS)
 
 # Hardware+budget identity of the known Set (ADR 0006: the global front is
-# ranked per hardware+budget). The TSV has no hardware column; peak VRAM
-# rounded is the practical budget proxy.
+# ranked per hardware+budget). Prefer configured VRAM_LIMIT_MB; peak memory_gb
+# is legacy fallback only (same Fingerprint can peak differently across Trials).
 BUCKET_PROXY = "memory_gb"
 
 
 def bucket(memory_gb: float) -> int:
     return round(memory_gb)
+
+
+def _vram_limit_bucket(config_json: Any) -> int | None:
+    """Budget bucket from configured VRAM_LIMIT_MB (GiB, rounded).
+
+    Peak ``memory_gb`` varies Trial-to-Trial for the same Fingerprint (coding vs
+    claw peaks differ by hundreds of MiB) and was splitting Objective Vector
+    merges across buckets. Configured limit is the intended hardware budget.
+    """
+    if not config_json:
+        return None
+    try:
+        loaded = json.loads(config_json) if isinstance(config_json, str) else config_json
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(loaded, dict):
+        return None
+    raw = loaded.get("vram_limit_mb", loaded.get("VRAM_LIMIT_MB"))
+    limit = _cell_float(raw)
+    if limit is None or limit <= 0:
+        return None
+    return bucket(limit / 1024.0)
 
 
 def _cell_float(cell: Any) -> float | None:
@@ -115,7 +137,15 @@ def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[Ob
 
 
 def row_bucket(row: Mapping[str, Any]) -> int | None:
-    """Bucket of a results.tsv row (None when the memory cell is unset)."""
+    """Bucket of a results.tsv row (None when budget cannot be resolved).
+
+    Prefer ``round(VRAM_LIMIT_MB / 1024)`` from ``config_json`` so the same
+    Fingerprint merges across Trials whose peak ``memory_gb`` rounds differently
+    (e.g. 7.4 vs 7.8). Legacy rows without a limit fall back to peak memory_gb.
+    """
+    from_limit = _vram_limit_bucket(row.get("config_json"))
+    if from_limit is not None:
+        return from_limit
     mem = _cell_float(row.get(BUCKET_PROXY))
     return None if mem is None else bucket(mem)
 

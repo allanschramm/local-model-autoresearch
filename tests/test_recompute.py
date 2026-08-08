@@ -139,6 +139,30 @@ def test_same_fingerprint_partials_merge_to_one_status(store):
     assert read_store(store) == {"ag": "keep", "cod": "keep"}
 
 
+def test_same_fp_different_peak_vram_merges_via_vram_limit(store):
+    """Coding peak 7.8 vs claw peak 7.4 must not leave the Objective Vector incomplete."""
+    cfg = cfg_json(VRAM_LIMIT_MB=8100.0)
+    coding_only = row(
+        trial_id="cod",
+        memory_gb="7.8",
+        agentic="",
+        coding="0.54",
+        tps="48.6",
+        config_json=cfg,
+    )
+    agentic_only = row(
+        trial_id="ag",
+        memory_gb="7.4",
+        agentic="0.3333",
+        coding="",
+        tps="42.2",
+        config_json=cfg,
+    )
+    write_store(store, [coding_only, agentic_only])
+    run.recompute_statuses(store)
+    assert read_store(store) == {"cod": "keep", "ag": "keep"}
+
+
 def test_later_group_demotes_earlier_group(store):
     # Input order must not matter: 'a' comes first but is dominated by 'b'.
     a = row(trial_id="a", tps="30.0", agentic="0.6", coding="0.6", config_json=cfg_json(MODEL="A"))

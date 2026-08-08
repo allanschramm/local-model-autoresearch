@@ -124,18 +124,40 @@ def test_merge_across_runs_flips_prior_incomplete_row(run_env, monkeypatch):
     assert [r["status"] for r in rows] == ["keep", "keep"]  # prior row flipped, new row classified
 
 
-def test_merge_never_crosses_buckets_across_runs(run_env, monkeypatch):
+def test_merge_never_crosses_vram_limit_budgets_across_runs(run_env, monkeypatch):
+    """Different configured VRAM_LIMIT_MB ⇒ different Fingerprint; axes do not merge.
+
+    Peak memory_gb alone must not define the budget anymore (same Fingerprint can
+    peak 7.4 vs 7.8). Budget identity is VRAM_LIMIT_MB inside the Baseline.
+    """
     results = [
         eval_res(agentic_tier="full", coding_val=0.75, avg_tps=42.0, peak_vram_gb=7.9),
-        # Same config on a different machine (16GB peak): complete on its own.
         eval_res(agentic_tier="full", agentic_val=0.6, coding_val=0.8, peak_vram_gb=16.0),
     ]
     monkeypatch.setattr(run, "run_evaluation", lambda *a, **k: results.pop(0))
-    run.handle_single_run(args(agentic_full=True))  # 8GB bucket: agentic only -> incomplete
-    run.handle_single_run(args(agentic_full=True, include_coding=True))  # 16GB bucket
+
+    seed = dict(config.load_config())
+    monkeypatch.setitem(config.ENGINE_DEFAULTS, "VRAM_LIMIT_MB", 7900.0)
+    config.DEFAULTS.clear()
+    config.DEFAULTS.update({**config.ENGINE_DEFAULTS, **config.SAMPLER_DEFAULTS})
+    run.handle_single_run(args(agentic_full=True))  # agentic-only @ 8GB limit → incomplete
+
+    monkeypatch.setitem(config.ENGINE_DEFAULTS, "VRAM_LIMIT_MB", 16000.0)
+    config.DEFAULTS.clear()
+    config.DEFAULTS.update({**config.ENGINE_DEFAULTS, **config.SAMPLER_DEFAULTS})
+    run.handle_single_run(args(agentic_full=True, include_coding=True))  # complete @ 16GB limit
+
+    # Restore Baseline so other tests see the operator config again.
+    for k, v in seed.items():
+        if k in config.ENGINE_DEFAULTS:
+            config.ENGINE_DEFAULTS[k] = v
+        if k in config.SAMPLER_DEFAULTS:
+            config.SAMPLER_DEFAULTS[k] = v
+    config.DEFAULTS.clear()
+    config.DEFAULTS.update({**config.ENGINE_DEFAULTS, **config.SAMPLER_DEFAULTS})
+
     rows = run.read_rows(run_env)
     assert len(rows) == 2
-    # No cross-budget merge: the 8GB partial is not completed by the 16GB point.
     assert [r["status"] for r in rows] == ["incomplete", "keep"]
 
 

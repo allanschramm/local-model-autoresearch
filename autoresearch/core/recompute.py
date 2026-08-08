@@ -4,8 +4,8 @@ Pure decision logic — no file I/O. Takes results.tsv rows and returns a new
 list with every row's status refreshed so the Pareto Set stays consistent:
 a new on_front point demotes rows it dominates to dominated. Two scopes per
 ADR 0006: `bucket` (default) is the canonical stored status — the
-global-by-hardware+budget front, every complete vector in a
-round(memory_gb) bucket competes across models; `model` is the per-model
+    global-by-hardware+budget front, every complete vector in a
+    configured-VRAM_LIMIT bucket (fallback: round(memory_gb)) competes across models; `model` is the per-model
 lens (Search/Neighbors stay per model) — rows compete only against
 same-model complete vectors in the same bucket. The per-model lens is a
 view; only the bucket scope is persisted.

@@ -119,6 +119,11 @@ Since the model is ~5.6 GB and we have 8 GB of VRAM, we can run with maximum GPU
 ### Claw-Eval full (2026-07-24)
 - **Val Score 0.6000** (9/15) @ ctx **65536**, bench_tg **42.1**, peak **7.5 GB**. Prior claw-quick 0.80.
 
+### Objective Vector @ 65k (2026-08-08, `VRAM_LIMIT_MB=8100`, `AUTORESEARCH_SKIP_FREE_CLAMP=1`)
+- Fingerprint shared: coding-10 **0.5400** (HE 0.90 / MBPP 0.70 / LCB 0.40 / BC 0.00; peak **7.8 GB**; TPS **48.6**) + claw-full.
+- First claw re-run after Jul scored **0.3333** — harness bug (ignored `reasoning_content`, `max_tokens=512`). After agentic fix: claw-full **0.9333** (14/15), peak **7.7 GB**, TPS **42.1**.
+- Merged vector **complete** (`agentic=0.9333`, `coding=0.5400`); status **on_front** / Night #3. Historical Jul coding **0.5700** @ 32k remains a different Fingerprint.
+
 ### Coding-10 (2026-07-24, UD-Q4_K_XL)
 
 | Metric | Value |

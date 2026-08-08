@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -1116,6 +1117,24 @@ class TestVramHeadroomPreflight(unittest.TestCase):
     def test_preflight_effective_passes_when_configured_binds(self):
         # free - headroom far above configured -> configured wins, no rewrite
         with patch.object(llama_runner, "detect_free_vram_mb", return_value=20000.0):
+            ok, est, reason = llama_runner.preflight_vram_effective(
+                Path("models/non-existent.gguf"),
+                2048,
+                "q4_0",
+                "q4_0",
+                vram_limit_mb=7900.0,
+                headroom_mb=512.0,
+            )
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
+
+    def test_skip_free_clamp_env_uses_configured_budget(self):
+        """AUTORESEARCH_SKIP_FREE_CLAMP=1 ignores free−headroom (operator escape)."""
+        with (
+            patch.object(llama_runner, "detect_free_vram_mb", return_value=6000.0),
+            patch.dict(os.environ, {"AUTORESEARCH_SKIP_FREE_CLAMP": "1"}, clear=False),
+        ):
+            self.assertTrue(llama_runner.skip_free_vram_clamp())
             ok, est, reason = llama_runner.preflight_vram_effective(
                 Path("models/non-existent.gguf"),
                 2048,

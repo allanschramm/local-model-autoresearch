@@ -89,7 +89,23 @@ def test_merge_stays_incomplete_until_all_axes_measured():
     )
     assert len(merged) == 1
     assert not merged[0].vector.complete  # ctx and tps still missing
-    assert merged[0].vector.agentic == 0.6  # first non-None value wins
+    assert merged[0].vector.agentic == 0.62  # same axis: keep better (maximize)
+    assert merged[0].vector.coding == 0.5
+
+
+def test_merge_keeps_best_when_axis_remeasured():
+    """Broken claw 0.33 then fixed claw 0.93 on same Fingerprint -> keep 0.93."""
+    fp = fingerprint(_ENGINE, _SAMPLER)
+    merged = merge(
+        [
+            Trial(fp=fp, vector=v(ctx=65536, tps=42.0, agentic=0.3333, coding=0.54)),
+            Trial(fp=fp, vector=v(ctx=65536, tps=42.1, agentic=0.9333)),
+        ]
+    )
+    assert merged[0].vector.complete
+    assert merged[0].vector.agentic == 0.9333
+    assert merged[0].vector.coding == 0.54
+    assert merged[0].vector.tps == 42.1
 
 
 def test_merge_separates_distinct_fingerprints_and_sorts():

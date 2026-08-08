@@ -94,9 +94,18 @@ def merge(trials: Iterable[Trial]) -> list[Trial]:
     """Merge partial Trials by Fingerprint; one merged Trial per Fingerprint.
 
     Axes fill in across Trials; a merged vector stays incomplete until all
-    four axes are measured. First non-None value wins per axis (deterministic
-    rerun policy). Sorted by Fingerprint for stable output.
+    four axes are measured. When the same axis is measured more than once
+    (e.g. two claw-full runs), keep the better value — all four axes maximize.
+    Sorted by Fingerprint for stable output.
     """
+
+    def _best(a: int | float | None, b: int | float | None) -> int | float | None:
+        if a is None:
+            return b
+        if b is None:
+            return a
+        return a if a >= b else b
+
     merged: dict[str, ObjectiveVector] = {}
     for trial in trials:
         vector = merged.get(trial.fp)
@@ -104,9 +113,9 @@ def merge(trials: Iterable[Trial]) -> list[Trial]:
             merged[trial.fp] = trial.vector
             continue
         merged[trial.fp] = ObjectiveVector(
-            ctx=vector.ctx if vector.ctx is not None else trial.vector.ctx,
-            tps=vector.tps if vector.tps is not None else trial.vector.tps,
-            agentic=vector.agentic if vector.agentic is not None else trial.vector.agentic,
-            coding=vector.coding if vector.coding is not None else trial.vector.coding,
+            ctx=_best(vector.ctx, trial.vector.ctx),
+            tps=_best(vector.tps, trial.vector.tps),
+            agentic=_best(vector.agentic, trial.vector.agentic),
+            coding=_best(vector.coding, trial.vector.coding),
         )
     return [Trial(fp=fp, vector=merged[fp]) for fp in sorted(merged)]

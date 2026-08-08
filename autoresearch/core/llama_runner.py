@@ -315,6 +315,17 @@ def resolve_vram_headroom_mb(headroom_mb: float | int | None = None) -> float:
     return float(DEFAULT_VRAM_HEADROOM_MB)
 
 
+def skip_free_vram_clamp() -> bool:
+    """Operator escape: AUTORESEARCH_SKIP_FREE_CLAMP=1 skips dense free-at-start clamp.
+
+    Default remains free−headroom (issue #10). Opt-in only — runtime VRAM monitoring
+    stays the kill guard. Use when WDDM desktop reservation would false-reject a Trial
+    known to fit physical VRAM (same spirit as MoE n_cpu_moe>0 configured-only budget).
+    """
+    raw = (os.environ.get("AUTORESEARCH_SKIP_FREE_CLAMP") or "").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
 def effective_vram_limit_mb(
     configured_mb: float,
     free_vram_mb: float | None = None,
@@ -447,8 +458,15 @@ def preflight_vram_effective(
     """
     configured = resolve_vram_limit_mb(vram_limit_mb)
     moe_offload = n_cpu_moe is not None and int(n_cpu_moe) > 0
-    if moe_offload:
+    skip_clamp = skip_free_vram_clamp()
+    if moe_offload or skip_clamp:
         effective = float(configured)
+        if skip_clamp and not moe_offload:
+            print(
+                f"  [vram-preflight] SKIP_FREE_CLAMP=1 — using configured={configured:.0f}MB "
+                "(runtime monitor remains kill guard)",
+                flush=True,
+            )
     else:
         if free_vram_mb is None:
             free_vram_mb = detect_free_vram_mb()

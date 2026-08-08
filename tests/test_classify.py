@@ -11,6 +11,7 @@ from autoresearch.core.classify import (
     fp_from_config_json,
     is_on_front,
     plan_write,
+    row_bucket,
     vector_from_row,
 )
 from autoresearch.core.pareto import ObjectiveVector
@@ -64,6 +65,16 @@ def test_fp_ignores_non_baseline_keys():
 def test_bucket_rounds_memory_gb():
     assert bucket(7.9) == 8
     assert bucket(16.0) == 16
+
+
+def test_row_bucket_prefers_vram_limit_over_peak_memory():
+    """Same Fingerprint must not split when coding peaks 7.8 and claw peaks 7.4."""
+    cfg = cfg_json({**BASELINE, "VRAM_LIMIT_MB": 8100.0})
+    coding = row(memory_gb="7.8", config_json=cfg)
+    claw = row(memory_gb="7.4", config_json=cfg)
+    assert row_bucket(coding) == row_bucket(claw) == 8
+    legacy = row(memory_gb="7.4", config_json=cfg_json(BASELINE))  # no limit
+    assert row_bucket(legacy) == 7
 
 
 def test_fp_from_baseline_matches_persisted_config_json():
