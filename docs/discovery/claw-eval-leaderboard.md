@@ -6,6 +6,8 @@ Hardware: RTX 4060 **8 GB**, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp`
 
 Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (historical Autoloop pollution — TPS leaked into score). Global frontier: [pareto-leaderboard.md](pareto-leaderboard.md). Leaderboard text is a view of TSV — never drop a measured GGUF because it is weak or deleted.
 
+**Thinking / hybrid-reasoning models (2026-08-08):** Pre-fix Claw rows for families that emit `reasoning_content` (Ornith, Qwen3.x thinking, Gemma-4 `enable_thinking`, Qwythos/Mythos, KAT-Coder, Nanbeige, Pocket, …) may be **false lows** (empty graders, HTTP 400, `max_tokens=512`). Ornith UD remasured **0.3333 → 0.9333** @ 65k after the harness fix. Do not treat those old ranks as IQ. Checklist + remasure policy: [thinking-models-claw-harness.md](thinking-models-claw-harness.md).
+
 ## Claw-Eval full (n=15) — ranked by agentic score
 
 | Rank | Model | Val Score | bench_tg | peak VRAM | ctx | Session / note |
@@ -41,6 +43,10 @@ Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (hist
 
 Smoke ≠ Val Score: Laguna quick 1.00 → full 0.67; Bonsai quick 0.80 → full 0.47; LFM2.5-1.2B quick 0.80 → full **0.60**; LFM2.5-8B quick 0.20 → full 0.13–0.20.
 
+## Failure pattern — harness (thinking models, 2026-08-08)
+
+Claw / agentic loop ignored `reasoning_content`, dropped it from history, and used `max_tokens=512`. Thinking GGUFs scored false-weak until fixed on `main`. Details + regression checklist: [thinking-models-claw-harness.md](thinking-models-claw-harness.md). Evidence: [2026-08-08 session](../sessions/2026-08-08-thinking-claw-harness-fix.md).
+
 ## Failure pattern (2026-07-24 queue)
 
 Across Laguna / Ornith / Bonsai full runs:
@@ -71,7 +77,9 @@ Skip for agentic: **`LFM2.5-8B-A1B`**, **`gemma-4-26B-A4B`**, **`Qwen3.5-9B`** (
 
 ## See also
 
+* [thinking-models-claw-harness.md](thinking-models-claw-harness.md) — thinking-model Claw false-fail + remasure policy  
 * [pareto-leaderboard.md](pareto-leaderboard.md) — global frontier + Day/Night  
 * [agentic-coding-benchmarks.md](agentic-coding-benchmarks.md) — tiers / CLI  
 * [coding-leaderboard.md](coding-leaderboard.md) — direct-coding 10-task ranks  
+* Session: [2026-08-08](../sessions/2026-08-08-thinking-claw-harness-fix.md) — harness fix + Ornith 0.9333  
 * Session: [2026-07-27](../sessions/2026-07-27-incomplete-vectors-pareto.md) — SSD cleanup + Pareto

@@ -97,6 +97,9 @@ models/sglang/
 .autoresearch_state.json
 .autoresearch_state.json.*
 
+# Local agent/auto scratch (session artifacts)
+.auto/
+
 # Case harness (local runtime + interview artifacts)
 .case/
 CLAUDE.local.md

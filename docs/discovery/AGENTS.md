@@ -32,6 +32,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`good-enough-tuning.md`](./good-enough-tuning.md) — default speed path: validation smoke → autoloop `--mode tps` → champion quality check.
 - [`agentic-coding-benchmarks.md`](./agentic-coding-benchmarks.md) — migration guide from direct coding tasks to long-horizon agentic coding benchmarks.
 - [`claw-eval-leaderboard.md`](./claw-eval-leaderboard.md) — ranked Claw-Eval full/quick scores on this 8 GB rig + operational lessons.
+- [`thinking-models-claw-harness.md`](./thinking-models-claw-harness.md) — thinking/`reasoning_content` Claw false-fails: symptoms, fix, remasure policy, regression checklist.
 - [`coding-leaderboard.md`](./coding-leaderboard.md) — ranked coding-10 (HE/MBPP/LCB/BC) scores on this 8 GB rig.
 - [`pareto-leaderboard.md`](./pareto-leaderboard.md) — global Pareto Set (ctx × TPS × agentic × coding) + Day/Night picks (ADR 0006/0008). Live recompute: `scripts/rank_results.py`.
 - [`pareto-selection.md`](./pareto-selection.md) — method note: maximin/Chebyshev Night + ε-constraint IQ band Day ([ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md)).
