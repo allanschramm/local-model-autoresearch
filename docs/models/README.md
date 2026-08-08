@@ -35,7 +35,7 @@ Cards:
 - [Bonsai-27B](bonsai-27b.md) — claw **0.4667** / coding **0.455**
 - [Ternary-Bonsai-27B](ternary-bonsai-27b.md) — rejected (below TPS floor / PrismML)
 - [LFM2.5-1.2B](lfm2.5-1.2b.md) — claw **0.6000** / coding **0.350**
-- [LFM2.5-2.6B](lfm2.5-2.6b.md) — claw **0.3333** / coding **0.4800** (78.7 t/s)
+- [LFM2.5-2.6B](lfm2.5-2.6b.md) — claw **0.8667** / coding **0.5050** (post-harness remasure; was false 0.3333)
 - [LFM2.5-8B-A1B](lfm2.5-8b-a1b.md) — claw ≤0.20 / coding **0.365**
 - [POCKET-35B](pocket-35b.md) — claw **0.6667** + coding **0.615**; **Night** pick
 - [POCKET-26B](pocket-26b.md) — claw **0.2000** + coding **0.490** (historical)

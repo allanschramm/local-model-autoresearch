@@ -46,19 +46,19 @@ Recommended Sampler:
 - TOP_K: 20
 - MIN_P: 0.0
 
-## Measured (Objective Vector, 2026-08-05)
+## Measured (Objective Vector)
 
-| Metric | Value |
-|---|---|
-| **Trial Status** | **`on_front`** |
-| **Agentic (Claw full)** | **0.3333** (5/15) |
-| **Coding (10 tasks/ds)** | **0.4800** |
-|   HumanEval+ | 0.8000 |
-|   MBPP+ | 0.7000 |
-|   LiveCodeBench | 0.3000 |
-|   BigCodeBench | 0.0000 |
-| **Bench tg** | **78.7 t/s** |
-| **Combined TPS** | **85.3 t/s** |
-| **Peak VRAM** | **6.0 GB** |
+| Metric | Pre-fix (2026-08-05) | Post-harness remasure (2026-08-08) |
+|---|---|---|
+| **Trial Status** | `on_front` | **`on_front`** |
+| **Agentic (Claw full)** | 0.3333 (5/15) | **0.8667** (13/15) |
+| **Coding (10 tasks/ds)** | 0.4800 | **0.5050** |
+|   HumanEval+ | 0.8000 | 0.8000 |
+|   MBPP+ | 0.7000 | 0.8000 |
+|   LiveCodeBench | 0.3000 | 0.3000 |
+|   BigCodeBench | 0.0000 | 0.0000 |
+| **Bench tg** | 78.7 t/s | 78.8 t/s |
+| **Combined TPS** | 85.3 t/s | 87.1 t/s |
+| **Peak VRAM** | 6.0 GB | 6.0 GB |
 
-Evidence: `results.tsv` row for `LFM2.5-2.6B-Q8_0.gguf` (2026-08-05).
+Evidence: `results.tsv` rows for `LFM2.5-2.6B-Q8_0.gguf`. Claw jump is the 2026-08-08 agentic harness fix (`reasoning_content` / `max_tokens≥2048`), not a model change — see [thinking-models-claw-harness.md](../discovery/thinking-models-claw-harness.md).

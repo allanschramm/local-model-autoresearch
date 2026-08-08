@@ -30,7 +30,16 @@ RTX 4060 **8 GB** class rig, Windows, upstream `llama.cpp` CUDA. Baseline `VRAM_
 | Pre-fix remasure | **0.3333** | False floor |
 | Post-fix remasure | **0.9333** (14/15) | peak ~7.7 GB, TPS ~42.1 |
 
-Durable guide: [thinking-models-claw-harness.md](../discovery/thinking-models-claw-harness.md). Card note: [ornith-1.0-9b.md](../models/ornith-1.0-9b.md).
+### Optional “non-thinking” remasures (same Fingerprints @ 65k)
+
+| GGUF | claw before | claw after | note |
+| :--- | :---: | :---: | :--- |
+| `LFM2.5-2.6B-Q8_0.gguf` | 0.3333 | **0.8667** (13/15) | coding also re-run **0.5050**; status `on_front` |
+| `NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf` | 0.3333 | **0.7333** (11/15) | claw-only Trial; prior coding **0.51** still on FP |
+
+Conclusion: `max_tokens` / assistant-text harness bug was **not** limited to labeled thinking cards. Low Claw + decent coding remain remasure candidates.
+
+Durable guide: [thinking-models-claw-harness.md](../discovery/thinking-models-claw-harness.md). Card note: [ornith-1.0-9b.md](../models/ornith-1.0-9b.md), [lfm2.5-2.6b.md](../models/lfm2.5-2.6b.md).
 
 ## Decisions
 

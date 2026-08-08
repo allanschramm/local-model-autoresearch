@@ -13,8 +13,9 @@ Ground truth for scores remains `results.tsv`. This note is the **harness failur
 | Low Claw, decent coding-10 | Coding path already used `reasoning_content`; Claw did not |
 | Score cliff after a harness/runtime change | Same GGUF + fingerprint; agentic drops without Baseline change |
 | Classic false floor | Ornith UD @ 65k claw **0.3333** → after fix **0.9333** (14/15) |
+| Also hit “non-thinking” small chat | LFM2.5-2.6B **0.3333→0.8667**; Nemotron3-Nano-4B **0.3333→0.7333** @ 65k (same Fingerprints post-fix) |
 
-Non-thinking models with low Claw and ok coding are usually **real agentic weakness** — do not blanket remasure them for this bug.
+**Do not assume** “not a thinking card” ⇒ immune. `max_tokens=512` and empty-`content` / `reasoning_content` handling can false-floor agentic runs on any model that thinks long, emits reasoning fields, or needs longer tool turns. Prefer remasuring **low Claw + decent coding** suspects, not only labeled thinking families.
 
 ## Root cause (fixed on `main`, 2026-08-08)
 
@@ -36,13 +37,14 @@ Code pointer: `autoresearch/AGENTS.md` (Claw/agentic loop bullet).
 
 - Card / template enables thinking or reasoning by default (Qwen3.x thinking, Gemma-4 `enable_thinking`, Ornith, Qwythos/Mythos, KAT-Coder thinking, Nanbeige `REASONING`, Pocket think template, …).
 - Pre-fix Claw looks suspiciously low for the family (especially ≤ ~0.40, or mid scores that match historical “capped” Ornith **0.60**).
+- Low Claw with decent coding-10 on the same Fingerprint (e.g. historical LFM / Nemotron floors at **0.3333**) — verify with one Claw-full remasure; do not assume skill.
 - Mock/server logs show empty `content` with non-empty `reasoning_content`.
 
-**Skip for this bug:** clearly non-thinking chat models with completed Claw and no empty-content pattern (e.g. granite / grug / Laguna / LFM families — treat low Claw as skill unless logs contradict).
+**Lower priority to remasure for this bug alone:** models with already-strong Claw (granite / grug / Laguna-class ≥ ~0.65) and no empty-content pattern.
 
 **Do not** remasure coding-10 for this bug alone — that path already handled `reasoning_content`.
 
-Evidence session: [2026-08-08-thinking-claw-harness-fix.md](../sessions/2026-08-08-thinking-claw-harness-fix.md). Leaderboard context: [claw-eval-leaderboard.md](claw-eval-leaderboard.md).
+Evidence: [2026-08-08 session](../sessions/2026-08-08-thinking-claw-harness-fix.md) (Ornith + LFM + Nemotron remasures). Leaderboard: [claw-eval-leaderboard.md](claw-eval-leaderboard.md).
 
 ## Operator checklist (before Claw-full on a thinking GGUF)
 
