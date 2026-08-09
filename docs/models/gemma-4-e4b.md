@@ -51,15 +51,14 @@
 - **Autoloop note:** server-path TPS with PPL ceiling previously peaked **76.67 t/s** at same draft/`q4_0`/n_max=4 — lower than raw cli-bench (different workload). Prefer cli matrix for apples-to-apples MTP compares.
 - **KV:** use `q4_0` only on upstream builds. `turbo*` KV types are **not** in upstream `llama.cpp`.
 
-## Measured (claw-full, 2026-07-24)
+## Measured (claw-full)
 
 Alias path: ctx **65k**, draft-mtp n=4, KV q4_0, cont-batching on.
 
-| Metric | Value |
-|---|---|
-| Val Score | **0.3333** (5/15) |
-| bench_tg | 113.3 t/s |
-| peak VRAM | 5.8 GB |
-| agentic wall | 502 s |
+| Stage | Val / agentic | note |
+|---|---|---|
+| 2026-07-24 | **0.3333** (5/15) | Pre harness fix; bench_tg 113.3; peak 5.8 GB |
+| 2026-08-08 remasure | **0.8000** (12/15) | Post `reasoning_content` / max_tokens fix; TPS 126.7; peak **5.1 GB** |
 
-Below Laguna/Ornith/LFM-1.2B. Harness STATUS DISCARD vs polluted previous best `76.67` (engine-tps) — ignore STATUS; Val Score valid. Evidence: [session top-TPS full](../sessions/2026-07-24-claw-full-top-tps.md).
+Evidence: `results.tsv` remasure row; [thinking-models-claw-harness.md](../discovery/thinking-models-claw-harness.md).
+
