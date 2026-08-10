@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from autoresearch.benchmarks.agentic_benchmarks import get_full_tier_tasks, get_quick_tier_tasks
 from autoresearch.benchmarks.agentic_runner import run_agentic_eval
@@ -114,23 +114,6 @@ class TrialOutcome(str, Enum):
     MODEL_REJECTED = "MODEL_REJECTED"
     INFRA_ERROR = "INFRA_ERROR"
     CODE_ERROR = "CODE_ERROR"
-
-
-class AgenticBenchmarkAdapter(Protocol):
-    def task_ids(self, tier: str) -> list[str]: ...
-    def run(
-        self, client: LlamaClient, task_ids: list[str], gen_params: GenerationParams
-    ) -> dict: ...
-
-
-class ClawEvalAdapter:
-    """Docker-free Claw-Eval adapter with deterministic local grading."""
-
-    def task_ids(self, tier: str) -> list[str]:
-        return get_quick_tier_tasks() if tier == "quick" else get_full_tier_tasks()
-
-    def run(self, client: LlamaClient, task_ids: list[str], gen_params: GenerationParams) -> dict:
-        return run_agentic_eval(client, task_ids, gen_params=gen_params, trials=1)
 
 
 @dataclass
@@ -418,9 +401,8 @@ class ExperimentRunner:
     Locality: trial orchestration logic and bugs concentrate in one module.
     """
 
-    def __init__(self, models_dir: Path, agentic_adapter: AgenticBenchmarkAdapter | None = None):
+    def __init__(self, models_dir: Path):
         self.models_dir = Path(models_dir)
-        self.agentic_adapter = agentic_adapter or ClawEvalAdapter()
 
     def run_trial(
         self,
@@ -506,9 +488,9 @@ class ExperimentRunner:
             return res
         agentic_tiers: list[tuple[str, list[str]]] = []
         if agentic_quick:
-            agentic_tiers.append(("quick", self.agentic_adapter.task_ids("quick")))
+            agentic_tiers.append(("quick", get_quick_tier_tasks()))
         if agentic_full:
-            agentic_tiers.append(("full", self.agentic_adapter.task_ids("full")))
+            agentic_tiers.append(("full", get_full_tier_tasks()))
         if any(not task_ids for _, task_ids in agentic_tiers):
             missing = next(tier for tier, task_ids in agentic_tiers if not task_ids)
             res.status = f"FAIL: No agentic {missing} tasks found"
@@ -741,7 +723,9 @@ class ExperimentRunner:
                         )
                         if n_tasks == 0:
                             raise FileNotFoundError(f"No Claw-Eval {tier} tasks found")
-                        agentic_res = self.agentic_adapter.run(client, task_ids, gen_params)
+                        agentic_res = run_agentic_eval(
+                            client, task_ids, gen_params=gen_params, trials=1
+                        )
                         res.task_ids = tuple(task_ids)
                         if tier == "full" or not agentic_full:
                             res.agentic_val = agentic_res["score"]

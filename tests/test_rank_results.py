@@ -32,18 +32,6 @@ def test_day_pick_tps_floor_then_max_iq():
     assert pick.model == "fast_smart"
 
 
-def test_day_pick_iq_band_then_max_tps():
-    # Legacy ratio override check: IQ_best = min(0.6,0.64)=0.6 → floor 0.45; A min=0.35 out; B wins TPS in band
-    front = [
-        rr.Point("night", ctx=65536, tps=35.0, agentic=0.67, coding=0.62),
-        rr.Point("day", ctx=32768, tps=64.0, agentic=0.47, coding=0.58),
-        rr.Point("fast_weak", ctx=65536, tps=166.0, agentic=0.60, coding=0.35),
-    ]
-    pick = rr.pick_day(front, day_iq_ratio=0.75)
-    assert pick is not None
-    assert pick.model == "day"
-
-
 def test_night_pick_ctx_floor_then_maximin():
     front = [
         rr.Point("big_iq", ctx=65536, tps=35.0, agentic=0.67, coding=0.62),
@@ -286,7 +274,7 @@ def test_day_and_night_tables_are_aligned_columns():
     report = rr.format_report(
         front,
         [],
-        day_iq_ratio=0.75,
+        day_tps_floor=50.0,
         night_ctx_floor=65536,
         mode="pareto",
     )
@@ -297,6 +285,7 @@ def test_day_and_night_tables_are_aligned_columns():
     day_section, night_section = report.split("NIGHT", 1)
     assert "MTP.gguf" in day_section
     assert "63.7" in day_section
-    assert "FAST.gguf" not in day_section
+    assert "FAST.gguf" in day_section
+    assert "POCKET.gguf" not in day_section
     assert "POCKET.gguf" in night_section
     assert "35.7" in night_section

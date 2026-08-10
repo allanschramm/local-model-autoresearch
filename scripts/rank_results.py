@@ -8,7 +8,7 @@ Usage (repo root):
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py --mode claw
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py --mode coding
-    .\\venv\\Scripts\\python.exe scripts\\rank_results.py --day-iq-ratio 0.8
+    .\\venv\\Scripts\\python.exe scripts\\rank_results.py --day-tps-floor 50
 """
 
 from __future__ import annotations
@@ -42,7 +42,6 @@ DEFAULT_TSV = REPO_ROOT / "results.tsv"
 _DESC_TPS_RE = re.compile(r"(?:bench_tg|TPS)=([0-9]+(?:\.[0-9]+)?)", re.IGNORECASE)
 _DESC_CTX_RE = re.compile(r"\bctx=([0-9]+)\b", re.IGNORECASE)
 
-DEFAULT_DAY_IQ_RATIO = 0.75
 DEFAULT_DAY_TPS_FLOOR = 50.0
 DEFAULT_NIGHT_CTX_FLOOR = 65536
 
@@ -245,9 +244,8 @@ pareto_front = pareto_set
 def pick_day(
     front: Sequence[Point],
     day_tps_floor: float = DEFAULT_DAY_TPS_FLOOR,
-    day_iq_ratio: float | None = None,
 ) -> Point | None:
-    ranked = day_table(front, day_tps_floor=day_tps_floor, day_iq_ratio=day_iq_ratio)
+    ranked = day_table(front, day_tps_floor=day_tps_floor)
     return ranked[0] if ranked else None
 
 
@@ -262,20 +260,10 @@ def pick_night(
 def day_table(
     front: Sequence[Point],
     day_tps_floor: float = DEFAULT_DAY_TPS_FLOOR,
-    day_iq_ratio: float | None = None,
 ) -> list[Point]:
-    """Front points clearing Day TPS floor (or Day IQ ratio), sorted by maximin IQ then TPS (ADR 0009)."""
+    """Front points clearing Day TPS floor, sorted by maximin IQ then TPS (ADR 0009)."""
     if not front:
         return []
-    if day_iq_ratio is not None:
-        iq_best = max(p.iq_min for p in front)
-        floor = day_iq_ratio * iq_best
-        band = [p for p in front if p.iq_min >= floor]
-        pool = band if band else list(front)
-        if band:
-            return sorted(pool, key=lambda p: (-p.tps, -p.iq_min, -p.ctx, p.model))
-        return sorted(pool, key=lambda p: (-p.iq_min, -p.tps, -p.ctx, p.model))
-
     eligible = [p for p in front if p.tps >= day_tps_floor]
     pool = eligible if eligible else list(front)
     if eligible:
@@ -408,7 +396,6 @@ def format_report(
     incomplete: Sequence[Point],
     *,
     day_tps_floor: float = DEFAULT_DAY_TPS_FLOOR,
-    day_iq_ratio: float | None = None,
     night_ctx_floor: int = DEFAULT_NIGHT_CTX_FLOOR,
     mode: str,
     rows: Sequence[dict[str, str]] | None = None,
@@ -418,15 +405,8 @@ def format_report(
     front = pareto_front(complete)
 
     if mode in ("pareto", "day", "all"):
-        day_rows = day_table(front, day_tps_floor=day_tps_floor, day_iq_ratio=day_iq_ratio)
-        if day_iq_ratio is not None:
-            iq_best = max((p.iq_min for p in front), default=0.0)
-            floor = day_iq_ratio * iq_best
-            lines.append(
-                f"DAY  (min >= {day_iq_ratio:.2f}*IQ_best={iq_best:.4f} -> {floor:.4f})  pick=#1"
-            )
-        else:
-            lines.append(f"DAY  (TPS >= {day_tps_floor:.1f})  pick=#1")
+        day_rows = day_table(front, day_tps_floor=day_tps_floor)
+        lines.append(f"DAY  (TPS >= {day_tps_floor:.1f})  pick=#1")
         lines.extend(_md_table(day_rows))
 
     if mode in ("pareto", "night", "all"):
@@ -474,12 +454,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help=f"ADR 0009 Day TPS floor (default {DEFAULT_DAY_TPS_FLOOR})",
     )
     parser.add_argument(
-        "--day-iq-ratio",
-        type=float,
-        default=None,
-        help="ADR 0008 Day IQ band ratio (legacy override, default None)",
-    )
-    parser.add_argument(
         "--night-ctx-floor",
         type=int,
         default=DEFAULT_NIGHT_CTX_FLOOR,
@@ -500,7 +474,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         complete,
         incomplete,
         day_tps_floor=args.day_tps_floor,
-        day_iq_ratio=args.day_iq_ratio,
         night_ctx_floor=args.night_ctx_floor,
         mode=args.mode,
         rows=rows,

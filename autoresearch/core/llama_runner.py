@@ -43,11 +43,6 @@ from autoresearch.core.model_arch import (
 from autoresearch.core.process_guard import ProcessGuard, cleanup_leftover_processes
 from autoresearch.core.single_load import enforce_single_load, resolve_allow_multi
 
-# #39 runner tests patch this module-level name. It is the fail-open gate
-# (see enforce_single_load): refuses on a live-server detection, but logs and
-# moves on when detection tooling is unavailable, like the orphan sweep.
-assert_single_load = enforce_single_load
-
 
 def resolve_model_path(models_dir: Path, ref: str | Path) -> Path:
     """Resolve a model ref under models_dir (flat or nested LM Studio layout).
@@ -1004,7 +999,7 @@ class LlamaServerRunner:
         # harness port, so it only runs when the gate passes and allow-multi
         # is off.
         allow_multi = resolve_allow_multi()
-        assert_single_load(allow_multi=allow_multi)
+        enforce_single_load(allow_multi=allow_multi)
         if not allow_multi:
             sweep_leftover_processes()
         self._guard = ProcessGuard()

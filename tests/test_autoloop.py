@@ -213,8 +213,6 @@ class TestAutoLoop(unittest.TestCase):
             "FREQUENCY_PENALTY": None,
             "INCLUDE_CODING": True,
             "CODING_TASK_LIMIT": 10,
-            "INCLUDE_NEXUS": False,
-            "INCLUDE_CLAW": False,
             "INCLUDE_AGENTIC_QUICK": True,
             "INCLUDE_AGENTIC_FULL": True,
             "N_CPU_MOE": 32,

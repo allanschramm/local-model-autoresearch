@@ -214,18 +214,6 @@ def parse_args():
         "--no-coding", dest="include_coding", action="store_false", help="Disable Coding benchmark"
     )
     parser.add_argument(
-        "--include-nexus",
-        action="store_true",
-        default=getattr(bench_config, "INCLUDE_NEXUS", False),
-        help="Include Nexus benchmark",
-    )
-    parser.add_argument(
-        "--include-claw",
-        action="store_true",
-        default=getattr(bench_config, "INCLUDE_CLAW", False),
-        help="Include Claw benchmark",
-    )
-    parser.add_argument(
         "--agentic-quick",
         action=argparse.BooleanOptionalAction,
         default=getattr(bench_config, "INCLUDE_AGENTIC_QUICK", False),
@@ -705,16 +693,12 @@ def handle_single_run(args):
     print(f"Starting single run for model: {args.model}")
     commit = get_git_commit()
 
-    include_nexus_val = getattr(args, "include_nexus", False)
-    include_claw_val = getattr(args, "include_claw", False)
     agentic_quick = getattr(args, "agentic_quick", False) is True
     agentic_full = getattr(args, "agentic_full", False) is True
 
     # Run evaluation
     res = run_evaluation(
         args,
-        include_nexus=include_nexus_val,
-        include_claw=include_claw_val,
         agentic_quick=agentic_quick,
         agentic_full=agentic_full,
     )

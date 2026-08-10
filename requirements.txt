@@ -10,11 +10,9 @@ gguf                # GGUF metadata — MoE vs dense (model_arch); hard required
 
 # Model discovery + download
 huggingface_hub[cli] # `hf` CLI used to download GGUF files
-uv                   # `uvx` for running `uvx whichllm@latest` (prefer `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pipx install uv`)
+# `uv` / `uvx` (whichllm): install outside the venv — https://docs.astral.sh/uv/
 
-# HTTP
-httpx               # reserved / optional clients (LlamaClient uses stdlib urllib today)
-requests            # SGLang runner health checks
+# HTTP: owned code uses stdlib urllib (LlamaClient, SGLang health, serve-config)
 
 # Config + YAML (autoloop alias YAML, claw-eval task defs)
 pyyaml

@@ -3,17 +3,19 @@ import socket
 import subprocess
 import threading
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
-import requests
-
-from autoresearch.core.llama_runner import ROOT_DIR, ServerIntent, sweep_leftover_processes
+from autoresearch.core.llama_runner import (
+    ROOT_DIR,
+    ServerIntent,
+    candidate_ports,
+    sweep_leftover_processes,
+)
 from autoresearch.core.process_guard import ProcessGuard
 from autoresearch.core.single_load import enforce_single_load, resolve_allow_multi
-
-# Module-level patch surface for runner tests (#39); the fail-open gate.
-assert_single_load = enforce_single_load
 
 IS_WINDOWS = os.name == "nt"
 REPO_ROOT = ROOT_DIR.parent.parent
@@ -39,10 +41,6 @@ def _terminate_process_tree(proc: subprocess.Popen[str]) -> None:
         os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
     except ProcessLookupError:
         pass
-
-
-def candidate_ports(preferred: int) -> list[int]:
-    return list(dict.fromkeys((preferred, preferred + 1, preferred + 2, 18080, 28080)))
 
 
 def run_sglang_bench_validation(
@@ -189,9 +187,10 @@ class SGLangServerRunner:
 
     def is_server_ready(self, port: int) -> bool:
         try:
-            r = requests.get(f"http://{self.intent.host}:{port}/v1/models")
-            return r.status_code == 200
-        except requests.RequestException:
+            req = urllib.request.Request(f"http://{self.intent.host}:{port}/v1/models")
+            with urllib.request.urlopen(req, timeout=2) as response:
+                return response.status == 200
+        except (urllib.error.URLError, TimeoutError, OSError):
             return False
 
     def start(self) -> int:
@@ -212,7 +211,7 @@ class SGLangServerRunner:
         # harness port, so it only runs when the gate passes and allow-multi
         # is off.
         allow_multi = resolve_allow_multi()
-        assert_single_load(allow_multi=allow_multi)
+        enforce_single_load(allow_multi=allow_multi)
         if not allow_multi:
             sweep_leftover_processes()
         self._guard = ProcessGuard()

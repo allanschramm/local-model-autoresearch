@@ -59,8 +59,6 @@ def args(**over) -> SimpleNamespace:
         include_coding=False,
         agentic_quick=False,
         agentic_full=False,
-        include_nexus=False,
-        include_claw=False,
     )
     for key, value in over.items():
         setattr(a, key, value)

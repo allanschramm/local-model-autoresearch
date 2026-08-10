@@ -142,7 +142,7 @@ if command -v uvx &>/dev/null; then
     uvx_ver=$(uvx --version 2>&1)
     ok "uvx ($uvx_ver) - whichllm ready"
 else
-    fail "uvx not found (pip install uv)"
+    fail "uvx not found (install uv outside the venv: https://docs.astral.sh/uv/)"
 fi
 
 # 6. huggingface CLI
@@ -157,7 +157,7 @@ fi
 echo ""
 echo "--- Python dependencies ---"
 if [[ -f "$REPO_ROOT/requirements.txt" ]]; then
-    if python3 -c "import yaml, requests, huggingface_hub, gguf, evalplus, datasets, psutil, pytest, fastapi, uvicorn" 2>/dev/null; then
+    if python3 -c "import yaml, huggingface_hub, gguf, evalplus, datasets, psutil, pytest, fastapi, uvicorn" 2>/dev/null; then
         ok "Core Python deps installed"
     else
         warn "Some Python deps missing (pip install -r requirements.txt)"

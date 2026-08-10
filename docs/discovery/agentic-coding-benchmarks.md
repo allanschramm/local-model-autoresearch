@@ -4,8 +4,9 @@ This repo evaluates local models across two tiers:
 
 * **Preflight (direct code gen):** HumanEval+, MBPP+, LiveCodeBench, BigCodeBench.
   Optional single-turn checks. Exactly 10 tasks per dataset when enabled.
-* **Agentic (multi-turn, tool use):** Claw-Eval quick/full tiers via `ClawEvalAdapter`
-  in `autoresearch/runners/evaluation.py`. Claw full = the agentic Objective Vector axis
+* **Agentic (multi-turn, tool use):** Claw-Eval quick/full tiers via `run_agentic_eval`
+  in `autoresearch/benchmarks/agentic_runner.py` (orchestrated by `ExperimentRunner`).
+  Claw full = the agentic Objective Vector axis
   ([ADR 0006](../adr/0006-pareto-frontier-search.md)); Val Score is legacy display, not Search truth.
 
 ## Tier Structure
@@ -44,7 +45,7 @@ Run full agentic quality gate:
 python benchmark_search.py --agentic-full --desc "agentic quality gate"
 ```
 
-Adapter (`ClawEvalAdapter`) starts mock services, runs the agent loop against the
+`ExperimentRunner` starts mock services (via `run_agentic_eval`), runs the agent loop against the
 local OpenAI-compatible endpoint, and scores with deterministic `task.yaml` rules.
 No Docker, remote judges, or external APIs.
 

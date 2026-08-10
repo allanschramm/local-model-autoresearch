@@ -43,8 +43,8 @@ Minimum TPS required for Day profile selection (default 50.0 TPS; [ADR 0009](doc
 _Avoid_: Day = 30 TPS models, Day = pure max TPS without floor
 
 **DAY_IQ_RATIO**:
-Legacy Day gate ratio from ADR 0008. Superseded by `DAY_TPS_FLOOR` ([ADR 0009](docs/adr/0009-day-profile-tps-floor.md)), available as an optional CLI flag override (`--day-iq-ratio`).
-_Avoid_: using as default Day rule
+Legacy Day gate ratio from ADR 0008. Superseded by `DAY_TPS_FLOOR` ([ADR 0009](docs/adr/0009-day-profile-tps-floor.md)); removed from `scripts/rank_results.py` CLI.
+_Avoid_: using as Day rule
 
 **NIGHT_CTX_FLOOR**:
 Minimum configured `CTX_SIZE` for Night profile selection (default 65536). Revisitable when project architecture / ticket size / compaction change how much context night loops need.
@@ -97,7 +97,7 @@ Legacy scalar (historically Claw-Eval full) retained for display/compat only. No
 _Avoid_: score, result, metric (when meaning frontier truth)
 
 **TPS Floor**:
-Legacy minimum throughput knob in Baseline `ENGINE_DEFAULTS['TPS_FLOOR']`. Does **not** gate Pareto Set membership. Day selection uses relative `DAY_IQ_RATIO` ([ADR 0008](docs/adr/0008-day-iq-epsilon-then-tps.md)), not an absolute tok/s floor. Removable once callers stop depending on it.
+Legacy minimum throughput knob in Baseline `ENGINE_DEFAULTS['TPS_FLOOR']`. Does **not** gate Pareto Set membership. Day selection uses a Day TPS floor then max IQ ([ADR 0009](docs/adr/0009-day-profile-tps-floor.md)). Removable once callers stop depending on it.
 _Avoid_: threshold as frontier rule, minimum TPS for on_front, Day = TPS Floor
 
 ### Benchmarks

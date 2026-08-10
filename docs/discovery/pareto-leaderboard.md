@@ -1,6 +1,6 @@
 # Pareto Frontier Leaderboard (Local Rig)
 
-Global **Pareto Set** on this hardware budget: maximize **ctx × TPS × agentic × coding** ([ADR 0006](../adr/0006-pareto-frontier-search.md)). Selection lenses: **Day** / **Night** ([ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md)).
+Global **Pareto Set** on this hardware budget: maximize **ctx × TPS × agentic × coding** ([ADR 0006](../adr/0006-pareto-frontier-search.md)). Selection lenses: **Day** ([ADR 0009](../adr/0009-day-profile-tps-floor.md)) / **Night** ([ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md) Night rule).
 
 Hardware: discrete **8 GB-class** NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.  
 Ground truth: `results.tsv`. TPS axis = claw-full `bench_tg` when available. Complete vector = claw-full **and** coding-10 (exact 10 tasks/dataset).
@@ -11,17 +11,15 @@ Recompute live (do not invent temp scripts):
 
 ```bash
 .\venv\Scripts\python.exe scripts\rank_results.py
-.\venv\Scripts\python.exe scripts\rank_results.py --day-iq-ratio 0.8
+.\venv\Scripts\python.exe scripts\rank_results.py --day-tps-floor 50
 ```
 
-## Usage Profile picks (ADR 0008)
+## Usage Profile picks (ADR 0009 Day / ADR 0008 Night)
 
 | Lens | Rule | Pick (this front) |
 | :--- | :--- | :--- |
 | **Night** | `CTX ≥ 65536` then max `min(agentic, coding)` | **POCKET-35B-Q3_K_M** (min **0.615**); KAT close second (min **0.600**) |
-| **Day** | `min(ag,cod) ≥ 0.75 × IQ_best` then max TPS | **Qwythos-9B-v2-Q4_K_M** (~42 t/s @100k, min **0.467**) |
-
-`IQ_best` on this front ≈ **0.615** → Day IQ floor ≈ **0.461**. v2 (min 0.467) just clears the band; LFM 1.2B (min 0.35) out. Raise `DAY_IQ_RATIO` to **0.8** (floor **0.492**) → v2 drops out, Day = **POCKET-35B** (~36 t/s, min 0.615). Method: [pareto-selection.md](pareto-selection.md).
+| **Day** | `TPS ≥ DAY_TPS_FLOOR` (default 50) then max `min(agentic, coding)` | Recompute live with `rank_results.py` (snapshot below used older ADR 0008 IQ band) |
 
 ## `on_front` (complete / merged)
 
@@ -68,14 +66,15 @@ Different quants of the same family (e.g. Ornith-35B **Q3_K_XL** vs **Q4_K_XL**)
 | Job | Prefer |
 | :--- | :--- |
 | Night / long agent loops | **POCKET-35B** (KAT close second) |
-| Day / supervised (ADR 0008) | **Qwythos-9B-v2** @100k (~42 t/s) — POCKET-35B if `DAY_IQ_RATIO=0.8` |
+| Day / supervised (ADR 0009) | Recompute: `rank_results.py --day-tps-floor 50` (snapshot table above used older ADR 0008 IQ band) |
 | Direct coding | **KAT-Coder** → POCKET-35B → v2 |
 | SSD cleanup | delete weak/`rejected` first; Q3 Ornith-35B optional if keeping Q4 |
 
 ## See also
 
 * [ADR 0006](../adr/0006-pareto-frontier-search.md) — Pareto Set membership  
-* [ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md) — Day IQ ε-band → max TPS  
-* [pareto-selection.md](pareto-selection.md) — method citations (maximin / ε-constraint)  
+* [ADR 0009](../adr/0009-day-profile-tps-floor.md) — Day TPS floor → max IQ  
+* [ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md) — Night ctx floor / historical Day IQ ε-band  
+* [pareto-selection.md](pareto-selection.md) — method citations (maximin / Day floors)  
 * [claw-eval-leaderboard.md](claw-eval-leaderboard.md) · [coding-leaderboard.md](coding-leaderboard.md)  
 * Session: [2026-07-27 incomplete vectors + Pareto](../sessions/2026-07-27-incomplete-vectors-pareto.md), [KAT-Coder pipeline](../sessions/2026-07-27-kat-coder-v2.5-dev-pipeline.md)

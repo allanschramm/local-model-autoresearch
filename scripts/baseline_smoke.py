@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Baseline smoke test: 1 run per model, ~5min budget.
+Baseline smoke test: 1 run per model (coding_task_limit=1).
 MTP for Qwen (has nextn_predict_layers), TurboQuant (turbo4) for both.
 Validates codebase works end-to-end.
 """
@@ -19,7 +19,6 @@ MODELS = [
     "gemma-4-26B-A4B-it-UD-Q4_K_M.gguf",
 ]
 
-TRIAL_BUDGET = 300  # 5 minutes per model
 TASK_LIMIT = 1
 
 
@@ -29,9 +28,7 @@ def run_baseline(model: str) -> dict:
 
     print(f"\n{'=' * 60}")
     print(f"BASELINE SMOKE: {model}")
-    print(
-        f"  MTP={'on' if has_mtp else 'N/A'}, KV=turbo4, budget={TRIAL_BUDGET}s, tasks={TASK_LIMIT}"
-    )
+    print(f"  MTP={'on' if has_mtp else 'N/A'}, KV=turbo4, tasks={TASK_LIMIT}")
     print(f"{'=' * 60}")
 
     cfg = {
@@ -47,9 +44,6 @@ def run_baseline(model: str) -> dict:
         "flash_attn": "on",
         "coding_task_limit": TASK_LIMIT,
         "include_coding": True,
-        "include_nexus": False,
-        "include_claw": False,
-        "trial_budget": TRIAL_BUDGET,
         "temp": 0.4,
         "top_p": 0.95,
         "top_k": 20,

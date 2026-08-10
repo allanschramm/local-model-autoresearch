@@ -36,7 +36,7 @@ Repository operators and developers.
 - [run_validate.py](run_validate.py) — shared ruff+pytest validate (CI + local agents).
 - [lcb_only.py](lcb_only.py) — LCB-only remeasure helper (`scripts/lcb_only.py`).
 - [recompute_status.py](recompute_status.py) — store-wide Pareto status recompute over a results.tsv (issue #5; `autoresearch/core/recompute.py` owns the logic).
-- [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0008).
+- [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0009).
 - [measure_vram_peak.py](measure_vram_peak.py) — real peak-VRAM measurement for the Baseline model, gate bypass (estimator calibration, issue #10).
 - Hard-gates (Claude): [../.claude/hooks/](../.claude/hooks/) + [../docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md).
 - Git pre-commit: [../.pre-commit-config.yaml](../.pre-commit-config.yaml) + [../pyproject.toml](../pyproject.toml).
