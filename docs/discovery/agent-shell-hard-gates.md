@@ -1,11 +1,10 @@
 # Agent shell hard-gates
 
-**Date:** 2026-07-29 (updated: 2026-08-03 — added `block-git-commit.ps1` git-commit guardrail)  
+**Date:** 2026-07-29 (updated: 2026-08-10 — native per-harness gates; Cursor Node `.cjs`; Win→WSL harness sync via robocopy)  
 **Audience:** operators + next coding agent + anyone who clones  
 **Purpose:** What is installed, what it blocks, how a **human** turns it off. Clone-and-use — no OS admin rituals.
 
-> **Agent rule:** If the user asks to disable / remove / revert these gates, **do not silently strip them**. Teach the steps in §3, wait for explicit “do it” / “desliga” / “remove”, then apply.  
-> Editing **wiring** under `.claude/hooks/**` or `.claude/settings.json` requires explicit user unlock — hooks deny those paths.
+> **Agent rule:** If the user asks to disable / remove / revert these gates, **do not silently strip them**. Teach the steps in §3, wait for explicit “do it” / “desliga” / “remove”, then apply.
 
 ---
 
@@ -13,17 +12,20 @@
 
 | Piece | Path | Role |
 |---|---|---|
-| Shell policy | `.claude/hooks/block-adhoc-eval.ps1` | PreToolUse Bash\|PowerShell: cwd check; python allowlist; deny Baseline CLI overrides / `-c` / raw llama / shell rewrite of gates |
-| Gate-file policy | `.claude/hooks/block-gate-tamper.ps1` | PreToolUse Edit\|Write\|Delete: deny wiring paths |
-| Git-commit guardrail | `.claude/hooks/block-git-commit.ps1` | PreToolUse Bash\|PowerShell: deny `git commit` / `git push` unless a fresh human token (`.claude/hooks/.git-commit-allow`, TTL 30 min) exists |
-| Pi git-commit guard | `.pi/extensions/git-commit-guard.ts` | pi `tool_call` hook: block `git commit` / `git push` in the bash tool unless the user confirms in the TUI (headless → always block) |
-| Post-tool audit | `.claude/hooks/audit-post-tool.ps1` | PostToolUse Bash\|PowerShell\|Edit\|Write: append `.claude/hooks-audit.log` (fail-open; `*.log` gitignored) |
-| Claude wiring | `.claude/settings.json` | `allow` / `ask` / `deny` + `disableBypassPermissionsMode` + PreToolUse + PostToolUse (Claude-only) |
-| Claude local | `.claude/settings.local.json` | Machine-only allow extras (gitignored). Keep empty or narrow — never `python.exe *` / CLI soup |
+| Cursor shell | `.cursor/hooks/shell-gate.cjs` | `beforeShellExecution`: DENY bombs, ALLOW safe/harness, ASK else (Node, portable Win/WSL/Linux) |
+| Cursor files | `.cursor/hooks/file-gate.cjs` | `preToolUse`: DENY outside-workspace Write/Edit/Delete; DENY `.env` / GGUF / `results.tsv` / vendor |
+| Cursor wiring | `.cursor/hooks.json` | `node .cursor/hooks/*.cjs`, `failClosed` |
+| Cursor global | `~/.cursor/hooks/shell-gate.cjs` + `~/.cursor/hooks.json` | Lean global DENY (`python -c`, `rm`, force-push, hard-reset); ASK else |
+| Cursor CLI allow/deny | `~/.cursor/cli-config.json` + project `.cursor/cli.json` | allow / deny; not-in-either = Ask |
+| Pi shell/file | `.pi/extensions/agent-gates.ts` | Native TS gates (same intent as Cursor); no Python |
+| Pi git | `.pi/extensions/git-commit-guard.ts` | TUI confirm for `git commit` / `git push` |
+| Gemini project | `.gemini/settings.json` | Native `permissions.allow` / `ask` / `deny` (no shared hook_cli) |
 | Contract text | `AGENTS.md` + `scripts/AGENTS.md` | DOX pointers |
-| Host memory | harness `HOST_MEMORY_PREFLIGHT` | Rejects oversized GGUF+KV vs RAM−headroom on serve / Trial (not a Claude permission rule) |
+| Host memory | harness `HOST_MEMORY_PREFLIGHT` | Rejects oversized GGUF+KV vs RAM−headroom |
 
-**Out of scope (by design):** OS ACL / `icacls` / chmod lockdowns / enterprise managed hooks / Cursor project hooks. Clone users get Claude Code in-repo settings + `.claude/hooks/` only.
+**Removed:** shared `.agents/agent_gates/` (`policy.py` / `hook_cli.py`). Each harness uses its own config shape.
+
+**Out of scope (by design):** OS ACL / `icacls` / chmod / enterprise managed hooks.
 
 ---
 
@@ -185,22 +187,63 @@ On clone + open in Claude Code:
 1. Project `.claude/settings.json` loads allow/ask/deny + Pre/Post hooks from `.claude/hooks/`.  
 2. No Windows/Linux permission commands required.
 
-If hooks do not fire: restart Claude Code; confirm project trust / that settings were not renamed away.
+Cursor / pi / Gemini harness configs are **machine-local** (often gitignored). A bare clone does **not** ship them; dual-host operators sync per §9.
 
-**Explicitly not part of the product:** Cursor project hooks, `icacls`, chmod lockdowns, enterprise managed hooks, or any per-machine admin ritual.
+If hooks do not fire: restart the harness; confirm project trust / that settings were not renamed away.
+
+**Explicitly not part of the product:** `icacls`, chmod lockdowns, enterprise managed hooks, or any per-machine admin ritual.
 
 ---
 
-## 8. Sources / Verification
+## 8. Cursor smoke (use the tools — do not invent gate tests)
+
+Smoke Cursor gates by **calling agent tools**. Do **not** pipe JSON into `node …/shell-gate.cjs`, do **not** add pytest wrappers, do **not** widen `.cursor/cli.json` allow so the agent can self-test.
+
+| Tool call | Expect |
+|---|---|
+| `Shell` → `python -c …` / `rm …` | **Deny** (hook message) |
+| `Shell` → `git status` | **Allow** |
+| `Write` → path under OS Temp / outside workspace | **Deny** (`Refuse Write outside workspace`) |
+| `Write`/`Edit` → in-repo path (when policy allows) | **Allow** |
+| `Shell` → unknown benign (`Get-Date`, `hostname`) | **Ask** (may auto-clear in some agent channels — check the UI) |
+
+Agents must **not** edit `.cursor/hooks/**`, `.cursor/hooks.json`, or grant themselves Shell/Edit allows for those paths. Human unlock only (same spirit as §3 / Claude gate-tamper).
+
+---
+
+## 9. Dual-host harness sync (Windows → WSL)
+
+When the operator keeps a Windows checkout and a WSL2 clone of the same repo, sync **machine-local harness** from Windows. Prefer **Windows → UNC**, not `wsl … bash` + `rsync` from `/mnt/d`.
+
+**Why not WSL-side rsync:** PowerShell expands `$SRC` / `$DST` / `$d` before bash sees them → commands can become `rsync -a --delete // //` and wreck the guest. Also: drive the copy from Windows so paths stay explicit.
+
+**Dest pattern (no personal paths in docs):**  
+`\\wsl.localhost\<Distro>\home\<user>\projects\local-model-autotuning`
+
+**Copy (harness only):** `.agents\`, `.cursor\`, `.gemini\`, `.pi\`, `docs\agents\`, plus `skills-lock.json`, `scripts\AGENTS.md`, `docs\discovery\agent-shell-hard-gates.md`, `models\TASK.md`, `models\REMOVED.md` when present.
+
+**Skip:** `models\aliases\`, `autoresearch\core\config.py`, GGUFs, caches, large data.
+
+**Tool:** `robocopy` `/MIR` on each harness directory (drops stale extras such as deleted `agent_gates` / old `.ps1` hooks). Single files: `robocopy <srcDir> <dstDir> <filename>`. Run from PowerShell with **PowerShell variables or literal paths** — never embed `$vars` inside a string passed to `wsl bash -lc`.
+
+**Verify on UNC:** `.cursor\hooks\*.cjs` + `hooks.json` (`node …/*.cjs`); no leftover `agent_gates`; spot-check `.pi\extensions\agent-gates.ts`, `.gemini\settings.json`.
+
+**Caveat:** `.pi\skills\*` may conflict if one side has directories and the other has symlink-as-file. Fix those skills on the WSL side separately if needed; extensions still sync.
+
+---
+
+## 10. Sources / Verification
 
 - Claude Code Hooks / Settings: https://code.claude.com/docs/en/hooks , https://code.claude.com/docs/en/settings , https://code.claude.com/docs/en/permissions — 2026-07-29  
 - Smoke (2026-07-21): deny `python -c`, scratch `.py`, llama-cli, Baseline CLI overrides, foreign cwd, Set-Content gate; allow config-driven `benchmark_search.py`, `-m pytest`, `nvidia-smi`; deny Write gate files; allow Write `README.md`.  
 - Smoke (2026-07-29): hooks under `.claude/hooks/`; Allow/Ask/Deny + PostToolUse audit; pedagogical `.env` + `rm` + path-tolerant `*python* -c *`; live demo: Bash tool required for Pre-hook (chat-only “I ran it” does not fire hooks).
 - Smoke (2026-08-03): `block-git-commit.ps1` — deny `git commit`/`git push` without token; allow `git status`/`git log --grep commit`; allow with fresh token; deny with 61-min-old (stale) token. All six cases exit as expected (Claude payloads).
 - Smoke (2026-08-03): `.pi/extensions/git-commit-guard.ts` — block commit/push with no UI; allow `git status`/`git log --grep commit`; block push on user deny; allow commit on user allow; non-bash tools untouched (node type-strip run with fake pi).
+- Smoke (2026-08-10): Cursor Node `.cjs` — live tool Deny on `python -c` / `rm` / Write→Temp; Allow Write in-repo + `git status`; Ask on unknown Shell not reliably visible in all agent channels.
+- Sync (2026-08-10): Win→WSL harness via `robocopy` `/MIR` to `\\wsl.localhost\…` — `.cjs` hooks + `hooks.json` verified on UNC; no `agent_gates`.
 
 ---
 
 ## Open questions
 
-- None open for Claude-only wiring under `.claude/hooks/`.
+- Cursor Shell **Ask** visibility when the agent channel auto-runs unknown Shell (Deny path verified; Ask UI may depend on product surface).

@@ -169,7 +169,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - [.pre-commit-config.yaml](.pre-commit-config.yaml) — Git pre-commit: Ruff + pytest (this repo only).
 - [.github/workflows/validate.yml](.github/workflows/validate.yml) — CI ruff+pytest via `scripts/run_validate.py`.
 - [pyproject.toml](pyproject.toml) — Ruff / pytest config for owned Python.
-- [docs/discovery/agent-shell-hard-gates.md](docs/discovery/agent-shell-hard-gates.md) — Hard-gate inventory + disable playbook (local wiring).
+- [docs/discovery/agent-shell-hard-gates.md](docs/discovery/agent-shell-hard-gates.md) — Hard-gate inventory, rollback, Cursor smoke, Win→WSL harness sync (local wiring).
 - [models/README.md](models/README.md) — Shared GGUF store layout (nested LM Studio + basename resolve).
 - [docs/AGENTS.md](docs/AGENTS.md) — Durable documentation contract.
   - [docs/models/AGENTS.md](docs/models/AGENTS.md) — Per-model GGUF specs (architecture, quant, settings).

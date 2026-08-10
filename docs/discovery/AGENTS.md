@@ -37,7 +37,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`pareto-leaderboard.md`](./pareto-leaderboard.md) — global Pareto Set (ctx × TPS × agentic × coding) + Day/Night picks (ADR 0006/0009). Live recompute: `scripts/rank_results.py`.
 - [`pareto-selection.md`](./pareto-selection.md) — method note: Night ctx floor + Day TPS floor then max IQ ([ADR 0009](../adr/0009-day-profile-tps-floor.md); ADR 0008 historical IQ band).
 - [`best-model-8gb-vram.md`](./best-model-8gb-vram.md) — web-sourced selection guide: fastest + smartest model fitting 8 GB VRAM (primary publisher cards only; no local measurements).
-- [`agent-shell-hard-gates.md`](./agent-shell-hard-gates.md) — live gate inventory, disable/rollback playbook (§3), threat model (Cursor + Claude Code).
+- [`agent-shell-hard-gates.md`](./agent-shell-hard-gates.md) — live gate inventory, rollback (§3), Cursor smoke (§8), Win→WSL harness sync (§9), threat model.
 - [`../models/README.md`](../../models/README.md) — nested GGUF store shared with LM Studio.
 
 ### 2. Quantization & Low-VRAM Optimizations
