@@ -166,8 +166,7 @@ def build_vectors(
     config_json (ADR 0006), not the model basename: same basename under
     different configs never merges. Rows without config_json (legacy) carry
     no Fingerprint and can never form a complete vector. Uses outcome=OK (or
-    empty); ignores legacy keep/discard — that flag is Search history, not
-    measurement validity.
+    empty); status cells are not measurement validity.
     """
     ag_best: dict[tuple[str, str | None], dict[str, Any]] = {}
     cod_best: dict[tuple[str, str | None], dict[str, Any]] = {}

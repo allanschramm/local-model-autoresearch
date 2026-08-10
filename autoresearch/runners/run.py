@@ -22,7 +22,7 @@ CATEGORY_10_TASK = "10-task"
 CATEGORY_FULL_SUITE = "full-suite"
 
 # Trial Status (ADR 0006): on_front | dominated | incomplete | rejected.
-# Legacy keep/discard are not accepted on write; migrate keep→on_front offline.
+# keep/discard are not accepted on write (deleted from the local store).
 TRIAL_STATUSES = {"on_front", "dominated", "incomplete", "rejected"}
 
 BASELINE_CLI_FLAGS = {

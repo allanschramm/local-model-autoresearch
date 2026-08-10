@@ -148,7 +148,7 @@ The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (e
 4. **Wrong `AUTORESEARCH_LLAMA_CPP_ROOT`** — autoloop silently fails to find llama-server.
 5. **Not watching VRAM at startup** — use Baseline `VRAM_LIMIT_MB` (or whatever your budget) to skip configs that would OOM.
 6. **Downloading before hardware is known** — agents must not `hf download` or run validation until pool is detected and explained.
-7. **Treating keep/Val Score as Search truth** — membership is four-axis non-domination on a complete Objective Vector ([ADR 0006](../adr/0006-pareto-frontier-search.md)); Val Score is legacy display and `keep` a deprecated alias of `on_front`. Read `scripts/recompute_status.py` statuses instead of a scalar.
+7. **Treating keep/Val Score as Search truth** — membership is four-axis non-domination on a complete Objective Vector ([ADR 0006](../adr/0006-pareto-frontier-search.md)); Val Score is legacy display. `keep`/`discard` are gone — read `on_front` | `dominated` | `incomplete` | `rejected` via `scripts/recompute_status.py`.
 
 ## Related docs
 
