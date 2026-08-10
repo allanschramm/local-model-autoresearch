@@ -8,7 +8,7 @@
 **Quantization:** Unsloth Dynamic QAT — `UD-Q4_K_XL` (QAT-lossless 4-bit)
 **Alias:** `gemma-4-e4b` (`model-up`)
 
-## Hardware requirements (RTX 4060 8GB)
+## Hardware requirements (discrete 8 GB-class NVIDIA)
 - Fits entirely in GPU VRAM (NGL = 99).
 - Model size ~4.22 GB, leaving plenty of headroom for active KV cache (even up to 131k ctx).
 

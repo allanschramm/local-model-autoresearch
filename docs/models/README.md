@@ -1,6 +1,6 @@
 # Model Cards
 
-Local model cards for GGUF models we run on this rig.
+Local model cards for GGUF models we run on the operator host.
 Pattern: 1 card per model, with hardware reqs, sampling, MTP status, and local config baseline.
 
 Scores live in `results.tsv` + cards/leaderboards.

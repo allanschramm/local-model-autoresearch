@@ -4,7 +4,7 @@ Direct-coding score (optional Search preflight):
 `coding = 0.35*LCB + 0.25*HE + 0.25*MBPP + 0.15*BigCode`  
 Exactly **10 tasks** per dataset. Ground truth: `results.tsv` (`category=10-task` / `scoring_benchmark=coding`). Docs are a secondary view — include every fair 10-task row from TSV (`on_front` | `dominated` | `incomplete` | `rejected`), including deleted GGUFs.
 
-Hardware: RTX 4060 **8 GB**, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.
+Hardware: discrete **8 GB-class** NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.
 
 Claw-Eval full is the agentic axis — see [claw-eval-leaderboard.md](claw-eval-leaderboard.md). Global Pareto Set (`on_front`): [pareto-leaderboard.md](pareto-leaderboard.md).
 
@@ -40,7 +40,7 @@ Claw-Eval full is the agentic axis — see [claw-eval-leaderboard.md](claw-eval-
 
 ## Operational lessons
 
-1. **Dense coding can VRAM-kill at agentic ctx.** Ornith UD claw-full OK @ 65k; coding @ 65k hit 7950 MB → lock coding Baseline to **32k** on this rig. Qwen3.5-9B: even **65k no MTP** and **32k+MTP** kill mid coding-10.
+1. **Dense coding can VRAM-kill at agentic ctx.** Ornith UD claw-full OK @ 65k; coding @ 65k hit 7950 MB → lock coding Baseline to **32k** on the operator host. Qwen3.5-9B: even **65k no MTP** and **32k+MTP** kill mid coding-10.
 2. **LCB cache must be a real file on Windows.** Symlink → `WinError 1314`. Harness now `shutil.copy2`.
 3. **Sandbox timeout 30s** on generated-code subprocess (infinite loops hang otherwise).
 4. **Agentic ≠ coding.** Laguna claw-full **0.6667** / coding **0.195**. Gemma-26B coding **0.59** / claw **0.13**.
@@ -49,7 +49,7 @@ Claw-Eval full is the agentic axis — see [claw-eval-leaderboard.md](claw-eval-
    `.\venv\Scripts\python.exe benchmark_search.py --include-coding --no-agentic-quick --no-agentic-full --desc "coding-10 …"`  
    LCB-only remeasure: `.\venv\Scripts\python.exe scripts\lcb_only.py`
 
-## Prefer by job (this rig)
+## Prefer by job (the operator host)
 
 | Job | Prefer |
 | :--- | :--- |

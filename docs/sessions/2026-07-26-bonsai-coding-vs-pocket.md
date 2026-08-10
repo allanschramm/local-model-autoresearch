@@ -6,7 +6,7 @@ Fair coding-10 on `Bonsai-27B-Q1_0` at the same ctx/sampler recipe as POCKET-35B
 
 ## Hardware
 
-RTX 4060 8 GB, `VRAM_LIMIT_MB=7900`, upstream CUDA.
+discrete 8 GB-class NVIDIA, `VRAM_LIMIT_MB=7900`, upstream CUDA.
 
 ## Setup
 
@@ -44,5 +44,5 @@ Harness `DISCARD` on Bonsai coding vs prior claw KEEP — ignore; coding axis se
 
 ## Decisions
 
-- Prefer **POCKET-35B** for agentic + coding on this rig (higher claw + coding; lower peak VRAM).
+- Prefer **POCKET-35B** for agentic + coding on the operator host (higher claw + coding; lower peak VRAM).
 - Bonsai remains a higher-TPS / lower-quality point on the same axes.

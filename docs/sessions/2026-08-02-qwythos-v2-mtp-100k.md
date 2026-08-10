@@ -6,7 +6,7 @@ Complete the throughput, coding-10, and Claw full Objective Vector for `Qwythos-
 
 ## Hardware
 
-- NVIDIA RTX 4060 with 8 GB physical VRAM.
+- NVIDIA 8 GB-class discrete NVIDIA with 8 GB physical VRAM.
 - Physical-VRAM limit: 7900 MB.
 
 ## Setup

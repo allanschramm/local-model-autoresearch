@@ -9,8 +9,8 @@ Session used `uvx whichllm@latest` e rodou duas vezes no mesmo dia com resultado
 user@host:~$ uvx whichllm@latest
 
 ╭─────────────────────────────────────────────────── Hardware Info ────────────────────────────────────────────────────╮
-│ GPU 0: NVIDIA GeForce RTX 4060 — 8.0 GB (budget 7.5 GB) (CC 8.9, CUDA 13.3) — BW: 272 GB/s                           │
-│ CPU: AMD Ryzen 7 5800X 8-Core Processor — 8 cores (AVX2)                                                             │
+│ GPU 0: 8 GB-class discrete NVIDIA GPU — 8.0 GB (budget 7.5 GB) (CC 8.9, CUDA 13.3) — BW: 272 GB/s                           │
+│ CPU: operator discrete-class CPU — 8 cores (AVX2)                                                             │
 │ RAM: 23.5 GB                                                                                                         │
 │ Disk free: 823.2 GB                                                                                                  │
 │ OS: linux                                                                                                            │
@@ -48,8 +48,8 @@ user@host:~$ uvx whichllm@latest
 user@host:~$ uvx whichllm@latest
 
 ╭─────────────────────────────────────────────────── Hardware Info ────────────────────────────────────────────────────╮
-│ GPU 0: NVIDIA GeForce RTX 4060 — 8.0 GB (budget 7.5 GB) (CC 8.9, CUDA 13.3) — BW: 272 GB/s                           │
-│ CPU: AMD Ryzen 7 5800X 8-Core Processor — 8 cores (AVX2)                                                             │
+│ GPU 0: 8 GB-class discrete NVIDIA GPU — 8.0 GB (budget 7.5 GB) (CC 8.9, CUDA 13.3) — BW: 272 GB/s                           │
+│ CPU: operator discrete-class CPU — 8 cores (AVX2)                                                             │
 │ RAM: 23.5 GB                                                                                                         │
 │ Disk free: 823.2 GB                                                                                                  │
 │ OS: linux                                                                                                            │
@@ -109,7 +109,7 @@ user@host:~$ uvx whichllm@latest
 whichllm **NÃO é determinístico entre runs** — a saída muda em ~5min. Provavelmente o backend tem snapshot flutuante ou score varia. Significa:
 - Ranking do whichllm **NÃO é referência confiável** de qualidade.
 - "Score" da whichllm não corresponde a benchmarks reais de coding (veja comparação abaixo).
-- O número `? tok/s` é low-confidence — sem chance de bater 36.8 Gemma-4 ou 39.9 Qwen3-30B-A3B com VITRIOL on this rig.
+- O número `? tok/s` é low-confidence — sem chance de bater 36.8 Gemma-4 ou 39.9 Qwen3-30B-A3B com VITRIOL on the operator host.
 
 ## Comparação com coding benchmarks reais (não whichllm)
 
@@ -132,7 +132,7 @@ Cruzei os modelos da lista com dados de Artificial Analysis, SWE-bench leaderboa
 
 1. **whichllm ranking ≠ coding ranking.** Gemma-4-26B-A4B é #1 no whichllm mas é a pior em coding (17.4% SWE-bench). Inversão completa de prioridade pra uso coding.
 
-2. **Qwen3.6-27B** (whichllm #10) é o melhor coding open-source viável on this rig. Dense, Apache 2.0, multimodal. Tem versão MTP-GGUF.
+2. **Qwen3.6-27B** (whichllm #10) é o melhor coding open-source viável on the operator host. Dense, Apache 2.0, multimodal. Tem versão MTP-GGUF.
 
 3. **Qwen3.6-35B-A3B** (nosso atual, NÃO está no whichllm) é #2 em coding. Mesma geração Qwen3.6 mas MoE.
 

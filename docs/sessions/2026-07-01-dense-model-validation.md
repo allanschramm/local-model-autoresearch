@@ -4,7 +4,7 @@
 Validate all dense (non-MoE, non-MTP) GGUF models in `models/` with a consistent config and produce a cross-model comparison.
 
 ## Hardware
-- GPU: NVIDIA RTX 4060 8 GB (8188 MiB total, 7149 MiB free at start)
+- GPU: NVIDIA discrete 8 GB-class NVIDIA (8 GB physical VRAM total, free-at-start headroom recorded locally)
 - CPU: 8 cores
 - Build: `llama.cpp/build-cuda` at `0eca4d490` (upstream ggml-org)
 
@@ -100,7 +100,7 @@ python3 benchmark_search.py --model <model.gguf> --validation --desc "validation
 ### Notable
 - **BigCode Hard 0/4 across all models** — library-call tasks fail at small sample size (2 tasks) for all models. Not statistically meaningful at this sample size.
 - **Qwythos MBPP+ 0/2** — unusual for a 9B model. Possibly a sampling fluke at 2-task validation (high variance).
-- **Gemma QAT VRAM pegged at 8.0 GB** — 131k ctx with Q4_K_XL saturates RTX 4060 completely.
+- **Gemma QAT VRAM pegged at 8.0 GB** — 131k ctx with Q4_K_XL saturates 8 GB-class discrete NVIDIA completely.
 
 ## Errors
 None — all 4 models passed llama-bench threshold and completed eval cleanly.

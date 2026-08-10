@@ -1,6 +1,6 @@
 # Low VRAM Optimization Guide: Local & LM Studio Models
 
-This document provides the optimal `llama.cpp` configuration parameters to run all target models in our local store (`models/local/` and `models/lmstudio-community/`) on consumer hardware with **8 GB of VRAM** (specifically optimized for an RTX 4060 rig with 16–24 GB of System RAM).
+This document provides the optimal `llama.cpp` configuration parameters to run all target models in our local store (`models/local/` and `models/lmstudio-community/`) on consumer hardware with **8 GB of VRAM** (specifically optimized for an 8 GB-class discrete NVIDIA rig with 16–24 GB of System RAM).
 
 ---
 
@@ -42,7 +42,7 @@ These models run entirely in VRAM. The primary low-VRAM concern is preventing co
     -ngl 99 -c 131072 -fa on -ctk q4_0 -ctv q4_0 -b 1024 -ub 256 --spec-type none
     ```
 *   **Why this works:**
-    *   `-b 1024 -ub 256` represents the evaluated batch size sweet spot on RTX 4060, balancing prefill latency and text generation throughput.
+    *   `-b 1024 -ub 256` represents the evaluated batch size sweet spot on 8 GB-class discrete NVIDIA, balancing prefill latency and text generation throughput.
     *   `--spec-type none` is selected because the Mythos MTP draft heads yield negligible performance gain (~+1% in short generation tests) while adding memory overhead that risks driver paging at extreme contexts.
     *   **Performance:** Delivers **51.2 t/s** with 7.5 GB peak VRAM usage under full 131k context.
 
@@ -94,7 +94,7 @@ Ternary (1-bit / 2-bit) quantizations compress 27B parameter models down to unde
     *   **Measured claw-full @ 65k:** Val Score **0.4667**, bench_tg **40.2**, peak **6.5 GB**. Card: [bonsai-27b.md](../models/bonsai-27b.md).
 
 #### 2. Ternary-Bonsai-27B-Q2_0.gguf — **deleted locally (2026-07-23)**
-*   **Status:** Rejected. PrismML CUDA loads the quant, but **bench_tg ≈ 10.6 t/s** @ ctx 32k on RTX 4060 8 GB — below `TPS_FLOOR` 15. Prefer [Bonsai-27B-Q1_0](#1-bonsai-27b-q1_0gguf) (~41 t/s). Full note: [ternary-bonsai-27b.md](../models/ternary-bonsai-27b.md).
+*   **Status:** Rejected. PrismML CUDA loads the quant, but **bench_tg ≈ 10.6 t/s** @ ctx 32k on discrete 8 GB-class NVIDIA — below `TPS_FLOOR` 15. Prefer [Bonsai-27B-Q1_0](#1-bonsai-27b-q1_0gguf) (~41 t/s). Full note: [ternary-bonsai-27b.md](../models/ternary-bonsai-27b.md).
 *   **If re-acquiring:** needs a compatible PrismML prebuilt release under `llama.cpp-releases/`; start with `-c 32768` (65k fails VRAM preflight ~8.5 GB est).
 
 ---
@@ -111,7 +111,7 @@ MoE models exceed the 8 GB physical VRAM limit. However, because they only activ
     -ngl 99 --n-cpu-moe 40 -c 65536 -fa on -ctk q4_0 -ctv q4_0 --spec-type none
     ```
 *   **Why this works:**
-    *   `--n-cpu-moe 40` keeps MoE experts for all 40 layers in CPU System RAM. The RTX 4060 only computes the active attention/routing paths.
+    *   `--n-cpu-moe 40` keeps MoE experts for all 40 layers in CPU System RAM. The 8 GB-class discrete NVIDIA only computes the active attention/routing paths.
     *   `--spec-type none` is **mandatory**. Speculative decoding forces sequential CPU-to-GPU memory synchronization on every proposed draft token, collapsing MoE offloading throughput by **60%** (dropping from ~20 t/s to 8 t/s).
     *   **Performance:** Expected throughput of **~22–25 t/s** on modern host CPUs (e.g. 12th+ Gen Intel/AMD) with DDR5 RAM.
 
@@ -135,7 +135,7 @@ MoE models exceed the 8 GB physical VRAM limit. However, because they only activ
     -ngl 99 --n-cpu-moe 40 -c 65536 -fa on -ctk q4_0 -ctv q4_0 --jinja --cont-batching --no-mmap
     ```
 *   **Why this works:** Attention/routing on GPU; experts on CPU. Lowest VRAM among top Val Score models.
-*   **Measured (2026-07-24):** claw-quick **1.00**; claw-full **0.6667** (best Val Score on this rig); bench_tg **37.2**; peak **3.6 GB**. Alias `laguna-xs`. Card: [laguna-xs-2.1.md](../models/laguna-xs-2.1.md). Leaderboard: [claw-eval-leaderboard.md](claw-eval-leaderboard.md).
+*   **Measured (2026-07-24):** claw-quick **1.00**; claw-full **0.6667** (best Val Score on the operator host); bench_tg **37.2**; peak **3.6 GB**. Alias `laguna-xs`. Card: [laguna-xs-2.1.md](../models/laguna-xs-2.1.md). Leaderboard: [claw-eval-leaderboard.md](claw-eval-leaderboard.md).
 
 ---
 

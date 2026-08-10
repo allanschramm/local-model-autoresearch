@@ -35,7 +35,7 @@ Found 10 matches, using: nvidia/Qwen3.6-35B-A3B-NVFP4
 ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
 ┃ GPU            ┃     VRAM ┃     Fit      ┃ Est. Speed ┃
 ┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│ RTX 4060       │     8 GB │  ~ Partial   │ 39.9 tok/s │
+│ 8 GB-class discrete NVIDIA       │     8 GB │  ~ Partial   │ 39.9 tok/s │
 │ RTX 3060       │    12 GB │  ✓ Full GPU  │      117.3 │
 │ RTX 4070       │    12 GB │  ✓ Full GPU  │      164.3 │
 │ RTX 4080       │    16 GB │  ✓ Full GPU  │      233.6 │
@@ -84,7 +84,7 @@ Found 6 matches, using: LuffyTheFox/Qwen3.5-9B-Claude-4.6-Opus-Uncensored-Distil
 ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
 ┃ GPU            ┃     VRAM ┃     Fit      ┃ Est. Speed ┃
 ┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│ RTX 4060       │     8 GB │  ✓ Full GPU  │ 29.7 tok/s │
+│ 8 GB-class discrete NVIDIA       │     8 GB │  ✓ Full GPU  │ 29.7 tok/s │
 │ RTX 3060       │    12 GB │  ✓ Full GPU  │ 39.3 tok/s │
 │ RTX 4070       │    12 GB │  ✓ Full GPU  │ 55.0 tok/s │
 │ RTX 4080       │    16 GB │  ✓ Full GPU  │ 78.3 tok/s │
@@ -98,7 +98,7 @@ Found 6 matches, using: LuffyTheFox/Qwen3.5-9B-Claude-4.6-Opus-Uncensored-Distil
 │ H200           │   141 GB │  ✓ Full GPU  │      524.2 │
 └────────────────┴──────────┴──────────────┴────────────┘
 
-  ★ Minimum GPU for full offload: RTX 4060 (8 GB) at Q4_K_M
+  ★ Minimum GPU for full offload: 8 GB-class discrete NVIDIA (8 GB) at Q4_K_M
 ```
 
 ## Output 5: `whichllm --speed usable`
@@ -107,12 +107,12 @@ Idêntico ao Output 2 do parte 3 (15:36 BRT). Lista com 10 modelos, top Gemma-4-
 
 ## Validação empírica vs whichllm estimate
 
-### Qwen3.6-35B-A3B Q4_K_M no RTX 4060 (8GB)
+### Qwen3.6-35B-A3B Q4_K_M no 8 GB-class discrete NVIDIA (8GB)
 - **whichllm**: 39.9 tok/s (Partial offload)
 - **Local measurement (nossa medição)**: 22.5 tok/s com MTP-GGUF file swap
 - **Gap**: ~57% do que whichllm prevê (chute generoso, como esperado)
 
-### Qwen3.5-9B Q4_K_M no RTX 4060 (8GB)
+### Qwen3.5-9B Q4_K_M no 8 GB-class discrete NVIDIA (8GB)
 - **whichllm**: 29.7 tok/s (Full GPU)
 - **Local measurement (results.tsv)**: **134-272 TPS** em múltiplos runs com autoloop
 - **Gap**: **4-9x MAIS RÁPIDO** do que whichllm prevê
@@ -136,13 +136,13 @@ Por que o gap gigante no Qwen3.5-9B:
 
 3. **VRAM budget real do whichllm**: 7.5 GB usable (8 GB - 512 MB headroom). operator pode ter mais VRAM disponível ajustando o headroom, mas que vai contra recomendação deles.
 
-4. **Qwen3.5-9B Q4_K_M = único modelo que cabe Full GPU** no RTX 4060 com 7.5 GB budget (6.5 GB needed). É nossa referência de velocidade máxima possível nessa máquina.
+4. **Qwen3.5-9B Q4_K_M = único modelo que cabe Full GPU** no 8 GB-class discrete NVIDIA com 7.5 GB budget (6.5 GB needed). É nossa referência de velocidade máxima possível nessa máquina.
 
-5. **Qwen3.6-35B-A3B Q4_K_M precisa 11.2 GB** — sempre vai precisar CPU offload no RTX 4060. Aceitar o Partial.
+5. **Qwen3.6-35B-A3B Q4_K_M precisa 11.2 GB** — sempre vai precisar CPU offload no 8 GB-class discrete NVIDIA. Aceitar o Partial.
 
 ## Cross-ref com nossos dados
 
-| Modelo | whichllm est. (4060) | Local measurement | Notas |
+| Modelo | whichllm est. (8GB-class) | Local measurement | Notas |
 |---|---|---|---|
 | Qwen3.6-35B-A3B Q4_K_M | 39.9 (Partial) | 22.5 (MTP-GGUF) | Gap -57%, esperado |
 | Qwen3.5-9B Q4_K_M | 29.7 (Full GPU) | **134-272** (autoloop) | Gap **+450-820%** |

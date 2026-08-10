@@ -16,7 +16,7 @@
 
 Harness: dense → `N_CPU_MOE` must stay `None` (no expert offload).
 
-## Hardware requirements (RTX 4060 8GB)
+## Hardware requirements (discrete 8 GB-class NVIDIA)
 
 Weights ~2.9 GB (Q8_0). Fits comfortably in 8GB VRAM with 65k context.
 

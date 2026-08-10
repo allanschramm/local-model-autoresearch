@@ -44,7 +44,7 @@ Always use `hf` CLI (repo contract). On Windows, prefer UTF-8 / `--format quiet`
 
 ---
 
-## 3. Measured TPS (RTX 4060, upstream CUDA, 2026-07-20)
+## 3. Measured TPS (8 GB-class discrete NVIDIA, upstream CUDA, 2026-07-20)
 
 Method: harness `run_llama_bench_validation` → `llama-cli` `-n 512`, shared knobs `q4_0` KV, batch 256/128, threads 6/8, `draft-mtp` n_max=4 when MTP on. No Claw/coding.
 
@@ -90,7 +90,7 @@ For Gemma MTP, keep `SPEC_DRAFT_MODEL='draft/mtp-gemma-4-E4B-it.gguf'` (path rel
 
 ---
 
-## 5. Hard rules (this rig)
+## 5. Hard rules (the operator host)
 
 1. Upstream KV only: `q4_0` (etc). Never `turbo*` — not in upstream `llama.cpp`.
 2. External PrismML binary = Bonsai/DSpark only — not vendored here and not for Gemma/Qwen baselines.

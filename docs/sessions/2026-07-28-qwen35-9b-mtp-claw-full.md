@@ -4,7 +4,7 @@
 Close Objective Vector for `Qwen3.5-9B-MTP-Q4_K_M.gguf` (coding-10 **0.4950** in TSV). After deleting deepreinforce ornith-9b post-complete.
 
 ## Hardware
-RTX 4060 8 GB (~8188 MiB), Windows, upstream `llama.cpp/build-cuda`.
+discrete 8 GB-class NVIDIA (~8 GB physical VRAM), Windows, upstream `llama.cpp/build-cuda`.
 
 ## Setup
 1. `hf download unsloth/Qwen3.5-9B-MTP-GGUF Qwen3.5-9B-Q4_K_M.gguf --local-dir models/unsloth/qwen3.5-9b-mtp-gguf`

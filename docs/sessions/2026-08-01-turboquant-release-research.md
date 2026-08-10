@@ -58,7 +58,7 @@ The project explicitly discourages beginning with turbo-compressed K. For Ornith
 
 The release tag contains `draft-mtp` in the accepted `--spec-type` values and a concrete MTP implementation in [`common/speculative.cpp`](https://github.com/TheTom/llama-cpp-turboquant/blob/tqp-v0.3.0/common/speculative.cpp). The release notes also include an upstream fix for a Gemma-4 E4B MTP + Flash Attention crash. Thus the binary contains MTP support; this is not only TurboQuant KV support.
 
-This source evidence does not prove that Ornith embedded MTP plus `q8_0/turbo3` is correct or faster on this rig. That exact model/backend/fingerprint still requires the normal validation and full pipeline. The release also adds DFlash, but that is a separate speculative mode and does not replace embedded `draft-mtp`.
+This source evidence does not prove that Ornith embedded MTP plus `q8_0/turbo3` is correct or faster on the operator host. That exact model/backend/fingerprint still requires the normal validation and full pipeline. The release also adds DFlash, but that is a separate speculative mode and does not replace embedded `draft-mtp`.
 
 ### Relationship to upstream llama.cpp
 

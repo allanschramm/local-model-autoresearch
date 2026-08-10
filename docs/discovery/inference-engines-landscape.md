@@ -6,7 +6,7 @@ The LLM inference engine ecosystem has matured into distinct specialized tiers b
 
 This guide surveys the primary inference engines, analyzing their memory managers, attention mechanisms, KV cache strategies, and hardware targets.
 
-> Fastest-TPS on this rig (RTX 4060 8 GB / Windows): see [fastest-tps-inference-engine.md](./fastest-tps-inference-engine.md) — llama.cpp CUDA stays baseline; ExLlamaV3/EXL3 is the only Windows-capable raw-TPS challenger.
+> Fastest-TPS on the operator host (discrete 8 GB-class NVIDIA / Windows): see [fastest-tps-inference-engine.md](./fastest-tps-inference-engine.md) — llama.cpp CUDA stays baseline; ExLlamaV3/EXL3 is the only Windows-capable raw-TPS challenger.
 
 ---
 

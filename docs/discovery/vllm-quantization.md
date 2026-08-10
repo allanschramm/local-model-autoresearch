@@ -70,7 +70,7 @@ vLLM allows custom quant methods without modifying the codebase:
 
 - vLLM is a server-side engine, not the llama.cpp Trial backend this project benchmarks. Value = engine-comparison reference + a possible serving path for existing GGUF quants (GGUF row: GPU-only in vLLM — no CPU fallback).
 - NVFP4 reaches vLLM through **NVIDIA Model Optimizer** (see [nvfp4-quantization.md](./nvfp4-quantization.md)); vLLM's own format list has no standalone NVFP4 entry — Marlin FP4 is the 4-bit GPU kernel path.
-- This rig (8 GB, older GPU): relevant rows are bitsandbytes / GPTQ / AWQ / GGUF on NVIDIA; FP8/INT8 paths need Ada+.
+- The operator host (8 GB, older GPU): relevant rows are bitsandbytes / GPTQ / AWQ / GGUF on NVIDIA; FP8/INT8 paths need Ada+.
 
 ## Sources / Verification
 

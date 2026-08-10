@@ -4,7 +4,7 @@
 Preserve empirical notes formerly kept in root `MEMORY.md` before deleting that file. Canonical runtime history remains `results.tsv`. Stale project-context / Val Score weight claims from MEMORY were **not** copied (superseded by Claw-Eval agentic-first Search — see ADR 0004).
 
 ## Hardware
-RTX 4060 8GB (notes from original MEMORY archive).
+discrete 8 GB-class NVIDIA (notes from original MEMORY archive).
 
 ## Setup
 N/A — archival pass, not a new Trial session.
@@ -44,8 +44,8 @@ N/A.
 * **Threads**: 8 threads better than 12 on Gemma4 12B (unregistered baseline issue with 12).
 * **Batch sizing**: batch=128, ubatch=64 more stable on Gemma4 than 512/256 under short trial budget.
 * **Indentation in reasoning models (Ornith/Qwen 3.5)**: `<think>` blocks generate 8+ space indented drafts (inside markdown lists). Truncated output → fallback parser carries extra indentation → IndentationError when concatenating signature. `textwrap.dedent()` + re-indent with exactly 4 spaces fixes parser and doubles HE+ accuracy (0.40 → 0.80 on Ornith 9B).
-* **VITRIOL MoE Streaming 35B**: Keeping routed experts in CPU/RAM via `--n-cpu-moe 40` enables 35B model loading on 8GB VRAM (RTX 4060) with acceptable throughput (23.6 TPS) and peak VRAM only 4.1 GB.
-* **UBATCH sweet spot**: 256 beats 512 on RTX 4060 8GB for Gemma4. llama-bench: ub=256 pp1922 tg49.8 vs ub=512 pp1940 tg41.0. Higher ubatch = better prompt processing but worse token generation.
+* **VITRIOL MoE Streaming 35B**: Keeping routed experts in CPU/RAM via `--n-cpu-moe 40` enables 35B model loading on 8GB VRAM (8 GB-class discrete NVIDIA) with acceptable throughput (23.6 TPS) and peak VRAM only 4.1 GB.
+* **UBATCH sweet spot**: 256 beats 512 on discrete 8 GB-class NVIDIA for Gemma4. llama-bench: ub=256 pp1922 tg49.8 vs ub=512 pp1940 tg41.0. Higher ubatch = better prompt processing but worse token generation.
 * **Category column in results.tsv** (2026-07-01): Added to enable fair cross-model comparisons.
 * **Docs path discipline** (2026-07-01): User-facing docs must not contain hardcoded paths (`/home/<user>/...`). Use `./llama.cpp/`, `$LLAMA_CPP`, or `AUTORESEARCH_LLAMA_CPP_ROOT`.
 

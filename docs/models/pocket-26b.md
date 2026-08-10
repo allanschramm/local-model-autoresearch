@@ -11,7 +11,7 @@
 
 ## Why deleted
 
-Weak on this rig vs `pocket-35b`: claw-full **0.2000**, coding **0.490**, ~21 t/s. Prefer POCKET-35B. Scores stay in `results.tsv` / leaderboards / session log.
+Weak on the operator host vs `pocket-35b`: claw-full **0.2000**, coding **0.490**, ~21 t/s. Prefer POCKET-35B. Scores stay in `results.tsv` / leaderboards / session log.
 
 ## Architecture (from GGUF metadata)
 
@@ -30,7 +30,7 @@ Verified with `gguf.GGUFReader` on the local file (2026-07-26):
 
 Harness `is_moe_model` → **True**. Sibling Unsloth Gemma card: [gemma-4-26b-a4b.md](gemma-4-26b-a4b.md).
 
-## Hardware requirements (RTX 4060 8 GB + ~32 GB RAM)
+## Hardware requirements (discrete 8 GB-class NVIDIA + ~32 GB RAM)
 
 | Quant | Size | Notes |
 |---|---|---|
@@ -88,7 +88,7 @@ TPS_FLOOR = 15.0
 | Session | [2026-07-26-pocket-26b-pipeline.md](../sessions/2026-07-26-pocket-26b-pipeline.md) |
 | Alias | ~~`pocket-26b`~~ (removed 2026-07-26) |
 
-**GGUF deleted 2026-07-26** — prefer `pocket-35b` on this rig. Historical scores above remain valid.
+**GGUF deleted 2026-07-26** — prefer `pocket-35b` on the operator host. Historical scores above remain valid.
 
 ## Sources / Verification
 

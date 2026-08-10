@@ -6,7 +6,7 @@
 3. Measure pure generation TPS (`llama-cli`, `-n 512`) base vs MTP. No Claw-Eval, no coding bench.
 
 ## Hardware
-- GPU: RTX 4060 (8 GB VRAM)
+- GPU: 8 GB-class discrete NVIDIA (8 GB VRAM)
 - OS: Windows 11 / PowerShell
 - Runtime: upstream `ggml-org/llama.cpp` CUDA build in-repo (`llama.cpp/build-cuda/bin/llama-cli.exe`)
 - **Not used:** PrismML fork (Bonsai-only), TurboQuant fork (removed; upstream has no `turbo*` KV types)
@@ -91,7 +91,7 @@ Shared across all trials:
 5. Mythos base / MTP / Qwythos v2 — ~40–41
 
 ### Interpretation
-- **Gemma draft MTP** = best absolute and best relative gain on this rig for short/sustained `-n 512` gen.
+- **Gemma draft MTP** = best absolute and best relative gain on the operator host for short/sustained `-n 512` gen.
 - **Qwen embedded** and **Ornith MTP GGUF** both ~+45–50% — worth enabling for speed.
 - **Mythos MTP GGUF** ≈ no gain and **worse wall clock** (29.3s vs 18.4s). Treat as “file has `nextn`, but acceptance/overhead not worth it” until `n_max` sweep or stderr acceptance stats prove otherwise. Older card claim (MTP hurts long-ctx VRAM) still stands for agentic @131k.
 - **Qwythos-9B-v2**: base-only until a CUDA GGUF MTP appears on Hub.

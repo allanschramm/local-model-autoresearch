@@ -6,7 +6,7 @@ First-pass champion path for `POCKET-35B-Q3_K_M.gguf` (FINAL-Bench / Darwin-36B-
 
 ## Hardware
 
-- RTX 4060 8 GB (`VRAM_LIMIT_MB=7900`)
+- discrete 8 GB-class NVIDIA (`VRAM_LIMIT_MB=7900`)
 - ~32 GB system RAM
 - Windows, upstream `llama.cpp` CUDA (`build-cuda`)
 

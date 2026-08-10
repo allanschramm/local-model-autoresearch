@@ -6,7 +6,7 @@ Run direct-coding preflight (exactly 10 tasks × HE+ / MBPP+ / LCB / BigCode Har
 
 ## Hardware
 
-RTX 4060 8 GB, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp` CUDA.
+discrete 8 GB-class NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp` CUDA.
 
 ## Commands
 

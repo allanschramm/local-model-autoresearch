@@ -152,7 +152,7 @@ The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (e
 
 ## Related docs
 
-- [`pareto-leaderboard.md`](./pareto-leaderboard.md) — measured global Pareto Set + Day/Night on this rig (ADR 0006/0008)
+- [`pareto-leaderboard.md`](./pareto-leaderboard.md) — measured global Pareto Set + Day/Night on the operator host (ADR 0006/0008)
 - [`claw-eval-leaderboard.md`](./claw-eval-leaderboard.md) / [`coding-leaderboard.md`](./coding-leaderboard.md) — per-axis ranks
 - [`good-enough-tuning.md`](./good-enough-tuning.md) — default speed path after you pick a GGUF
 - `docs/models/` — per-model GGUF specs and architecture notes

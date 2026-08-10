@@ -6,7 +6,7 @@ Champion path for `POCKET-26B-Q4_K_M.gguf` (Gemma4-26B-A4B Korean-tuned quant): 
 
 ## Hardware
 
-RTX 4060 8 GB, `VRAM_LIMIT_MB=7900`, upstream CUDA.
+discrete 8 GB-class NVIDIA, `VRAM_LIMIT_MB=7900`, upstream CUDA.
 
 ## Setup
 
@@ -36,7 +36,7 @@ SPEC_TYPE = None
 | Claw full | **0.2000** (3/15), tg **20.5**, VRAM **4.5 GB** |
 | Coding-10 | **0.4900** (HE 0.60 / MBPP 0.60 / LCB 0.50 / BC 0.10), tg 20.4, VRAM 4.7 GB |
 
-### vs siblings on this rig
+### vs siblings on the operator host
 
 | Model | claw-full | coding | tg |
 |---|---:|---:|---:|

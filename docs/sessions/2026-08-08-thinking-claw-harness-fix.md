@@ -6,7 +6,7 @@ Diagnose Ornith “feels smart” vs low Claw after re-download; fix agentic har
 
 ## Hardware
 
-RTX 4060 **8 GB** class rig, Windows, upstream `llama.cpp` CUDA. Baseline `VRAM_LIMIT_MB` used for Pareto budget bucket (not peak alone).
+discrete **8 GB-class** NVIDIA class rig, Windows, upstream `llama.cpp` CUDA. Baseline `VRAM_LIMIT_MB` used for Pareto budget bucket (not peak alone).
 
 ## Findings
 

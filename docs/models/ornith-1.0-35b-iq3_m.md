@@ -39,7 +39,7 @@ Same as Q4_K_M variant:
 ## Testing Results
 From `ornith-1.0-35b.md` tuning history:
 - **IQ3_M is slower than Q4_K_M at every n-cpu-moe setting**
-- Q3 decode kernel less optimized on RTX 4060
+- Q3 decode kernel less optimized on 8 GB-class discrete NVIDIA
 - **Not recommended** — smaller file does not translate to better performance
 
 ## Our config baseline

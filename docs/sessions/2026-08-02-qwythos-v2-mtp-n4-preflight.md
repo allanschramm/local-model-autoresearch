@@ -6,7 +6,7 @@ Test whether increasing embedded MTP from n=2 to n=4 can enter a complete 100000
 
 ## Hardware
 
-- NVIDIA RTX 4060 with 8 GB physical VRAM.
+- NVIDIA 8 GB-class discrete NVIDIA with 8 GB physical VRAM.
 - Physical-VRAM limit: 7900 MB.
 
 ## Setup

@@ -115,7 +115,7 @@ Short `-n 128` / mixed prompts (pre-matrix):
 
 ## 5. Key Takeaways & Trade-offs (VRAM vs Context Size)
 
-For consumer GPU rigs with constrained VRAM (like our RTX 4060 8 GB):
+For consumer GPU rigs with constrained VRAM (like our discrete 8 GB-class NVIDIA):
 
 1.  **VRAM and Context Trade-Off:**
     *   Every megabyte saved on the model/draft weights is a megabyte gained for the active KV cache context window.

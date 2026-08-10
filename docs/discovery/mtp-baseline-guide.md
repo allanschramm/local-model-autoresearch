@@ -13,7 +13,7 @@ MTP speeds generation by drafting multiple tokens per step. Packaging differs by
 
 Detect: scan GGUF metadata for `nextn` / `gemma4-assistant`. Inventory + measured TPS: [small-model-mtp-tps.md](./small-model-mtp-tps.md).
 
-Prefer the harness gate (`run_llama_bench_validation`) over raw `llama-bench` — bench binaries do not accept MTP draft flags. Canonical `n_max` on this rig for speed matrix: **4** (not 2).
+Prefer the harness gate (`run_llama_bench_validation`) over raw `llama-bench` — bench binaries do not accept MTP draft flags. Canonical `n_max` on the operator host for speed matrix: **4** (not 2).
 
 ---
 

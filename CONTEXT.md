@@ -179,7 +179,7 @@ Notes:
 - `--parallel 1`: reduces RS buffer (recurrent state for delta net) significantly on hybrid architectures.
 
 **Performance expectations** (illustrative — depends on hardware + flags):
-- q4_0 KV at 8k ctx on RTX 4060 8GB with MoE offload: ~11 tok/s (no MTP), ~13 tok/s (with MTP).
+- q4_0 KV at 8k ctx on discrete 8 GB-class NVIDIA with MoE offload: ~11 tok/s (no MTP), ~13 tok/s (with MTP).
 - TurboQuant does not always help — on GQA 8:1 architectures, `turbo4` K cache auto-upgrades to `q8_0` with no speed/VRAM gain over plain `q4_0`. Run `whichllm plan` to inspect your specific model.
 
 **Filesystem caveats**:

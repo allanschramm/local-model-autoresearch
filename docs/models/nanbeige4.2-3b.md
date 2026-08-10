@@ -32,7 +32,7 @@ Verified with `gguf.GGUFReader` on the local file (2026-07-23):
 
 Upstream `ggml-org/llama.cpp` cannot load this arch. Use fork binaries only.
 
-## Hardware requirements (RTX 4060 8GB)
+## Hardware requirements (discrete 8 GB-class NVIDIA)
 
 | Quant | Size | Fit notes |
 |---|---|---|
@@ -53,7 +53,7 @@ Upstream `ggml-org/llama.cpp` cannot load this arch. Use fork binaries only.
 | JINJA | true | Chat template |
 | CTX_SIZE | 32768 | 8 GB headroom with f16 KV |
 | KV_CACHE_K/V | f16 | TPS matrix winner (PP + slight TG) |
-| BATCH / UBATCH | 512 / 256 | Best PP/TG balance on 4060 |
+| BATCH / UBATCH | 512 / 256 | Best PP/TG balance on 8GB-class |
 | FLASH_ATTN | on | Required for speed |
 | N_CPU_MOE | null | Dense — never VITRIOL offload |
 | VRAM_LIMIT_MB | 7900 | Physical VRAM floor |

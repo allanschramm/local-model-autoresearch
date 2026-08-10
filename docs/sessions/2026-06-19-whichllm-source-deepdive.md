@@ -199,7 +199,7 @@ Mas **coding benchmark (SWE-bench Verified 17.4%)** é medido em outro lugar:
 
 ## Comparação direta: whichllm prediction vs nosso empírico
 
-| Modelo | whichllm est (4060) | Local measurement | Fator | Diagnóstico |
+| Modelo | whichllm est (8GB-class) | Local measurement | Fator | Diagnóstico |
 |---|---|---|---|---|
 | Qwen3.6-35B-A3B Q4_K_M | 39.9 (Partial) | 22.5 (MTP-GGUF file swap) | **0.56×** | whichllm generoso, MoE offload penaliza mais que previsto |
 | Qwen3.5-9B Q4_K_M | 29.7 (Full GPU) | 134-272 TPS (autoloop) | **4.5-9.2×** | whichllm **muito subestima** — MoE floor muito alto, mas nossa config otimizada é >10× mais rápida |
@@ -225,5 +225,5 @@ Mas **coding benchmark (SWE-bench Verified 17.4%)** é medido em outro lugar:
 
 1. **Adicionar whichllm como tool de discovery** no local-model-autotuning pipeline
 2. **Cruzar whichllm ranking com EvalPlus HumanEval+ scores** (que é o que nosso autoloop testa) pra ver qual modelo melhor em coding agentic local
-3. **Re-rodar `whichllm --gpu-only` (Full GPU only)**: this rig has 7.5 GB budget → só Qwen3.5-9B Q4_K_M cabe Full GPU → candidato ideal pra autoloop rodar sem gargalo CPU
+3. **Re-rodar `whichllm --gpu-only` (Full GPU only)**: the operator host has 7.5 GB budget → só Qwen3.5-9B Q4_K_M cabe Full GPU → candidato ideal pra autoloop rodar sem gargalo CPU
 4. **Documentar gap whichllm vs real**: contribuir upstream um PR que adiciona MTP como quant efficiency boost? (optional upstream contribution)

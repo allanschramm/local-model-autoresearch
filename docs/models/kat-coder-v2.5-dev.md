@@ -27,13 +27,13 @@ Verified with `gguf.GGUFReader` on the local file (2026-07-27):
 
 Harness `is_moe_model` → **True**. Same layout class as Ornith-35B / POCKET-35B.
 
-## Hardware requirements (RTX 4060 8 GB)
+## Hardware requirements (discrete 8 GB-class NVIDIA)
 
 | Quant | Size | Pick |
 |---|---|---|
 | **IQ4_XS** | **~18.8 GB** | **yes** — under 20 GB disk; MoE + VITRIOL |
 | Q4_K_M | ~21.4 GB | over user disk budget |
-| Q5+ | ≥24 GB | skip on this rig |
+| Q5+ | ≥24 GB | skip on the operator host |
 
 - Experts: `N_CPU_MOE=None` → auto `--n-cpu-moe 40`.
 - Prefer ctx **65k** + KV `q4_0` on 8 GB (same band as Ornith-35B agentic).

@@ -3,10 +3,10 @@
 ## Goal
 1. Validate `Nanbeige/Nanbeige4.2-3B` for local inference (Looped Transformer).
 2. Build arch fork `Nanbeige/llama.cpp` branch `nanbeige42` (upstream cannot load `NanbeigeForCausalLM`).
-3. Measure KV / batch TPS matrix on RTX 4060 8GB; lock Baseline recipe.
+3. Measure KV / batch TPS matrix on discrete 8 GB-class NVIDIA; lock Baseline recipe.
 
 ## Hardware
-- GPU: RTX 4060 (8 GB VRAM, CUDA 8.9)
+- GPU: 8 GB-class discrete NVIDIA (8 GB VRAM, CUDA 8.9)
 - OS: Windows 11 / PowerShell
 - Runtime: `llama.cpp-nanbeige42` CUDA build @ `26cfdc4` (`build-cuda/bin/`)
 - Model: `models/owao/nanbeige4.2-3b-gguf/nanbeige4.2-3b-Q4_K_M.gguf` (2.4 GiB, from community GGUF)

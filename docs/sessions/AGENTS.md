@@ -13,7 +13,8 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - **Errors and corrections are first-class.** When an approach was wrong, log it explicitly so future operators don't repeat.
 - **No absolute user/checkout paths** (`C:\Users\…`, `/mnt/c/Users/…`). Use repo-relative paths.
 - **No machine inventory.** Do not record which GGUFs/aliases are present, kept, or deleted on disk. Scores + GGUF basenames only (root AGENTS). Alias names/ports stay out — use basenames in tables.
-- **No operator PII.** No personal names, hostnames, or identity links. Say "operator" / "this rig" if a person must be referenced.
+- **No operator hardware fingerprint.** No GPU SKU (e.g. product marketing names), exact `nvidia-smi` MiB totals, hostnames, or personal paths. Hardware section: `discrete_gpu` / `unified_memory`, Baseline `VRAM_LIMIT_MB`, OS family, llama.cpp engine/tag — not which SKU sits in the machine.
+- **No operator PII.** No personal names, hostnames, or identity links. Say "operator" / "the operator host" if a person must be referenced.
 - **Private leftovers** (disk lists, alias registry, absolute paths, identity) go into existing gitignored `models/` notes (`REMOVED.md`, `aliases/REMOVED.md`) — never duplicate session files there.
 - **Do not edit a session log after the session is complete** except to fix typos or scrub contract violations above. Add a follow-up file for new work.
 - **No external-source URLs in technique claims** (per `docs/models/` rules — methodology names allowed, citations not).

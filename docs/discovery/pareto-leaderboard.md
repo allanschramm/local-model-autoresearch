@@ -2,7 +2,7 @@
 
 Global **Pareto Set** on this hardware budget: maximize **ctx × TPS × agentic × coding** ([ADR 0006](../adr/0006-pareto-frontier-search.md)). Selection lenses: **Day** / **Night** ([ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md)).
 
-Hardware: RTX 4060 **8 GB**, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.  
+Hardware: discrete **8 GB-class** NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.  
 Ground truth: `results.tsv`. TPS axis = claw-full `bench_tg` when available. Complete vector = claw-full **and** coding-10 (exact 10 tasks/dataset).
 
 **Point = one full Fingerprint** (engine+sampler Baseline from `config_json`, ADR 0006): axes join by Fingerprint, never by basename. Axes come from the `agentic`/`coding` columns (combined modern write path) or from `agentic-full` / `10-task` category rows. Legacy rows without `config_json` carry no Fingerprint and never enter the front.
@@ -63,7 +63,7 @@ Exact domination membership can shift when TPS sources differ (claw vs coding Co
 
 Different quants of the same family (e.g. Ornith-35B **Q3_K_XL** vs **Q4_K_XL**) are **not** duplicates. Each needs its own Objective Vector. Prefer the better quant for aliases; keep both scores in leaderboards until a delete decision.
 
-## Prefer by job (this rig)
+## Prefer by job (the operator host)
 
 | Job | Prefer |
 | :--- | :--- |

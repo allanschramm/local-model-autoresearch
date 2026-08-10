@@ -1,6 +1,6 @@
 # Low VRAM Local LLM Optimization Guide
 
-This guide documents the design strategies, model formats, and configuration settings required to run large or complex models efficiently on consumer GPUs with limited VRAM (such as an RTX 4060 8 GB).
+This guide documents the design strategies, model formats, and configuration settings required to run large or complex models efficiently on consumer GPUs with limited VRAM (such as an discrete 8 GB-class NVIDIA).
 
 ---
 

@@ -4,7 +4,7 @@
 Run Claw-Eval full (n=15) on GGUFs that lacked a sane Val Score: `Qwythos-9B-v2`, `Qwen3.6-35B` Q3_K_XL, Mythos MTP, Ornith-9B-MTP, gemma-4-26B-A4B, Qwen3.5-9B. Sequential; Baseline via `config.py` only; sampler seeded from model cards.
 
 ## Hardware
-RTX 4060 8 GB (`VRAM_LIMIT_MB=7900`), Windows, upstream `llama.cpp/build-cuda`.
+discrete 8 GB-class NVIDIA (`VRAM_LIMIT_MB=7900`), Windows, upstream `llama.cpp/build-cuda`.
 
 ## Setup
 1. Seed `ENGINE_DEFAULTS` in `autoresearch/core/config.py` from the intended Trial recipe (GGUF basename + flags).

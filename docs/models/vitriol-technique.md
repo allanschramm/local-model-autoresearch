@@ -52,9 +52,9 @@ MoE vs dense = GGUF metadata only (`expert_count > 1` or arch name contains `moe
 
 ### Our rig vs Codacus-style stock numbers
 
-| | Codacus (video) | This rig (upstream) |
+| | Codacus (video) | The operator host (upstream) |
 |---|---|---|
-| GPU | GTX 1070 8 GB | RTX 4060 8 GB |
+| GPU | GTX 1070 8 GB | discrete 8 GB-class NVIDIA |
 | Path | stock-ish flags | `--n-cpu-moe` = `block_count` |
 | Example | ~18 t/s @ ~132k (claim) | Qwen3.6-35B ~22 t/s @ 65k; Ornith-35B / Laguna similar band |
 
@@ -105,7 +105,7 @@ GTX 1070 Ti, PCIe 3.0 **x16**, ~15 GB RAM, Linux: Qwen3.6-35B IQ2_M + Chimera + 
 | Chimera CUDA+Vulkan | Fork-only |
 | Predictive expert prefetch / LRU VRAM expert pool | Fork-only today; watch upstream PRs (they cite ggml PRs #11397, #6387, #11571 lineage) |
 | MTP N=2 often best; larger N wastes drafts if accept≈1/N | Yes — sweep `--spec-draft-n-max` on MTP GGUFs |
-| MTP “flat” on some Pascal sweeps | Hardware-specific; always measure on this rig |
+| MTP “flat” on some Pascal sweeps | Hardware-specific; always measure on the operator host |
 | `--cache-type-v` q4/q8 “corrupts” under VITRIOL | **Their** stack; do not assume for upstream — Trial both |
 | Secondary GPU dropping primary to x8 | Hardware hygiene for any PCIe-bound path |
 | Memory shim / Hebbian SQLite | App-layer, orthogonal to Search harness |
@@ -122,7 +122,7 @@ GTX 1070 Ti, PCIe 3.0 **x16**, ~15 GB RAM, Linux: Qwen3.6-35B IQ2_M + Chimera + 
 2. Build their `llama.cpp` with CUDA (+ optional Vulkan for Chimera)  
 3. `./vitriol setup` then `./vitriol config` / `run` / `serve`  
 4. Keep results **offline** — do not mix fork TPS into Pareto rows without labeling engine = VITRIOL fork  
-5. Compare A/B against the **same** GGUF on upstream `--n-cpu-moe` on this rig before changing policy  
+5. Compare A/B against the **same** GGUF on upstream `--n-cpu-moe` on the operator host before changing policy  
 
 ---
 

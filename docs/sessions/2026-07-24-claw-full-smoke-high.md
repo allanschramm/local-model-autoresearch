@@ -4,7 +4,7 @@
 Run canonical Claw-Eval full (n=15) on four high claw-quick GGUFs: Laguna-XS, Ornith-9B UD, Ornith-35B UD, Bonsai. Sequential; Baseline via `config.py` only. Afterwards rank all historical claw scores in `results.tsv` and document durable findings.
 
 ## Hardware
-RTX 4060 8 GB (`VRAM_LIMIT_MB=7900`), Windows, upstream `llama.cpp/build-cuda`.
+discrete 8 GB-class NVIDIA (`VRAM_LIMIT_MB=7900`), Windows, upstream `llama.cpp/build-cuda`.
 
 ## Setup
 1. Seed Baseline flags in `autoresearch/core/config.py` `ENGINE_DEFAULTS` (GGUF basename + knobs).
@@ -60,7 +60,7 @@ Easy tool tasks (gmail/calendar/todo/contacts/helpdesk) mostly PASS. Long `web_r
 - Autoloop historical rows with `val_score` ≫ 1 (e.g. ~39) are **not** claw scores — exclude from leaderboard.
 
 ## Decisions
-- Prefer **Laguna-XS-2.1-Q3_K_XL** as then-current agentic Val Score leader on this rig.
+- Prefer **Laguna-XS-2.1-Q3_K_XL** as then-current agentic Val Score leader on the operator host.
 - Leaderboard Score column = claw-full when measured (canonical).
 - Bonsai agentic recipe locked to ctx **65536**; short-gen @ 131k still OK for TPS-only.
 - New card: [docs/models/laguna-xs-2.1.md](../models/laguna-xs-2.1.md).

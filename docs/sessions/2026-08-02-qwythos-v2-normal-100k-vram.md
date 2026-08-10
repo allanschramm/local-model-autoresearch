@@ -6,7 +6,7 @@ Complete a no-MTP Qwythos v2 Objective Vector at the same context, runtime, KV, 
 
 ## Hardware
 
-- NVIDIA RTX 4060 with 8 GB physical VRAM.
+- NVIDIA 8 GB-class discrete NVIDIA with 8 GB physical VRAM.
 - Physical-VRAM limit: 7900 MB.
 
 ## Setup

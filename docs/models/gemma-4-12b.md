@@ -22,7 +22,7 @@ Uses a **separate draft head** (not embedded in main GGUF like Qwythos).
 - Recommended `--spec-draft-n-max 2` per Unsloth docs
 - **Status**: Draft head failed to load on upstream llama.cpp (arch name mismatch). Not yet validated.
 
-## Hardware Requirements (RTX 4060 8GB)
+## Hardware Requirements (discrete 8 GB-class NVIDIA)
 | Quant | Size | VRAM (131k ctx) |
 |---|---|---|
 | UD-Q4_K_XL (our pick) | 6.3 GB | 8.0 GB (maxed) |
@@ -38,7 +38,7 @@ Uses a **separate draft head** (not embedded in main GGUF like Qwythos).
 | TOP_K | 20 | Focused token pool |
 | REPEAT_PENALTY | 1.05 | Light repetition penalty |
 | BATCH_SIZE | 1024 | From llama-bench sweep |
-| UBATCH_SIZE | 256 | Sweet spot on RTX 4060 |
+| UBATCH_SIZE | 256 | Sweet spot on 8 GB-class discrete NVIDIA |
 | SPEC_TYPE | None | MTP draft not yet validated |
 | N_CPU_MOE | N/A | Dense model, no MoE |
 
@@ -123,7 +123,7 @@ v2 at Q3 beats base at Q4_K_XL on both score and speed despite being lower quant
 
 ## Limitations
 - **BigCode zero** = library-call tasks hit quality cliff at 3-bit
-- Q3 decode kernel ~30% slower than Q4 on RTX 4060 (bench tg 31.2 vs 33.4)
+- Q3 decode kernel ~30% slower than Q4 on 8 GB-class discrete NVIDIA (bench tg 31.2 vs 33.4)
 
 ## Tuning History
 - 2026-07-01: Renamed to `gemma-4-12B-fable5-Q3_K_M.gguf`, validated at 131k with b1024/ub256 (0.5500, 43.0 TPS, 7.4 GB)

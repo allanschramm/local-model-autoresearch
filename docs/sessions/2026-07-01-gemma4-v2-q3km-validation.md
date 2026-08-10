@@ -4,8 +4,8 @@
 Download and validate `yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF` Q3_K_M quant. Quick 2-task coding check after llama-bench passes.
 
 ## Hardware
-- GPU: RTX 4060 8 GB VRAM
-- CPU: AMD Ryzen 7 5800X
+- GPU: discrete 8 GB-class NVIDIA VRAM
+- CPU: operator discrete-class CPU
 - RAM: 24 GB
 - OS: WSL2 Ubuntu 24.04
 

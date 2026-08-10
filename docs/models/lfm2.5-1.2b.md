@@ -21,7 +21,7 @@ Verified with `gguf.GGUFReader` (2026-07-24):
 
 Harness: dense → `N_CPU_MOE` must stay `None` (no expert offload).
 
-## Hardware requirements (RTX 4060 8GB)
+## Hardware requirements (discrete 8 GB-class NVIDIA)
 
 Tiny weights (~1.2B Q8). Context + KV dominate VRAM at ceiling.
 

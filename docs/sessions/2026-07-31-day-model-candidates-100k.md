@@ -2,11 +2,11 @@
 
 ## Goal
 
-Find new GGUF candidates for this rig that can plausibly run at least 100k effective context and compete as DAY models. No model was downloaded or benchmarked in this session.
+Find new GGUF candidates for the operator host that can plausibly run at least 100k effective context and compete as DAY models. No model was downloaded or benchmarked in this session.
 
 ## Hardware and selection target
 
-- RTX 4060 8 GB, about 32 GB host RAM, `VRAM_LIMIT_MB=7900`.
+- discrete 8 GB-class NVIDIA, about 32 GB host RAM, `VRAM_LIMIT_MB=7900`.
 - Dense models may not spill layers into shared memory. MoE experts may use `N_CPU_MOE`.
 - User floor: `CTX_SIZE >= 100000`; target the repo default `131072` where the model supports it.
 - DAY admission today: `min(agentic, coding) >= 0.4612`; then maximize TPS.

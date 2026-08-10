@@ -6,7 +6,7 @@ Test the prebuilt TurboQuant+ release for embedded-MTP Ornith 9B at the 100000-t
 
 ## Hardware
 
-- NVIDIA RTX 4060, 8 GB physical VRAM
+- NVIDIA 8 GB-class discrete NVIDIA, 8 GB physical VRAM
 - VRAM gate: 7900 MB
 
 ## Setup

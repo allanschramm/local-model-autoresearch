@@ -25,7 +25,7 @@
 - Quantization file size: **19.7 GiB**
 - Total target memory (RAM + VRAM): **~24 GB**
 
-**Our target:** 8 GB VRAM (RTX 4060) + 24 GB RAM. We are at the 4-bit limit. Offloading routed experts to CPU/RAM is mandatory to fit in VRAM.
+**Our target:** 8 GB VRAM (8 GB-class discrete NVIDIA) + 24 GB RAM. We are at the 4-bit limit. Offloading routed experts to CPU/RAM is mandatory to fit in VRAM.
 
 ## VITRIOL / Split strategy (MoE expert offloading)
 With MoE, we place **attention + shared expert + routing** on the GPU, and keep the **256 routed experts in CPU/RAM**.
@@ -102,7 +102,7 @@ See [IQ3_M variant card](ornith-1.0-35b-iq3_m.md) for detailed testing results.
 | 30 + turbo3 | 10/40 | 19.6 | — | Turbo3 kills TPS |
 
 ### Verdict
-- **n-cpu-moe 32 is the sweet spot** for RTX 4060 8 GB
+- **n-cpu-moe 32 is the sweet spot** for discrete 8 GB-class NVIDIA
 - No fork, quant, or speculative decoding improves TPS or score
 - 35B is hardware-limited by 8 GB VRAM
 

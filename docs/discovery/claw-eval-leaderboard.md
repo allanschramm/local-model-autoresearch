@@ -2,7 +2,7 @@
 
 **Claw-Eval full** = agentic Objective Vector axis ([ADR 0006](../adr/0006-pareto-frontier-search.md)). Legacy scalar Val Score display only. Claw-Eval quick is smoke — high quick does **not** guarantee high full.
 
-Hardware: RTX 4060 **8 GB**, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp` CUDA unless a card says otherwise.
+Hardware: discrete **8 GB-class** NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp` CUDA unless a card says otherwise.
 
 Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (historical Autoloop pollution — TPS leaked into score). Global frontier: [pareto-leaderboard.md](pareto-leaderboard.md). Leaderboard text is a view of TSV — never drop a measured GGUF because it is weak or deleted.
 
@@ -58,13 +58,13 @@ Across Laguna / Ornith / Bonsai full runs:
 ## Operational lessons
 
 1. **Queue by quick, decide by full.** Run full on quick ≥0.80 first.
-2. **Dense @ max ctx can smoke-pass and agentic-fail.** Bonsai 131k: short-gen OK, mid-full `VRAM_LIMIT EXCEEDED used=7906MB > limit=7900MB` → run agentic claw-full at **65k** on this rig.
+2. **Dense @ max ctx can smoke-pass and agentic-fail.** Bonsai 131k: short-gen OK, mid-full `VRAM_LIMIT EXCEEDED used=7906MB > limit=7900MB` → run agentic claw-full at **65k** on the operator host.
 3. **MoE prefer `N_CPU_MOE=block_count`.** Ornith-35B A/B: 40 beat 32 (TPS + VRAM). Laguna already at 40.
 4. **One Trial at a time.** Shared GPU + port 18080.
 5. **Edit `config.py` Baseline, then**  
    `.\venv\Scripts\python.exe benchmark_search.py --agentic-full --no-agentic-quick --desc "claw-full …"`
 
-## Prefer for agentic use (this rig, 2026-07-27)
+## Prefer for agentic use (the operator host, 2026-07-27)
 
 1. **`POCKET-35B-Q3_K_M`** — ties Laguna agentic + far stronger coding (Night / balanced).
 2. **`Laguna-XS-2.1-Q3_K_XL`** — ties best agentic; weak coding (GGUF deleted; scores kept).

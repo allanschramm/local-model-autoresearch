@@ -41,4 +41,4 @@ Leaderboard: [coding-leaderboard.md](../discovery/coding-leaderboard.md).
 ## Errors
 
 * LFM first attempt hung (no subprocess timeout) — killed; timeout fix; re-ran OK.
-* Ornith coding still requires **ctx 32k** on this rig (65k VRAM-kill during coding).
+* Ornith coding still requires **ctx 32k** on the operator host (65k VRAM-kill during coding).

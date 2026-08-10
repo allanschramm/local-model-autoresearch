@@ -106,7 +106,7 @@ Gemma 4 26B-A4B specifics:
 Expected performance:
 - 4B active > 3B active → marginally slower per token than Qwen3.6
 - Smaller file (16 vs 22 GB) → marginally faster to load, less RAM swapping
-- Codacus got 18 tok/s on i5+1070+16GB with Qwen3.6 35B-A3B. Our 4060+similar RAM should hit 20-30 tok/s with Gemma4 26B-A4B.
+- Codacus got 18 tok/s on i5+1070+16GB with Qwen3.6 35B-A3B. Our 8GB-class+similar RAM should hit 20-30 tok/s with Gemma4 26B-A4B.
 
 MTP: `--spec-type draft-mtp` (the accepted spelling — bare `mtp` is rejected; see Qwen3.6 card for the bug story).
 

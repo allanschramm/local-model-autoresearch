@@ -29,7 +29,7 @@
 | **IQ4_XS (our pick)** | **~17 GB** |
 | Q4_K_M (reference) | ~23 GB |
 
-**Our target:** 8 GB VRAM (RTX 4060) + 16-24 GB RAM. IQ4_XS saves ~6 GB vs Q4_K_M, making VITRIOL split more feasible on 16 GB RAM.
+**Our target:** 8 GB VRAM (8 GB-class discrete NVIDIA) + 16-24 GB RAM. IQ4_XS saves ~6 GB vs Q4_K_M, making VITRIOL split more feasible on 16 GB RAM.
 
 **Note:** IQ4_XS is importance-quantized — uses imatrix calibration data for better quality at lower size. Expect quality close to Q4_K_M with ~25% less memory.
 
@@ -73,6 +73,6 @@ Source: https://www.youtube.com/watch?v=ZwNCsUTNWOA (Codacus technique).
 - Architecture skeleton is the Qwen3.5 MoE family (qwen35moe arch, 40 layers, 256 experts); the AgentWorld fine-tune is a separate world-model family — do not equate it with Qwen3.6.
 
 ## Open questions
-- **TBD (2026-07-02):** First validation run needed — baseline score and TPS on RTX 4060.
+- **TBD (2026-07-02):** First validation run needed — baseline score and TPS on 8 GB-class discrete NVIDIA.
 - **TBD:** Compare IQ4_XS vs Q4_K_M quality at same settings (imatrix calibration may help or hurt).
 

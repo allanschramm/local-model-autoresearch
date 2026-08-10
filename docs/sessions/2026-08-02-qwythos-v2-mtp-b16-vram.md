@@ -6,7 +6,7 @@ Run a strict MTP versus no-MTP comparison at 100000 context using the no-MTP poi
 
 ## Hardware
 
-- NVIDIA RTX 4060 with 8 GB physical VRAM.
+- NVIDIA 8 GB-class discrete NVIDIA with 8 GB physical VRAM.
 - Physical-VRAM limit: 7900 MB.
 
 ## Setup

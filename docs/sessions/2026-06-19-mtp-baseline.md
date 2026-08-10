@@ -4,9 +4,9 @@
 Confirm empirically that swapping the base GGUF for the MTP-GGUF (same flags, MTP inactive) moves TPS. Investigation started from a then-best measured baseline of 11.1 tok/s (`r_q4`) vs an unmet ~16 tok/s target.
 
 ## Hardware & Build
-- CPU: R7 5800X (8C/16T)
+- CPU: operator CPU
 - RAM: 32 GB DDR4-3200
-- GPU: RTX 4060 8 GB
+- GPU: discrete 8 GB-class NVIDIA
 - OS: WSL2 Ubuntu-24.04
 - llama-server: turboquant build (MTP, TurboQuant, QAT, diffusion)
 - llama-server path: `./llama.cpp-turboquant/build-cuda/bin/llama-server`

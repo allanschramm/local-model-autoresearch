@@ -4,7 +4,7 @@
 Transition the candidate pre-check validation gate in `run.py` and `evaluation.py` from `llama-bench` to `llama-cli` to enable real-world Speculative Decoding (MTP) throughput measurements, and ensure it runs cleanly on Windows without process blocks or memory leaks.
 
 ## Hardware
-- GPU: RTX 4060 (8 GB VRAM)
+- GPU: 8 GB-class discrete NVIDIA (8 GB VRAM)
 - OS: Windows 11 / PowerShell
 
 ## Setup & Configuration

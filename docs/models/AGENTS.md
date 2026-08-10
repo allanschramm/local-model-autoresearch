@@ -3,7 +3,7 @@
 <!-- Scope: any agent adding or editing a model card under /docs/models. -->
 
 ## Purpose
-One markdown file per GGUF model we run on this rig. Cards are the canonical local reference: where the file lives, what quant it is, what the model architecture actually is (verified from the GGUF, not the HF card), recommended inference settings, MTP/QAT status, and what local config baseline to start from.
+One markdown file per GGUF model we run on the operator host. Cards are the canonical local reference: where the file lives, what quant it is, what the model architecture actually is (verified from the GGUF, not the HF card), recommended inference settings, MTP/QAT status, and what local config baseline to start from.
 
 ## Ownership
 - `/AGENTS.md` (repo root) owns the MTP/QAT/TurboQuant rule.

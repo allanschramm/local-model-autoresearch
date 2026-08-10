@@ -30,7 +30,7 @@
 | **Q4_K_M (our pick)** | **~5.6 GB VRAM** (VRAM target is ~5.6 GB + KV cache overhead) |
 | Q8_0 | ~9.5 GB VRAM |
 
-**Our target:** 8 GB VRAM (RTX 4060). The 4-bit model size is ~5.6 GB, meaning it fits entirely in GPU VRAM (NGL = 999). However, active KV cache overhead for large contexts can push VRAM usage above 8 GB. Setting safe context size limits is important.
+**Our target:** 8 GB VRAM (8 GB-class discrete NVIDIA). The 4-bit model size is ~5.6 GB, meaning it fits entirely in GPU VRAM (NGL = 999). However, active KV cache overhead for large contexts can push VRAM usage above 8 GB. Setting safe context size limits is important.
 
 ## Recommended Settings (based on Qwen 3.5)
 - **Temperature:** 0.4
@@ -108,7 +108,7 @@ Since the model is ~5.6 GB and we have 8 GB of VRAM, we can run with maximum GPU
 | Bench tg | 43.7 t/s |
 
 ### Verdict
-- **0.580 / 52.2 TPS is the ceiling** for RTX 4060 8 GB
+- **0.580 / 52.2 TPS is the ceiling** for discrete 8 GB-class NVIDIA
 - No hyperparam, fork, or quant improves either score or speed
 - 9B is the optimal model for this hardware
 

@@ -53,7 +53,7 @@ All binaries → `$LLAMA_CPP/build-cuda/bin/` or `$LLAMA_CPP/build-cpu/bin/` (or
 
 ## Hardware
 
-- GPU: RTX 4060 (8 GB VRAM, CUDA 8.9) — adapt paths and flags for your hardware
+- GPU: 8 GB-class discrete NVIDIA (8 GB VRAM, CUDA 8.9) — adapt paths and flags for your hardware
 - **Release first**: the runtime is a prebuilt release under `llama.cpp-releases/<engine>/<tag>/build-cuda/bin/` (see Install above). `llama.cpp/` stays as the source clone/submodule but is not the default binary source — build it only for urgent fixes.
 - Point the harness at a release root via `AUTORESEARCH_LLAMA_CPP_ROOT`, or pin the same root per alias with `llama_cpp_root` in `models/aliases/<name>/config.yaml` (`model-up`). Keep engine and release tag in Trial evidence.
 - Installed examples: `llama.cpp-releases/turboquant/tqp-v0.3.0/` and `llama.cpp-releases/prismml/prism-b9599-9ca265a/` (Windows CUDA 12.4 prebuilts).

@@ -4,7 +4,7 @@
 Close Objective Vector for deepreinforce `ornith-1.0-9b-Q4_K_M.gguf` (coding-10 **0.5800** already in TSV). Second incomplete by TPS after Qwen3.5-4B (deleted post-complete). Skip Qwen3.5-9B-UD (coding VRAM-rejected).
 
 ## Hardware
-RTX 4060 8 GB (physical ~8188 MiB), Windows, upstream `llama.cpp/build-cuda`.
+discrete 8 GB-class NVIDIA (~8 GB physical VRAM), Windows, upstream `llama.cpp/build-cuda`.
 
 ## Setup
 1. Baseline: `ornith-1.0-9b-Q4_K_M.gguf`, kv **q4_0**, no MTP, batch 256/128, threads 8/8, `NO_MMAP`, `CONT_BATCHING`.

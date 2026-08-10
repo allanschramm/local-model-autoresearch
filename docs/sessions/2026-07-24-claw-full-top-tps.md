@@ -6,7 +6,7 @@ Run Claw-Eval **full** (n=15) on the three highest measured TPS models from `res
 
 ## Hardware
 
-RTX 4060 8 GB, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp` CUDA (`build-cuda`).
+discrete 8 GB-class NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp` CUDA (`build-cuda`).
 
 ## Setup
 

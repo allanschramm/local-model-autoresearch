@@ -30,7 +30,7 @@ Verified with `gguf.GGUFReader` on the local file (2026-07-24):
 
 Harness `is_moe_model` → **True** (expert_count > 1). Dense offload rules do not apply.
 
-## Hardware requirements (RTX 4060 8GB)
+## Hardware requirements (discrete 8 GB-class NVIDIA)
 
 | Quant | Size | Fit notes |
 |---|---|---|
@@ -53,7 +53,7 @@ GGUF embeds sampling defaults (`temp=1.0`, `top_p=1.0`, `min_p=0.0`). Local harn
 | CONT_BATCHING | True | |
 | NO_MMAP | True | |
 | N_CPU_MOE | **40** | = `block_count` |
-| TPS_FLOOR | 15.0 | MoE floor on this rig |
+| TPS_FLOOR | 15.0 | MoE floor on the operator host |
 | JINJA | true | |
 
 ## MTP
@@ -93,7 +93,7 @@ TPS_FLOOR = 15.0
 
 | Gate | Score / metric | Notes |
 |---|---|---|
-| claw-quick | **1.0000** (5/5) | Best smoke on this rig |
+| claw-quick | **1.0000** (5/5) | Best smoke on the operator host |
 | claw-full | **0.6667** (10/15) KEEP | **Best Val Score** in `results.tsv` (sane 0–1) |
 | coding-10 | **0.1950** | LCB 0.20 / HE 0.20 / MBPP 0.30 / BC 0.00 (LCB patched†) |
 | bench_tg | **37.2** t/s | cli-bench gen=512 (claw-full row) |

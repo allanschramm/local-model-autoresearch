@@ -6,7 +6,7 @@ Hill-climb `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` for max TPS with focus on DFlash (`
 
 ## Hardware
 
-- Discrete GPU class; RTX 4060 **8 GB** physical VRAM; ~32 GB system RAM.
+- Discrete GPU class; discrete **8 GB-class** NVIDIA physical VRAM; ~32 GB system RAM.
 - `VRAM_LIMIT_MB=7900`; host budget ~27790 MB (discrete headroom policy).
 
 ## Setup
@@ -59,7 +59,7 @@ Cheap (same engine / GGUF):
 
 Medium: BF16 DFlash A/B (low prior after Q8 loss); external `mtp-*` pair; n-gram (repetitive text only).
 
-Different job: smaller-active MoE or dense+strong MTP families already win this rig’s TPS board (see [fastest-tps-inference-engine.md](../discovery/fastest-tps-inference-engine.md)).
+Different job: smaller-active MoE or dense+strong MTP families already win the operator host’s TPS board (see [fastest-tps-inference-engine.md](../discovery/fastest-tps-inference-engine.md)).
 
 Other engines / formats: ExLlamaV3/EXL3 is the only serious Windows CUDA challenger in-repo research — **unverified** on this Qwen3.6 MoE; format + harness cost high. SGLang/vLLM = WSL/Linux-first; prior GPTQ Qwen3.6 attempts in TSV failed. Same llama.cpp wrappers (Ollama/kobold) do not raise the TPS ceiling.
 

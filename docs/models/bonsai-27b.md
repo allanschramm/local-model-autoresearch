@@ -18,7 +18,7 @@
 - Context length: **262,144 tokens** — GGUF-verified (`qwen35.context_length = 262144`).
 - 27B family is vision-language: accepts images (vision projector +~0.9 GiB when used)
 
-## Hardware Requirements (RTX 4060 8 GB)
+## Hardware Requirements (discrete 8 GB-class NVIDIA)
 | Item | Size | Note |
 |---|---|---|
 | Bonsai-27B Q1_0 weights | 3.53 GiB | 1-bit |
@@ -29,7 +29,7 @@
 
 **KV sizing (PrismML KV-CACHE guide, 2026-08-02):** FP16 KV ≈ 64 KiB/token (~6.3 GiB @ 100K); experimental 4-bit KV (`--cache-type-k q4_0 --cache-type-v q4_0`) ≈ 18 KiB/token. Footprints: Q1_0 ≈ 4.8 GiB @ 4K / 5.2 GiB @ 10K / 10.8 GiB @ 100K (weights + activations + FP16 KV).
 
-**Verified fit:** target + 65K KV cache loaded and warmed up on RTX 4060 with no OOM (server log).
+**Verified fit:** target + 65K KV cache loaded and warmed up on 8 GB-class discrete NVIDIA with no OOM (server log).
 Full 262K KV (~4.3 GiB) would NOT fit (≈9.3 GiB > 8 GiB) — cap context well below train max.
 
 ## Recommended Settings (from SPECULATIVE.md, "tested working on CUDA")
@@ -53,7 +53,7 @@ Flag notes (from run guide):
 - ~1.8–2× faster decode on CUDA code/reasoning workloads; output at temp 0 identical to normal decode.
 - Verify engaged via API `timings.draft_n` / `draft_n_accepted` (missing/zero = not active).
 - `llama-cli` has no draft support; one-shot binary is `llama-speculative-simple`.
-- Published decode on datacenter GPUs (PrismML, 2026-08-02): ~70 → ~135 tok/s at ~0.9 acceptance. On this rig the canonical drafter measured 39.2 t/s (2026-07-21) — still below target-only ~41, so max-TPS stays `SPEC_TYPE=None`.
+- Published decode on datacenter GPUs (PrismML, 2026-08-02): ~70 → ~135 tok/s at ~0.9 acceptance. On the operator host the canonical drafter measured 39.2 t/s (2026-07-21) — still below target-only ~41, so max-TPS stays `SPEC_TYPE=None`.
 
 ## Fork Requirement
 - Q2_0 and DSpark need the external **PrismML-Eng/llama.cpp** fork, branch `prism` (tested commit `9fcaed763` = tag `prism-b9596`), built with CUDA. The fork is not vendored in this repository.
@@ -76,7 +76,7 @@ E llama_model_load: error loading model: invalid vector subscript
 ## VITRIOL (MoE split)
 **Dense** — do not apply `--n-cpu-moe` / shared-memory offload. Fit in physical VRAM only (dense VRAM guard).
 
-## Max TPS (RTX 4060 8 GB, ctx band 65k–131k) — 2026-07-21
+## Max TPS (discrete 8 GB-class NVIDIA, ctx band 65k–131k) — 2026-07-21
 
 Harness: `benchmark_search.py --no-agentic-quick --no-agentic-full --no-coding` → `llama-cli` `-n 512`.
 

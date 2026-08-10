@@ -4,8 +4,8 @@
 Push Ornith 9B and 35B TPS/score beyond current bests (9B: 0.580/52.2 TPS, 35B: 0.555/31.5 TPS) using BeeLlama features, hyperparam tuning, and IQ3 quantization.
 
 ## Hardware
-- GPU: RTX 4060 8 GB VRAM
-- CPU: AMD Ryzen 7 5800X
+- GPU: discrete 8 GB-class NVIDIA VRAM
+- CPU: operator discrete-class CPU
 - RAM: 24 GB
 - OS: WSL2 Ubuntu 24.04
 
@@ -50,7 +50,7 @@ Push Ornith 9B and 35B TPS/score beyond current bests (9B: 0.580/52.2 TPS, 35B: 
 ### IQ3_M 35B
 - File: 15.7 GB (vs Q4_K_M 19.7 GB)
 - **Consistently slower TPS than Q4_K_M** at every n-cpu-moe tested (32, 30, 28)
-- Root cause: IQ3 CUDA decode kernel less optimized than Q4_K_M on RTX 4060
+- Root cause: IQ3 CUDA decode kernel less optimized than Q4_K_M on 8 GB-class discrete NVIDIA
 - Quality degraded: MBPP+ dropped from 0.9 to 0.0 in validation
 
 ### n-cpu-moe Sweet Spot
@@ -60,7 +60,7 @@ Push Ornith 9B and 35B TPS/score beyond current bests (9B: 0.580/52.2 TPS, 35B: 
 - n-cpu-moe 30 (10/40 on GPU): likely OOM/crash
 
 ## Key Takeaways
-1. **9B at 0.580 / 52.2 TPS is the ceiling for RTX 4060 8 GB.** No tuning fork, feature, or hyperparam improves it.
+1. **9B at 0.580 / 52.2 TPS is the ceiling for discrete 8 GB-class NVIDIA.** No tuning fork, feature, or hyperparam improves it.
 2. **Stock fork (BoFan MTP+TurboQuant) is faster and more stable than BeeLlama** for this hardware.
 3. **DFlash and CopySpec don't help on 8 GB VRAM.** The overhead of speculative decoding exceeds gains when GPU compute is already saturated.
 4. **IQ3 quantization is not a free lunch on small GPUs.** Smaller file doesn't always mean faster — CUDA kernel optimization matters more.

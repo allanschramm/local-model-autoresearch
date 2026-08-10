@@ -35,7 +35,7 @@ Harness `is_moe_model` → **True** (`expert_count > 1`). Shared-expert tensors 
 
 **Note:** Darwin-36B-Opus HF card claims 24Q/4KV; this GGUF matches the standard Qwen3.5-35B-A3B layout (16Q/2KV). Trust the GGUF.
 
-## Hardware requirements (RTX 4060 8 GB + ~32 GB RAM)
+## Hardware requirements (discrete 8 GB-class NVIDIA + ~32 GB RAM)
 
 | Quant | Size | Publisher target | Our pick |
 |---|---|---|---|

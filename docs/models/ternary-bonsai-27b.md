@@ -5,14 +5,14 @@
 **Runtime:** requires a compatible PrismML prebuilt release under `llama.cpp-releases/`; upstream `llama.cpp` cannot run this quant. Do not clone/build the fork locally.
 
 ## Why deleted
-Validation on RTX 4060 8 GB (PrismML `build-cuda`):
+Validation on discrete 8 GB-class NVIDIA (PrismML `build-cuda`):
 
 | ctx | Preflight | bench_tg | Verdict |
 |---|---|---|---|
 | 65536 | est 8567 MB > 7900 | — | VRAM_PREFLIGHT fail |
 | 32768 | est 7850 MB OK | **10.6 t/s** | FAIL vs `TPS_FLOOR` 15 |
 
-Same ~10.6 t/s reject already noted on [bonsai-27b.md](bonsai-27b.md) matrix (2026-07-21 @ 131k). Q1_0 target-only stays ~41 t/s on upstream CUDA — Ternary Q2_0 is not competitive for interactive use on this rig.
+Same ~10.6 t/s reject already noted on [bonsai-27b.md](bonsai-27b.md) matrix (2026-07-21 @ 131k). Q1_0 target-only stays ~41 t/s on upstream CUDA — Ternary Q2_0 is not competitive for interactive use on the operator host.
 
 ## If re-downloading later
 - Prefer **Q1_0** (`Bonsai-27B-Q1_0.gguf`) unless PrismML ships a Q2_0 that beats ~15 t/s on 8 GB.
@@ -24,4 +24,4 @@ Same ~10.6 t/s reject already noted on [bonsai-27b.md](bonsai-27b.md) matrix (20
 - Do **not** enable speculative for max TPS on Bonsai Q1_0 (DSpark loses to target-only); Ternary was validated with `SPEC_TYPE=None`.
 
 ## Open questions
-- None for this rig until a new Ternary build claims ≥15–20 t/s @ ≤8 GB physical VRAM.
+- None for the operator host until a new Ternary build claims ≥15–20 t/s @ ≤8 GB physical VRAM.

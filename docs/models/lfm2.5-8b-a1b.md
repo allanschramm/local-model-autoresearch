@@ -35,7 +35,7 @@ Verified with `gguf.GGUFReader` on the local file (2026-07-23):
 
 HF card: 18 double-gated LIV conv + 6 GQA layers (matches 24 blocks). Hybrid — not a pure transformer MoE.
 
-## Hardware requirements (RTX 4060 8GB)
+## Hardware requirements (discrete 8 GB-class NVIDIA)
 
 | Quant | Size | Fit notes |
 |---|---|---|
@@ -64,7 +64,7 @@ Local Baseline (validated):
 | FLASH_ATTN | on | Required |
 | CONT_BATCHING | True | |
 | N_CPU_MOE | **0** | Full VRAM (see below) |
-| TPS_FLOOR | 15.0 | MoE floor on this rig |
+| TPS_FLOOR | 15.0 | MoE floor on the operator host |
 | JINJA | true | ChatML-like template |
 
 ## MTP

@@ -21,7 +21,7 @@
   - 8 full attention layers, 24 SSM layers
 - `rope.freq_base = 10,000,000`
 
-## Hardware Requirements (RTX 4060 8GB)
+## Hardware Requirements (discrete 8 GB-class NVIDIA)
 | Quant | Size | VRAM (idle) | VRAM (131k ctx) |
 |---|---|---|---|
 | Q4_K_M | 5.3 GB | ~5.5 GB | ~7.5 GB |
@@ -32,7 +32,7 @@ Fits entirely in 8 GB with 131k context and flash-attn.
 
 ## Batch/Ubatch Sweet Spot (llama-bench 2026-06-30)
 
-**RTX 4060 — Qwythos 9B Q4_K_M — pp512 / tg128:**
+**8 GB-class discrete NVIDIA — Qwythos 9B Q4_K_M — pp512 / tg128:**
 
 | ubatch | pp512 (t/s) | tg128 (t/s) |
 |-------:|-----------:|----------:|
@@ -55,7 +55,7 @@ Fits entirely in 8 GB with 131k context and flash-attn.
 | TOP_K | 20 | Focused token pool |
 | REPEAT_PENALTY | 1.05 | Light penalty for repetition reduction |
 | BATCH_SIZE | 1024 | Matched with ubatch=256 (agentic path) |
-| UBATCH_SIZE | 256 | Sweet spot on RTX 4060 (llama-bench) |
+| UBATCH_SIZE | 256 | Sweet spot on 8 GB-class discrete NVIDIA (llama-bench) |
 | SPEC_TYPE | None | Mythos MTP not worth it (measured +1% short-gen) |
 | SPEC_DRAFT_N_MAX | 0 | Disabled |
 

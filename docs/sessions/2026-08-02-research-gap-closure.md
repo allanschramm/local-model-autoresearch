@@ -85,7 +85,7 @@ Qwen-AgentWorld is a **native language world model** for agentic environment sim
 ### 6. `docs/discovery/best-model-8gb-vram.md` (PARTIALLY RESOLVED)
 
 - **Granite-4.0-H-Tiny verified from IBM (primary):** decoder-only hybrid MoE (Mamba-2 + Transformer, MoEs with **shared experts**, GQA, SwiGLU, RMSNorm, shared input/output embeddings), 7B total / 1B active, context **128k**, **Apache-2.0**. Sources: `https://huggingface.co/ibm-granite/granite-4.0-h-tiny` and `.../granite-4.0-h-tiny-base` (2026-08-02). (The "4 attention + 36 Mamba-2 layers / 64 experts / 6 active" detail in the 2026-07-31 session came from the official GGUF repo README.)
-- **First publisher-measured 8 GB-memory tokens/s found:** NVIDIA reports **18 tokens/s** for Nemotron 3 Nano 4B Q4_K_M with llama.cpp on a **Jetson Orin Nano 8GB** (official blog + GGUF card). Caveat: Orin Nano's GPU is far weaker than an RTX 4060 — this is an 8 GB-memory device figure, not an RTX-4060 figure, so the "no 8 GB GPU tps" TBD is only partially closed. Source: `https://huggingface.co/blog/nvidia/nemotron-3-nano-4b` (2026-08-02).
+- **First publisher-measured 8 GB-memory tokens/s found:** NVIDIA reports **18 tokens/s** for Nemotron 3 Nano 4B Q4_K_M with llama.cpp on a **Jetson Orin Nano 8GB** (official blog + GGUF card). Caveat: Orin Nano's GPU is far weaker than an 8 GB-class discrete NVIDIA — this is an 8 GB-memory device figure, not an 8GB-class-discrete figure, so the "no 8 GB GPU tps" TBD is only partially closed. Source: `https://huggingface.co/blog/nvidia/nemotron-3-nano-4b` (2026-08-02).
 
 ### 7. `docs/discovery/vllm-quant-deep-dive.md` — three open TBDs (RESOLVED)
 
@@ -107,7 +107,7 @@ These stay open until a GGUF read or a hardware measurement runs — do not web-
 2. `qwen3.6-35b-a3b.md` — tensor-type audit; local `common/arg.cpp` probe for `--spec-type draft-mtp` acceptance.
 3. `gemma-4-26b-a4b.md` — re-download repo tree to fetch the `mtp-*` GGUF; confirm MTP tensors locally before enabling.
 4. Day-candidate sampler fields (Nemotron/Granite) — resolved only as "absent from publisher docs"; decide per Trial whether to seed from the general profile or run a quality experiment.
-5. Any TPS/VRAM claim for AgentWorld / Granite / Nemotron on this rig — measurement only.
+5. Any TPS/VRAM claim for AgentWorld / Granite / Nemotron on the operator host — measurement only.
 
 ## Sources / Verification
 

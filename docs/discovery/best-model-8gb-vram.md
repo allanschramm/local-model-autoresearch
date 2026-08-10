@@ -69,13 +69,13 @@ MoE models larger than ~10 GB total are only viable via `--n-cpu-moe` expert off
 
 ## 5. Speed claims: what is (and is not) an 8 GB measurement
 
-- **No publisher publishes a tokens/s figure measured on a desktop 8 GB discrete GPU (e.g. RTX 4060)** for any of these models. Treat any local-GPU tps from secondary write-ups as unverified.
+- **No publisher publishes a tokens/s figure measured on a desktop 8 GB discrete GPU (e.g. 8 GB-class discrete NVIDIA)** for any of these models. Treat any local-GPU tps from secondary write-ups as unverified.
 - LFM2.5-8B-A1B "18.5K tokens/s" = single **H100**, high concurrency — signals fast architecture, not an 8 GB number.
 - Mistral Small 3.1 ships only a *memory* statement, not speed.
 - Phi-4-mini trained/evaluated on A100/A6000/H100; no local speed claim.
 - Decode speed on 8 GB scales with bytes-per-token + VRAM bandwidth. Heuristic ordering (estimate, not measured): Qwen3.5-4B (2.74 GB, hybrid attention) ≈ LFM2.5-8B-A1B (1.5B active) > Qwen3-8B / Gemma 4 E4B (~5 GB) > reasoning models (same decode speed, huge CoT overhead).
 
-**Partially closed (2026-08-02):** NVIDIA publishes **18 tokens/s** for Nemotron 3 Nano 4B Q4_K_M (llama.cpp) on a **Jetson Orin Nano 8GB** (official blog + GGUF card). Caveat: Orin Nano's GPU is far weaker than an RTX 4060 — it is an 8 GB-memory device figure, not an RTX-4060 figure, and no candidate has a publisher-measured RTX-4060 tps. The ordering above remains derived from verified file sizes + architectures, not published 8 GB-GPU figures.
+**Partially closed (2026-08-02):** NVIDIA publishes **18 tokens/s** for Nemotron 3 Nano 4B Q4_K_M (llama.cpp) on a **Jetson Orin Nano 8GB** (official blog + GGUF card). Caveat: Orin Nano's GPU is far weaker than an 8 GB-class discrete NVIDIA — it is an 8 GB-memory device figure, not an 8GB-class-discrete figure, and no candidate has a publisher-measured 8GB-class-discrete tps. The ordering above remains derived from verified file sizes + architectures, not published 8 GB-GPU figures.
 
 ---
 
@@ -117,7 +117,7 @@ All URLs fetched **2026-08-02**. Primary sources; gap items are flagged in §5 a
 | 30 | https://huggingface.co/Qwen/Qwen3-14B | dense 14.77B; no "A3B" variant exists (verified via `hf` CLI) |
 | 31 | https://huggingface.co/unsloth/Qwen3-14B-GGUF | file list: Q4_K_M = 9.0 GB (fit fail); only UD-IQ1/Q2 fit |
 | 32 | https://huggingface.co/ibm-granite/granite-4.0-h-tiny | Granite 4.0 H Tiny arch/ctx/license (primary) |
-| 33 | https://huggingface.co/blog/nvidia/nemotron-3-nano-4b | 18 tokens/s on Jetson Orin Nano 8GB (8 GB-memory device, not RTX 4060) |
+| 33 | https://huggingface.co/blog/nvidia/nemotron-3-nano-4b | 18 tokens/s on Jetson Orin Nano 8GB (8 GB-memory device, not 8 GB-class discrete NVIDIA) |
 
 **Access note:** Hugging Face returned HTTP 401 for several repos this session (some bartowski repos) — likely anti-scraping/rate-limiting, not actual gating (Qwen3 is Apache-2.0). An earlier "Qwen3-14B-A3B" 401 was a **non-existent repo** — the model is dense Qwen3-14B — resolved via the `hf` CLI (source rows 30–31).
 
@@ -128,4 +128,4 @@ All URLs fetched **2026-08-02**. Primary sources; gap items are flagged in §5 a
 3. GLM-4-9B / GLM-Z1-9B-0414 GGUF size and 9B tables — not published on card; size would be secondary estimate.
 4. Phi-4-mini and Llama 3.1 8B GGUF sizes — not fetched from a quant provider this session (secondary estimates ~2.4 GB / ~4.9 GB).
 5. Gemma 4 26B-A4B GGUF size — not verified; likely too large for 8 GB anyway.
-6. ~~Granite-4.0-H-Tiny~~ — **resolved:** verified from IBM primary card (7B/1B hybrid MoE, 128k, Apache-2.0); no 8 GB-GPU tps exists for it, only the Jetson Orin Nano 18 t/s figure (§5, flagged as not RTX 4060).
+6. ~~Granite-4.0-H-Tiny~~ — **resolved:** verified from IBM primary card (7B/1B hybrid MoE, 128k, Apache-2.0); no 8 GB-GPU tps exists for it, only the Jetson Orin Nano 18 t/s figure (§5, flagged as not 8 GB-class discrete NVIDIA).

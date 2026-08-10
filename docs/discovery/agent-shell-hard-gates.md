@@ -68,7 +68,7 @@ Evaluation order: **deny → ask → allow**. Hooks still exit 2 independently o
 
 `disableBypassPermissionsMode: "disable"` — YOLO cannot skip deny floors.
 
-**Not in permissions:** “model/ctx too big for this rig”. That is harness `HOST_MEMORY_PREFLIGHT` / VRAM preflight when spawn goes through `serve-config` / `benchmark_search` / `autoloop`. Deny+hook force that path (no raw llama).
+**Not in permissions:** “model/ctx too big for the operator host”. That is harness `HOST_MEMORY_PREFLIGHT` / VRAM preflight when spawn goes through `serve-config` / `benchmark_search` / `autoloop`. Deny+hook force that path (no raw llama).
 
 **Local extras:** `.claude/settings.local.json` (gitignored). Keep allow empty or narrow. Do not re-add `Bash(venv/Scripts/python.exe *)` or Baseline CLI soup — hooks block soup anyway; broad allow trains bad habits.
 

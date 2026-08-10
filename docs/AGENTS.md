@@ -18,6 +18,7 @@ Durable documentation for this repo: model cards, technique notes, architecture 
 - **Markdown only** in this tree (except media assets and the architecture diagram `architecture.html`).
 - **Reference external sources by URL**, not by copy-paste. We're a local repo, not a doc mirror.
 - **User-facing guides** in `docs/discovery/` must be runnable by anyone with the documented steps. Avoid hardcoded private paths.
+- **No operator hardware fingerprint** in tracked docs: no GPU SKU, hostname, exact local MiB dumps, or personal paths. Use memory class / Baseline `VRAM_LIMIT_MB` / engine tag. Root AGENTS owns the hard rule.
 
 ## Work Guidance
 - New model card? Read `docs/models/AGENTS.md` first; follow its schema; add to its index.

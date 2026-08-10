@@ -10,14 +10,14 @@
 
 ## Hardware
 
-RTX 4060 **8 GB**, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp` CUDA.
+discrete **8 GB-class** NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream `llama.cpp` CUDA.
 
 ## Decisions
 
 * **Day ≠ max TPS** (ADR 0006 failure) → ADR 0007 speed-band (commit `40322f4`) → still half-IQ → **ADR 0008**: `min ≥ DAY_IQ_RATIO × IQ_best` then max TPS (default ratio **0.75**).
 * **Night unchanged:** `CTX ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`.
 * **Quantizations are not duplicates.** Ornith-35B Q3_K_XL and Q4_K_XL both get full pipelines.
-* **Qwen3.5-9B coding** closed as **failure** after VRAM kills (no further retries on this rig).
+* **Qwen3.5-9B coding** closed as **failure** after VRAM kills (no further retries on the operator host).
 
 ## Commands (reproducible)
 

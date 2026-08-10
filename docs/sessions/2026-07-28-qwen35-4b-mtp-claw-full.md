@@ -4,7 +4,7 @@
 Close Objective Vector for `Qwen3.5-4B-MTP-Q4_K_M.gguf` (coding-10 already in TSV; claw-full missing). First of the incomplete queue ordered by TPS.
 
 ## Hardware
-RTX 4060 8 GB (`VRAM_LIMIT_MB=7900`), Windows, upstream `llama.cpp/build-cuda`.
+discrete 8 GB-class NVIDIA (`VRAM_LIMIT_MB=7900`), Windows, upstream `llama.cpp/build-cuda`.
 
 ## Setup
 1. Hardlink disk `Qwen3.5-4B-Q4_K_M.gguf` → `Qwen3.5-4B-MTP-Q4_K_M.gguf` (same dir) so Baseline basename matches historical TSV coding row.

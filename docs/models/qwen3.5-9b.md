@@ -16,7 +16,7 @@
   - SSM: `conv_kernel=4`, `state_size=128`, `group_count=16`, `time_step_rank=32`, `inner_size=4096`
   - 8 full attention layers, 24 SSM layers
 
-## Hardware Requirements (RTX 4060 8GB)
+## Hardware Requirements (discrete 8 GB-class NVIDIA)
 - Fits entirely in GPU VRAM (NGL = 99).
 - Model size ~6.14 GB, leaving adequate headroom for context cache.
 
@@ -59,7 +59,7 @@
 - First try @ 32k+MTP / limit 7900: **VRAM kill** mid T004 @ 7906 MB.
 - Success @ 32k+MTP / limit **8000**: **agentic_full 0.2000** (3/15), bench_tg **67.5**, peak **7.7 GB**. Vector **complete** with coding **0.4950** (`iq_min=0.2000`). Still weak agentic.
 
-### Coding-10 — **rejected on this rig** (2026-07-27) — UD basename only
+### Coding-10 — **rejected on the operator host** (2026-07-27) — UD basename only
 Objective Vector **incomplete** for `Qwen3.5-9B-UD-Q4_K_XL.gguf` (coding axis never landed). All attempts hit harness `VRAM_LIMIT_MB=7900` mid-eval during long codegen:
 
 | config | outcome |
@@ -67,9 +67,9 @@ Objective Vector **incomplete** for `Qwen3.5-9B-UD-Q4_K_XL.gguf` (coding axis ne
 | ctx 32768 + MTP n=4 | **VRAM kill** 7913 MB mid HumanEval |
 | ctx 65536, no MTP | **VRAM kill** 7931 MB mid HumanEval (preflight est 7584 MB) |
 
-Claw-full @ 32k+MTP fits because tool calls are short; coding-10 long generation does not. **Do not retry** UD coding on RTX 4060 8 GB unless `VRAM_LIMIT_MB` or ctx/KV policy changes. **SSD delete candidate** — weak agentic + no coding vector.
+Claw-full @ 32k+MTP fits because tool calls are short; coding-10 long generation does not. **Do not retry** UD coding on discrete 8 GB-class NVIDIA unless `VRAM_LIMIT_MB` or ctx/KV policy changes. **SSD delete candidate** — weak agentic + no coding vector.
 
 `Qwen3.5-9B-MTP-Q4_K_M` already has coding-10 **0.4950** in TSV (separate Trial).
 
 ## Open questions
-- None for this rig — UD coding axis closed as failure; MTP basename vector complete (weak).
+- None for the operator host — UD coding axis closed as failure; MTP basename vector complete (weak).
