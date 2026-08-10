@@ -31,7 +31,6 @@ import tempfile
 import textwrap
 import time
 import zlib
-from abc import ABC, abstractmethod
 from pathlib import Path
 
 from autoresearch.benchmarks import bench_config
@@ -386,7 +385,7 @@ def _run_bigcode_tests(code: str, entry: dict) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# EvalTask protocol — one class per benchmark dataset
+# EvalTask — one instance per dataset (weight lives on the instance)
 # ---------------------------------------------------------------------------
 
 # Per-dataset max_tokens override (used by EvalTask.max_tokens). Default 1024
@@ -396,14 +395,8 @@ def _run_bigcode_tests(code: str, entry: dict) -> bool:
 _MAX_TOKENS = 2048
 
 
-class EvalTask(ABC):
-    """Protocol for a coding benchmark dataset.
-
-    Each task knows how to load problems, build prompts, and run tests.
-    Each task also knows its own *weight* for the composite val_score.
-    Adding a fifth benchmark means implementing this protocol once and
-    adding one entry to the task list in run_benchmark().
-    """
+class EvalTask:
+    """One coding dataset: load problems, build prompts, run tests, hold weight."""
 
     name: str = ""
     weight: float = 0.0  # contribution to val_score (sum across tasks == 1.0)
@@ -413,25 +406,22 @@ class EvalTask(ABC):
     def max_tokens(self) -> int:
         return _MAX_TOKENS
 
-    @abstractmethod
     def load_problems(self, task_limit: int) -> list[tuple]:
-        """Load up to *task_limit* problems. Returns list of (id, entry) tuples."""
-        ...
+        raise NotImplementedError
 
-    @abstractmethod
     def build_prompt(self, entry: dict) -> str:
-        """Build a generation prompt from a problem entry."""
-        ...
+        raise NotImplementedError
 
-    @abstractmethod
     def run_tests(self, code: str, entry: dict) -> bool:
-        """Run tests against generated code. Returns True if all pass."""
-        ...
+        raise NotImplementedError
 
 
-class _EvalplusTask(EvalTask):
-    """Shared base for HumanEval+ and MBPP+ — same loader/prompt/test pattern.
-    Uses ``self.name`` as the dataset key for the evalplus helpers."""
+class EvalplusTask(EvalTask):
+    """HumanEval+ / MBPP+ — same loader/prompt/test pattern via evalplus helpers."""
+
+    def __init__(self, name: str, weight: float = 0.25):
+        self.name = name
+        self.weight = weight
 
     def load_problems(self, task_limit: int) -> list[tuple]:
         problems_dict = _load_problems(self.name)
@@ -457,20 +447,6 @@ class _EvalplusTask(EvalTask):
             code = textwrap.indent(code, "    ")
             code = prompt_sig + "\n" + code
         return _run_tests(code, test_code)
-
-
-class HumanEvalTask(_EvalplusTask):
-    """HumanEval+ (164 algorithmic problems, evalplus strict tests)."""
-
-    name = "humaneval"
-    weight = 0.25
-
-
-class MBPPTask(_EvalplusTask):
-    """MBPP+ (974 entry-level problems, evalplus strict tests)."""
-
-    name = "mbpp"
-    weight = 0.25
 
 
 class LiveCodeBenchTask(EvalTask):
@@ -613,8 +589,8 @@ def run_benchmark(
 
     # ── Run each task ──────────────────────────────────────────────────
     specs: list[tuple[EvalTask, int]] = [
-        (HumanEvalTask(), task_limit),
-        (MBPPTask(), task_limit),
+        (EvalplusTask("humaneval", 0.25), task_limit),
+        (EvalplusTask("mbpp", 0.25), task_limit),
         (LiveCodeBenchTask(), lcb_limit),
         (BigCodeBenchTask(), bigcode_limit),
     ]

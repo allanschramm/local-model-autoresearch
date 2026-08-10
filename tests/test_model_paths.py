@@ -40,6 +40,18 @@ def test_resolve_skips_aliases_and_cache(tmp_path: Path):
     assert resolve_model_path(models, "gemma.gguf") == real
 
 
+def test_resolve_skips_vision(tmp_path: Path):
+    models = tmp_path / "models"
+    vision = models / "vision" / "gemma.gguf"
+    vision.parent.mkdir(parents=True)
+    vision.write_bytes(b"v")
+    real = models / "local" / "gemma" / "gemma.gguf"
+    real.parent.mkdir(parents=True)
+    real.write_bytes(b"r")
+
+    assert resolve_model_path(models, "gemma.gguf") == real
+
+
 def test_resolve_missing_returns_direct_path(tmp_path: Path):
     models = tmp_path / "models"
     models.mkdir()

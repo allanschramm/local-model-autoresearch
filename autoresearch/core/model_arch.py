@@ -25,15 +25,29 @@ def default_models_dir() -> Path:
     return Path(__file__).resolve().parents[2] / "models"
 
 
-def resolve_model_file(ref: str | Path, models_dir: Path | None = None) -> Path | None:
-    """Resolve a model ref to an existing GGUF path, or None if missing."""
+def resolve_model_file(
+    ref: str | Path,
+    models_dir: Path | None = None,
+    *,
+    allow_dirs: bool = False,
+) -> Path | None:
+    """Resolve a model ref under models_dir (flat or nested LM Studio layout).
+
+    Order: absolute → models_dir/ref if present → rglob basename (skip junk dirs).
+    Returns an existing path, or None if missing. Set allow_dirs=True for SGLang
+    directory checkpoints (resolve_model_path uses that).
+    """
     models_dir = Path(models_dir) if models_dir is not None else default_models_dir()
     ref_path = Path(ref)
+
+    def _ok(path: Path) -> bool:
+        return path.is_file() or (allow_dirs and path.is_dir())
+
     if ref_path.is_absolute():
-        return ref_path if ref_path.is_file() else None
+        return ref_path if _ok(ref_path) else None
 
     direct = models_dir / ref_path
-    if direct.is_file():
+    if _ok(direct):
         return direct
 
     name = ref_path.name
@@ -42,7 +56,7 @@ def resolve_model_file(ref: str | Path, models_dir: Path | None = None) -> Path 
         for path in models_dir.rglob(name):
             if any(part in _MODEL_SEARCH_SKIP for part in path.parts):
                 continue
-            if path.is_file():
+            if _ok(path):
                 matches.append(path)
     if not matches:
         return None

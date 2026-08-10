@@ -24,7 +24,6 @@ from pathlib import Path
 from typing import Any
 
 _LLAMA_SERVER_HELP_CACHE = None
-_MODEL_SEARCH_SKIP = frozenset({".cache", "aliases", "huggingface"})
 
 import autoresearch.core.config as config
 from autoresearch.core.config import ConfigError, is_dense_model, validate_config
@@ -38,6 +37,7 @@ from autoresearch.core.model_arch import (
     gguf_block_count,
     gguf_is_moe,
     gguf_kv_f16_mb,
+    resolve_model_file,
     resolve_n_cpu_moe,
 )
 from autoresearch.core.process_guard import ProcessGuard, cleanup_leftover_processes
@@ -47,29 +47,16 @@ from autoresearch.core.single_load import enforce_single_load, resolve_allow_mul
 def resolve_model_path(models_dir: Path, ref: str | Path) -> Path:
     """Resolve a model ref under models_dir (flat or nested LM Studio layout).
 
-    Order: absolute → models_dir/ref if present → rglob basename (skip .cache/aliases).
+    Order: absolute → models_dir/ref if present → rglob basename (skip junk dirs).
     Missing refs return models_dir/ref for the caller to fail later.
     """
-    models_dir = Path(models_dir)
+    found = resolve_model_file(ref, models_dir=models_dir, allow_dirs=True)
+    if found is not None:
+        return found
     ref_path = Path(ref)
     if ref_path.is_absolute():
         return ref_path
-
-    direct = models_dir / ref_path
-    if direct.exists():
-        return direct
-
-    name = ref_path.name
-    matches: list[Path] = []
-    for path in models_dir.rglob(name):
-        if any(part in _MODEL_SEARCH_SKIP for part in path.parts):
-            continue
-        if path.is_file() or path.is_dir():
-            matches.append(path)
-    if not matches:
-        return direct
-    matches.sort(key=lambda p: (len(p.relative_to(models_dir).parts), str(p).lower()))
-    return matches[0]
+    return Path(models_dir) / ref_path
 
 
 ROOT_DIR = Path(__file__).resolve().parent

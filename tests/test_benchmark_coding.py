@@ -99,7 +99,7 @@ class TestBenchmarkCoding(unittest.TestCase):
         }
 
         pass_rate, tokens, elapsed = benchmark_coding.run_coding_eval(
-            client, benchmark_coding.HumanEvalTask(), task_limit=4
+            client, benchmark_coding.EvalplusTask("humaneval", 0.25), task_limit=4
         )
         self.assertEqual(pass_rate, 0.5)
         self.assertGreater(tokens, 0)
@@ -126,7 +126,9 @@ class TestBenchmarkCoding(unittest.TestCase):
             "usage": {"total_tokens": 10},
         }
 
-        benchmark_coding.run_coding_eval(client, benchmark_coding.HumanEvalTask(), task_limit=1)
+        benchmark_coding.run_coding_eval(
+            client, benchmark_coding.EvalplusTask("humaneval", 0.25), task_limit=1
+        )
 
         # Inspect the code passed to _run_tests
         mock_run_tests.assert_called_once()
