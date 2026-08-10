@@ -93,14 +93,9 @@ def fp_from_config_json(config_json: Any) -> str | None:
     return fp_from_baseline(loaded)
 
 
-def persist_status(status: str) -> str:
-    """on_front persists as the legacy `keep` alias (issue #3 reader compat)."""
-    return "keep" if status == "on_front" else status
-
-
 def is_on_front(status: Any) -> bool:
-    """True for `on_front` and the legacy `keep` alias (issue #12 reader compat)."""
-    return status in ("on_front", "keep")
+    """True iff status is the canonical ADR 0006 `on_front` label."""
+    return status == "on_front"
 
 
 def classify_trial(

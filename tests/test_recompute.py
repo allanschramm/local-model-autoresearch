@@ -80,7 +80,7 @@ def test_complete_non_dominated_on_front_and_dominated_demoted(store):
     worse = row(trial_id="worse", tps="30.0", agentic="0.6", coding="0.6")
     write_store(store, [better, worse])
     run.recompute_statuses(store)
-    assert read_store(store) == {"better": "keep", "worse": "dominated"}
+    assert read_store(store) == {"better": "on_front", "worse": "dominated"}
 
 
 def test_incomplete_and_rejected_left_out_of_domination(store):
@@ -99,7 +99,7 @@ def test_incomplete_and_rejected_left_out_of_domination(store):
     assert read_store(store) == {
         "partial": "incomplete",  # never dominated, never on_front
         "rejected": "rejected",  # untouched, and does not demote better
-        "better": "keep",
+        "better": "on_front",
     }
 
 
@@ -110,10 +110,11 @@ def test_domination_never_crosses_buckets(store):
     )
     write_store(store, [fp8, same_fp_other_bucket])
     run.recompute_statuses(store)
-    assert read_store(store) == {"a8": "keep", "b16": "keep"}
+    assert read_store(store) == {"a8": "on_front", "b16": "on_front"}
 
 
 def test_legacy_rows_without_config_json_untouched(store):
+    # Raw TSV cells (not via write_row): recompute leaves fingerprint-less rows alone.
     legacy_keep = {
         "trial_id": "legacy-keep",
         "status": "keep",
@@ -136,7 +137,7 @@ def test_same_fingerprint_partials_merge_to_one_status(store):
     write_store(store, [agentic_only, coding_only])
     run.recompute_statuses(store)
     # Merged vector is complete -> both rows share the merged status.
-    assert read_store(store) == {"ag": "keep", "cod": "keep"}
+    assert read_store(store) == {"ag": "on_front", "cod": "on_front"}
 
 
 def test_same_fp_different_peak_vram_merges_via_vram_limit(store):
@@ -160,7 +161,7 @@ def test_same_fp_different_peak_vram_merges_via_vram_limit(store):
     )
     write_store(store, [coding_only, agentic_only])
     run.recompute_statuses(store)
-    assert read_store(store) == {"cod": "keep", "ag": "keep"}
+    assert read_store(store) == {"cod": "on_front", "ag": "on_front"}
 
 
 def test_later_group_demotes_earlier_group(store):
@@ -169,11 +170,11 @@ def test_later_group_demotes_earlier_group(store):
     b = row(trial_id="b", tps="40.0", agentic="0.7", coding="0.7", config_json=cfg_json(MODEL="B"))
     write_store(store, [a, b])
     run.recompute_statuses(store)
-    assert read_store(store) == {"a": "dominated", "b": "keep"}
+    assert read_store(store) == {"a": "dominated", "b": "on_front"}
     # Reversed input order, same verdict.
     write_store(store, [b, a])
     run.recompute_statuses(store)
-    assert read_store(store) == {"a": "dominated", "b": "keep"}
+    assert read_store(store) == {"a": "dominated", "b": "on_front"}
 
 
 def test_idempotent_run_twice(store):
@@ -183,7 +184,7 @@ def test_idempotent_run_twice(store):
     run.recompute_statuses(store)
     first = read_store(store)
     run.recompute_statuses(store)
-    assert read_store(store) == first == {"a": "dominated", "b": "keep"}
+    assert read_store(store) == first == {"a": "dominated", "b": "on_front"}
 
 
 def test_model_scope_keeps_two_models_in_one_bucket_on_front(store):
@@ -207,12 +208,12 @@ def test_model_scope_keeps_two_models_in_one_bucket_on_front(store):
     )
     write_store(store, [a, b])
     run.recompute_statuses(store)
-    assert read_store(store) == {"a": "keep", "b": "dominated"}
+    assert read_store(store) == {"a": "on_front", "b": "dominated"}
     out = {
         r["trial_id"]: r["status"]
         for r in recompute.recompute_rows(run.read_rows(store), scope="model")
     }
-    assert out == {"a": "keep", "b": "keep"}
+    assert out == {"a": "on_front", "b": "on_front"}
 
 
 def test_model_scope_respects_bucket_isolation(store):
@@ -223,7 +224,7 @@ def test_model_scope_respects_bucket_isolation(store):
         row(trial_id="b16", memory_gb="16.0", tps="40.0", agentic="0.7", coding="0.7"),
     ]
     out = {r["trial_id"]: r["status"] for r in recompute.recompute_rows(rows, scope="model")}
-    assert out == {"a8": "keep", "b16": "keep"}
+    assert out == {"a8": "on_front", "b16": "on_front"}
 
 
 def test_invalid_scope_rejected():
@@ -251,7 +252,7 @@ def test_cli_runs_from_repo_root(store):
     )
     assert proc.returncode == 0
     assert "statuses refreshed" in proc.stdout
-    assert read_store(store) == {"a": "keep"}
+    assert read_store(store) == {"a": "on_front"}
 
 
 def test_cli_model_scope_prints_without_rewrite(store):
@@ -278,8 +279,8 @@ def test_cli_model_scope_prints_without_rewrite(store):
         text=True,
     )
     assert proc.returncode == 0
-    assert "a\tA.gguf\tkeep" in proc.stdout
-    assert "b\tB.gguf\tkeep" in proc.stdout
+    assert "a\tA.gguf\ton_front" in proc.stdout
+    assert "b\tB.gguf\ton_front" in proc.stdout
     # Read-only: stored statuses unchanged.
     assert read_store(store) == {"a": "incomplete", "b": "incomplete"}
 

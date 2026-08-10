@@ -18,7 +18,6 @@ from typing import Any
 
 from autoresearch.core.classify import (
     fp_from_config_json,
-    persist_status,
     row_bucket,
     vector_from_row,
 )
@@ -33,12 +32,12 @@ def recompute_rows(
     """New row list with refreshed statuses (idempotent, pure).
 
     Rows without a fingerprint (no config_json) or a memory cell are left
-    untouched — legacy keep/discard rows are not recomputed. rejected rows
+    untouched — fingerprint-less legacy rows are not recomputed. rejected rows
     never compete. Every row of one group (bucket × fingerprint, or
     model × bucket × fingerprint in model scope) shares the merged vector's
     status: incomplete stays incomplete; a complete vector dominated by
     another complete merged vector in the same domination scope becomes
-    dominated; the rest stay on_front (persisted as the keep alias).
+    dominated; the rest stay on_front.
     """
     if scope not in SCOPES:
         raise ValueError(f"invalid scope: {scope!r}; allowed: {sorted(SCOPES)}")
@@ -71,7 +70,7 @@ def recompute_rows(
             statuses[key] = "on_front"
     out = [dict(row) for row in rows]
     for key, idxs in groups.items():
-        status = persist_status(statuses[key])
+        status = statuses[key]
         for idx in idxs:
             out[idx]["status"] = status
     return out

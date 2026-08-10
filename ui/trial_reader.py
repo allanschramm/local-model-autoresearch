@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from autoresearch.core.classify import is_on_front
 from autoresearch.runners import run as run_mod
 
 
@@ -18,14 +17,9 @@ def read_last_50_trials() -> list[dict[str, str]]:
 
 
 def format_trial_for_ui(row: dict[str, str]) -> dict[str, Any]:
-    """Operator columns; display keep as on_front; tolerate discard."""
-    raw_status = row.get("status") or ""
-    if is_on_front(raw_status):
-        status = "on_front"
-    else:
-        status = raw_status
+    """Operator columns; pass through ADR 0006 status as stored."""
     return {
-        "status": status,
+        "status": row.get("status") or "",
         "outcome": row.get("outcome") or "",
         "ctx": row.get("ctx") or "",
         "tps": row.get("tps") or "",

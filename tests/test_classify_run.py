@@ -88,7 +88,7 @@ def test_full_complete_writes_keep_with_axes(run_env, monkeypatch):
     run.handle_single_run(args(include_coding=True, agentic_full=True))
     rows = run.read_rows(run_env)
     assert len(rows) == 1
-    assert rows[0]["status"] == "keep"  # on_front persisted alias
+    assert rows[0]["status"] == "on_front"
     assert rows[0]["agentic"] == "0.6000"
     assert rows[0]["coding"] == "0.750000"
     # Row ctx comes from the mutable Baseline (config.py CTX_SIZE) — root AGENTS
@@ -119,7 +119,7 @@ def test_merge_across_runs_flips_prior_incomplete_row(run_env, monkeypatch):
     run.handle_single_run(args(include_coding=True))  # completes the Fingerprint
     rows = run.read_rows(run_env)
     assert len(rows) == 2
-    assert [r["status"] for r in rows] == ["keep", "keep"]  # prior row flipped, new row classified
+    assert [r["status"] for r in rows] == ["on_front", "on_front"]  # prior flipped, new classified
 
 
 def test_merge_never_crosses_vram_limit_budgets_across_runs(run_env, monkeypatch):
@@ -156,7 +156,7 @@ def test_merge_never_crosses_vram_limit_budgets_across_runs(run_env, monkeypatch
 
     rows = run.read_rows(run_env)
     assert len(rows) == 2
-    assert [r["status"] for r in rows] == ["incomplete", "keep"]
+    assert [r["status"] for r in rows] == ["incomplete", "on_front"]
 
 
 def test_lower_val_score_kept_when_on_front(run_env, monkeypatch):
@@ -173,7 +173,7 @@ def test_lower_val_score_kept_when_on_front(run_env, monkeypatch):
         0.9,
         0.7,
         7.9,
-        "keep",
+        "on_front",
         "previous best",
         agentic=0.6,
         coding=0.9,
@@ -194,7 +194,7 @@ def test_lower_val_score_kept_when_on_front(run_env, monkeypatch):
     run.handle_single_run(args(include_coding=True, agentic_full=True))
     rows = run.read_rows(run_env)
     assert len(rows) == 2
-    # Kept as the on_front alias even though val_score (0.55) < stored best (0.9).
+    # Seed + new Trial both on_front even though val_score (0.55) < stored best (0.9).
     assert float(rows[0]["val_score"]) == 0.9
     assert float(rows[1]["val_score"]) == 0.55
-    assert rows[1]["status"] == "keep"
+    assert rows[1]["status"] == "on_front"

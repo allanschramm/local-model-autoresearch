@@ -91,9 +91,9 @@ def test_vector_from_row_blank_axes_are_none():
     assert not vec.complete
 
 
-def test_is_on_front_accepts_on_front_and_legacy_keep():
+def test_is_on_front_only_accepts_on_front():
     assert is_on_front("on_front")
-    assert is_on_front("keep")
+    assert not is_on_front("keep")
     assert not is_on_front("discard")
     assert not is_on_front("dominated")
     assert not is_on_front("incomplete")
@@ -153,7 +153,7 @@ def test_plan_write_dominated_by_known_bucket_point():
     fp = fp_from_baseline(BASELINE)
     better = row(
         trial_id="old1",
-        status="keep",
+        status="on_front",
         config_json=cfg_json(dict(BASELINE, THREADS=8)),
         ctx="131072",
         tps="40.0",
@@ -174,7 +174,7 @@ def test_known_set_respects_memory_bucket():
     fp = fp_from_baseline(BASELINE)
     strong_other_bucket = row(
         trial_id="old1",
-        status="keep",
+        status="on_front",
         memory_gb="16.0",
         config_json=cfg_json(dict(BASELINE, THREADS=8)),
         ctx="131072",

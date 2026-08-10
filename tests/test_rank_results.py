@@ -60,7 +60,7 @@ def test_build_vectors_merges_best_valid_scores_ignores_keep_and_pollution():
         {
             "model": "M.gguf",
             "category": "agentic-full",
-            "status": "keep",
+            "status": "on_front",
             "outcome": "OK",
             "val_score": "39.5",  # pollution
             "bench_tg": "",
@@ -84,7 +84,7 @@ def test_build_vectors_merges_best_valid_scores_ignores_keep_and_pollution():
         {
             "model": "N.gguf",
             "category": "agentic-full",
-            "status": "keep",
+            "status": "on_front",
             "outcome": "OK",
             "val_score": "0.400000",
             "bench_tg": "20.0",
@@ -109,7 +109,7 @@ def test_build_vectors_reads_tps_ctx_from_description_when_columns_empty():
         {
             "model": "L.gguf",
             "category": "agentic-full",
-            "status": "keep",
+            "status": "on_front",
             "outcome": "OK",
             "val_score": "0.600000",
             "bench_tg": "",
@@ -202,7 +202,7 @@ def test_build_vectors_uses_axis_columns_when_populated():
             "model": "M.gguf",
             "category": "agentic-full",
             "outcome": "OK",
-            "status": "keep",
+            "status": "on_front",
             "val_score": "0.466700",
             "agentic": "0.4667",
             "coding": "0.490000",

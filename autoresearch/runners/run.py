@@ -21,10 +21,9 @@ CATEGORY_VALIDATION = "validation"
 CATEGORY_10_TASK = "10-task"
 CATEGORY_FULL_SUITE = "full-suite"
 
-# Trial Status (issue #3): four ADR 0006 values + legacy keep/discard.
-# keep is a deprecated alias of on_front; on_front persists as "keep" so
-# keep/discard-only readers keep working (expand, not contract).
-TRIAL_STATUSES = {"keep", "discard", "on_front", "dominated", "incomplete", "rejected"}
+# Trial Status (ADR 0006): on_front | dominated | incomplete | rejected.
+# Legacy keep/discard are not accepted on write; migrate keep→on_front offline.
+TRIAL_STATUSES = {"on_front", "dominated", "incomplete", "rejected"}
 
 BASELINE_CLI_FLAGS = {
     "--model",
@@ -392,7 +391,7 @@ def recompute_statuses(results_file: Path) -> None:
     """Store-wide status refresh after a Trial write (issue #5).
 
     A new on_front point demotes rows it dominates to dominated; incomplete
-    and rejected rows are left out; legacy keep/discard rows without a
+    and rejected rows are left out; fingerprint-less legacy rows without a
     config_json fingerprint are untouched. Idempotent: rerunning changes
     nothing, so a no-change store is not rewritten.
     """
@@ -576,8 +575,6 @@ def write_row(
     _ensure_category_column(results_file)
     if status not in TRIAL_STATUSES:
         raise ValueError(f"invalid trial status: {status!r}; allowed: {sorted(TRIAL_STATUSES)}")
-    if status == "on_front":
-        status = "keep"  # deprecated alias persisted for keep/discard reader compat
     new_file = not results_file.exists() or results_file.stat().st_size == 0
     with open(results_file, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t")

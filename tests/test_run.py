@@ -592,7 +592,7 @@ class TestRun(unittest.TestCase):
                 0.1,
                 0.2,
                 4.5,
-                "keep",
+                "on_front",
                 "desc",
                 lcb_score=0.0,
                 bigcode_score=0.0,
@@ -701,8 +701,8 @@ class TestRun(unittest.TestCase):
         "autoresearch.runners.run.open",
         new_callable=mock_open,
         read_data="commit\tmodel\tval_score\tswe_score\tlcb_score\the_score\tmbpp_score\tbigcode_score\tmemory_gb\telapsed_sec\tstatus\tcategory\tdescription\n"
-        "abcdefg\tornith-1.0-9b-Q4_K_M.gguf\t0.580000\t0.000000\t0.400000\t0.800000\t0.900000\t0.100000\t7.4\t0\tkeep\t\tornith-1.0-9b-Q4_K_M.gguf baseline\n"
-        "1234567\tQwen3.5-9B-MTP-Q4_K_M.gguf\t0.495000\t0.000000\t0.300000\t0.800000\t0.700000\t0.100000\t7.7\t0\tkeep\t\tQwen3.5-9B-MTP-Q4_K_M.gguf baseline\n",
+        "abcdefg\tornith-1.0-9b-Q4_K_M.gguf\t0.580000\t0.000000\t0.400000\t0.800000\t0.900000\t0.100000\t7.4\t0\ton_front\t\tornith-1.0-9b-Q4_K_M.gguf baseline\n"
+        "1234567\tQwen3.5-9B-MTP-Q4_K_M.gguf\t0.495000\t0.000000\t0.300000\t0.800000\t0.700000\t0.100000\t7.7\t0\ton_front\t\tQwen3.5-9B-MTP-Q4_K_M.gguf baseline\n",
     )
     def test_get_previous_best_with_model_filter(self, mock_file):
         with patch.object(Path, "exists", return_value=True):

@@ -86,7 +86,7 @@ _Avoid_: bench-only, speed check, smoke test
 
 **Trial Status**:
 Canonical outcome labels: `on_front` (complete vector, non-dominated), `dominated` (complete vector, dominated), `incomplete` (missing axes; may merge into a Fingerprint), `rejected` (invalid config, infra/VRAM kill, crash). 
-_Avoid_: keep, discard (legacy; `keep` persists only as a deprecated TSV alias of `on_front`; `discard` superseded by `dominated`/`incomplete`/`rejected`)
+_Avoid_: keep, discard (deleted; not accepted on write)
 
 **Status de exibição (dashboard)**:
 Display convention of Trial Status on the pt-BR operator dashboard: the canonical English labels render localized — `on_front` → "na fronteira", `dominated` → "dominado", `incomplete` → "incompleto", `rejected` → "rejeitado". The canonical labels stay in the data/API; only the read-only UI translates (ADR 0011).
