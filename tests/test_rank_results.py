@@ -75,7 +75,7 @@ def test_build_vectors_merges_best_valid_scores_ignores_keep_and_pollution():
             "status": "discard",
             "outcome": "OK",
             "val_score": "0.570000",
-            "bench_tg": "40.0",
+            "bench_tg": "50.0",
             "tps": "50.0",
             "ctx": "65536",
             "config_json": CJ,
@@ -99,7 +99,7 @@ def test_build_vectors_merges_best_valid_scores_ignores_keep_and_pollution():
     m = complete[0]
     assert m.agentic == 0.6
     assert m.coding == 0.57
-    assert m.tps == 42.1
+    assert m.tps == 50.0  # max across Trials for the basename
     assert m.ctx == 65536
     assert [p.model for p in incomplete] == ["N.gguf"]
 
@@ -137,8 +137,8 @@ def test_build_vectors_reads_tps_ctx_from_description_when_columns_empty():
     assert complete[0].ctx == 65536
 
 
-def test_build_vectors_same_basename_different_fingerprints_never_merge():
-    # M.gguf measured at two different configs: agentic at fpA, coding at fpB.
+def test_build_vectors_same_basename_different_configs_merge():
+    # ADR 0012: agentic @ one Baseline + coding @ another → one complete point.
     fp_a = json.dumps({"CTX_SIZE": 65536, "TEMP": 0.4})
     fp_b = json.dumps({"CTX_SIZE": 32768, "TEMP": 0.6})
     rows = [
@@ -147,6 +147,7 @@ def test_build_vectors_same_basename_different_fingerprints_never_merge():
             "category": "agentic-full",
             "outcome": "OK",
             "val_score": "0.600000",
+            "bench_tg": "40.0",
             "ctx": "65536",
             "config_json": fp_a,
             "description": "",
@@ -156,19 +157,24 @@ def test_build_vectors_same_basename_different_fingerprints_never_merge():
             "category": "10-task",
             "outcome": "OK",
             "val_score": "0.570000",
+            "bench_tg": "55.0",
             "ctx": "32768",
             "config_json": fp_b,
             "description": "",
         },
     ]
     complete, incomplete = rr.build_vectors(rows)
-    assert complete == []  # no Fingerprint has both axes -> no complete point
-    assert len(incomplete) == 2  # two single-axis Fingerprints, same basename
-    assert {p.model for p in incomplete} == {"M.gguf"}
+    assert incomplete == []
+    assert len(complete) == 1
+    assert complete[0].model == "M.gguf"
+    assert complete[0].agentic == 0.6
+    assert complete[0].coding == 0.57
+    assert complete[0].tps == 55.0
+    assert complete[0].ctx == 65536
 
 
-def test_build_vectors_legacy_rows_without_config_json_never_complete():
-    # Both axes measured but no config_json -> legacy, no Fingerprint -> incomplete.
+def test_build_vectors_legacy_rows_without_config_json_still_complete():
+    # Basename merge: both axes measured → complete even without config_json.
     rows = [
         {
             "model": "L.gguf",
@@ -190,13 +196,14 @@ def test_build_vectors_legacy_rows_without_config_json_never_complete():
         },
     ]
     complete, incomplete = rr.build_vectors(rows)
-    assert complete == []
-    assert [p.model for p in incomplete] == ["L.gguf"]
+    assert incomplete == []
+    assert [p.model for p in complete] == ["L.gguf"]
+    assert complete[0].fp is None
 
 
 def test_build_vectors_uses_axis_columns_when_populated():
     # Combined modern write path: agentic-full row with both columns populated,
-    # no separate 10-task row. Same Fingerprint -> complete vector.
+    # no separate 10-task row.
     rows = [
         {
             "model": "M.gguf",
@@ -220,9 +227,8 @@ def test_build_vectors_uses_axis_columns_when_populated():
     assert incomplete == []
 
 
-def test_pick_returns_fingerprint_loadable_as_baseline():
-    # ADR 0006: Day/Night pick must carry the full Fingerprint so the caller
-    # can resolve it back to a Baseline config without re-searching.
+def test_pick_returns_fingerprint_hint_from_best_claw_row():
+    # ADR 0012: Point carries Fingerprint hint from best-claw row for Baseline load.
     from autoresearch.core.classify import fp_from_config_json
 
     rows = [
@@ -259,7 +265,6 @@ def test_pick_returns_fingerprint_loadable_as_baseline():
     assert day is not None and night is not None
     assert day.fp == expected_fp
     assert night.fp == expected_fp
-    # Legacy point (no config_json) carries fp=None, never loadable.
     legacy = rr.Point("L.gguf", ctx=65536, tps=10.0, agentic=0.5, coding=0.5)
     assert legacy.fp is None
 

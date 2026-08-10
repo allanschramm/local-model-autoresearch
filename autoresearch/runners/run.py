@@ -753,6 +753,7 @@ def handle_single_run(args):
         fp=fp,
         vector=vector,
         bucket_gb=classify.bucket(res["peak_vram_gb"]),
+        model=(args.model or "").strip() or None,
     )
 
     details = f"{args.model} kv={args.kv} ctx={args.ctx_size} TPS={res['avg_tps']:.1f} VRAM={res['peak_vram_gb']:.1f}GB coding={res['coding_val']:.4f}"

@@ -153,8 +153,9 @@ def test_plan_write_dominated_by_known_bucket_point():
     fp = fp_from_baseline(BASELINE)
     better = row(
         trial_id="old1",
+        model="Better.gguf",
         status="on_front",
-        config_json=cfg_json(dict(BASELINE, THREADS=8)),
+        config_json=cfg_json(dict(BASELINE, MODEL="Better.gguf", THREADS=8)),
         ctx="131072",
         tps="40.0",
         agentic="0.7",
@@ -165,6 +166,7 @@ def test_plan_write_dominated_by_known_bucket_point():
         fp=fp,
         vector=v(ctx=131072, tps=30.0, agentic=0.6, coding=0.6),
         bucket_gb=8,
+        model="M.gguf",
     )
     assert status == "dominated"
     assert flips == {}

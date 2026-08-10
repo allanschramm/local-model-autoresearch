@@ -148,10 +148,10 @@ signal.signal(signal.SIGTERM, _signal_handler)
 def pick_baseline(profile: str) -> tuple[str, dict[str, Any]]:
     """Day/Night Usage Profile pick → (model, Baseline cfg) from results.tsv.
 
-    Issue #8: the pick (ADR 0006/0008) returns a Point — model + full
-    ENGINE+SAMPLER Fingerprint. The Baseline is reconstructed from the row
-    that carries that Fingerprint's config_json, so the loop can continue
-    searching from exactly the picked point.
+    Issue #8 / ADR 0012: pick is a GGUF basename on the front. Prefer the row
+    whose Fingerprint matches the pick hint (best-claw config); else any
+    config_json row for that basename so the loop can continue from a real
+    Baseline.
     """
     rows = read_rows(RESULTS_FILE)
     complete, _ = build_vectors(rows)
@@ -162,16 +162,32 @@ def pick_baseline(profile: str) -> tuple[str, dict[str, Any]]:
             f"No complete front point for profile '{profile}'. "
             "Complete an Objective Vector (Claw full + coding-10) first."
         )
-    for row in rows:
-        fp = classify.fp_from_config_json(row.get("config_json"))
-        if fp is None or fp != pick.fp:
-            continue
+
+    def _cfg_from_row(row: dict[str, str]) -> dict[str, Any] | None:
+        raw = (row.get("config_json") or "").strip()
+        if not raw:
+            return None
         try:
-            cfg = json.loads(row["config_json"])
-        except (KeyError, TypeError, ValueError) as exc:
-            raise RuntimeError(f"Unparseable config_json for pick: {exc}")
-        if isinstance(cfg, dict):
-            return pick.model, cfg
+            cfg = json.loads(raw)
+        except (TypeError, ValueError):
+            return None
+        return cfg if isinstance(cfg, dict) else None
+
+    fallback: dict[str, Any] | None = None
+    for row in rows:
+        if (row.get("model") or "").strip() != pick.model:
+            continue
+        cfg = _cfg_from_row(row)
+        if cfg is None:
+            continue
+        if pick.fp is not None:
+            fp = classify.fp_from_config_json(row.get("config_json"))
+            if fp == pick.fp:
+                return pick.model, cfg
+        if fallback is None:
+            fallback = cfg
+    if fallback is not None:
+        return pick.model, fallback
     raise RuntimeError(f"Pick '{pick.model}' has no config_json row to load as Baseline.")
 
 
@@ -369,6 +385,7 @@ def _classify(cfg: dict[str, Any], res) -> tuple[str, dict[str, str], classify.O
         vector=vector,
         bucket_gb=classify.bucket(getattr(res, "peak_vram_gb", 0.0)),
         failed=getattr(res, "outcome", TrialOutcome.OK) != TrialOutcome.OK,
+        model=str(cfg.get("MODEL") or cfg.get("model") or "").strip() or None,
     )
     return status, flips, vector
 

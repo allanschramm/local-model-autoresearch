@@ -75,18 +75,26 @@ def read_store(path: Path) -> dict[str, str]:
 
 def test_complete_non_dominated_on_front_and_dominated_demoted(store):
     better = row(
-        trial_id="better", tps="40.0", agentic="0.7", coding="0.7", config_json=cfg_json(MODEL="B")
+        trial_id="better",
+        model="B.gguf",
+        tps="40.0",
+        agentic="0.7",
+        coding="0.7",
+        config_json=cfg_json(MODEL="B"),
     )
-    worse = row(trial_id="worse", tps="30.0", agentic="0.6", coding="0.6")
+    worse = row(trial_id="worse", model="M.gguf", tps="30.0", agentic="0.6", coding="0.6")
     write_store(store, [better, worse])
     run.recompute_statuses(store)
     assert read_store(store) == {"better": "on_front", "worse": "dominated"}
 
 
 def test_incomplete_and_rejected_left_out_of_domination(store):
-    partial = row(trial_id="partial", agentic="", coding="", config_json=cfg_json(MODEL="P"))
+    partial = row(
+        trial_id="partial", model="P.gguf", agentic="", coding="", config_json=cfg_json(MODEL="P")
+    )
     rejected = row(
         trial_id="rejected",
+        model="R.gguf",
         status="rejected",
         tps="99.0",
         agentic="0.9",
@@ -113,10 +121,11 @@ def test_domination_never_crosses_buckets(store):
     assert read_store(store) == {"a8": "on_front", "b16": "on_front"}
 
 
-def test_legacy_rows_without_config_json_untouched(store):
-    # Raw TSV cells (not via write_row): recompute leaves fingerprint-less rows alone.
+def test_legacy_rows_without_config_json_recomputed_by_basename(store):
+    # ADR 0012: basename + budget enough; config_json not required for status.
     legacy_keep = {
         "trial_id": "legacy-keep",
+        "model": "L.gguf",
         "status": "keep",
         "memory_gb": "8.0",
         "config_json": "",
@@ -128,7 +137,7 @@ def test_legacy_rows_without_config_json_untouched(store):
     legacy_discard = {**legacy_keep, "trial_id": "legacy-discard", "status": "discard"}
     write_store(store, [legacy_keep, legacy_discard])
     run.recompute_statuses(store)
-    assert read_store(store) == {"legacy-keep": "keep", "legacy-discard": "discard"}
+    assert read_store(store) == {"legacy-keep": "on_front", "legacy-discard": "on_front"}
 
 
 def test_same_fingerprint_partials_merge_to_one_status(store):
@@ -166,8 +175,22 @@ def test_same_fp_different_peak_vram_merges_via_vram_limit(store):
 
 def test_later_group_demotes_earlier_group(store):
     # Input order must not matter: 'a' comes first but is dominated by 'b'.
-    a = row(trial_id="a", tps="30.0", agentic="0.6", coding="0.6", config_json=cfg_json(MODEL="A"))
-    b = row(trial_id="b", tps="40.0", agentic="0.7", coding="0.7", config_json=cfg_json(MODEL="B"))
+    a = row(
+        trial_id="a",
+        model="A.gguf",
+        tps="30.0",
+        agentic="0.6",
+        coding="0.6",
+        config_json=cfg_json(MODEL="A"),
+    )
+    b = row(
+        trial_id="b",
+        model="B.gguf",
+        tps="40.0",
+        agentic="0.7",
+        coding="0.7",
+        config_json=cfg_json(MODEL="B"),
+    )
     write_store(store, [a, b])
     run.recompute_statuses(store)
     assert read_store(store) == {"a": "dominated", "b": "on_front"}
@@ -178,8 +201,22 @@ def test_later_group_demotes_earlier_group(store):
 
 
 def test_idempotent_run_twice(store):
-    a = row(trial_id="a", tps="30.0", agentic="0.6", coding="0.6", config_json=cfg_json(MODEL="A"))
-    b = row(trial_id="b", tps="40.0", agentic="0.7", coding="0.7", config_json=cfg_json(MODEL="B"))
+    a = row(
+        trial_id="a",
+        model="A.gguf",
+        tps="30.0",
+        agentic="0.6",
+        coding="0.6",
+        config_json=cfg_json(MODEL="A"),
+    )
+    b = row(
+        trial_id="b",
+        model="B.gguf",
+        tps="40.0",
+        agentic="0.7",
+        coding="0.7",
+        config_json=cfg_json(MODEL="B"),
+    )
     write_store(store, [a, b])
     run.recompute_statuses(store)
     first = read_store(store)
@@ -234,8 +271,22 @@ def test_invalid_scope_rejected():
 
 def test_recompute_rows_pure_and_idempotent():
     rows = [
-        row(trial_id="a", tps="30.0", agentic="0.6", coding="0.6", config_json=cfg_json(MODEL="A")),
-        row(trial_id="b", tps="40.0", agentic="0.7", coding="0.7", config_json=cfg_json(MODEL="B")),
+        row(
+            trial_id="a",
+            model="A.gguf",
+            tps="30.0",
+            agentic="0.6",
+            coding="0.6",
+            config_json=cfg_json(MODEL="A"),
+        ),
+        row(
+            trial_id="b",
+            model="B.gguf",
+            tps="40.0",
+            agentic="0.7",
+            coding="0.7",
+            config_json=cfg_json(MODEL="B"),
+        ),
     ]
     first = recompute.recompute_rows(rows)
     # Input untouched (pure function).

@@ -112,20 +112,20 @@ def classify_trial(
 
 
 def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[ObjectiveVector]:
-    """Complete points already in this hardware+budget bucket, merged per Fingerprint."""
-    by_fp: dict[str, list[ObjectiveVector]] = {}
+    """Complete points already in this hardware+budget bucket, merged per basename."""
+    by_model: dict[str, list[ObjectiveVector]] = {}
     for row in rows:
         if row.get("status") == "rejected":
             continue  # rejected Trials never compete for the front
         if row_bucket(row) != bucket_gb:
             continue
-        fp = fp_from_config_json(row.get("config_json"))
-        if fp is None:
+        model = (row.get("model") or "").strip()
+        if not model:
             continue
-        by_fp.setdefault(fp, []).append(vector_from_row(row))
+        by_model.setdefault(model, []).append(vector_from_row(row))
     known = []
-    for fp, vectors in by_fp.items():
-        merged = merge([Trial(fp=fp, vector=v) for v in vectors])[0].vector
+    for model, vectors in by_model.items():
+        merged = merge([Trial(fp=model, vector=v) for v in vectors])[0].vector
         if merged.complete:
             known.append(merged)
     return known
@@ -134,9 +134,9 @@ def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[Ob
 def row_bucket(row: Mapping[str, Any]) -> int | None:
     """Bucket of a results.tsv row (None when budget cannot be resolved).
 
-    Prefer ``round(VRAM_LIMIT_MB / 1024)`` from ``config_json`` so the same
-    Fingerprint merges across Trials whose peak ``memory_gb`` rounds differently
-    (e.g. 7.4 vs 7.8). Legacy rows without a limit fall back to peak memory_gb.
+    Prefer ``round(VRAM_LIMIT_MB / 1024)`` from ``config_json`` so Trials of
+    the same basename merge across peaks that round differently (e.g. 7.4 vs
+    7.8). Legacy rows without a limit fall back to peak memory_gb.
     """
     from_limit = _vram_limit_bucket(row.get("config_json"))
     if from_limit is not None:
@@ -152,32 +152,53 @@ def plan_write(
     vector: ObjectiveVector,
     bucket_gb: int,
     failed: bool = False,
+    model: str | None = None,
 ) -> tuple[str, dict[str, str]]:
     """Status for a new Trial plus prior rows to flip.
 
-    Returns (status, {trial_id: status}). When the Fingerprint merge completes
-    an earlier incomplete point, every prior incomplete row of the same
-    Fingerprint **in the same bucket** is flipped to the computed status
-    (ADR 0006 merge rule; merge and the known Set never cross budgets).
+    Returns (status, {trial_id: status}). Merge identity is the GGUF basename
+    when ``model`` is set (ADR 0012). ``fp``-only callers (legacy tests) still
+    merge by Fingerprint. Known Set is always basename-scoped in the bucket.
     """
     if failed:
         return "rejected", {}
-    prior = [
-        vector_from_row(row)
-        for row in rows
-        if row.get("status") != "rejected"
-        and fp_from_config_json(row.get("config_json")) == fp
-        and row_bucket(row) == bucket_gb
-    ]
-    merged = merge([Trial(fp=fp, vector=v) for v in [*prior, vector]])[0].vector
+    model_key = (model or "").strip()
+    if model_key:
+        prior = [
+            vector_from_row(row)
+            for row in rows
+            if row.get("status") != "rejected"
+            and (row.get("model") or "").strip() == model_key
+            and row_bucket(row) == bucket_gb
+        ]
+        merge_id = model_key
+    else:
+        prior = [
+            vector_from_row(row)
+            for row in rows
+            if row.get("status") != "rejected"
+            and fp_from_config_json(row.get("config_json")) == fp
+            and row_bucket(row) == bucket_gb
+        ]
+        merge_id = fp
+    merged = merge([Trial(fp=merge_id, vector=v) for v in [*prior, vector]])[0].vector
     status = classify_trial(failed=False, vector=merged, known=_known_vectors(rows, bucket_gb))
     if status == "incomplete":
         return status, {}
-    flips = {
-        row.get("trial_id", ""): status
-        for row in rows
-        if row.get("status") == "incomplete"
-        and fp_from_config_json(row.get("config_json")) == fp
-        and row_bucket(row) == bucket_gb
-    }
+    if model_key:
+        flips = {
+            row.get("trial_id", ""): status
+            for row in rows
+            if row.get("status") == "incomplete"
+            and (row.get("model") or "").strip() == model_key
+            and row_bucket(row) == bucket_gb
+        }
+    else:
+        flips = {
+            row.get("trial_id", ""): status
+            for row in rows
+            if row.get("status") == "incomplete"
+            and fp_from_config_json(row.get("config_json")) == fp
+            and row_bucket(row) == bucket_gb
+        }
     return status, flips

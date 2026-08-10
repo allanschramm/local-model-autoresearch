@@ -5,7 +5,7 @@ Global **Pareto Set** on this hardware budget: maximize **ctx × TPS × agentic 
 Hardware: discrete **8 GB-class** NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.  
 Ground truth: `results.tsv`. TPS axis = claw-full `bench_tg` when available. Complete vector = claw-full **and** coding-10 (exact 10 tasks/dataset).
 
-**Point = one full Fingerprint** (engine+sampler Baseline from `config_json`, ADR 0006): axes join by Fingerprint, never by basename. Axes come from the `agentic`/`coding` columns (combined modern write path) or from `agentic-full` / `10-task` category rows. Legacy rows without `config_json` carry no Fingerprint and never enter the front.
+**Point = GGUF basename** (ADR 0012): max claw × coding × TPS × ctx across Trials for that file. Different quants stay separate. ENGINE+SAMPLER Fingerprint is a Baseline/Search hint, not Day/Night Point identity. Live recompute: `scripts/rank_results.py`.
 
 Recompute live (do not invent temp scripts):
 
@@ -55,7 +55,7 @@ Exact domination membership can shift when TPS sources differ (claw vs coding Co
 | `nanbeige4.2-3b-Q4_K_M.gguf` | coding-10 | claw-full **0.2667** in TSV; **no** fair coding-10 row |
 | `Qwythos-9B-v2*` failed trials | — | reclassified `incomplete` → **`rejected`** in results.tsv (MODEL_REJECTED / INFRA_ERROR) |
 
-**Fingerprint-split** — agentic and coding-10 recorded under **different Baselines** never merge into a front point (ADR 0006): `Ornith-1.0-9B-UD` (ag@65k / cod@32k), `Ornith-1.0-9B-MTP`, `Bonsai-27B-Q1_0`, `Ornith-1.0-35B-UD-Q4_K_XL`, `gemma-4-26B-A4B`, `Qwen3.5-4B/9B-MTP`, `ornith-1.0-9b`. Complete a vector by re-running the missing axis under the same Baseline.
+**Config-split history** — pre-0012, agentic and coding under different Baselines never merged. ADR 0012 merges max axes by basename; prefer remeasuring both axes under a Preferred Baseline when reproducing a single Fingerprint.
 
 ## Quantizations are separate Trials
 

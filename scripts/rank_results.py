@@ -160,78 +160,78 @@ def _axis_values(row: dict[str, str]) -> tuple[float | None, float | None]:
 def build_vectors(
     rows: Sequence[dict[str, str]],
 ) -> tuple[list[Point], list[Point]]:
-    """Merge best valid agentic + coding per (model, full Fingerprint).
+    """Merge best valid agentic + coding + TPS + ctx per GGUF basename.
 
-    Point identity is the full ENGINE+SAMPLER Fingerprint recomputed from
-    config_json (ADR 0006), not the model basename: same basename under
-    different configs never merges. Rows without config_json (legacy) carry
-    no Fingerprint and can never form a complete vector. Uses outcome=OK (or
-    empty); status cells are not measurement validity.
+    Point identity is the model basename (quant/version file). Engine flags and
+    sampler changes hill-climb the same point: max claw, max coding, max TPS,
+    max ctx across all OK Trials for that file (ADR 0012). Fingerprint is kept
+    only as a pick hint (config_json of the best-claw row) for Baseline load.
+    Uses outcome=OK (or empty); status cells are not measurement validity.
     """
-    ag_best: dict[tuple[str, str | None], dict[str, Any]] = {}
-    cod_best: dict[tuple[str, str | None], dict[str, Any]] = {}
-    tps_fallback: dict[tuple[str, str | None], float] = {}
+    ag_best: dict[str, dict[str, Any]] = {}
+    cod_best: dict[str, dict[str, Any]] = {}
+    tps_best: dict[str, float] = {}
+    ctx_best: dict[str, int] = {}
 
     for row in rows:
         model = (row.get("model") or "").strip()
         if not model:
             continue
         fp = fp_from_config_json(row.get("config_json"))
-        key = (model, fp)
         tps = _tps_of(row)
         if tps is not None:
-            prev = tps_fallback.get(key)
+            prev = tps_best.get(model)
             if prev is None or tps > prev:
-                tps_fallback[key] = tps
+                tps_best[model] = tps
+        ctx = _ctx_of(row)
+        if ctx is not None and ctx > 0:
+            prev_c = ctx_best.get(model)
+            if prev_c is None or ctx > prev_c:
+                ctx_best[model] = ctx
 
         if not _is_measurement_row(row):
             continue
         agentic, coding = _axis_values(row)
         if agentic is None and coding is None:
             continue
-        payload = {"agentic": agentic, "coding": coding, "tps": tps, "ctx": _ctx_of(row)}
         if agentic is not None:
-            prev = ag_best.get(key)
+            prev = ag_best.get(model)
             if prev is None or agentic > prev["agentic"]:
-                ag_best[key] = payload
+                ag_best[model] = {"agentic": agentic, "fp": fp}
         if coding is not None:
-            prev = cod_best.get(key)
+            prev = cod_best.get(model)
             if prev is None or coding > prev["coding"]:
-                cod_best[key] = payload
+                cod_best[model] = {"coding": coding, "fp": fp}
 
     complete: list[Point] = []
     incomplete: list[Point] = []
-    for key in sorted(set(ag_best) | set(cod_best), key=lambda k: (k[0], k[1] or "")):
-        model, fp = key
-        ag = ag_best.get(key)
-        cod = cod_best.get(key)
+    for model in sorted(set(ag_best) | set(cod_best)):
+        ag = ag_best.get(model)
+        cod = cod_best.get(model)
         agentic = float(ag["agentic"]) if ag else -1.0
         coding = float(cod["coding"]) if cod else -1.0
-        tps = 0.0
-        if ag and ag["tps"] is not None:
-            tps = float(ag["tps"])
-        elif cod and cod["tps"] is not None:
-            tps = float(cod["tps"])
-        else:
-            tps = float(tps_fallback.get(key, 0.0))
-        ctx_candidates = [
-            c
-            for c in (
-                ag["ctx"] if ag else None,
-                cod["ctx"] if cod else None,
-            )
-            if c
-        ]
-        ctx = max(ctx_candidates) if ctx_candidates else 0
-        point = Point(
-            model=model, ctx=ctx, tps=tps, agentic=max(agentic, 0.0), coding=max(coding, 0.0), fp=fp
-        )
-        if fp is not None and ag and cod:
+        tps = float(tps_best.get(model, 0.0))
+        ctx = int(ctx_best.get(model, 0))
+        fp = None
+        if ag and ag.get("fp"):
+            fp = ag["fp"]
+        elif cod and cod.get("fp"):
+            fp = cod["fp"]
+        if ag and cod:
             complete.append(
                 Point(model=model, ctx=ctx, tps=tps, agentic=agentic, coding=coding, fp=fp)
             )
         else:
-            incomplete.append(point)
+            incomplete.append(
+                Point(
+                    model=model,
+                    ctx=ctx,
+                    tps=tps,
+                    agentic=max(agentic, 0.0),
+                    coding=max(coding, 0.0),
+                    fp=fp,
+                )
+            )
     return complete, incomplete
 
 
