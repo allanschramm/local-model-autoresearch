@@ -295,6 +295,7 @@ class TestLlamaRunner(unittest.TestCase):
         runner._server_proc.poll.return_value = None
 
         self.assertTrue(runner._wait_for_server(18080))
+        mock_urlopen.assert_called_once_with(mock_urlopen.call_args.args[0], timeout=2.0)
 
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
     @patch("urllib.request.urlopen")

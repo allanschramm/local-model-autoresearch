@@ -564,3 +564,13 @@ def test_cleanup_end_to_end_with_fake_commands(monkeypatch):
     result = process_guard.cleanup_leftover_processes([18080, 28080], ["llama-server"])
     assert result == [1234]
     assert killed == [1234]
+
+
+def test_teardown_ignores_stale_job_on_non_windows(monkeypatch):
+    guard = process_guard.ProcessGuard.__new__(process_guard.ProcessGuard)
+    guard._procs = []
+    guard._lock = __import__("threading").Lock()
+    guard._job = 123
+    monkeypatch.setattr(process_guard, "IS_WINDOWS", False)
+    guard.teardown()
+    assert guard._job is None
