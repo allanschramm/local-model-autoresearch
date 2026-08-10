@@ -1,13 +1,15 @@
 # Git pre-commit for THIS repo only (local-model-autotuning).
 # Does NOT install into llama.cpp / claw-eval / parent Nexus-System.
 #
-# Setup (once, from repo root, venv active or via paths below):
+# Setup (once, from repo root):
 #   uv pip install --python ./venv/Scripts/python.exe -r requirements.txt
 #   .\venv\Scripts\pre-commit.exe install
-# Manual: .\venv\Scripts\pre-commit.exe run --all-files
+# Manual:
+#   .\venv\Scripts\pre-commit.exe run --all-files
+#   .\venv\Scripts\python.exe scripts\run_validate.py   # same checks as CI
 #
-# Claude agent hard-gates (.claude/hooks) are separate — see
-# docs/discovery/agent-shell-hard-gates.md
+# CI: .github/workflows/validate.yml → scripts/run_validate.py
+# Soft agent PC/crown-jewel gates stay machine-local under .agents/ (not tracked).
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit

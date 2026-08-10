@@ -27,11 +27,13 @@ Repository operators and developers.
 - Test script changes locally by executing them.
 - `rank_results.py`: `.\venv\Scripts\python.exe -m pytest tests/test_rank_results.py`
 - Ensure `bash scripts/setup-check.sh` passes before declaring environment readiness.
+- Shared validate: `python scripts/run_validate.py` (same as `.github/workflows/validate.yml`).
 - Git pre-commit (Ruff/pytest) is repo-root owned — see root `AGENTS.md` Verification + `.pre-commit-config.yaml`. Not under `scripts/hooks` (removed; Claude gates live in `.claude/hooks/`).
 
 ## Child DOX Index
 - [bench_openvino.py](bench_openvino.py) — optional OpenVINO GenAI CPU/iGPU benchmark with separate prefill/decode TPS output.
 - [run_pytest_hook.py](run_pytest_hook.py) — pre-commit local entry for venv pytest.
+- [run_validate.py](run_validate.py) — shared ruff+pytest validate (CI + local agents).
 - [lcb_only.py](lcb_only.py) — LCB-only remeasure helper (`scripts/lcb_only.py`).
 - [recompute_status.py](recompute_status.py) — store-wide Pareto status recompute over a results.tsv (issue #5; `autoresearch/core/recompute.py` owns the logic).
 - [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0008).

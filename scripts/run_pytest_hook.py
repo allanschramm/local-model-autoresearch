@@ -19,13 +19,7 @@ def _venv_python() -> Path | None:
 
 
 def main() -> int:
-    py = _venv_python()
-    if py is None:
-        print(
-            "ERROR: project venv not found. Create it and install requirements.txt first.",
-            file=sys.stderr,
-        )
-        return 1
+    py = _venv_python() or Path(sys.executable)
     env = os.environ.copy()
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     # Avoid .pytest_cache writes that can trip pre-commit's "files modified" check on Windows.

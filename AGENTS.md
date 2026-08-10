@@ -35,9 +35,11 @@ Repository-wide agent guidelines are owned by the repository developers.
 - `program.md` and evaluation harnesses are fixed unless the user explicitly requests a change.
 
 ## Verification
-- Test with `pytest` via project venv. Ensure the full collected test suite passes.
-- **Git pre-commit (this repo only):** `pre-commit` + Ruff + pytest when owned Python changes. Install once: `uv pip install --python ./venv/Scripts/python.exe -r requirements.txt` then `.\venv\Scripts\pre-commit.exe install`. Manual: `.\venv\Scripts\pre-commit.exe run --all-files`. Config: `.pre-commit-config.yaml` + `pyproject.toml`. Does **not** wire hooks into `llama.cpp` / vendor clones / parent monorepo.
-- Inspect `results.tsv` to ensure it is not polluted or modified by agent logic.
+- Test with `pytest` via project venv. Full suite must pass.
+- **pre-commit (this repo only):** Ruff + pytest on owned Python. Install: `uv pip install --python ./venv/Scripts/python.exe -r requirements.txt` then `.\venv\Scripts\pre-commit.exe install`. Manual: `.\venv\Scripts\pre-commit.exe run --all-files`.
+- **Full / CI validate:** `.\venv\Scripts\python.exe scripts\run_validate.py` — same entry as [`.github/workflows/validate.yml`](.github/workflows/validate.yml).
+- Soft agent PC/crown-jewel gates live under `.agents/` (machine-local, not tracked; no tests).
+- Inspect `results.tsv` so agent logic does not pollute it.
 
 ## Pre-Task Reading
 - Before starting any task, read the frontmatter of **every available tool and skill** — tool names, descriptions, parameter schemas, and skill files. Know what each can do before choosing one.
@@ -165,6 +167,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - [ui/AGENTS.md](ui/AGENTS.md) — Read-only operator dashboard (localhost 18765, pt-BR).
 - `.agents/`, `.claude/`, `.cursor/`, `.pi/`, `.gemini/`, `docs/agents/`, `skills-lock.json` — machine-local harness (gitignored; not in clone).
 - [.pre-commit-config.yaml](.pre-commit-config.yaml) — Git pre-commit: Ruff + pytest (this repo only).
+- [.github/workflows/validate.yml](.github/workflows/validate.yml) — CI ruff+pytest via `scripts/run_validate.py`.
 - [pyproject.toml](pyproject.toml) — Ruff / pytest config for owned Python.
 - [docs/discovery/agent-shell-hard-gates.md](docs/discovery/agent-shell-hard-gates.md) — Hard-gate inventory + disable playbook (local wiring).
 - [models/README.md](models/README.md) — Shared GGUF store layout (nested LM Studio + basename resolve).
