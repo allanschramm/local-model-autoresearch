@@ -12,6 +12,7 @@ Repository developers.
 - Baseline only via gitignored `autoresearch/core/config.py` (seed from `config.py.example`). No Trial CLI flag soup. `program.md` / harnesses fixed unless user asks.
 - Do not edit vendor trees: `llama.cpp/`, `claw-eval/`, `VITRIOL/`, `llama.cpp-releases/`.
 - Never commit private paths, emails, hostnames, GPU SKUs, aliases, or machine Baseline.
+- No command timeouts: Never set execution timeouts on commands run by the agent unless explicitly told to. Benchmarks and model tests run until completion. This does not prohibit bounded network timeouts inside product code when needed to prevent a stalled service or request from blocking indefinitely.
 
 ## Work Guidance
 - Method + Trial procedure: `CONTEXT.md`, `docs/adr/`, `docs/discovery/`, `autoresearch/AGENTS.md`, `program.md`.
