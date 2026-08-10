@@ -11,14 +11,6 @@ Repository operators and developers.
 - OpenVINO GenAI remains optional. `bench_openvino.py` imports it only while running and exits nonzero with an actionable install message when unavailable.
 - `model_up.py` (global `model-up`) must work from any cwd: resolve `--model` and draft path flags (`--spec-draft-model` / `-md` / `--model-draft`) to absolute paths, and spawn `llama-server` with `cwd=REPO_ROOT`.
 - `setup-check.sh` is the canonical readiness verification script (supports GPU acceleration and CPU-only builds). It must import-check every package listed in root `requirements.txt` (including `gguf`).
-- Agent hard-gates are **not** under `scripts/`. Per-harness native wiring:
-  - Cursor: [`.cursor/hooks/`](../.cursor/hooks/) (`shell-gate.cjs`, `file-gate.cjs`) + `.cursor/hooks.json`
-  - pi: [`.pi/extensions/agent-gates.ts`](../.pi/extensions/agent-gates.ts) + [`git-commit-guard.ts`](../.pi/extensions/git-commit-guard.ts)
-  - Gemini: [`.gemini/settings.json`](../.gemini/settings.json) (`permissions.allow` / `ask` / `deny`)
-  - Inventory / rollback / Cursor smoke / Win→WSL sync: [docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md) (§3, §8, §9)
-- Shared `.agents/agent_gates/` (Python `policy.py` / `hook_cli.py`) was **removed** — do not recreate a shared gate layer under `scripts/` or `.agents/`.
-- **Rollback:** [docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md) §3.
-- **Dual-host:** sync machine-local harness Windows → WSL with `robocopy` to `\\wsl.localhost\…` (see hard-gates §9). Never `wsl bash` + `$SRC`-style rsync from PowerShell.
 
 ## Work Guidance
 - Use `serve-config.py` as the preferred CLI helper to start/stop the llama-server daemon based on the mutable Baseline in `config.py`. It runs VRAM + host-memory preflight before spawn and exits 2 on reject.
@@ -34,7 +26,7 @@ Repository operators and developers.
 - `rank_results.py`: `.\venv\Scripts\python.exe -m pytest tests/test_rank_results.py`
 - Ensure `bash scripts/setup-check.sh` passes before declaring environment readiness.
 - Shared validate: `python scripts/run_validate.py` (same as `.github/workflows/validate.yml`).
-- Git pre-commit (Ruff/pytest) is repo-root owned — see root `AGENTS.md` Verification + `.pre-commit-config.yaml`. Agent harness gates are not under `scripts/` (see Local Contracts).
+- Git pre-commit (Ruff/pytest) is repo-root owned — see root `AGENTS.md` Verification + `.pre-commit-config.yaml`.
 
 ## Child DOX Index
 - [bench_openvino.py](bench_openvino.py) — optional OpenVINO GenAI CPU/iGPU benchmark with separate prefill/decode TPS output.
@@ -45,5 +37,4 @@ Repository operators and developers.
 - [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0009/0012).
 - [backfill_2026_08_08_missing_claw.py](backfill_2026_08_08_missing_claw.py) — one-shot restore of session-documented claw/coding rows that never landed in TSV (idempotent).
 - [measure_vram_peak.py](measure_vram_peak.py) — real peak-VRAM measurement for the Baseline model, gate bypass (estimator calibration, issue #10).
-- Agent gates: Cursor [../.cursor/hooks/](../.cursor/hooks/) · pi [../.pi/extensions/](../.pi/extensions/) · Gemini [../.gemini/settings.json](../.gemini/settings.json) · [../docs/discovery/agent-shell-hard-gates.md](../docs/discovery/agent-shell-hard-gates.md).
 - Git pre-commit: [../.pre-commit-config.yaml](../.pre-commit-config.yaml) + [../pyproject.toml](../pyproject.toml).

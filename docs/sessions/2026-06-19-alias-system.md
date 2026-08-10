@@ -15,7 +15,7 @@ Chosen: single launcher on PATH (e.g. `~/.local/bin/model-up` / historical `qwen
 |---|---|
 | PATH launcher script | Python; detach via `subprocess.Popen(start_new_session=True)` |
 | `models/aliases/<name>/config.yaml` | Per-recipe flags + model basename (local) |
-| Skill under `.agents/skills/local-model-alias/` | How to add a new alias |
+| Local alias skill (gitignored) | How to add a new alias |
 
 ## Subcommands
 

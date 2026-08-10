@@ -1,6 +1,4 @@
 
-=== .gemini/antigravity-cli/brain/74f162d7-085f-4761-8abd-e730ac5027a2/.system_generated/steps/383/content.md ===
-
 For the complete documentation index, see
 llms.txt
 . This page is also available as
@@ -555,8 +553,6 @@ Kimi K2.7 Code
 Last updated
 5 minutes ago
 Was this helpful?
-
-=== .gemini/antigravity-cli/brain/74f162d7-085f-4761-8abd-e730ac5027a2/.system_generated/steps/385/content.md ===
 
 For the complete documentation index, see
 llms.txt

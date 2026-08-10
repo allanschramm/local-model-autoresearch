@@ -87,6 +87,5 @@ Only after TPS looks acceptable — and on the **same** `config.py` Fingerprint 
 - [`discover-models.md`](./discover-models.md) — pick which GGUF first (Pareto), then this guide
 - [`pareto-selection.md`](./pareto-selection.md) — Objective Vector, Fingerprint merge, Day/Night pick
 - [`../adr/0006-pareto-frontier-search.md`](../adr/0006-pareto-frontier-search.md) — Pareto Set membership (four axes, non-domination)
-- [`agent-shell-hard-gates.md`](./agent-shell-hard-gates.md) — config.py-only Baseline
 - `GOLDEN-RULES.md` — validation gates and harness rules
 - `program.md` — Search terminology and Trial logging

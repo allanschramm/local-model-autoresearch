@@ -22,7 +22,7 @@ Inventory the repo's `**TBD:**` / open-question markers and other information ga
 | `docs/discovery/best-model-8gb-vram.md` | Granite-4.0-H-Tiny only in secondary source; "no 8 GB-measured tokens/s" TBD | ⚠️ Granite verified; one 8 GB-device tps found (Jetson) |
 | `docs/discovery/vllm-quant-deep-dive.md` | 3 open TBDs: bnb OOT RFC status; W4A8 matrix staleness; GGUF IQ2_M/IQ3_M kernel coverage | ✅ resolved |
 | `docs/sessions/2026-07-31-day-model-candidates-100k.md` | Sampler fields TBD for Nemotron 3 Nano, Granite 4.0 H Tiny, Granite 4.1 3B | ⚠️ NVIDIA/IBM do not publish them; confirmed absent |
-| `.agents/skills/local-model-alias/SKILL.md` | `measured_by: TBD` in the alias template | ❌ not a research gap (template default for untested aliases) |
+| Local alias skill template (gitignored) | `measured_by: TBD` in the alias template | ❌ not a research gap (template default for untested aliases) |
 
 ## Findings
 

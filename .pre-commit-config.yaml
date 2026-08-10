@@ -9,7 +9,6 @@
 #   .\venv\Scripts\python.exe scripts\run_validate.py   # same checks as CI
 #
 # CI: .github/workflows/validate.yml → scripts/run_validate.py
-# Soft agent PC/crown-jewel gates stay machine-local under .agents/ (not tracked).
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
