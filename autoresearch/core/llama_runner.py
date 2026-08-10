@@ -28,11 +28,16 @@ _MODEL_SEARCH_SKIP = frozenset({".cache", "aliases", "huggingface"})
 
 import autoresearch.core.config as config
 from autoresearch.core.config import ConfigError, is_dense_model, validate_config
-from autoresearch.core.hardware import detect_free_vram_mb
+from autoresearch.core.hardware import (
+    detect_free_vram_mb,
+    detect_pid_gpu_shared_mb,
+    detect_total_vram_mb,
+    detect_used_total_vram_mb,
+)
 from autoresearch.core.model_arch import (
     gguf_block_count,
     gguf_is_moe,
-    gguf_kv_bytes_per_token_f16,
+    gguf_kv_f16_mb,
     resolve_n_cpu_moe,
 )
 from autoresearch.core.process_guard import ProcessGuard, cleanup_leftover_processes
@@ -290,16 +295,70 @@ VRAM_MOE_OFFLOAD_LAYER_REF = 32.0
 DEFAULT_VRAM_LIMIT_MB = 7900.0
 # Safety margin subtracted from free VRAM at Trial start (issue #10).
 DEFAULT_VRAM_HEADROOM_MB = 512.0
+# Keep this much dedicated VRAM free so WDDM CUDA Sysmem Fallback never arms.
+DEFAULT_PHYSICAL_VRAM_KEEPOUT_MB = 512.0
+# Task Manager "Shared GPU" kill — WDDM/PCI-e host maps (MoE+NO_MMAP), not
+# dedicated-full CUDA Sysmem Fallback. Dedicated can stay ~4–5 GB while Shared
+# climbs to 10+ GB and pagefile/SSD freezes the PC. Absolute ceil; do not wait
+# for dedicated to fill.
+DEFAULT_SHARED_VRAM_LIMIT_MB = 2048.0
+
+
+def dedicated_vram_kill_ceil(
+    limit_mb: float,
+    total_mb: float | None,
+    keepout_mb: float = DEFAULT_PHYSICAL_VRAM_KEEPOUT_MB,
+) -> float:
+    """Kill ceiling: ``min(limit, physical − keepout)`` when total is known."""
+    ceil = float(limit_mb)
+    if total_mb is not None and total_mb > 0:
+        return min(ceil, max(1024.0, float(total_mb) - keepout_mb))
+    return ceil
+
+
+def resolve_shared_vram_limit_mb(limit: float | int | None = None) -> float:
+    """Resolve Shared-GPU kill ceiling (env AUTORESEARCH_SHARED_VRAM_LIMIT_MB)."""
+    if limit is not None:
+        return float(limit)
+    env = os.environ.get("AUTORESEARCH_SHARED_VRAM_LIMIT_MB")
+    if env:
+        return float(env)
+    return float(config.DEFAULTS.get("SHARED_VRAM_LIMIT_MB", DEFAULT_SHARED_VRAM_LIMIT_MB))
 
 
 def resolve_vram_limit_mb(limit: float | int | None = None) -> float:
-    """Resolve VRAM budget: explicit arg > env AUTORESEARCH_VRAM_LIMIT_MB > config default."""
+    """Resolve VRAM budget: explicit arg > env AUTORESEARCH_VRAM_LIMIT_MB > config default.
+
+    Hard clamp: never above ``physical − keepout`` so Trials stay below the
+    WDDM CUDA Sysmem Fallback zone (Shared GPU / pagefile thrash).
+    """
     if limit is not None:
-        return float(limit)
-    env = os.environ.get("AUTORESEARCH_VRAM_LIMIT_MB")
-    if env:
-        return float(env)
-    return float(config.DEFAULTS.get("VRAM_LIMIT_MB", DEFAULT_VRAM_LIMIT_MB))
+        configured = float(limit)
+    else:
+        env = os.environ.get("AUTORESEARCH_VRAM_LIMIT_MB")
+        if env:
+            configured = float(env)
+        else:
+            configured = float(config.DEFAULTS.get("VRAM_LIMIT_MB", DEFAULT_VRAM_LIMIT_MB))
+    total = detect_total_vram_mb()
+    if total is None or total <= 0:
+        return configured
+    keepout = float(
+        config.DEFAULTS.get("PHYSICAL_VRAM_KEEPOUT_MB", DEFAULT_PHYSICAL_VRAM_KEEPOUT_MB)
+    )
+    env_keep = os.environ.get("AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB")
+    if env_keep:
+        keepout = float(env_keep)
+    safe_ceil = dedicated_vram_kill_ceil(configured, total, keepout)
+    # When total known, kill_ceil always applies keepout — clamp only if over.
+    if configured > safe_ceil:
+        print(
+            f"  [vram] clamp VRAM_LIMIT_MB {configured:.0f} -> {safe_ceil:.0f}MB "
+            f"(physical {total:.0f} − keepout {keepout:.0f}; stay out of Shared spill zone)",
+            flush=True,
+        )
+        return float(safe_ceil)
+    return configured
 
 
 def resolve_vram_headroom_mb(headroom_mb: float | int | None = None) -> float:
@@ -545,9 +604,9 @@ def _kv_est_mb(
 ) -> float:
     """KV cache estimate in MiB.
 
-    Prefers GGUF-derived bytes/token (n_layer * n_head_kv * (k_len + v_len));
-    falls back to the flat VRAM_KB_PER_TOKEN_F16 calibration when metadata is
-    unavailable. head_count_kv=0 (recurrent archs like LFM2.5-8B-A1B) -> 0.
+    Prefers GGUF-derived total f16 MiB (`gguf_kv_f16_mb`) — sliding-window
+    arches (gemma4) only charge `min(ctx, window)` with SWA dims. Falls back to
+    flat VRAM_KB_PER_TOKEN_F16. head_count_kv=0 (recurrent) → 0.
     """
     try:
         c_size = int(ctx_size)
@@ -572,9 +631,9 @@ def _kv_est_mb(
     kv_base_mb = c_size * VRAM_KB_PER_TOKEN_F16 / 1024.0
     if model_path is not None:
         try:
-            kv_bytes = gguf_kv_bytes_per_token_f16(model_path)
-            if kv_bytes is not None:
-                kv_base_mb = c_size * kv_bytes / (1024.0 * 1024.0)
+            swa_mb = gguf_kv_f16_mb(model_path, c_size)
+            if swa_mb is not None:
+                kv_base_mb = float(swa_mb)
         except Exception:
             pass
     return (kv_base_mb / 2.0) * kf + (kv_base_mb / 2.0) * vf
@@ -798,9 +857,11 @@ class LlamaServerRunner:
         self.intent = intent
         self.log_path = log_path
         self.vram_limit_mb = resolve_vram_limit_mb(vram_limit_mb)
+        self.shared_vram_limit_mb = resolve_shared_vram_limit_mb()
 
         self.port: int | None = None
         self.peak_vram_mb: float = 0.0
+        self.peak_shared_mb: float = 0.0
         self.vram_killed: bool = False
 
         self._server_proc: subprocess.Popen[str] | None = None
@@ -935,6 +996,7 @@ class LlamaServerRunner:
         server_env[lib_path_var] = (
             f"{llama_lib_dir}{os.pathsep}{existing}" if existing else llama_lib_dir
         )
+        # Avoid CUDA pinned host maps that WDDM counts as Shared GPU (pagefile freeze).
         server_env["GGML_CUDA_NO_PINNED"] = "1"
 
         # Single-load gate (#41): refuse a second full server while one is
@@ -1054,45 +1116,70 @@ class LlamaServerRunner:
 
         dense = is_dense_model(self.intent.model_path)
         limit = self.vram_limit_mb
+        shared_limit = self.shared_vram_limit_mb
+        shared_tick = 0
 
-        def _maybe_kill(current: float) -> None:
+        def _maybe_kill(current: float, total_mb: float | None = None) -> None:
             if current > self.peak_vram_mb:
                 self.peak_vram_mb = current
-            if dense and current > limit and not self.vram_killed:
+            # Kill ANY arch (dense or MoE) over limit — MoE used to skip and WDDM
+            # spilled into shared GPU memory / pagefile, freezing the host.
+            ceil = dedicated_vram_kill_ceil(limit, total_mb)
+            if current > ceil and not self.vram_killed:
                 self.vram_killed = True
+                kind = "dense" if dense else "moe"
                 print(
-                    f"  [VRAM] LIMIT EXCEEDED used={current:.0f}MB > limit={limit:.0f}MB "
-                    f"(dense={self.intent.model_path.name}) — killing server"
+                    f"  [VRAM] LIMIT EXCEEDED used={current:.0f}MB > limit={ceil:.0f}MB "
+                    f"({kind}={self.intent.model_path.name}) — killing "
+                    "(no Windows shared-GPU / pagefile spill)",
+                    flush=True,
+                )
+                self._cleanup_process()
+                self._stop_event.set()
+
+        def _maybe_kill_shared() -> None:
+            """Kill absolute Shared GPU overshoot (dedicated can stay ~4–5 GB)."""
+            if self.vram_killed or self._server_proc is None or self._server_proc.pid is None:
+                return
+            shared = detect_pid_gpu_shared_mb(int(self._server_proc.pid))
+            if shared is None:
+                return
+            if shared > self.peak_shared_mb:
+                self.peak_shared_mb = shared
+            if shared > shared_limit and not self.vram_killed:
+                self.vram_killed = True
+                kind = "dense" if dense else "moe"
+                print(
+                    f"  [VRAM] SHARED GPU EXCEEDED shared={shared:.0f}MB > "
+                    f"limit={shared_limit:.0f}MB ({kind}={self.intent.model_path.name}) — killing "
+                    "(WDDM/PCI-e Shared→pagefile freeze)",
+                    flush=True,
                 )
                 self._cleanup_process()
                 self._stop_event.set()
 
         def sampler() -> None:
-            nonlocal nvml
+            nonlocal nvml, shared_tick
             while not self._stop_event.is_set():
                 if nvml is not None and device is not None:
                     try:
                         mem_info = nvmlMemory_t()
                         nvml.nvmlDeviceGetMemoryInfo(device, ctypes.byref(mem_info))
                         current = float(mem_info.used) / (1024.0 * 1024.0)
-                        _maybe_kill(current)
+                        total_mb = float(mem_info.total) / (1024.0 * 1024.0)
+                        _maybe_kill(current, total_mb)
+                        shared_tick += 1
+                        # typeperf is slow — sample Shared ~1/s while NVML is 20ms.
+                        if shared_tick % 50 == 0:
+                            _maybe_kill_shared()
                         self._stop_event.wait(0.02)
                         continue
                     except Exception:
                         nvml = None
                 try:
-                    res = subprocess.check_output(
-                        [
-                            "nvidia-smi",
-                            "--query-gpu=memory.used",
-                            "--format=csv,noheader,nounits",
-                            "-i",
-                            "0",
-                        ],
-                        text=True,
-                    )
-                    current = float(res.strip() or 0.0)
-                    _maybe_kill(current)
+                    current, total_mb = detect_used_total_vram_mb()
+                    _maybe_kill(current, total_mb)
+                    _maybe_kill_shared()
                 except FileNotFoundError:
                     # VRAM sampling unavailable on non-GPU host
                     break

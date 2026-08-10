@@ -22,7 +22,6 @@ Repository operators and developers.
 - Use `lcb_only.py` to re-measure LiveCodeBench (10 tasks) against current Baseline — gambiarra when coding HE/MBPP/BC already logged but LCB cache failed.
 - Use `recompute_status.py` to refresh Trial statuses in a `results.tsv` after the fact (Pareto Set recompute, issue #5). Write paths (`run.py`, `autoloop.py`) already recompute after every Trial; the script covers retroactive refreshes. Idempotent, no GPU.
 - Use `rank_results.py` to print Pareto / Day / Night / claw / coding rankings from `results.tsv`. Agents must use this CLI for model rankings — no ad-hoc temp filter scripts.
-- `nvidia_disable_sysmem_fallback.nip` + `autoresearch/core/nvidia_sysmem.py`: Prefer No Sysmem Fallback (block CUDA→Shared spill). Harness calls `ensure_no_sysmem_fallback` before llama loads. If UAC blocks Profile Inspector: set Control Panel once, then `mark_manual_no_sysmem()`.
 
 ## Verification
 - Test script changes locally by executing them.

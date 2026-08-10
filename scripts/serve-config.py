@@ -361,11 +361,14 @@ def cmd_serve() -> int:
 
     LOG.parent.mkdir(parents=True, exist_ok=True)
     log = open(LOG, "w")
+    server_env = os.environ.copy()
+    server_env.setdefault("GGML_CUDA_NO_PINNED", "1")
     proc = subprocess.Popen(
         [str(binary)] + args,
         stdout=log,
         stderr=subprocess.STDOUT,
         stdin=subprocess.DEVNULL,
+        env=server_env,
         **_server_popen_kwargs(),
         close_fds=True,
     )

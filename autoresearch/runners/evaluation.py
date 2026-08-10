@@ -4,7 +4,10 @@ Deep module extracted from run.py. One interface (run_trial), typed TrialResult,
 hides bench validation, server lifecycle, and metric computation behind the seam.
 """
 
+import os
+import re
 import subprocess
+import threading
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -15,15 +18,18 @@ from autoresearch.benchmarks.agentic_benchmarks import get_full_tier_tasks, get_
 from autoresearch.benchmarks.agentic_runner import run_agentic_eval
 from autoresearch.benchmarks.benchmark_coding import run_benchmark as run_coding
 from autoresearch.core import config as core_config
+from autoresearch.core.hardware import detect_pid_gpu_shared_mb, detect_used_total_vram_mb
 from autoresearch.core.llama_client import GenerationParams, LlamaClient
 from autoresearch.core.llama_runner import (
     ConfigError,
     LlamaServerRunner,
     ServerIntent,
+    dedicated_vram_kill_ceil,
     preflight_host_memory_for_intent,
     preflight_vram_for_intent,
     resolve_llama_cli,
     resolve_llama_perplexity,
+    resolve_shared_vram_limit_mb,
     resolve_vram_limit_mb,
 )
 from autoresearch.core.model_arch import gguf_block_count, gguf_is_moe
@@ -36,6 +42,9 @@ BASE_DIR = Path(__file__).resolve().parent
 BENCH_TPS_THRESHOLD = 20.0
 BENCH_N_PROMPT = 512
 BENCH_N_GEN = 512
+# TPS probe only — full Trial CTX loads on monitored llama-server. Uncapped
+# llama-cli previously allocated Trial CTX with no VRAM kill → WDDM shared spill.
+BENCH_CTX_CAP = 4096
 
 
 def _format_arch_line(intent: ServerIntent) -> str:
@@ -174,9 +183,23 @@ def run_llama_bench_validation(
     spec_draft_model: str | None = None,
     n_cpu_moe: int | None = None,
     n_gen: int = BENCH_N_GEN,
+    vram_limit_mb: float | int | None = None,
 ) -> float:
-    """Run llama-cli with given config. Returns tg t/s. Raises on failure."""
+    """Run llama-cli with given config. Returns tg t/s. Raises on failure.
+
+    Caps ``-c`` at ``BENCH_CTX_CAP`` so TPS smoke does not allocate Trial-sized
+    KV without a VRAM kill. Watches dedicated keepout ceil + absolute Shared GPU
+    ceil (MoE+NO_MMAP can thrash Shared→pagefile while dedicated stays ~4–5 GB).
+    Sets ``GGML_CUDA_NO_PINNED=1``. Keeps ``NO_MMAP``.
+    """
     llama_cli = resolve_llama_cli()
+    bench_ctx = min(int(ctx_size), BENCH_CTX_CAP)
+    if bench_ctx < int(ctx_size):
+        print(
+            f"  [cli-bench] ctx capped {ctx_size} -> {bench_ctx} "
+            "(full Trial CTX only on monitored llama-server)",
+            flush=True,
+        )
 
     cmd = [
         str(llama_cli),
@@ -187,7 +210,7 @@ def run_llama_bench_validation(
         "-n",
         str(n_gen),
         "-c",
-        str(ctx_size),
+        str(bench_ctx),
         "-t",
         str(threads),
         "-ngl",
@@ -241,23 +264,80 @@ def run_llama_bench_validation(
             cmd += ["--spec-draft-model", str(draft_path)]
 
     print(f"  [cli-bench] {' '.join(str(a) for a in cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
-    if result.returncode != 0:
-        raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
+    limit = resolve_vram_limit_mb(vram_limit_mb)
+    shared_limit = resolve_shared_vram_limit_mb()
+    stop = threading.Event()
+    vram_killed = {"value": False}
+    cli_env = os.environ.copy()
+    cli_env.setdefault("GGML_CUDA_NO_PINNED", "1")
 
-    import re
+    def _watch_vram(proc: subprocess.Popen[str]) -> None:
+        while not stop.is_set():
+            try:
+                used, total = detect_used_total_vram_mb()
+                ceil = dedicated_vram_kill_ceil(limit, total)
+                if used > ceil:
+                    vram_killed["value"] = True
+                    print(
+                        f"  [VRAM] LIMIT EXCEEDED used={used:.0f}MB > limit={ceil:.0f}MB "
+                        f"(llama-cli={model_path.name}) — killing "
+                        "(no Windows shared-GPU / pagefile spill)",
+                        flush=True,
+                    )
+                    proc.kill()
+                    stop.set()
+                    return
+                if proc.pid:
+                    shared = detect_pid_gpu_shared_mb(int(proc.pid))
+                    if shared is not None and shared > shared_limit:
+                        vram_killed["value"] = True
+                        print(
+                            f"  [VRAM] SHARED GPU EXCEEDED shared={shared:.0f}MB > "
+                            f"limit={shared_limit:.0f}MB (llama-cli={model_path.name}) — killing "
+                            "(WDDM/PCI-e Shared→pagefile freeze)",
+                            flush=True,
+                        )
+                        proc.kill()
+                        stop.set()
+                        return
+            except FileNotFoundError:
+                return
+            except (subprocess.CalledProcessError, ValueError, OSError):
+                pass
+            stop.wait(0.5)
 
-    match = re.search(r"Generation:\s*([\d\.]+)\s*t/s", result.stdout)
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        env=cli_env,
+    )
+    watcher = threading.Thread(target=_watch_vram, args=(proc,), daemon=True)
+    watcher.start()
+    try:
+        stdout, stderr = proc.communicate()
+    finally:
+        stop.set()
+        watcher.join(timeout=2.0)
+
+    if vram_killed["value"]:
+        raise RuntimeError("VRAM_LIMIT_EXCEEDED")
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode or -1, cmd, stdout or "", stderr or "")
+
+    match = re.search(r"Generation:\s*([\d\.]+)\s*t/s", stdout or "")
     if not match:
-        match = re.search(r"Generation:\s*([\d\.]+)\s*t/s", result.stderr)
+        match = re.search(r"Generation:\s*([\d\.]+)\s*t/s", stderr or "")
 
     if not match:
         raise RuntimeError(
-            f"llama-cli output did not contain Generation TPS metric: {result.stdout[:500]} {result.stderr[:500]}"
+            f"llama-cli output did not contain Generation TPS metric: "
+            f"{(stdout or '')[:500]} {(stderr or '')[:500]}"
         )
 
-    tg_tps = float(match.group(1))
-    return tg_tps
+    return float(match.group(1))
 
 
 def run_llama_perplexity_validation(
@@ -488,6 +568,7 @@ class ExperimentRunner:
                         spec_draft_model=intent.spec_draft_model,
                         n_cpu_moe=intent.n_cpu_moe,
                         n_gen=BENCH_N_GEN,
+                        vram_limit_mb=vram_limit_mb,
                     )
                 except FileNotFoundError as e:
                     print(f"  [FAIL] llama-cli not found: {e}")
@@ -499,6 +580,18 @@ class ExperimentRunner:
                     print(f"  [FAIL] llama-cli crashed: {e}")
                     res.status = "FAIL: llama-cli crashed"
                     res.outcome = TrialOutcome.MODEL_REJECTED
+                    return res
+                except RuntimeError as e:
+                    if "VRAM_LIMIT_EXCEEDED" in str(e):
+                        print("  [FAIL] llama-cli VRAM_LIMIT_EXCEEDED")
+                        res.status = "FAIL: VRAM_LIMIT_EXCEEDED"
+                        res.outcome = TrialOutcome.MODEL_REJECTED
+                        res.diagnostic = "VRAM_LIMIT_EXCEEDED"
+                        return res
+                    print(f"  [FAIL] llama-cli error: {e}")
+                    res.status = f"FAIL: llama-cli error: {str(e)[:50]}"
+                    res.outcome = TrialOutcome.INFRA_ERROR
+                    res.diagnostic = str(e)
                     return res
                 except Exception as e:
                     print(f"  [FAIL] llama-cli error: {e}")

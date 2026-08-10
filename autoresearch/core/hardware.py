@@ -106,18 +106,13 @@ def detect_nvidia() -> tuple[str | None, float, bool]:
     return None, 0.0, False
 
 
-def detect_free_vram_mb() -> float | None:
-    """Free VRAM in MiB on the first NVIDIA GPU, or None if unavailable.
-
-    Used for dynamic Trial headroom (issue #10): effective budget = free-at-start
-    minus a safety margin, so Trials on a dirty GPU fail early instead of
-    spuriously killing mid-eval.
-    """
+def _nvidia_smi_memory_mb(query: str) -> float | None:
+    """First-GPU nvidia-smi memory.* field in MiB, or None if unavailable."""
     try:
         res = subprocess.run(
             [
                 "nvidia-smi",
-                "--query-gpu=memory.free",
+                f"--query-gpu={query}",
                 "--format=csv,noheader,nounits",
                 "-i",
                 "0",
@@ -134,6 +129,101 @@ def detect_free_vram_mb() -> float | None:
     except Exception:
         pass
     return None
+
+
+def detect_free_vram_mb() -> float | None:
+    """Free VRAM in MiB on the first NVIDIA GPU, or None if unavailable.
+
+    Used for dynamic Trial headroom (issue #10): effective budget = free-at-start
+    minus a safety margin, so Trials on a dirty GPU fail early instead of
+    spuriously killing mid-eval.
+    """
+    return _nvidia_smi_memory_mb("memory.free")
+
+
+def detect_total_vram_mb() -> float | None:
+    """Dedicated GPU VRAM total in MiB (first NVIDIA GPU), or None if unavailable."""
+    return _nvidia_smi_memory_mb("memory.total")
+
+
+def detect_used_total_vram_mb() -> tuple[float, float | None]:
+    """``(used_mb, total_mb)`` for GPU 0.
+
+    Raises ``FileNotFoundError`` when nvidia-smi is missing; other subprocess/
+    parse errors propagate so callers can retry without treating them as absent.
+    """
+    res = subprocess.check_output(
+        [
+            "nvidia-smi",
+            "--query-gpu=memory.used,memory.total",
+            "--format=csv,noheader,nounits",
+            "-i",
+            "0",
+        ],
+        text=True,
+    )
+    parts = [p.strip() for p in (res.strip().splitlines() or [""])[0].split(",")]
+    used = float(parts[0] or 0.0)
+    total = float(parts[1]) if len(parts) > 1 and parts[1] else None
+    return used, total
+
+
+def detect_pid_gpu_shared_mb(pid: int) -> float | None:
+    """WDDM Shared GPU memory (MiB) for a process, or None if unavailable.
+
+    MoE + ``--no-mmap`` can park host tensors in this bucket (PCI-e / CUDA
+    pinned) instead of normal RAM; Shared→pagefile freezes the PC even when
+    dedicated VRAM is only ~4–5 GB. Uses PDH ``typeperf`` Shared Usage.
+    """
+    if sys.platform != "win32" or pid <= 0:
+        return None
+    try:
+        res = subprocess.run(
+            [
+                "typeperf",
+                r"\GPU Process Memory(*)\Shared Usage",
+                "-sc",
+                "1",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if res.returncode != 0:
+            return None
+        header: list[str] | None = None
+        data: list[str] | None = None
+        for line in (res.stdout or "").splitlines():
+            raw = line.strip()
+            if not raw or raw.startswith("Exiting") or raw.startswith("The command"):
+                continue
+            cols = [p.strip().strip('"') for p in raw.split(",")]
+            if not cols:
+                continue
+            joined = " ".join(cols).lower()
+            if "pdh-csv" in joined or "gpu process memory" in joined:
+                header = cols
+                continue
+            if header is not None and data is None and len(cols) == len(header):
+                data = cols
+        if not header or not data:
+            return None
+        needle = f"pid_{int(pid)}_"
+        total = 0.0
+        matched = False
+        for idx, col in enumerate(header):
+            if needle not in col:
+                continue
+            try:
+                total += float(data[idx])
+                matched = True
+            except (ValueError, IndexError):
+                continue
+        if not matched:
+            return None
+        return total / (1024.0 * 1024.0)
+    except Exception:
+        return None
 
 
 def detect_physical_cores() -> int | None:

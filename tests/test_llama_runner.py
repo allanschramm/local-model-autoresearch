@@ -917,7 +917,7 @@ class TestLlamaRunner(unittest.TestCase):
         runner._server_proc = proc
         # Force nvidia-smi path (no NVML)
         with patch("ctypes.CDLL", side_effect=OSError("no nvml")):
-            with patch("subprocess.check_output", return_value="500\n"):
+            with patch("subprocess.check_output", return_value="500,8192\n"):
                 runner._start_vram_sampler()
                 # Allow sampler thread to fire once
                 import time
@@ -928,6 +928,84 @@ class TestLlamaRunner(unittest.TestCase):
                     runner._vram_thread.join(timeout=1.0)
         self.assertTrue(runner.vram_killed)
         proc.kill.assert_called()
+
+    def test_vram_sampler_kills_absolute_shared_with_low_dedicated(self):
+        """Shared>ceil kills even when dedicated is under budget (WDDM/PCI-e thrash)."""
+        from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent
+
+        intent = ServerIntent(
+            model_path=Path("moe-offload-Q4_K_M.gguf"),
+            ctx_size=65536,
+            kv_cache="q4_0",
+            flash_attn="on",
+            n_cpu_moe=30,
+        )
+        with patch(
+            "autoresearch.core.llama_runner.resolve_llama_server", return_value=Path("llama-server")
+        ):
+            with patch("autoresearch.core.llama_runner.is_dense_model", return_value=False):
+                with patch(
+                    "autoresearch.core.llama_runner.resolve_shared_vram_limit_mb",
+                    return_value=2048.0,
+                ):
+                    runner = LlamaServerRunner(intent, vram_limit_mb=7900.0)
+        proc = MagicMock()
+        proc.pid = 4242
+        runner._server_proc = proc
+        with patch("ctypes.CDLL", side_effect=OSError("no nvml")):
+            with patch("subprocess.check_output", return_value="4800,8188\n"):
+                with patch(
+                    "autoresearch.core.llama_runner.detect_pid_gpu_shared_mb",
+                    return_value=15000.0,
+                ):
+                    runner._start_vram_sampler()
+                    import time
+
+                    time.sleep(0.45)
+                    runner._stop_event.set()
+                    if runner._vram_thread:
+                        runner._vram_thread.join(timeout=1.0)
+        self.assertTrue(runner.vram_killed)
+        proc.kill.assert_called()
+
+    def test_vram_sampler_kills_moe_over_limit(self):
+        """MoE must die at VRAM_LIMIT too — skipping enabled WDDM shared spill."""
+        from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent
+
+        intent = ServerIntent(
+            model_path=Path("POCKET-26B-Q4_K_M.gguf"),
+            ctx_size=65536,
+            kv_cache="q4_0",
+            flash_attn="on",
+            n_cpu_moe=30,
+        )
+        with patch(
+            "autoresearch.core.llama_runner.resolve_llama_server", return_value=Path("llama-server")
+        ):
+            with patch("autoresearch.core.llama_runner.is_dense_model", return_value=False):
+                runner = LlamaServerRunner(intent, vram_limit_mb=100.0)
+        proc = MagicMock()
+        runner._server_proc = proc
+        with patch("ctypes.CDLL", side_effect=OSError("no nvml")):
+            with patch("subprocess.check_output", return_value="500,8192\n"):
+                runner._start_vram_sampler()
+                import time
+
+                time.sleep(0.35)
+                runner._stop_event.set()
+                if runner._vram_thread:
+                    runner._vram_thread.join(timeout=1.0)
+        self.assertTrue(runner.vram_killed)
+        proc.kill.assert_called()
+
+    def test_resolve_vram_limit_clamps_to_physical(self):
+        from autoresearch.core.llama_runner import resolve_vram_limit_mb
+
+        with patch("autoresearch.core.llama_runner.detect_total_vram_mb", return_value=8188.0):
+            # physical − keepout(512) = 7676
+            self.assertEqual(resolve_vram_limit_mb(8600), 7676.0)
+            self.assertEqual(resolve_vram_limit_mb(7900), 7676.0)
+            self.assertEqual(resolve_vram_limit_mb(7000), 7000.0)
 
 
 class TestKvCalibration(unittest.TestCase):
@@ -1002,6 +1080,74 @@ class TestKvCalibration(unittest.TestCase):
             }
         )
         self.assertEqual(b, 48 * (64 + 64))
+
+    def _kv_f16_mb(self, fields, ctx):
+        from autoresearch.core.model_arch import gguf_kv_f16_mb
+
+        fake_fields = {k: self._FakeField(v) for k, v in fields.items()}
+
+        class FakeReader:
+            def __init__(self, _path):
+                self.fields = fake_fields
+
+        with patch("gguf.GGUFReader", FakeReader):
+            return gguf_kv_f16_mb(Path("m.gguf"), ctx)
+
+    def test_gemma4_swa_charges_window_not_full_ctx(self):
+        # 5 SWA layers + 1 full; window 1024; SWA dims 256; full dims 512
+        pattern = [True, True, True, True, True, False]
+        kv_heads = [8, 8, 8, 8, 8, 2]
+        fields = {
+            "general.architecture": "gemma4",
+            "gemma4.block_count": 6,
+            "gemma4.embedding_length": 2816,
+            "gemma4.attention.head_count": 16,
+            "gemma4.attention.head_count_kv": kv_heads,
+            "gemma4.attention.key_length": 512,
+            "gemma4.attention.value_length": 512,
+            "gemma4.attention.key_length_swa": 256,
+            "gemma4.attention.value_length_swa": 256,
+            "gemma4.attention.sliding_window": 1024,
+            "gemma4.attention.sliding_window_pattern": pattern,
+        }
+        # SWA false-path (bytes/token × full ctx) must not apply
+        self.assertIsNone(self._kv_bytes(fields))
+        ctx = 65536
+        mb = self._kv_f16_mb(fields, ctx)
+        swa_cells = 5 * 8 * (256 + 256) * 1024
+        full_cells = 1 * 2 * (512 + 512) * ctx
+        expected = (swa_cells + full_cells) / (1024.0 * 1024.0)
+        self.assertAlmostEqual(mb, expected, places=3)
+        # Old bug: charge every layer at full ctx + full dims
+        bogous = (5 * 8 * (512 + 512) * ctx + full_cells) / (1024.0 * 1024.0)
+        self.assertLess(mb, bogous * 0.25)
+
+    def test_non_swa_f16_mb_matches_bytes_per_token_times_ctx(self):
+        fields = {
+            "general.architecture": "llama",
+            "llama.block_count": 32,
+            "llama.embedding_length": 4096,
+            "llama.attention.head_count": 32,
+            "llama.attention.head_count_kv": 8,
+        }
+        b = self._kv_bytes(fields)
+        mb = self._kv_f16_mb(fields, 65536)
+        self.assertAlmostEqual(mb, 65536 * b / (1024.0 * 1024.0), places=6)
+
+    @unittest.skipUnless(
+        Path("models/FINAL-Bench/pocket-26b-gguf/POCKET-26B-Q4_K_M.gguf").exists(),
+        "POCKET-26B GGUF not downloaded",
+    )
+    def test_real_pocket26_65k_moe_offload_fits_8gb(self):
+        from autoresearch.core.llama_runner import estimate_vram_mb
+        from autoresearch.core.model_arch import resolve_n_cpu_moe
+
+        p = Path("models/FINAL-Bench/pocket-26b-gguf/POCKET-26B-Q4_K_M.gguf")
+        n, _ = resolve_n_cpu_moe(p, None)
+        # Measured claw peak ~4.5GB @65k; old estimator 8548MB false-rejected.
+        est = estimate_vram_mb(p, 65536, "q4_0", "q4_0", n_cpu_moe=n)
+        self.assertLess(est, 7900.0)
+        self.assertGreater(est, 3500.0)
 
     @unittest.skipUnless(
         Path("models/LiquidAI/LFM2.5-8B-A1B-GGUF/LFM2.5-8B-A1B-Q4_K_M.gguf").exists(),
@@ -1100,7 +1246,10 @@ class TestVramHeadroomPreflight(unittest.TestCase):
         self.assertEqual(limit, 4000.0)
 
     def test_preflight_effective_rejects_and_records_both_budgets(self):
-        with patch.object(llama_runner, "detect_free_vram_mb", return_value=6000.0):
+        with (
+            patch.object(llama_runner, "detect_free_vram_mb", return_value=6000.0),
+            patch.object(llama_runner, "detect_total_vram_mb", return_value=None),
+        ):
             ok, est, reason = llama_runner.preflight_vram_effective(
                 Path("models/non-existent.gguf"),
                 131072,
@@ -1153,7 +1302,10 @@ class TestVramHeadroomPreflight(unittest.TestCase):
             kv_cache="q4_0",
             flash_attn="on",
         )
-        with patch.object(llama_runner, "detect_free_vram_mb", return_value=5000.0):
+        with (
+            patch.object(llama_runner, "detect_free_vram_mb", return_value=5000.0),
+            patch.object(llama_runner, "detect_total_vram_mb", return_value=None),
+        ):
             ok, _, reason = llama_runner.preflight_vram_for_intent(
                 intent, 7900.0, headroom_mb=512.0
             )

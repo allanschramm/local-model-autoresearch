@@ -128,7 +128,69 @@ def gguf_kv_bytes_per_token_f16(path: Path) -> float | None:
     cache (e.g. LFM2.5-8B-A1B, head_count_kv=0, measured KV ~0). Bytes per
     token = n_layer * n_head_kv * (key_length + value_length), key/value
     lengths defaulting to head_dim = embedding_length / head_count.
+
+    For sliding-window arches (e.g. gemma4 SWA), prefer
+    `gguf_kv_f16_mb(path, ctx_size)` — per-token scaling with full ctx is wrong.
     """
+    meta = _gguf_kv_meta(path)
+    if meta is None:
+        return None
+    if meta.get("has_swa"):
+        # Ambiguous under full-ctx scaling; callers must use gguf_kv_f16_mb.
+        return None
+    total_heads = 0
+    k_len = meta["k_len"]
+    v_len = meta["v_len"]
+    for n_kv in meta["per_layer_kv"]:
+        if n_kv > 0:
+            total_heads += n_kv
+    return float(total_heads) * (k_len + v_len)
+
+
+def gguf_kv_f16_mb(path: Path, ctx_size: int) -> float | None:
+    """Total f16 KV cache size in MiB for ``ctx_size`` from GGUF metadata.
+
+    Honors per-layer ``head_count_kv``, sliding-window pattern/window, and
+    SWA key/value lengths (gemma4). Non-SWA arches = bytes/token × ctx.
+    """
+    meta = _gguf_kv_meta(path)
+    if meta is None:
+        return None
+    try:
+        ctx = int(ctx_size)
+    except (TypeError, ValueError):
+        ctx = 16384
+    if ctx <= 0:
+        return 0.0
+
+    pattern = meta.get("swa_pattern")
+    window = meta.get("swa_window")
+    k_len = meta["k_len"]
+    v_len = meta["v_len"]
+    k_swa = meta.get("k_len_swa") or k_len
+    v_swa = meta.get("v_len_swa") or v_len
+    per_layer = meta["per_layer_kv"]
+
+    total_cells = 0.0
+    for i, n_kv in enumerate(per_layer):
+        if n_kv <= 0:
+            continue
+        is_swa = bool(pattern[i]) if pattern is not None and i < len(pattern) else False
+        if is_swa and window is not None and window > 0:
+            tok = min(ctx, int(window))
+            kl, vl = int(k_swa), int(v_swa)
+        else:
+            tok = ctx
+            kl, vl = int(k_len), int(v_len)
+        # Element-cells (k+v dims × heads × tokens). Unit matches legacy
+        # gguf_kv_bytes_per_token_f16 (name says bytes; value is dim-cells —
+        # calibrated to measured llama.cpp peaks without an extra ×2).
+        total_cells += float(n_kv) * float(kl + vl) * float(tok)
+    return total_cells / (1024.0 * 1024.0)
+
+
+def _gguf_kv_meta(path: Path) -> dict[str, Any] | None:
+    """Shared GGUF attention metadata for KV sizing. None if unreadable/incomplete."""
     try:
         from gguf import GGUFReader
     except ImportError:
@@ -146,6 +208,21 @@ def gguf_kv_bytes_per_token_f16(path: Path) -> float | None:
             except (TypeError, ValueError):
                 return None
 
+        def _bools(key: str) -> list[bool] | None:
+            raw = _field_contents(reader.fields.get(key))
+            if raw is None:
+                return None
+            vals = raw if isinstance(raw, (list, tuple)) else [raw]
+            out: list[bool] = []
+            for v in vals:
+                if isinstance(v, str):
+                    out.append(v.strip().lower() in ("1", "true", "yes", "on"))
+                elif isinstance(v, (bool, int, float)):
+                    out.append(bool(v))
+                else:
+                    return None
+            return out or None
+
         n_layer = _num(f"{arch}.block_count")
         n_embd = _num(f"{arch}.embedding_length")
         n_head = _num(f"{arch}.attention.head_count")
@@ -154,21 +231,22 @@ def gguf_kv_bytes_per_token_f16(path: Path) -> float | None:
 
         kv_raw = _field_contents(reader.fields.get(f"{arch}.attention.head_count_kv"))
         if kv_raw is None:
-            # llama.cpp default: kv heads = query heads on every layer
-            n_head_kv_total = n_head * n_layer
+            per_layer = [n_head] * n_layer
         else:
             vals = kv_raw if isinstance(kv_raw, (list, tuple)) else [kv_raw]
             try:
-                per_layer = [int(v) for v in vals]
+                parsed = [int(v) for v in vals]
             except (TypeError, ValueError):
-                per_layer = []
-            if not per_layer:
-                n_head_kv_total = n_head * n_layer
-            elif len(per_layer) == 1:
-                n_head_kv_total = per_layer[0] * n_layer
+                parsed = []
+            if not parsed:
+                per_layer = [n_head] * n_layer
+            elif len(parsed) == 1:
+                per_layer = [parsed[0]] * n_layer
+            elif len(parsed) >= n_layer:
+                per_layer = parsed[:n_layer]
             else:
-                # sparse-GQA per-layer array (e.g. LFM2.5: 8 on attn layers, 0 on conv)
-                n_head_kv_total = sum(per_layer)
+                # Pad short arrays with 0 (unknown trailing layers)
+                per_layer = parsed + [0] * (n_layer - len(parsed))
 
         head_dim = n_embd / n_head
         k_len = _num(f"{arch}.attention.key_length")
@@ -177,7 +255,23 @@ def gguf_kv_bytes_per_token_f16(path: Path) -> float | None:
             k_len = int(head_dim)
         if v_len is None:
             v_len = int(head_dim)
-        return float(n_head_kv_total) * (k_len + v_len)
+
+        swa_pattern = _bools(f"{arch}.attention.sliding_window_pattern")
+        swa_window = _num(f"{arch}.attention.sliding_window")
+        k_swa = _num(f"{arch}.attention.key_length_swa")
+        v_swa = _num(f"{arch}.attention.value_length_swa")
+        has_swa = bool(swa_pattern) and swa_window is not None and swa_window > 0
+
+        return {
+            "per_layer_kv": per_layer,
+            "k_len": k_len,
+            "v_len": v_len,
+            "k_len_swa": k_swa,
+            "v_len_swa": v_swa,
+            "swa_pattern": swa_pattern if has_swa else None,
+            "swa_window": swa_window if has_swa else None,
+            "has_swa": has_swa,
+        }
     except Exception:
         return None
 

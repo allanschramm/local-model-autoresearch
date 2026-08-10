@@ -66,6 +66,7 @@ class TestRun(unittest.TestCase):
         # Pin headroom + configured limit: machine Baseline may override both.
         with (
             patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=6000.0),
+            patch("autoresearch.core.llama_runner.detect_total_vram_mb", return_value=None),
             patch("autoresearch.core.llama_runner.resolve_vram_headroom_mb", return_value=512.0),
         ):
             result = ExperimentRunner(Path("models")).run_trial(
@@ -82,17 +83,64 @@ class TestRun(unittest.TestCase):
         self.assertIn("effective=5488MB", result.diagnostic)
         self.assertIn("configured=7900MB", result.diagnostic)
 
-    @patch("autoresearch.runners.evaluation.subprocess.run")
+    @patch(
+        "autoresearch.runners.evaluation.detect_used_total_vram_mb", side_effect=FileNotFoundError
+    )
+    @patch("autoresearch.runners.evaluation.subprocess.Popen")
     @patch("autoresearch.runners.evaluation.resolve_llama_cli", return_value=Path("llama-cli.exe"))
-    def test_llama_bench_forwards_n_cpu_moe(self, mock_resolve, mock_subprocess):
-        mock_subprocess.return_value = MagicMock(returncode=0, stdout="Generation: 7.4 t/s")
+    @patch("autoresearch.runners.evaluation.resolve_vram_limit_mb", return_value=7900.0)
+    def test_llama_bench_forwards_n_cpu_moe(self, _mock_limit, mock_resolve, mock_popen, _mock_smi):
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = ("Generation: 7.4 t/s", "")
+        mock_proc.returncode = 0
+        mock_popen.return_value = mock_proc
 
         from autoresearch.runners.evaluation import run_llama_bench_validation
 
         run_llama_bench_validation(Path("model.gguf"), n_cpu_moe=40)
 
-        command = mock_subprocess.call_args.args[0]
+        command = mock_popen.call_args.args[0]
         self.assertEqual(command[command.index("--n-cpu-moe") + 1], "40")
+
+    @patch(
+        "autoresearch.runners.evaluation.detect_used_total_vram_mb", side_effect=FileNotFoundError
+    )
+    @patch("autoresearch.runners.evaluation.subprocess.Popen")
+    @patch("autoresearch.runners.evaluation.resolve_llama_cli", return_value=Path("llama-cli.exe"))
+    @patch("autoresearch.runners.evaluation.resolve_vram_limit_mb", return_value=7900.0)
+    def test_llama_bench_caps_ctx(self, _mock_limit, mock_resolve, mock_popen, _mock_smi):
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = ("Generation: 7.4 t/s", "")
+        mock_proc.returncode = 0
+        mock_popen.return_value = mock_proc
+
+        from autoresearch.runners.evaluation import BENCH_CTX_CAP, run_llama_bench_validation
+
+        run_llama_bench_validation(Path("model.gguf"), ctx_size=65536)
+
+        command = mock_popen.call_args.args[0]
+        self.assertEqual(command[command.index("-c") + 1], str(BENCH_CTX_CAP))
+
+    @patch(
+        "autoresearch.runners.evaluation.detect_used_total_vram_mb", side_effect=FileNotFoundError
+    )
+    @patch("autoresearch.runners.evaluation.subprocess.Popen")
+    @patch("autoresearch.runners.evaluation.resolve_llama_cli", return_value=Path("llama-cli.exe"))
+    @patch("autoresearch.runners.evaluation.resolve_vram_limit_mb", return_value=7900.0)
+    def test_llama_bench_keeps_no_mmap(self, _mock_limit, mock_resolve, mock_popen, _mock_smi):
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = ("Generation: 7.4 t/s", "")
+        mock_proc.returncode = 0
+        mock_proc.pid = 12345
+        mock_popen.return_value = mock_proc
+
+        from autoresearch.runners.evaluation import run_llama_bench_validation
+
+        run_llama_bench_validation(Path("model.gguf"), n_cpu_moe=30, no_mmap=True)
+
+        command = mock_popen.call_args.args[0]
+        self.assertIn("--no-mmap", command)
+        self.assertNotIn("--mmap", command)
 
     @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=45.0)
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
