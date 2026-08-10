@@ -96,7 +96,8 @@ class LlamaClient:
         )
 
         try:
-            with urllib.request.urlopen(req) as res:
+            # Bound idle network waits while allowing long model generations.
+            with urllib.request.urlopen(req, timeout=120.0) as res:
                 raw_res = json.loads(res.read().decode())
                 choices = raw_res.get("choices", [])
                 choice = choices[0] if (choices and isinstance(choices[0], dict)) else {}

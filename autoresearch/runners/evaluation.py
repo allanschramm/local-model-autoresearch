@@ -476,7 +476,11 @@ class ExperimentRunner:
             norm.get("agentic_full", False) or norm.get("include_agentic_full", False)
         )
         if is_validation:
-            agentic_quick = True
+            # Validation defaults to Claw quick smoke; respect an explicit
+            # --no-agentic-quick so load/TPS-only smoke works without the
+            # optional claw-eval vendor tree.
+            if not (agentic_quick or agentic_full):
+                agentic_quick = True
             agentic_full = False
             include_coding = (
                 False  # validation = smoke gates only; coding-10 is canonical-Trial work

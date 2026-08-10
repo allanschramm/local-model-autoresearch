@@ -1,10 +1,12 @@
 import os
+import selectors
 import socket
 import subprocess
 import threading
 import time
 import urllib.error
 import urllib.request
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -216,7 +218,7 @@ class SGLangServerRunner:
             sweep_leftover_processes()
         self._guard = ProcessGuard()
 
-        startup_tail: list[str] = []
+        startup_tail: deque[str] = deque(maxlen=20)
         for port in candidate_ports(self.intent.port):
             cmd = self._build_cmd(port)
             if self.is_port_in_use(port):
@@ -233,20 +235,27 @@ class SGLangServerRunner:
             )
 
             ready = False
+            output_selector = None
+            if not IS_WINDOWS and self._server_proc.stdout is not None:
+                try:
+                    output_selector = selectors.DefaultSelector()
+                    output_selector.register(self._server_proc.stdout, selectors.EVENT_READ)
+                except (OSError, ValueError):
+                    output_selector = None
 
             while True:
                 if self._server_proc.poll() is not None:
                     break
 
                 try:
-                    line = self._server_proc.stdout.readline()  # type: ignore
+                    line = ""
+                    if output_selector is None or output_selector.select(timeout=0.1):
+                        line = self._server_proc.stdout.readline()  # type: ignore
                     if line:
                         if self.log_path:
                             self._server_log.write(line)
                             self._server_log.flush()
                         startup_tail.append(line.rstrip())
-                        if len(startup_tail) > 20:
-                            startup_tail.pop(0)
 
                         if (
                             "Uvicorn running on" in line
@@ -261,8 +270,12 @@ class SGLangServerRunner:
                     ready = True
                     break
 
-                time.sleep(0.5)
+                # POSIX readiness is polled frequently; avoid adding 0.5 s
+                # latency after selector-based health checks.
+                time.sleep(0.1 if output_selector is not None else 0.5)
 
+            if output_selector is not None:
+                output_selector.close()
             if ready:
                 self.port = port
 

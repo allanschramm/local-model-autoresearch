@@ -1,9 +1,11 @@
 import argparse
 import csv
 import json
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
@@ -399,12 +401,23 @@ def recompute_statuses(results_file: Path) -> None:
     updated = recompute.recompute_rows(rows)
     if updated == rows:
         return
-    with open(results_file, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
-        )
-        writer.writeheader()
-        writer.writerows(updated)
+    # Replace atomically: a killed Search must not leave a truncated TSV.
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w", newline="", encoding="utf-8", dir=results_file.parent,
+            prefix=f".{results_file.name}.", suffix=".tmp", delete=False,
+        ) as f:
+            temp_path = Path(f.name)
+            writer = csv.DictWriter(
+                f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
+            )
+            writer.writeheader()
+            writer.writerows(updated)
+        os.replace(temp_path, results_file)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 def get_previous_best(results_file: Path, model_name: str | None = None) -> float:

@@ -336,7 +336,7 @@ def resolve_vram_limit_mb(limit: float | int | None = None) -> float:
     if configured > safe_ceil:
         print(
             f"  [vram] clamp VRAM_LIMIT_MB {configured:.0f} -> {safe_ceil:.0f}MB "
-            f"(physical {total:.0f} − keepout {keepout:.0f}; stay out of Shared spill zone)",
+            f"(physical {total:.0f} - keepout {keepout:.0f}; stay out of Shared spill zone)",
             flush=True,
         )
         return float(safe_ceil)
@@ -1051,7 +1051,8 @@ class LlamaServerRunner:
                 return False
             try:
                 req = urllib.request.Request(f"http://127.0.0.1:{port}/health")
-                with urllib.request.urlopen(req) as response:
+                # A listening but wedged server must not block startup forever.
+                with urllib.request.urlopen(req, timeout=2.0) as response:
                     if response.status == 200:
                         return True
             except Exception:

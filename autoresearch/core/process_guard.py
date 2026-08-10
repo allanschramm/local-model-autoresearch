@@ -223,6 +223,9 @@ class ProcessGuard:
     def attach(self, proc: subprocess.Popen) -> subprocess.Popen:
         """Register an already-running subprocess with the guard."""
         with self._lock:
+            # Completed children no longer need lifecycle tracking. Prune them
+            # here so long-lived benchmark guards do not retain every Trial.
+            self._procs[:] = [child for child in self._procs if child.poll() is None]
             self._procs.append(proc)
             if self._job:
                 _assign_to_job(self._job, proc.pid)
@@ -244,15 +247,22 @@ class ProcessGuard:
         for proc in self._snapshot():
             self._teardown_proc(proc)
         if self._job:
-            _close_job_object(self._job)
+            # Keep teardown safe when platform flags are mocked in tests or
+            # when a guard instance crosses a platform-specific code path.
+            if IS_WINDOWS:
+                _close_job_object(self._job)
             self._job = None
         with self._lock:
             self._procs.clear()
+        # Do not retain one atexit callback per completed Trial.
+        atexit.unregister(self.teardown)
 
     # -- internals --------------------------------------------------------
 
     def _snapshot(self) -> list[subprocess.Popen]:
         with self._lock:
+            # Keep lifecycle scans proportional to live children only.
+            self._procs[:] = [proc for proc in self._procs if proc.poll() is None]
             return list(self._procs)
 
     def _signal_all(self, sig: int) -> None:

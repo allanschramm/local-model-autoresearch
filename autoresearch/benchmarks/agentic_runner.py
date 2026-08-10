@@ -87,7 +87,8 @@ class ServiceManager:
             try:
                 req = urllib.request.Request(url, method=method)
                 req.add_header("X-Health-Check", "1")
-                with urllib.request.urlopen(req) as resp:
+                # Bound each probe so a half-open service cannot stall a trial.
+                with urllib.request.urlopen(req, timeout=2.0) as resp:
                     if resp.status < 500:
                         return
             except urllib.error.HTTPError as e:
@@ -106,7 +107,7 @@ class ServiceManager:
                 continue
             try:
                 req = urllib.request.Request(reset_url, method="POST", data=b"{}")
-                urllib.request.urlopen(req)
+                urllib.request.urlopen(req, timeout=2.0)
             except Exception:
                 pass
 
@@ -161,7 +162,7 @@ def _call_mock_endpoint(endpoint: dict, arguments: dict) -> dict:
     req = urllib.request.Request(url, method=method, data=data)
     req.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=10.0) as resp:
             return json.loads(resp.read().decode())
     except Exception as e:
         return {"error": str(e)}
@@ -249,7 +250,7 @@ def run_agent_loop(
         )
 
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, timeout=30.0) as resp:
                 raw = json.loads(resp.read().decode())
         except Exception as e:
             print(f"    [agent] turn {turn + 1} request failed: {e}")

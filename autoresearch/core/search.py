@@ -7,6 +7,7 @@ legacy scalar keep rules stay as a compat shim for incomplete-vector modes
 (engine-only / quality-only, which measure no agentic/coding axes).
 """
 
+import itertools
 import random
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -44,8 +45,10 @@ class SearchStrategy:
         # incomplete-vector modes (autoloop --mode tps|quality; issue #8).
         self.use_pareto_tiebreaker = use_pareto_tiebreaker
         # Per-model Pareto Set state: every Trial outcome recorded, merged per
-        # Fingerprint by the caller. The front is derived, never stored.
+        # Fingerprint by the caller. The front is derived and cached.
         self.known = list(known)
+        self._pareto_cache: list[ObjectiveVector] | None = None
+        self._pareto_cache_key: tuple[ObjectiveVector, ...] | None = None
 
     def get_config_key(self, cfg: Config) -> str:
         """Deterministically serialize the search-space parameters of a config."""
@@ -114,16 +117,28 @@ class SearchStrategy:
             n_key = self.get_config_key(new_cfg)
             if n_key not in visited:
                 return new_cfg
+
+        # Random sampling can miss a valid point in a sparse space. Probe a
+        # bounded deterministic prefix, avoiding an explosive full Cartesian
+        # scan when the configured search space is large.
+        params = list(self.search_space)
+        values = [self.search_space[param] for param in params]
+        for choices in itertools.islice(itertools.product(*values), max_attempts * 10):
+            new_cfg = current_cfg.copy()
+            new_cfg.update(zip(params, choices, strict=True))
+            if self.is_batch_consistent(new_cfg) and self.get_config_key(new_cfg) not in visited:
+                return new_cfg
         return None
 
     @property
     def pareto_set(self) -> list[ObjectiveVector]:
-        """Current per-model front: complete, mutually non-dominated vectors.
-
-        Incomplete vectors never join the front (ADR 0006 merge rule) but stay
-        in `known` so they compete once their axes fill in.
-        """
-        return pareto_set(self.known)
+        """Current per-model front, cached until known vectors change."""
+        cache_key = tuple(self.known)
+        if self._pareto_cache is None or self._pareto_cache_key != cache_key:
+            self._pareto_cache = pareto_set(self.known)
+            self._pareto_cache_key = cache_key
+        # Do not expose the mutable cache to callers.
+        return list(self._pareto_cache)
 
     def record(self, vector: ObjectiveVector) -> None:
         """Record a Trial outcome into the per-model Set.
