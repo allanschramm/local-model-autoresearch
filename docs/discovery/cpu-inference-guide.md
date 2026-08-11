@@ -159,3 +159,24 @@ LD_PRELOAD="$lib" llama-server -m model.gguf -t 8
 | Q8_0 | 8.50 | Highest, slowest |
 
 **CPU memory bandwidth & L3 cache:** smaller quants (Q4_K_M, IQ4_XS) keep more layer weights in L3 during decode. Start with `Q4_K_M`. On dual-channel DDR4/DDR5, prefer `Q4_K_M` or `IQ4_XS` over `Q8_0` for TPS; use `Q5_K_M` when accuracy matters and bandwidth allows. Check L3 size with `lscpu` (or `/sys/devices/system/cpu/cpu0/cache/index*/size` on Linux).
+
+---
+
+## 6. Weight repacking (`--repack` / `-nr`)
+
+llama.cpp can **repack** quantized weights in memory into SIMD-friendlier layouts on the CPU path. Flag inventory: [`docs/llamacpp-toolset.md`](../llamacpp-toolset.md) (llama-server key flags).
+
+| Flag | Meaning | Env |
+|------|---------|-----|
+| `--repack` | enable weight repacking | `LLAMA_ARG_REPACK` |
+| `-nr`, `--no-repack` | disable weight repacking | (same; falsey / `LLAMA_ARG_NO_REPACK`) |
+
+Default: **enabled**. Profile guidance (hardware-agnostic):
+
+| Profile | Guidance |
+|---------|----------|
+| Pure CPU (`-ngl 0` / no offload) | Leave repack **on** (default or `--repack`). Do not use `-nr` unless diagnosing. |
+| Hybrid (GPU + CPU weights, e.g. `--n-cpu-moe`) | `-nr` is a valid ENGINE Neighbor — repack can hurt hybrid decode. Measure before keeping. |
+| Full GPU offload (almost no CPU weights) | Usually skip; often a no-op / noise on the frontier. |
+
+Do not add to Baseline for every machine. Trial only when the profile has a real CPU weight path.

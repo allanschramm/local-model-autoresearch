@@ -209,6 +209,7 @@ OpenAI API-compatible HTTP server — primary inference target for autotuning.
 | `--jinja` | Jinja2 chat templates | (often used) |
 | `--prio` | Process priority | 1 |
 | `--no-kv-offload` | KV on CPU | 0 |
+| `--repack` / `-nr` (`--no-repack`) | CPU weight repack on/off (default: on; env `LLAMA_ARG_REPACK`) | profile-dependent — see [`cpu-inference-guide.md`](discovery/cpu-inference-guide.md) §6 |
 
 ### Server management
 

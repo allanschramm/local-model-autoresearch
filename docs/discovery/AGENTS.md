@@ -61,5 +61,5 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`unsloth-qwen-guides.md`](./unsloth-qwen-guides.md) — reference guide on Unsloth dynamic quantization and Qwen fine-tuning mechanics.
 
 ### 4. CPU Inference & Build Optimization
-- [`cpu-inference-guide.md`](./cpu-inference-guide.md) — CPU-optimized llama.cpp build flags (AVX-512/AMX), Intel vs AMD notes, NUMA, thread affinity, allocators (tcmalloc/jemalloc), and GGUF quant selection for CPU cache.
+- [`cpu-inference-guide.md`](./cpu-inference-guide.md) — CPU-optimized llama.cpp build flags (AVX-512/AMX), Intel vs AMD notes, NUMA, thread affinity, allocators (tcmalloc/jemalloc), GGUF quant selection for CPU cache, and weight repack (`--repack` / `-nr`) by profile.
 - [`openvino-genai-cpu-igpu-guide.md`](./openvino-genai-cpu-igpu-guide.md) — OpenVINO GenAI export, INT8/INT4 choices, CPU/iGPU device selection, and reproducible TPS benchmarking.
