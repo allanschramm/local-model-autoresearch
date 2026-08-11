@@ -16,6 +16,7 @@ Repository developers.
 
 ## Work Guidance
 - Method + Trial procedure: `CONTEXT.md`, `docs/adr/`, `docs/discovery/`, `autoresearch/AGENTS.md`, `program.md`.
+- Full Trial operator skill (Claw-15 + coding-10, sequential queues): [`.agents/skills/trial/SKILL.md`](.agents/skills/trial/SKILL.md).
 
 ## Verification
 - `.\venv\Scripts\python.exe -m pytest` (or `scripts/run_validate.py` / pre-commit). Never system-global Python.
@@ -104,5 +105,6 @@ Default section order:
 - [tests/AGENTS.md](tests/AGENTS.md) — test suite
 - [teach/AGENTS.md](teach/AGENTS.md) — course materials
 - [models/README.md](models/README.md) — GGUF layout
+- [.agents/skills/trial/SKILL.md](.agents/skills/trial/SKILL.md) — full Trial skill (Claw-15 + coding-10; tracked carve-out under otherwise-gitignored `.agents/`)
 - [.pre-commit-config.yaml](.pre-commit-config.yaml) · [.github/workflows/validate.yml](.github/workflows/validate.yml) · [pyproject.toml](pyproject.toml)
 - External read-only: `llama.cpp/` · `claw-eval/` · `llama.cpp-releases/` · `VITRIOL/`
