@@ -48,12 +48,14 @@ copilot-instructions.md
 .github/copilot-instructions.md
 
 # Agent harness configs + skills (machine-local; not shipped with clone)
-# Ignore .agents contents, but ship the shared Trial skill.
+# Ignore .agents contents, but ship shared operator skills (trial, onboarding).
 .agents/*
 !.agents/skills/
 .agents/skills/*
 !.agents/skills/trial/
 !.agents/skills/trial/**
+!.agents/skills/onboarding/
+!.agents/skills/onboarding/**
 .claude/
 .pi/
 .gemini/
