@@ -8,6 +8,15 @@ This guide surveys the primary inference engines, analyzing their memory manager
 
 > Fastest-TPS on the operator host (discrete 8 GB-class NVIDIA / Windows): see [fastest-tps-inference-engine.md](./fastest-tps-inference-engine.md) — llama.cpp CUDA stays baseline; ExLlamaV3/EXL3 is the only Windows-capable raw-TPS challenger.
 
+### Comparing engines without confusing formats
+
+| Level | Weights | What you may claim |
+| :-- | :-- | :-- |
+| **Same-bytes** | Identical checkpoint on every engine that can load it (e.g. GGUF on llama.cpp and on vLLM/SGLang NVIDIA GGUF paths) | Engine difference |
+| **Native-stack** | Best practical pack per engine (GGUF vs AWQ vs NVFP4, …) | Compound engine+format — label it |
+
+vLLM/SGLang are Linux-first (WSL2/Docker on Windows). Size every pack against Baseline `VRAM_LIMIT_MB` / no-spill rules; HF multimodal 4-bit packs are often much larger than text GGUF Q4 of the same family ([quantization-cascade.md](./quantization-cascade.md) § HF vs GGUF).
+
 ---
 
 ## Technical Comparison Matrix

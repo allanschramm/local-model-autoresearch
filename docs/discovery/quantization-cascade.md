@@ -69,8 +69,25 @@ Use this decision tree. Stop at the first option that fits in your VRAM.
 
 If you see a file named **`UD-Q4_K_XL`** or **`UD-IQ4_NL`**, download that one first. It is the current state-of-the-art for local LLMs.
 
+## HF 4-bit (AWQ / GPTQ / NVFP4) vs GGUF Q4
+
+Same parameter count does **not** imply the same VRAM. Before comparing llama.cpp to vLLM/SGLang:
+
+| Pack type | What usually gets ~4-bit | Typical extras left fat | Rough 9B-class text footprint |
+| :-- | :-- | :-- | :-- |
+| **GGUF Q4 / UD-Q4** (llama.cpp) | Most text tensors (incl. aggressive embd/output in many UD packs) | Often **text-only** GGUF (no ViT in VRAM) | ~5–6 GB weights |
+| **HF AWQ / GPTQ / NVFP4** (vLLM/SGLang) | Mostly `Linear` layers the recipe targeted | Vision tower, `lm_head`, hybrid SSM/gates often **BF16** | Often **~8 GB+** for multimodal hybrids |
+
+Rules:
+
+1. Compare **engine-reported weight load** (or disk size of the actual shard) to `VRAM_LIMIT_MB` — not the “Q4 / NVFP4” label alone.
+2. **Same-bytes** comparison (e.g. GGUF load on every engine that supports it) isolates the engine. **Native-stack** comparison (GGUF vs AWQ vs NVFP4) is a **compound** claim — label it as such.
+3. Reject oversized packs under the repo no-spill contract. Never “nudge util until it loads.”
+
 ## Related Docs
 
 - `docs/models/` — per-model GGUF specs and architecture notes
 - `docs/discovery/discover-models.md` — end-to-end model selection workflow
-- `docs/discovery/nvfp4-quantization.md` — NVIDIA NVFP4 4-bit FP format (Blackwell-only; not a GGUF quant — lives in TensorRT-LLM/vLLM stack)
+- `docs/discovery/nvfp4-quantization.md` — NVIDIA NVFP4 (native Blackwell vs Marlin SM75+ fallback; not a GGUF quant)
+- `docs/discovery/vllm-quantization.md` — vLLM quant matrix (AWQ/GPTQ/GGUF/NVFP4)
+- `docs/discovery/inference-engines-landscape.md` — engine taxonomy + cross-engine comparison levels
