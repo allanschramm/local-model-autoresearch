@@ -13,6 +13,7 @@ Repository developers.
 - Do not edit vendor trees: `llama.cpp/`, `claw-eval/`, `VITRIOL/`, `llama.cpp-releases/`.
 - Never commit private paths, emails, hostnames, GPU SKUs, aliases, or machine Baseline.
 - No command timeouts: Never set execution timeouts on commands run by the agent unless explicitly told to. Benchmarks and model tests run until completion. This does not prohibit bounded network timeouts inside product code when needed to prevent a stalled service or request from blocking indefinitely.
+- **No autonomous autoloop:** When the user asks for a trial, hill climb, bench, validate, or any tuning/eval action, do **NOT** launch `autoloop.py` or the `/autoresearch` autonomous loop. Use the explicit harness (`benchmark_search.py`, `python -m autoresearch.runners.run`, or the Trial skill's `--agentic-full` command). `autoloop.py` is operator-only — if the user wanted the background hill-climb loop, they would start it themselves.
 
 ## Work Guidance
 - Method + Trial procedure: `CONTEXT.md`, `docs/adr/`, `docs/discovery/`, `autoresearch/AGENTS.md`, `program.md`.

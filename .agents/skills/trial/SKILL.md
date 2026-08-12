@@ -24,7 +24,10 @@ continues.
 
 Do **not** use this skill for Search neighbor loops (`autoloop`), TPS-only
 hill-climbing, or smoke validation alone — those stay on
-`docs/discovery/good-enough-tuning.md`.
+`docs/discovery/good-enough-tuning.md`. **Never launch `autoloop.py` / the
+`/autoresearch` autonomous loop on a user trial/bench/validate request** —
+`autoloop.py` is operator-only; the user starts the background hill-climb
+themselves.
 
 ## Hard gates
 

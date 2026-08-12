@@ -47,6 +47,11 @@ Gates: load + TPS floor + Claw quick smoke. One model at a time. Read the latest
 
 ### 3. Hill-climb for speed
 
+> Operator-run step. The agent must **not** launch `autoloop.py` / the
+> `/autoresearch` autonomous loop on a user `hill climb` / `bench` / `validate`
+> request — use explicit `benchmark_search.py` / `python -m autoresearch.runners.run`
+> commands. The user starts `autoloop.py` themselves.
+
 ```bash
 .\venv\Scripts\python.exe autoloop.py --mode tps
 ```
