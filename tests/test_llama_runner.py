@@ -94,7 +94,8 @@ class TestLlamaRunner(unittest.TestCase):
         self.assertIn("18080", cmd)
 
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
-    def test_build_cmd_mtp(self, mock_resolve):
+    @patch("autoresearch.core.llama_runner.gguf_has_mtp", return_value=True)
+    def test_build_cmd_mtp(self, mock_mtp, mock_resolve):
         mock_resolve.return_value = Path("/bin/llama-server")
         intent = ServerIntent(
             model_path=Path("models/Gemma-MTP.gguf"),
@@ -106,6 +107,58 @@ class TestLlamaRunner(unittest.TestCase):
         cmd = runner._build_cmd(18080)
         self.assertIn("--spec-type", cmd)
         self.assertIn("mtp", cmd)
+
+    def test_resolve_spec_estimate_args_uses_gguf_metadata(self):
+        """MTP detection must read GGUF metadata, not the filename."""
+        from autoresearch.core.llama_runner import resolve_spec_estimate_args
+
+        with patch("autoresearch.core.llama_runner.gguf_has_mtp", return_value=True):
+            spec, enabled, draft = resolve_spec_estimate_args(
+                Path("models/no-mtp-in-name.gguf"), None, 1, None
+            )
+        self.assertEqual(spec, "mtp")
+        self.assertTrue(enabled)
+
+    def test_resolve_spec_estimate_args_ignores_filename_without_metadata(self):
+        """A filename containing 'MTP' must not enable spec if metadata says no."""
+        from autoresearch.core.llama_runner import resolve_spec_estimate_args
+
+        with patch("autoresearch.core.llama_runner.gguf_has_mtp", return_value=False):
+            spec, enabled, draft = resolve_spec_estimate_args(
+                Path("models/Fake-MTP.gguf"), None, 1, None
+            )
+        self.assertIsNone(spec)
+        self.assertFalse(enabled)
+
+    def test_gguf_has_mtp_reads_nextn_key(self):
+        from autoresearch.core import model_arch
+
+        class FakeField:
+            def __init__(self, v):
+                self._v = v
+
+            def contents(self):
+                return self._v
+
+        fake = MagicMock()
+        fake.fields = {"nemotron_h_moe.nextn_predict_layers": FakeField(1)}
+        with patch("gguf.GGUFReader", return_value=fake):
+            self.assertTrue(model_arch.gguf_has_mtp(Path("models/mtp-meta-test.gguf")))
+
+    def test_gguf_has_mtp_false_when_no_key(self):
+        from autoresearch.core import model_arch
+
+        class FakeField:
+            def __init__(self, v):
+                self._v = v
+
+            def contents(self):
+                return self._v
+
+        fake = MagicMock()
+        fake.fields = {"nemotron_h_moe.block_count": FakeField(53)}
+        with patch("gguf.GGUFReader", return_value=fake):
+            self.assertFalse(model_arch.gguf_has_mtp(Path("models/no-mtp-meta.gguf")))
 
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
     def test_build_cmd_vitriol_moe(self, mock_resolve):
@@ -427,7 +480,8 @@ class TestLlamaRunner(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("--threads-batch") + 1], "16")
 
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
-    def test_build_cmd_mtp_advanced_tuning(self, mock_resolve):
+    @patch("autoresearch.core.llama_runner.gguf_has_mtp", return_value=True)
+    def test_build_cmd_mtp_advanced_tuning(self, mock_mtp, mock_resolve):
         mock_resolve.return_value = Path("/bin/llama-server")
         intent = ServerIntent(
             model_path=Path("models/Gemma-MTP.gguf"),

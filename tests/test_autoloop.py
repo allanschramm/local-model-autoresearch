@@ -96,10 +96,14 @@ class TestAutoLoop(unittest.TestCase):
         # Should fall back to "q4_0" default
         self.assertIn("q4_0", str(mock_estimate.call_args))
 
+    @patch(
+        "autoresearch.core.llama_runner.gguf_has_mtp",
+        side_effect=lambda p: "embedded-mtp" in str(p).lower(),
+    )
     @patch("autoloop.preflight_host_ok", return_value=True)
     @patch("autoloop.estimate_vram_mb")
-    def test_preflight_vram_ok_infers_mtp_like_eval(self, mock_estimate, _host):
-        """MTP-in-name models pass spec args so autoloop and eval preflight agree."""
+    def test_preflight_vram_ok_infers_mtp_like_eval(self, mock_estimate, _host, _mtp):
+        """MTP-via-GGUF-metadata models pass spec args so autoloop and eval preflight agree."""
         mock_estimate.return_value = 5000.0
         cfg = {"MODEL": "embedded-MTP.gguf", "CTX_SIZE": 131072, "SPEC_DRAFT_N_MAX": 4}
 

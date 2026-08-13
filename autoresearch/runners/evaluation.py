@@ -32,7 +32,7 @@ from autoresearch.core.llama_runner import (
     resolve_shared_vram_limit_mb,
     resolve_vram_limit_mb,
 )
-from autoresearch.core.model_arch import gguf_block_count, gguf_is_moe
+from autoresearch.core.model_arch import gguf_block_count, gguf_has_mtp, gguf_is_moe
 from autoresearch.core.sglang_runner import SGLangServerRunner, run_sglang_bench_validation
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -224,7 +224,7 @@ def run_llama_bench_validation(
         cmd += ["--n-cpu-moe", str(n_cpu_moe)]
 
     spec_type_val = spec_type
-    if spec_type_val is None and "MTP" in model_path.name.upper() and spec_draft_n_max > 0:
+    if spec_type_val is None and gguf_has_mtp(model_path) and spec_draft_n_max > 0:
         spec_type_val = "draft-mtp"
 
     if spec_type_val is not None and spec_type_val.lower() != "none" and spec_draft_n_max > 0:
@@ -563,8 +563,12 @@ class ExperimentRunner:
                     res.diagnostic = str(e)
                     return res
                 except subprocess.CalledProcessError as e:
+                    err_tail = (e.stderr or "").strip()[-800:]
                     print(f"  [FAIL] llama-cli crashed: {e}")
+                    if err_tail:
+                        print(f"  [stderr] {err_tail}")
                     res.status = "FAIL: llama-cli crashed"
+                    res.diagnostic = err_tail or str(e)
                     res.outcome = TrialOutcome.MODEL_REJECTED
                     return res
                 except RuntimeError as e:

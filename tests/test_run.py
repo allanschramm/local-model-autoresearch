@@ -27,6 +27,39 @@ class TestRun(unittest.TestCase):
         self.assertAlmostEqual(result.peak_vram_gb, 8108.0 / 1024.0)
         mock_server.assert_not_called()
 
+    def test_bench_crash_surfaces_llama_cli_stderr(self):
+        """Issue: llama-cli stderr was swallowed — crash rows lost the real error."""
+        import subprocess
+
+        from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
+
+        with (
+            patch(
+                "autoresearch.runners.evaluation.preflight_vram_for_intent",
+                return_value=(True, 6543.0, ""),
+            ),
+            patch(
+                "autoresearch.runners.evaluation.preflight_host_memory_for_intent",
+                return_value=(True, 7000.0, 12000.0, ""),
+            ),
+            patch(
+                "autoresearch.runners.evaluation.run_llama_bench_validation",
+                side_effect=subprocess.CalledProcessError(
+                    1,
+                    ["llama-cli"],
+                    "stdout",
+                    "E llama_model_load: error loading model: done_getting_tensors: "
+                    "wrong number of tensors; expected 417, got 408",
+                ),
+            ),
+        ):
+            result = ExperimentRunner(Path("models")).run_trial(
+                {"MODEL": "test.gguf", "CTX_SIZE": 4096, "FLASH_ATTN": "on"}
+            )
+
+        self.assertEqual(result.outcome, TrialOutcome.MODEL_REJECTED)
+        self.assertIn("wrong number of tensors", result.diagnostic)
+
     @patch(
         "autoresearch.runners.evaluation.preflight_host_memory_for_intent",
         return_value=(True, 7000.0, 12000.0, ""),

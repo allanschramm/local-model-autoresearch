@@ -476,7 +476,7 @@ def preflight_vram_ok(cfg: dict[str, Any], vram_limit: float | None) -> bool:
     draft = cfg.get("SPEC_DRAFT_MODEL")
     model_path = resolve_model_path(MODELS_DIR, model)
     spec_type, _, draft_path = resolve_spec_estimate_args(
-        model_path.name,
+        model_path,
         cfg.get("SPEC_TYPE"),
         int(cfg.get("SPEC_DRAFT_N_MAX", 0) or 0),
         resolve_model_path(MODELS_DIR, draft) if draft else None,

@@ -35,6 +35,7 @@ from autoresearch.core.hardware import (
 )
 from autoresearch.core.model_arch import (
     gguf_block_count,
+    gguf_has_mtp,
     gguf_is_moe,
     gguf_kv_f16_mb,
     resolve_model_file,
@@ -537,18 +538,19 @@ def preflight_vram_effective(
 
 
 def resolve_spec_estimate_args(
-    model_name: str,
+    model_path: Path | str,
     spec_type: str | None,
     spec_draft_n_max: int,
     draft_path: Path | str | None,
 ) -> tuple[str | None, bool, Path | str | None]:
     """Resolve effective speculative args for VRAM estimation (MTP-aware).
 
-    Mirrors ServerIntent MTP inference: embedded-MTP GGUFs with no explicit
+    Mirrors ServerIntent MTP inference: embedded-MTP GGUFs (declared via
+    ``<arch>.nextn_predict_layers`` in the GGUF metadata) with no explicit
     SPEC_TYPE estimate with speculative workspace; external drafts only count
-    when speculation is enabled.
+    when speculation is enabled. Metadata is authoritative, not the filename.
     """
-    if spec_type is None and "MTP" in model_name.upper():
+    if spec_type is None and gguf_has_mtp(Path(model_path)):
         spec_type = "mtp"
     spec_enabled = bool(spec_type and spec_type.lower() != "none" and spec_draft_n_max > 0)
     return spec_type, spec_enabled, draft_path if spec_enabled else None
@@ -560,7 +562,7 @@ def preflight_vram_for_intent(
     headroom_mb: float | int | None = None,
 ) -> tuple[bool, float, str]:
     spec_type, _, draft_path = resolve_spec_estimate_args(
-        intent.model_path.name,
+        intent.model_path,
         intent.spec_type,
         intent.spec_draft_n_max,
         intent.spec_draft_model,
@@ -924,7 +926,7 @@ class LlamaServerRunner:
         spec_type_val = self.intent.spec_type
         if (
             spec_type_val is None
-            and "MTP" in self.intent.model_path.name.upper()
+            and gguf_has_mtp(self.intent.model_path)
             and self.intent.spec_draft_n_max > 0
         ):
             global _LLAMA_SERVER_HELP_CACHE

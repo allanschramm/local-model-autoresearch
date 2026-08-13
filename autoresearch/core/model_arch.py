@@ -20,6 +20,9 @@ _MODEL_SEARCH_SKIP = frozenset({".cache", "aliases", "huggingface", "vision"})
 # (resolved_path, mtime_ns) → (is_moe, block_count|None)
 _ARCH_CACHE: dict[tuple[str, int], tuple[bool, int | None]] = {}
 
+# (resolved_path, mtime_ns) → bool (embedded MTP draft heads present)
+_MTP_CACHE: dict[tuple[str, int], bool] = {}
+
 
 def default_models_dir() -> Path:
     return Path(__file__).resolve().parents[2] / "models"
@@ -118,6 +121,43 @@ def _gguf_arch_info(path: Path) -> tuple[bool, int | None]:
     except Exception:
         _ARCH_CACHE[cache_key] = (False, None)
         return False, None
+
+
+def gguf_has_mtp(path: Path) -> bool:
+    """True when the GGUF declares embedded MTP draft heads.
+
+    Reads any ``<arch>.nextn_predict_layers`` key (arch-agnostic) and returns
+    True when its value is > 0. This replaces the old filename "MTP" heuristic:
+    file naming alone is not proof (see data/perplexity_val.txt §MTP audit).
+    Missing/unreadable file or absent key → False.
+    """
+    resolved = path.resolve()
+    try:
+        mtime_ns = resolved.stat().st_mtime_ns
+    except OSError:
+        mtime_ns = 0
+    cache_key = (str(resolved), mtime_ns)
+    if cache_key in _MTP_CACHE:
+        return _MTP_CACHE[cache_key]
+
+    try:
+        from gguf import GGUFReader
+
+        reader = GGUFReader(str(path))
+        for key, field in reader.fields.items():
+            if str(key).lower().endswith(".nextn_predict_layers"):
+                raw = _field_contents(field)
+                try:
+                    if int(raw) > 0:
+                        _MTP_CACHE[cache_key] = True
+                        return True
+                except (TypeError, ValueError):
+                    pass
+        _MTP_CACHE[cache_key] = False
+        return False
+    except Exception:
+        _MTP_CACHE[cache_key] = False
+        return False
 
 
 def gguf_is_moe(path: Path) -> bool:
