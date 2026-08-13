@@ -143,6 +143,20 @@ Este repositório inclui uma jornada publicada de 6 aulas em HTML (Módulo 0 + S
 * **Diagnóstico de Hardware:** `.\venv\Scripts\python.exe scripts\check_hardware.py` (orienta modelo GGUF, GPU e contexto sem estimar TPS).
 * **Validação de Servidor e TPS:** `.\venv\Scripts\python.exe scripts\verify_setup.py --port 18080` (testa o servidor local e mede a velocidade real em tokens/s).
 
+> **📺 AILOCAL Essentials for Devs (gravação + Q&A ao vivo)**
+>
+> Este laboratório no GitHub é e continuará 100% gratuito — todas as lições, práticas e ferramentas ficam aqui.
+>
+> Se você prefere uma experiência guiada, o **AILOCAL Essentials for Devs** oferece:
+> - Gravação completa (disponível imediatamente)
+> - Q&A ao vivo toda quarta 19h–20h30 Brasília
+> - Garantia 15+15 (reembolso + R$50 se preencher o formulário)
+>
+> **Pré-venda em agosto:** 10% de desconto (cupom PREVENDA10 já aplicado no link).
+>
+> - Detalhes: [ailocal.com.br/treinamentos/essentials](https://ailocal.com.br/treinamentos/essentials)
+> - Checkout: [Inscrição com desconto](https://pay.hotmart.com/J106746304H?checkoutMode=6&off=3u0t903b&offDiscount=PREVENDA10)
+
 ---
 
 ## Como Funciona
