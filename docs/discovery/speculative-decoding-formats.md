@@ -14,7 +14,7 @@ In `llama.cpp`, the format is specified using the `--spec-type` flag. These form
 | :--- | :--- | :--- | :---: | :--- |
 | **`draft-mtp`** | Multi-Token Prediction (MTP) | Neural (Assistant) | Medium | **High** (Native for Qwen3.5/3.6 and Gemma-4. Pre-trained drafts available). |
 | **`draft-eagle3`** | Eagle 3 tree-based drafting | Neural (Eagle Head) | Medium | **None** (No pre-trained Eagle drafts exist for Gemma-4/Qwen). |
-| **`draft-dflash`** / **`dspark`** | DeepSeek parallel block drafters | Neural (DeepSpec) | Medium | **Limited** — Qwen3.6-35B + ggml `dflash-*` **loads** on upstream llama.cpp (`b10286`) but measured **slower** than no-spec on this 8 GB MoE path ([session](../sessions/2026-08-07-qwen36-35b-dflash-tps.md)). Bonsai/DSpark historically PrismML-only. |
+| **`draft-dflash`** / **`dspark`** | DeepSeek parallel block drafters | Neural (DeepSpec) | Medium | **Dead end on 8 GB-class MoE+`n-cpu-moe`.** Qwen3.6-35B DFlash loads but is slower than no-spec; needs the 35B target fully on GPU. Embedded `draft-mtp` can still win. Evidence: [2026-08-12](../sessions/2026-08-12-qwen36-dflash-tps.md), [2026-08-07](../sessions/2026-08-07-qwen36-35b-dflash-tps.md). Bonsai/DSpark historically PrismML-only. |
 | **`ngram-cache`** | KV Cache N-gram statistics | Statistical | None (0 MB) | **Universal** (Runs on any model without extra files). |
 | **`ngram-simple`** | Basic sliding window N-grams | Statistical | None (0 MB) | **Universal** (Runs on any model without extra files). |
 | **`none`** | Standard autoregressive decoding | None | None | **Universal** (Speculative decoding disabled). |
@@ -101,10 +101,10 @@ Short `-n 128` / mixed prompts (pre-matrix):
 *   **DFlash (`draft-dflash`):** **51.3 t/s** (+31.2% speedup, cost: ~765 MB VRAM)
 *   **MTP (`draft-mtp`):** earlier spot **69.1 t/s**; matrix sustained `-n 512` **57.3 t/s** (+48% vs matrix base)
 
-### Qwen3.6-35B-A3B (MoE):
-*   **Baseline (`none` with `--n-cpu-moe 40`):** **19.0 - 22.1 t/s**
-*   **Eagle-3 (`draft-eagle3` with `--n-cpu-moe 40`):** **8.3 t/s** (**-60% performance slowdown!**)
-*   *Note: For sparse MoE models where active experts are offloaded to CPU (to fit in 8 GB VRAM), speculative decoding causes severe bottlenecks. The draft model runs on GPU but requires sequential CPU synchronization for routing/experts on every draft token proposal, collapsing throughput. When running MoE models with CPU expert offloading, speculative decoding should be disabled (`none`).*
+### Qwen3.6-35B-A3B (MoE, 8 GB-class + `--n-cpu-moe`):
+*   **Q3 @ 65k (2026-08-12, harness `results.tsv`):** no-spec **24.6** t/s; embedded `draft-mtp` n=1 **29.5** t/s; `draft-dflash` n=15 **12.5** t/s (9.5 rejected at TPS floor).
+*   **Q4 @ 32k (2026-08-07):** no-spec **27.2**; MTP n=2 **27.5**; DFlash n=15 **17.5**.
+*   **Rule:** DFlash needs the 35B target fully on GPU. Expert CPU offload makes DFlash slower. Do not disable all spec — embedded MTP can still beat no-spec. Eagle-3 historically also lost on this split.
 
 ### Bonsai-27B (Sparse MoE):
 *   **Baseline (`none`):** **37.3 t/s** (Target model `Bonsai-27B-Q1_0.gguf` fully on GPU, ~3.80 GB VRAM)

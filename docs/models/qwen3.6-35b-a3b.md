@@ -2,9 +2,9 @@
 
 ## Status
 
-Publisher inventory refreshed 2026-08-02. Measured: no-spec Objective Vector @ 100k turbo3 (2026-08-02); validation speed matrix none / DFlash / MTP @ 32k upstream `b10286` (2026-08-07). Publisher facts and local facts are kept separate.
+Publisher inventory refreshed 2026-08-02. Measured: no-spec Objective Vector @ 100k turbo3 (2026-08-02); Q4 DFlash/MTP/none @ 32k (2026-08-07); Q3 DFlash/MTP/none @ 65k (2026-08-12). Publisher facts and local facts are kept separate.
 
-**Inventory date:** 2026-08-02 (GGUF trees); speed matrix 2026-08-07.
+**Inventory date:** 2026-08-02 (GGUF trees); speed matrices 2026-08-07 (Q4) and 2026-08-12 (Q3).
 
 **Official source:** [Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B)
 **Unsloth base GGUF:** [unsloth/Qwen3.6-35B-A3B-GGUF](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF)
@@ -266,8 +266,8 @@ The Qwen/Unsloth cards use `chat_template_kwargs` with `{"enable_thinking": fals
 - **Inspected header evidence + tensor audit (2026-08-02):** both local files report `nextn_predict_layers=1` AND carry the MTP head tensors `blk.40.nextn.{eh_proj,enorm,hnorm,shared_head_norm}` (UD `eh_proj` Q8_0; SC117 `eh_proj` Q4_K). This confirms MTP-preserving weights on disk; it is not a runtime speed or acceptance-rate result.
 - **Integrated MTP targets:** Unsloth MTP files, ggml-org `Qwen3.6-35B-A3B-MTP-*`, Bahushruth `...-BF16-MTP.gguf`, SC117 APEX files, and AesSedai's updated specialist quants are documented by their publishers as MTP-preserving. Confirm `*.nextn_predict_layers` and related keys in the actual local GGUF; file naming alone is not proof.
 - **Separate MTP artifacts:** ggml-org base `mtp-*` files and Bartowski `mtp-*` files are separate basenames that need explicit pairing/metadata inspection.
-- **DFlash:** ggml-org ships `dflash-Qwen3.6-35B-A3B-{Q8_0,BF16}.gguf`. Upstream llama.cpp accepts `--spec-type draft-dflash` with `--spec-draft-model` pointing at those files. **Measured (2026-08-07, CTX 32k, upstream `b10286`):** Q8 draft + `SPEC_DRAFT_N_MAX=15` → **17.5 TPS** / 5.6 GB peak vs no-spec **27.2 TPS** / 4.1 GB on the same Fingerprint — DFlash **slower** (~−36%). Do not use DFlash as the default max-TPS seed on this MoE+`n-cpu-moe` path; keep it as an observational A/B only. Primary DFlash docs still target vLLM/SGLang ([z-lab/dflash](https://github.com/z-lab/dflash)).
-- **llama.cpp MTP:** `--spec-type draft-mtp --spec-draft-n-max N` ([PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673)). **Measured (2026-08-07):** embedded MTP `n_max=2` → **27.5 TPS** / 4.6 GB — ≈ flat vs no-spec (+0.3).
+- **DFlash:** ggml-org ships `dflash-Qwen3.6-35B-A3B-{Q8_0,BF16}.gguf`. Upstream llama.cpp accepts `--spec-type draft-dflash` with `--spec-draft-model`. **Dead end on 8 GB-class + `--n-cpu-moe`:** DFlash needs the 35B target fully on GPU. Q8 draft header: `dflash.block_size=16`, `target_layers=[2,7,12,17,23,28,33,38]` (eight target-layer extracts per decode). **Q4 @ 32k (2026-08-07):** DFlash n=15 **17.5** vs no-spec **27.2**. **Q3 @ 65k (2026-08-12):** DFlash n=15 **12.5** vs no-spec **24.6** vs embedded MTP n=1 **29.5**. Do not seed DFlash for max TPS on this path. Primary DFlash docs still target vLLM/SGLang ([z-lab/dflash](https://github.com/z-lab/dflash)).
+- **llama.cpp MTP:** `--spec-type draft-mtp --spec-draft-n-max N` ([PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673)). **Q4 @ 32k:** n_max=2 → **27.5** (≈ flat vs 27.2). **Q3 @ 65k:** n_max=1 → **29.5** (beats no-spec 24.6). Prefer embedded MTP over DFlash.
 - **Local runtime probe (2026-08-02, source-verified):** the checked-out llama.cpp `common/speculative.cpp` `common_speculative_type_from_name_map` accepts: `none`, `draft-simple`, `draft-eagle3`, `draft-mtp`, `draft-dflash`, `draft-dspark`, `ngram-simple`, `ngram-map-k`, `ngram-map-k4v`, `ngram-mod`, `ngram-cache`. **Bare `mtp` is NOT accepted in this tree** — keep `--spec-type draft-mtp`. Fork nuance (GOLDEN-RULES.md): TurboQuant/custom fork builds historically accept `mtp`; the harness probes `--help` at runtime and picks per build.
 - **TurboQuant/custom builds:** GGUF format compatibility does not prove MTP, DFlash, UD, IQ, or specialist-mixture support. The project runtime and release tag must be recorded and probed before relying on any speculative flag.
 
@@ -282,7 +282,7 @@ The repository policy is to keep dense models fully resident and to use expert C
 - `N_CPU_MOE=None`: harness auto-resolved to `41` for the measured basename.
 - Objective Vector engine knobs (2026-08-02): TurboQuant `tqp-v0.3.0`, KV K/V `turbo3/turbo3`, batch/ubatch `32/16`, threads `6/8`, `SPEC_TYPE=None`.
 - Speed-smoke knobs (2026-08-07): upstream `b10286`, KV `q4_0/q4_0`, batch/ubatch `512/128`, threads `8/8`. Spec matrix: none / `draft-dflash`+Q8 draft n=15 / `draft-mtp` n=2 — see Measured Trial evidence.
-- Max-TPS note: on this MoE+offload + Q4 Fingerprint @ 32k, **DFlash lost** to no-spec; MTP was ≈ flat. Next cheap levers (unmeasured here): lower CTX, lighter quant, `N_CPU_MOE` sweep, batch/KV — session log ranks them.
+- Max-TPS note: DFlash lost on both Q4@32k and Q3@65k with expert CPU offload. Embedded MTP can beat no-spec on the Q3 Fingerprint. Do not retry DFlash knobs (`n_max`, draft GPU vs CPU) expecting a sign flip.
 - A point is not `on_front` until it has the same Fingerprint and complete Claw-full plus coding-10 Objective Vector. Fine-tunes and base quants are distinct Trial families.
 
 ## Measured Trial evidence
@@ -320,6 +320,17 @@ Incomplete vectors (smoke only). Session: [2026-08-07-qwen36-35b-dflash-tps.md](
 | `3810c77b-f108-4874-8ffe-21c0ade7209a` | `draft-mtp` n_max=2 | **27.5** | 4.6 GB |
 | `06dce572-7122-45a3-a075-901c7460dda8` | `draft-dflash` n_max=15 + Q8 draft | **17.5** | 5.6 GB |
 
+### Validation speed matrix (2026-08-12) — CTX 65k, Q3 basename, `N_CPU_MOE=40`
+
+Incomplete vectors (smoke only). Session: [2026-08-12-qwen36-dflash-tps.md](../sessions/2026-08-12-qwen36-dflash-tps.md).
+
+| Trial | Spec | Bench tg | Peak VRAM |
+|---|---|---:|---:|
+| `512c52ee-5f0c-423e-b348-28ddd9ed59b3` | none | **24.6** | 4.7 GB |
+| `6fe4189f-7329-4c44-87b0-6325ed173b9b` | `draft-mtp` n_max=1 | **29.5** | 5.7 GB |
+| `54e972a6-c0ec-4687-ba60-56a941125e3e` | `draft-dflash` n_max=15 + Q8 draft | **12.5** | 6.6 GB |
+| `c409f082-8061-41d9-96da-015a1edb0504` | `draft-dflash` n_max=15 | **9.5** | rejected (`TPS_FLOOR`) |
+
 ## Sources / verification
 
 - Official architecture, license, sampler, and file tree: [Qwen model card](https://huggingface.co/Qwen/Qwen3.6-35B-A3B) and [official files](https://huggingface.co/Qwen/Qwen3.6-35B-A3B/tree/main), extracted 2026-08-02.
@@ -331,7 +342,7 @@ Incomplete vectors (smoke only). Session: [2026-08-07-qwen36-35b-dflash-tps.md](
 - DFlash pairing and runtime scope: [z-lab/dflash](https://github.com/z-lab/dflash), extracted 2026-08-02.
 - GGUF header verification: project venv `gguf_dump` with `PYTHONUTF8=1`, exact basenames and fields recorded in the Architecture table above, extracted 2026-08-02. The card records basenames and header fields only.
 - Trial evidence (Objective Vector): run `76f6f780-dda3-4ba7-8a42-e6a267d95b1e`, basename `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf`, measured 2026-08-02; flags, preflight, scores, and elapsed time are recorded above.
-- Trial evidence (DFlash / MTP speed smokes): runs `ef3094b2-…`, `06dce572-…`, `3810c77b-…`, measured 2026-08-07 on upstream `b10286` @ CTX 32768 — session [2026-08-07-qwen36-35b-dflash-tps.md](../sessions/2026-08-07-qwen36-35b-dflash-tps.md).
+- Trial evidence (DFlash / MTP speed smokes): Q4 runs `ef3094b2-…`, `06dce572-…`, `3810c77b-…` (2026-08-07, CTX 32768) — [2026-08-07-qwen36-35b-dflash-tps.md](../sessions/2026-08-07-qwen36-35b-dflash-tps.md). Q3 runs `512c52ee-…`, `6fe4189f-…`, `54e972a6-…`, `c409f082-…` (2026-08-12, CTX 65536) — [2026-08-12-qwen36-dflash-tps.md](../sessions/2026-08-12-qwen36-dflash-tps.md).
 
 ## Open questions
 
