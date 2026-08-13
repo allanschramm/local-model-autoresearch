@@ -427,10 +427,11 @@ class TestLlamaRunner(unittest.TestCase):
         sleep_args = [args[0] for args, kwargs in mock_sleep.call_args_list]
         self.assertEqual(sleep_args, [0.05, 0.1, 0.2])
 
+    @patch("autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True)
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
     @patch("subprocess.check_output")
     @patch("ctypes.CDLL")
-    def test_vram_sampler(self, mock_cdll, mock_output, mock_resolve):
+    def test_vram_sampler(self, mock_cdll, mock_output, mock_resolve, _mock_prefer_gpu):
         import threading
 
         called_event = threading.Event()
@@ -1021,7 +1022,10 @@ class TestLlamaRunner(unittest.TestCase):
         # Force nvidia-smi path (no NVML)
         with patch("ctypes.CDLL", side_effect=OSError("no nvml")):
             with patch("subprocess.check_output", return_value="500,8192\n"):
-                runner._start_vram_sampler()
+                with patch(
+                    "autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True
+                ):
+                    runner._start_vram_sampler()
                 # Allow sampler thread to fire once
                 import time
 
@@ -1061,7 +1065,10 @@ class TestLlamaRunner(unittest.TestCase):
                     "autoresearch.core.llama_runner.detect_pid_gpu_shared_mb",
                     return_value=15000.0,
                 ):
-                    runner._start_vram_sampler()
+                    with patch(
+                        "autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True
+                    ):
+                        runner._start_vram_sampler()
                     import time
 
                     time.sleep(0.45)
@@ -1091,7 +1098,10 @@ class TestLlamaRunner(unittest.TestCase):
         runner._server_proc = proc
         with patch("ctypes.CDLL", side_effect=OSError("no nvml")):
             with patch("subprocess.check_output", return_value="500,8192\n"):
-                runner._start_vram_sampler()
+                with patch(
+                    "autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True
+                ):
+                    runner._start_vram_sampler()
                 import time
 
                 time.sleep(0.35)

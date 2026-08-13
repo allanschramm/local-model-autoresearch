@@ -230,6 +230,20 @@ class TestAutoLoop(unittest.TestCase):
         cfg.update(overrides)
         return cfg
 
+    def _evaluable_neighbor(self, strategy, base_config):
+        """First neighbor whose changed key survives CPU search-space filtering.
+
+        CPU-only hosts drop SPEC_DRAFT_N_MAX from the active search space, so
+        a SPEC_DRAFT_N_MAX-only neighbor serializes to the baseline's config
+        key and is skipped as already-visited (flake on no-GPU CI). Pick any
+        other single-flag neighbor deterministically.
+        """
+        return next(
+            n
+            for n in strategy.get_neighbors(base_config)
+            if n.changed not in autoloop.CPU_EXCLUDED_SEARCH_KEYS
+        )
+
     @patch("sys.argv", ["autoloop.py", "--max-rounds", "1", "--models", "test.gguf"])
     @patch("autoloop._available_gguf_names", return_value=["test.gguf"])
     @patch("autoloop.ExperimentRunner")
@@ -492,7 +506,7 @@ class TestAutoLoop(unittest.TestCase):
 
         strategy = SearchStrategy(autoloop.SEARCH_SPACE, use_pareto_tiebreaker=True)
         base_config = self._full_config(MODEL="test.gguf")
-        nbr = strategy.get_neighbors(base_config)[0]
+        nbr = self._evaluable_neighbor(strategy, base_config)
 
         with patch.object(SearchStrategy, "get_neighbors", return_value=[nbr]):
             with patch.object(SearchStrategy, "random_restart", return_value=None):
@@ -536,7 +550,7 @@ class TestAutoLoop(unittest.TestCase):
 
         strategy = SearchStrategy(autoloop.SEARCH_SPACE, use_pareto_tiebreaker=True)
         base_config = self._full_config(MODEL="test.gguf")
-        nbr = strategy.get_neighbors(base_config)[0]
+        nbr = self._evaluable_neighbor(strategy, base_config)
 
         with patch.object(SearchStrategy, "get_neighbors", return_value=[nbr]):
             with patch.object(SearchStrategy, "random_restart", return_value=None):
@@ -1058,7 +1072,7 @@ class TestAutoLoop(unittest.TestCase):
 
         base_config = self._full_config(MODEL="test.gguf")
         strategy = SearchStrategy(autoloop.SEARCH_SPACE, use_pareto_tiebreaker=True)
-        nbr = strategy.get_neighbors(base_config)[0]
+        nbr = self._evaluable_neighbor(strategy, base_config)
 
         with patch.object(SearchStrategy, "get_neighbors", return_value=[nbr]):
             with patch.object(SearchStrategy, "improves_set", return_value=True) as mock_is:
@@ -1101,7 +1115,7 @@ class TestAutoLoop(unittest.TestCase):
 
         base_config = self._full_config(MODEL="test.gguf")
         strategy = SearchStrategy(autoloop.SEARCH_SPACE, use_pareto_tiebreaker=True)
-        nbr = strategy.get_neighbors(base_config)[0]
+        nbr = self._evaluable_neighbor(strategy, base_config)
 
         with patch.object(SearchStrategy, "get_neighbors", return_value=[nbr]):
             with patch.object(SearchStrategy, "is_improvement") as mock_scalar:
