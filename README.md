@@ -152,7 +152,7 @@ Este repositório inclui uma jornada publicada de 6 aulas em HTML (Módulo 0 + S
 > - Q&A ao vivo toda quarta 19h–20h30 Brasília
 > - Garantia 15+15 (reembolso + R$50 se preencher o formulário)
 >
-> **Pré-venda em agosto:** 10% de desconto (cupom PREVENDA10 já aplicado no link). Preço normal a partir de setembro.
+> **Pré-venda em agosto:** 10% de desconto (cupom PREVENDA10 já aplicado no link).
 >
 > - Detalhes: [ailocal.com.br/treinamentos/essentials](https://ailocal.com.br/treinamentos/essentials)
 > - Checkout: [Inscrição com desconto](https://pay.hotmart.com/J106746304H?checkoutMode=6&off=3u0t903b&offDiscount=PREVENDA10)
