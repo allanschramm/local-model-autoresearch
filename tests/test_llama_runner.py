@@ -209,6 +209,24 @@ class TestLlamaRunner(unittest.TestCase):
 
     @patch("autoresearch.core.llama_runner.resolve_n_cpu_moe", return_value=(None, False))
     @patch("autoresearch.core.llama_runner.resolve_model_path")
+    def test_from_config_reasoning_preserve(self, mock_path, _mock_resolve_n):
+        mock_path.return_value = Path("models/model.gguf")
+        cfg = {
+            "MODEL": "model.gguf",
+            "CTX_SIZE": 4096,
+            "FLASH_ATTN": "on",
+            "BATCH_SIZE": 512,
+            "UBATCH_SIZE": 128,
+        }
+        on, _ = ServerIntent.from_config({**cfg, "REASONING_PRESERVE": True}, Path("models"))
+        self.assertIs(on.reasoning_preserve, True)
+        off, _ = ServerIntent.from_config({**cfg, "REASONING_PRESERVE": False}, Path("models"))
+        self.assertIs(off.reasoning_preserve, False)
+        omitted, _ = ServerIntent.from_config(cfg, Path("models"))
+        self.assertIsNone(omitted.reasoning_preserve)
+
+    @patch("autoresearch.core.llama_runner.resolve_n_cpu_moe", return_value=(None, False))
+    @patch("autoresearch.core.llama_runner.resolve_model_path")
     def test_from_config_prefers_n_gpu_layers_over_legacy_ngl(self, mock_path, _mock_resolve_n):
         mock_path.return_value = Path("models/model.gguf")
         intent, _ = ServerIntent.from_config(
@@ -456,6 +474,36 @@ class TestLlamaRunner(unittest.TestCase):
             cmd[cmd.index("--reasoning-budget-message") + 1],
             "Thinking budget reached. Proceed to final answer now.",
         )
+        self.assertNotIn("--reasoning-preserve", cmd)
+        self.assertNotIn("--no-reasoning-preserve", cmd)
+
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_build_cmd_reasoning_preserve_on(self, mock_resolve):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        intent = ServerIntent(
+            model_path=Path("models/test-model.gguf"),
+            ctx_size=2048,
+            kv_cache="q4_0",
+            flash_attn="on",
+            reasoning_preserve=True,
+        )
+        cmd = LlamaServerRunner(intent)._build_cmd(18080)
+        self.assertIn("--reasoning-preserve", cmd)
+        self.assertNotIn("--no-reasoning-preserve", cmd)
+
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_build_cmd_reasoning_preserve_off(self, mock_resolve):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        intent = ServerIntent(
+            model_path=Path("models/test-model.gguf"),
+            ctx_size=2048,
+            kv_cache="q4_0",
+            flash_attn="on",
+            reasoning_preserve=False,
+        )
+        cmd = LlamaServerRunner(intent)._build_cmd(18080)
+        self.assertIn("--no-reasoning-preserve", cmd)
+        self.assertNotIn("--reasoning-preserve", cmd)
 
     def test_estimate_vram_mb(self):
         from autoresearch.core.llama_runner import (

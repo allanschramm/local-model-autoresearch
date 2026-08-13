@@ -65,6 +65,10 @@ class TestAutoLoop(unittest.TestCase):
         self.assertIn("N_GPU_LAYERS", autoloop.CORE_PASSTHROUGH)
         self.assertIn("NUMA", autoloop.CORE_PASSTHROUGH)
 
+    def test_reasoning_preserve_is_passthrough_not_search(self):
+        self.assertIn("REASONING_PRESERVE", autoloop.CORE_PASSTHROUGH)
+        self.assertNotIn("REASONING_PRESERVE", autoloop.SEARCH_SPACE)
+
     @patch("autoloop.preflight_host_ok", return_value=True)
     @patch("autoloop.estimate_vram_mb")
     def test_preflight_vram_ok(self, mock_estimate, _host):
@@ -209,6 +213,7 @@ class TestAutoLoop(unittest.TestCase):
             "REASONING_BUDGET": None,
             "REASONING_BUDGET_MESSAGE": None,
             "REASONING": None,
+            "REASONING_PRESERVE": None,
             "SPEC_TYPE": None,
             "FREQUENCY_PENALTY": None,
             "INCLUDE_CODING": True,

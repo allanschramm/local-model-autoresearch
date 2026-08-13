@@ -49,7 +49,7 @@ Evidence: [2026-08-08 session](../sessions/2026-08-08-thinking-claw-harness-fix.
 ## Operator checklist (before Claw-full on a thinking GGUF)
 
 1. Confirm harness on `main` (or later) includes the agentic `reasoning_content` + `max_tokens≥2048` fix.
-2. Seed Baseline from the model card (thinking / agentic sampler profile), not leftover `config.py`.
+2. Seed Baseline from the model card (thinking / agentic sampler profile), not leftover `config.py`. Optional engine seed: `REASONING_PRESERVE=True` only when llama-server `GET /props` reports `chat_template_caps.supports_preserve_reasoning` and the publisher wants preserved thinking for agentic. Default `None` (omit flag). Not an IQ Search neighbor; coding-10 does not use it.
 3. Same Fingerprint / `VRAM_LIMIT_MB` / ctx you care about for Pareto merge.
 4. Run claw-full via harness only (`benchmark_search.py --agentic-full …`). One Trial at a time.
 5. If dense false-rejects on free VRAM while measured peaks fit budget: `AUTORESEARCH_SKIP_FREE_CLAMP=1` (runtime monitor still kills true OOM).

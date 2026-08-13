@@ -49,6 +49,10 @@ ENGINE_DEFAULTS = {
     'REASONING_BUDGET': None,
     'REASONING_BUDGET_MESSAGE': None,
     'REASONING': None,
+    # None = omit llama.cpp flag (template default). True/False = --reasoning-preserve / --no-reasoning-preserve.
+    # Seed True only when GET /props chat_template_caps.supports_preserve_reasoning and the card wants it for agentic.
+    # Not a Search neighbor.
+    'REASONING_PRESERVE': None,
     'CONT_BATCHING': False,
     # MoE: None = auto --n-cpu-moe {GGUF block_count}; 0 = full GPU; N>0 = manual.
     'N_CPU_MOE': None,
@@ -130,6 +134,14 @@ def validate_config(cfg: dict) -> dict:
     tps_floor = float(tps_floor)
     if not math.isfinite(tps_floor) or tps_floor <= 0:
         raise ConfigError(f"TPS_FLOOR must be a positive finite number; got {tps_floor}")
+    reasoning_preserve = normalized.get(
+        "reasoning_preserve",
+        normalized.get("REASONING_PRESERVE", DEFAULTS.get("REASONING_PRESERVE")),
+    )
+    if reasoning_preserve is not None and not isinstance(reasoning_preserve, bool):
+        raise ConfigError(
+            f"REASONING_PRESERVE must be True, False, or None; got {reasoning_preserve!r}"
+        )
     n_gpu_layers = normalized.get("n_gpu_layers", normalized.get("N_GPU_LAYERS", DEFAULTS.get("N_GPU_LAYERS", -1)))
     if isinstance(n_gpu_layers, bool) or not isinstance(n_gpu_layers, int):
         raise ConfigError(
@@ -150,6 +162,7 @@ def validate_config(cfg: dict) -> dict:
     if vram_limit is not None:
         normalized["VRAM_LIMIT_MB"] = vram_limit
     normalized["TPS_FLOOR"] = tps_floor
+    normalized["REASONING_PRESERVE"] = reasoning_preserve
     normalized["N_GPU_LAYERS"] = n_gpu_layers
     normalized["NUMA"] = numa
     return normalized

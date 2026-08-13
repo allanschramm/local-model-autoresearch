@@ -48,6 +48,6 @@ Coding-10 ranks: [coding-leaderboard.md](../discovery/coding-leaderboard.md).
 ## Open extraction tasks
 All three previously-truncated Unsloth sections were re-extracted on **2026-08-02** (primary sources) and applied to the cards:
 - Qwen3.6 "🦙 Llama.cpp Guide" → canonical command (q8_0 KV) in [qwen3.6-35b-a3b.md](qwen3.6-35b-a3b.md) MTP section.
-- Qwen3.6 "💡 Thinking: Enable/Disable + Preserve Thinking" → `enable_thinking` / `preserve_thinking` kwargs in [qwen3.6-35b-a3b.md](qwen3.6-35b-a3b.md) Recommended settings.
+- Qwen3.6 "💡 Thinking: Enable/Disable + Preserve Thinking" → `enable_thinking` / `preserve_thinking` kwargs; harness seed is Baseline `REASONING_PRESERVE` in [qwen3.6-35b-a3b.md](qwen3.6-35b-a3b.md) Recommended settings.
 - Gemma 4 "🦙 llama.cpp Guide" + "Recommended Settings" → `TEMP=1.0 / TOP_P=0.95 / TOP_K=64` + guide command in [gemma-4-26b-a4b.md](gemma-4-26b-a4b.md).
 Evidence: [docs/sessions/2026-08-02-research-gap-closure.md](../sessions/2026-08-02-research-gap-closure.md).

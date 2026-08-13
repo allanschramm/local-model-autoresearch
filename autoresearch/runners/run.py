@@ -63,6 +63,8 @@ BASELINE_CLI_FLAGS = {
     "--reasoning-budget",
     "--reasoning-budget-message",
     "--reasoning",
+    "--reasoning-preserve",
+    "--no-reasoning-preserve",
     "--cont-batching",
     "--temp",
     "--top-p",
@@ -296,6 +298,12 @@ def parse_args():
         help="Reasoning mode (on/off/auto)",
     )
     parser.add_argument(
+        "--reasoning-preserve",
+        action=argparse.BooleanOptionalAction,
+        default=getattr(config, "REASONING_PRESERVE", None),
+        help="Preserve reasoning traces in full chat history (config.py-only)",
+    )
+    parser.add_argument(
         "--cont-batching",
         action="store_true",
         default=config.CONT_BATCHING,
@@ -405,8 +413,13 @@ def recompute_statuses(results_file: Path) -> None:
     temp_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
-            "w", newline="", encoding="utf-8", dir=results_file.parent,
-            prefix=f".{results_file.name}.", suffix=".tmp", delete=False,
+            "w",
+            newline="",
+            encoding="utf-8",
+            dir=results_file.parent,
+            prefix=f".{results_file.name}.",
+            suffix=".tmp",
+            delete=False,
         ) as f:
             temp_path = Path(f.name)
             writer = csv.DictWriter(

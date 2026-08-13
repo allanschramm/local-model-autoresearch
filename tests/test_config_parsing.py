@@ -170,6 +170,8 @@ class TestNGpuLayersAndNuma(unittest.TestCase):
         self.assertEqual(self.example.ENGINE_DEFAULTS["N_GPU_LAYERS"], -1)
         self.assertIn("NUMA", self.example.ENGINE_DEFAULTS)
         self.assertIsNone(self.example.ENGINE_DEFAULTS["NUMA"])
+        self.assertIn("REASONING_PRESERVE", self.example.ENGINE_DEFAULTS)
+        self.assertIsNone(self.example.ENGINE_DEFAULTS["REASONING_PRESERVE"])
 
     def test_accepts_valid_n_gpu_layers(self):
         for value in (-1, 0, 1, 40, 999):
@@ -204,6 +206,20 @@ class TestNGpuLayersAndNuma(unittest.TestCase):
         for value in ("DISTRIBUTE", "distributed", "isolated", "", "numa", 0, False):
             cfg = self.example.load_config()
             cfg["NUMA"] = value
+            with self.assertRaises(self.example.ConfigError):
+                self.example.validate_config(cfg)
+
+    def test_accepts_reasoning_preserve_tri_state(self):
+        for value in (None, True, False):
+            cfg = self.example.load_config()
+            cfg["REASONING_PRESERVE"] = value
+            out = self.example.validate_config(cfg)
+            self.assertEqual(out["REASONING_PRESERVE"], value)
+
+    def test_rejects_bad_reasoning_preserve(self):
+        for value in ("true", "false", 1, 0, "on"):
+            cfg = self.example.load_config()
+            cfg["REASONING_PRESERVE"] = value
             with self.assertRaises(self.example.ConfigError):
                 self.example.validate_config(cfg)
 

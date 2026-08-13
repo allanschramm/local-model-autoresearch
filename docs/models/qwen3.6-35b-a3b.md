@@ -259,7 +259,7 @@ Seed `SAMPLER_DEFAULTS` from the model card before the first Trial. Use the prof
 | Instruct / non-thinking | 0.7 | 0.80 | 20 | 0 | 1.5 | 1.0 |
 | Instruct / reasoning (MTP card) | 1.0 | 1.0 | 40 | 0 | 2.0 | 1.0 |
 
-The Qwen/Unsloth cards use `chat_template_kwargs` with `{"enable_thinking": false}` to disable thinking; `{"preserve_thinking": true}` retains the prior thinking trace in continued conversations (**preserve thinking is on by default**). PowerShell escaping: `--chat-template-kwargs "{\"enable_thinking\":false}"`. Confirm the exact request field in the local serving path before a Trial.
+The Qwen/Unsloth cards use `chat_template_kwargs` with `{"enable_thinking": false}` to disable thinking; `{"preserve_thinking": true}` retains the prior thinking trace in continued conversations (**preserve thinking is on by default**). Harness equivalent: Baseline `REASONING_PRESERVE=True` emits `--reasoning-preserve` (leave `None` unless `GET /props` `chat_template_caps.supports_preserve_reasoning` is true). PowerShell escaping for raw kwargs: `--chat-template-kwargs "{\"enable_thinking\":false}"`. Confirm the cap on the loaded GGUF before a Claw-full seed.
 
 ## MTP and draft packaging
 

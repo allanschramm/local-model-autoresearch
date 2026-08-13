@@ -76,7 +76,9 @@ Each distinct GGUF basename is its own Trial (quants are not interchangeable).
 1. **Seed Baseline** in `config.py`:
    - `MODEL` = GGUF basename (portable; no absolute user paths)
    - Engine knobs for the rig (`CTX_SIZE`, `VRAM_LIMIT_MB`, `TPS_FLOOR`,
-     `N_CPU_MOE` for MoE, KV/batch/threads, MTP/spec if the card says so)
+     `N_CPU_MOE` for MoE, KV/batch/threads, MTP/spec if the card says so).
+     `REASONING_PRESERVE` only if the card + `/props` `supports_preserve_reasoning`
+     say so for agentic (`None` otherwise; not a Search neighbor).
    - Full sampler from the model card for the chosen profile
 2. **Run the full Trial** (no timeout):
 

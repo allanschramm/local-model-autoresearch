@@ -111,6 +111,7 @@ class TestWriteBaseline(unittest.TestCase):
             "    'REASONING_BUDGET': None,\n"
             "    'REASONING_BUDGET_MESSAGE': None,\n"
             "    'REASONING': None,\n"
+            "    'REASONING_PRESERVE': None,\n"
             "    'CONT_BATCHING': True,\n"
             "    'N_CPU_MOE': None,\n"
             "}\n"

@@ -161,6 +161,7 @@ class ServerIntent:
     reasoning_budget: int | None = None
     reasoning_budget_message: str | None = None
     reasoning: str | None = None
+    reasoning_preserve: bool | None = None
     cont_batching: bool = False
     host: str = "127.0.0.1"
     spec_type: str | None = None
@@ -230,6 +231,7 @@ class ServerIntent:
             reasoning_budget=norm.get("reasoning_budget"),
             reasoning_budget_message=norm.get("reasoning_budget_message"),
             reasoning=norm.get("reasoning"),
+            reasoning_preserve=norm.get("reasoning_preserve"),
             cont_batching=norm.get("cont_batching", False),
             spec_type=norm.get("spec_type"),
             spec_draft_model=draft_path,
@@ -911,6 +913,10 @@ class LlamaServerRunner:
             cmd += ["--reasoning-budget-message", self.intent.reasoning_budget_message]
         if self.intent.reasoning is not None:
             cmd += ["--reasoning", str(self.intent.reasoning)]
+        if self.intent.reasoning_preserve is True:
+            cmd += ["--reasoning-preserve"]
+        elif self.intent.reasoning_preserve is False:
+            cmd += ["--no-reasoning-preserve"]
         if self.intent.cont_batching:
             cmd += ["--cont-batching"]
 
