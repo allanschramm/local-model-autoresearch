@@ -35,7 +35,7 @@ Identity of a configuration for merge and frontier membership: the full `ENGINE_
 _Avoid_: model-only key, engine-only key
 
 **Usage Profile**:
-A selection lens over the Pareto Set, not a separate frontier. **Day** (supervised): among points clearing `TPS ≥ DAY_TPS_FLOOR` (default `50.0 TPS`), maximize `min(agentic, coding)`; ties → higher TPS, then ctx ([ADR 0009](docs/adr/0009-day-profile-tps-floor.md)). Fallback if none clear floor → max TPS. **Night** requires `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`, with fallback to max ctx if none qualify (unsupervised long loops). Student-facing **usage** framing (no selection math) lives in [`teach/GLOSSARY.md`](teach/GLOSSARY.md) and [`teach/SPEC.md`](teach/SPEC.md).
+A selection lens over the Pareto Set, not a separate frontier. **Day** (supervised): among points clearing `TPS ≥ DAY_TPS_FLOOR` (default `50.0 TPS`), maximize `min(agentic, coding)`; ties → higher TPS, then ctx ([ADR 0009](docs/adr/0009-day-profile-tps-floor.md)). Fallback if none clear floor → max TPS. **Night** requires `CTX_SIZE ≥ NIGHT_CTX_FLOOR` then max `min(agentic, coding)`, with fallback to max ctx if none qualify (unsupervised long loops). When a Trial has measured `agentic_coding` (SWE-lite issue loop, [ADR 0013](docs/adr/0013-agentic-coding-night-selector.md)), Night instead maximizes `min(agentic, coding, agentic_coding)` among those points; if none have the column yet, the old maximin applies. Student-facing **usage** framing (no selection math) lives in [`teach/GLOSSARY.md`](teach/GLOSSARY.md) and [`teach/SPEC.md`](teach/SPEC.md).
 _Avoid_: separate day/night frontiers, Day = pure max TPS without speed floor, TPS Floor as frontier rule
 
 **DAY_TPS_FLOOR**:
@@ -113,6 +113,10 @@ _Avoid_: agency, ClawBench, tool-use benchmark
 **Coding**:
 Benchmark using LiveCodeBench v6, HumanEval+, MBPP+, and BigCodeBench Hard (exactly 10 tasks per dataset when enabled). Supplies the **coding** Objective Vector axis.
 _Avoid_: EvalPlus, HumanEval
+
+**Agentic coding**:
+SWE-lite workspace loop over frozen GitHub-issue fixtures (`--agentic-coding`). Night selector ([ADR 0013](docs/adr/0013-agentic-coding-night-selector.md)); not a Pareto axis in v1. Pass = hidden tests green and no repeat/stall/hallucination flag.
+_Avoid_: live `gh` issues as Trial tasks, SWE-bench vendor dump
 
 ### Runtime
 

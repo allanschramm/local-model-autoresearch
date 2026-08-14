@@ -8,6 +8,7 @@ Usage (repo root):
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py --mode claw
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py --mode coding
+    .\\venv\\Scripts\\python.exe scripts\\rank_results.py --mode agentic-coding
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py --day-tps-floor 50
 """
 
@@ -56,10 +57,17 @@ class Point:
     agentic: float
     coding: float
     fp: str | None = None
+    agentic_coding: float | None = None
 
     @property
     def iq_min(self) -> float:
         return min(self.agentic, self.coding)
+
+    @property
+    def night_iq(self) -> float:
+        if self.agentic_coding is None:
+            return self.iq_min
+        return min(self.agentic, self.coding, self.agentic_coding)
 
     @property
     def complete(self) -> bool:
@@ -148,13 +156,16 @@ def _axis_values(row: dict[str, str]) -> tuple[float | None, float | None]:
     """
     agentic = _valid_score(row.get("agentic"))
     coding = _valid_score(row.get("coding"))
+    agentic_coding = _valid_score(row.get("agentic_coding"))
     score = _valid_score(row.get("val_score"))
     category = (row.get("category") or "").strip()
     if agentic is None and category == "agentic-full":
         agentic = score
     if coding is None and category == "10-task":
         coding = score
-    return agentic, coding
+    if agentic_coding is None and category == "agentic-coding":
+        agentic_coding = score
+    return agentic, coding, agentic_coding
 
 
 def build_vectors(
@@ -170,6 +181,7 @@ def build_vectors(
     """
     ag_best: dict[str, dict[str, Any]] = {}
     cod_best: dict[str, dict[str, Any]] = {}
+    ac_best: dict[str, float] = {}
     tps_best: dict[str, float] = {}
     ctx_best: dict[str, int] = {}
 
@@ -191,8 +203,8 @@ def build_vectors(
 
         if not _is_measurement_row(row):
             continue
-        agentic, coding = _axis_values(row)
-        if agentic is None and coding is None:
+        agentic, coding, agentic_coding = _axis_values(row)
+        if agentic is None and coding is None and agentic_coding is None:
             continue
         if agentic is not None:
             prev = ag_best.get(model)
@@ -202,14 +214,19 @@ def build_vectors(
             prev = cod_best.get(model)
             if prev is None or coding > prev["coding"]:
                 cod_best[model] = {"coding": coding, "fp": fp}
+        if agentic_coding is not None:
+            prev_ac = ac_best.get(model)
+            if prev_ac is None or agentic_coding > prev_ac:
+                ac_best[model] = agentic_coding
 
     complete: list[Point] = []
     incomplete: list[Point] = []
-    for model in sorted(set(ag_best) | set(cod_best)):
+    for model in sorted(set(ag_best) | set(cod_best) | set(ac_best)):
         ag = ag_best.get(model)
         cod = cod_best.get(model)
         agentic = float(ag["agentic"]) if ag else -1.0
         coding = float(cod["coding"]) if cod else -1.0
+        ac = ac_best.get(model)
         tps = float(tps_best.get(model, 0.0))
         ctx = int(ctx_best.get(model, 0))
         fp = None
@@ -217,21 +234,19 @@ def build_vectors(
             fp = ag["fp"]
         elif cod and cod.get("fp"):
             fp = cod["fp"]
+        point = Point(
+            model=model,
+            ctx=ctx,
+            tps=tps,
+            agentic=max(agentic, 0.0) if not ag else agentic,
+            coding=max(coding, 0.0) if not cod else coding,
+            fp=fp,
+            agentic_coding=ac,
+        )
         if ag and cod:
-            complete.append(
-                Point(model=model, ctx=ctx, tps=tps, agentic=agentic, coding=coding, fp=fp)
-            )
+            complete.append(point)
         else:
-            incomplete.append(
-                Point(
-                    model=model,
-                    ctx=ctx,
-                    tps=tps,
-                    agentic=max(agentic, 0.0),
-                    coding=max(coding, 0.0),
-                    fp=fp,
-                )
-            )
+            incomplete.append(point)
     return complete, incomplete
 
 
@@ -274,10 +289,13 @@ def night_table(
     front: Sequence[Point],
     night_ctx_floor: int = DEFAULT_NIGHT_CTX_FLOOR,
 ) -> list[Point]:
-    """Front points clearing Night ctx floor, sorted by maximin IQ."""
+    """Front points clearing Night ctx floor, sorted by maximin IQ (ADR 0013)."""
     if not front:
         return []
     eligible = [p for p in front if p.ctx >= night_ctx_floor]
+    measured = [p for p in eligible if p.agentic_coding is not None]
+    if measured:
+        return sorted(measured, key=lambda p: (-p.night_iq, -p.ctx, -p.tps, p.model))
     if eligible:
         return sorted(eligible, key=lambda p: (-p.iq_min, -p.ctx, -p.tps, p.model))
     return sorted(front, key=lambda p: (-p.ctx, -p.iq_min, -p.tps, p.model))
@@ -286,15 +304,17 @@ def night_table(
 def _rank_axis(
     rows: Sequence[dict[str, str]],
     category: str,
+    *,
+    score_column: str | None = None,
 ) -> list[tuple[str, float, float | None, int | None]]:
     best: dict[str, tuple[float, float | None, int | None]] = {}
     for row in rows:
-        if (row.get("category") or "").strip() != category:
-            continue
         if not _is_measurement_row(row):
             continue
         model = (row.get("model") or "").strip()
-        score = _valid_score(row.get("val_score"))
+        score = _valid_score(row.get(score_column)) if score_column else None
+        if score is None and (row.get("category") or "").strip() == category:
+            score = _valid_score(row.get("val_score"))
         if not model or score is None:
             continue
         prev = best.get(model)
@@ -427,6 +447,14 @@ def format_report(
         lines.append("CODING-10")
         lines.extend(_md_axis_table(_rank_axis(rows, "10-task")))
 
+    if mode in ("agentic-coding", "all") and rows is not None:
+        if lines:
+            lines.append("")
+        lines.append("AGENTIC-CODING")
+        lines.extend(
+            _md_axis_table(_rank_axis(rows, "agentic-coding", score_column="agentic_coding"))
+        )
+
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -442,7 +470,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--mode",
-        choices=("pareto", "day", "night", "claw", "coding", "all"),
+        choices=("pareto", "day", "night", "claw", "coding", "agentic-coding", "all"),
         default="pareto",
         help="Report view (default: pareto = Day + Night markdown tables)",
     )

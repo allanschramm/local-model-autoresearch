@@ -32,6 +32,40 @@ def test_day_pick_tps_floor_then_max_iq():
     assert pick.model == "fast_smart"
 
 
+def test_night_uses_agentic_coding_when_measured():
+    front = [
+        rr.Point(
+            "POCKET.gguf",
+            ctx=65536,
+            tps=38.0,
+            agentic=0.6667,
+            coding=0.6150,
+            agentic_coding=0.0,
+        ),
+        rr.Point(
+            "KAT.gguf",
+            ctx=65536,
+            tps=31.0,
+            agentic=0.8000,
+            coding=0.6400,
+            agentic_coding=0.8,
+        ),
+    ]
+    pick = rr.pick_night(front, night_ctx_floor=65536)
+    assert pick is not None
+    assert pick.model == "KAT.gguf"
+
+
+def test_night_falls_back_without_agentic_coding():
+    front = [
+        rr.Point("POCKET.gguf", ctx=65536, tps=38.0, agentic=0.6667, coding=0.6150),
+        rr.Point("KAT.gguf", ctx=65536, tps=31.0, agentic=0.6000, coding=0.6400),
+    ]
+    pick = rr.pick_night(front, night_ctx_floor=65536)
+    assert pick is not None
+    assert pick.model == "POCKET.gguf"
+
+
 def test_night_pick_ctx_floor_then_maximin():
     front = [
         rr.Point("big_iq", ctx=65536, tps=35.0, agentic=0.67, coding=0.62),

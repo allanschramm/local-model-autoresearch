@@ -146,6 +146,7 @@ class TestAutoLoop(unittest.TestCase):
         self.assertFalse(out["include_coding"])
         self.assertTrue(out["agentic_quick"])
         self.assertTrue(out["agentic_full"])
+        self.assertFalse(out.get("agentic_coding"))
         self.assertEqual(out["port"], 18080)
 
     def test_temp_baseline_in_search_space(self):

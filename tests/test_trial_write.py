@@ -76,6 +76,7 @@ def test_partial_axes_render_blank(tmp_path):
     assert row["tps"] == "20.0"
     assert row["agentic"] == ""
     assert row["coding"] == ""
+    assert row["agentic_coding"] == ""
 
 
 def test_on_front_persists_literally(tmp_path):

@@ -89,6 +89,8 @@ Each distinct GGUF basename is its own Trial (quants are not interchangeable).
    Defaults already mean Claw full = 15 tasks and coding-10
    (`AGENTIC_FULL_TASK_LIMIT=15`, `CODING_TASK_LIMIT` / LCB / BigCode = 10 in
    `autoresearch/benchmarks/bench_config.py`). Do not shrink task counts.
+   Optional Night selector (ADR 0013; **off** by default): add `--agentic-coding`.
+   Required before claiming a Night pick that uses `agentic_coding`.
 3. **Read the latest `results.tsv` row** for that basename / Fingerprint.
    Status comes from the store (`on_front` | `dominated` | `incomplete` |
    `rejected`). Low scores are not rejections.

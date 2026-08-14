@@ -8,7 +8,8 @@ from typing import Any
 # Benchmarks to run
 INCLUDE_CODING = True  # coding-10 → complete Objective Vector (Pareto acceptance; issue #8)
 INCLUDE_AGENTIC_QUICK = True  # smoke validation before the canonical Trial
-INCLUDE_AGENTIC_FULL = True  # canonical agentic-coding Val Score
+INCLUDE_AGENTIC_FULL = True  # Claw-Eval full → agentic Objective Vector axis
+INCLUDE_AGENTIC_CODING = False  # SWE-lite issue loop; Night selector (ADR 0013); opt-in
 CODING_TASK_LIMIT = 10  # tasks per dataset for HE+ / MBPP+
 LCB_TASK_LIMIT = 10  # LiveCodeBench v6 sample (contamination-free competitive prog)
 BIGCODE_TASK_LIMIT = 10  # BigCodeBench Hard sample (library-call tasks)
@@ -48,6 +49,7 @@ def write_config(cfg: dict[str, Any], path: str | Path | None = None) -> None:
         "INCLUDE_CODING",
         "INCLUDE_AGENTIC_QUICK",
         "INCLUDE_AGENTIC_FULL",
+        "INCLUDE_AGENTIC_CODING",
         "CODING_TASK_LIMIT",
         "LCB_TASK_LIMIT",
         "BIGCODE_TASK_LIMIT",

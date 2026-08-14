@@ -1,7 +1,7 @@
 # `autoresearch/` — Core Autotuning Package
 
 ## Purpose
-Core codebase containing search strategy optimization logic, llama.cpp server wrappers, API client integrations, and evaluation benchmark harnesses (Nexus, Claw, Coding).
+Core codebase containing search strategy optimization logic, llama.cpp server wrappers, API client integrations, and evaluation benchmark harnesses (Nexus, Claw, Coding, SWE-lite agentic coding).
 
 ## Ownership
 Repository developers.
@@ -33,4 +33,4 @@ Repository developers.
 - Run `pytest tests/test_search_strategy.py` and `pytest tests/test_state.py` for core optimization loop and state verification.
 
 ## Child DOX Index
-None
+- [benchmarks/agentic_coding/AGENTS.md](benchmarks/agentic_coding/AGENTS.md) — SWE-lite frozen issues + loop detector (ADR 0013)

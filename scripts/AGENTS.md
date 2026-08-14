@@ -19,7 +19,7 @@ Repository operators and developers.
 - Use `verify_setup.py` to validate local API server health and benchmark real-time TPS. Its default port matches `serve-config.py` (18080).
 - Use `lcb_only.py` to re-measure LiveCodeBench (10 tasks) against current Baseline — gambiarra when coding HE/MBPP/BC already logged but LCB cache failed.
 - Use `recompute_status.py` to refresh Trial statuses in a `results.tsv` after the fact (Pareto Set recompute, issue #5). Write paths (`run.py`, `autoloop.py`) already recompute after every Trial; the script covers retroactive refreshes. Idempotent, no GPU.
-- Use `rank_results.py` to print Pareto / Day / Night / claw / coding rankings from `results.tsv` (Point = GGUF basename, ADR 0012). Agents must use this CLI for model rankings — no ad-hoc temp filter scripts.
+- `rank_results.py` to print Pareto / Day / Night / claw / coding / agentic-coding rankings from `results.tsv` (Point = GGUF basename, ADR 0012 / Night `agentic_coding` ADR 0013). Agents must use this CLI for model rankings — no ad-hoc temp filter scripts.
 - Use `model_info.py` to query GGUF ground truth read-only: arch (MoE/dense), block count, KV sizing, `--n-cpu-moe` resolution, and (with `--tensors`) the full tensor inventory. Agents must use this for model details / GGUF forensics — never parse the raw `.gguf` or dump tensors with ad-hoc scripts.
 
 ## Verification
@@ -35,7 +35,7 @@ Repository operators and developers.
 - [run_validate.py](run_validate.py) — shared ruff+pytest validate (CI + local agents).
 - [lcb_only.py](lcb_only.py) — LCB-only remeasure helper (`scripts/lcb_only.py`).
 - [recompute_status.py](recompute_status.py) — store-wide Pareto status recompute over a results.tsv (issue #5; `autoresearch/core/recompute.py` owns the logic).
-- [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding ranking over `results.tsv` (ADR 0006/0009/0012).
+- [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding / agentic-coding ranking over `results.tsv` (ADR 0006/0009/0012/0013).
 - [model_info.py](model_info.py) — read-only GGUF metadata query (arch, block count, KV sizing, `--tensors` inventory) via `autoresearch.core.model_arch`.
 - [backfill_2026_08_08_missing_claw.py](backfill_2026_08_08_missing_claw.py) — one-shot restore of session-documented claw/coding rows that never landed in TSV (idempotent).
 - [measure_vram_peak.py](measure_vram_peak.py) — real peak-VRAM measurement for the Baseline model, gate bypass (estimator calibration, issue #10).

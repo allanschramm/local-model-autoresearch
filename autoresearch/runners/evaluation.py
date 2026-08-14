@@ -4,6 +4,8 @@ Deep module extracted from run.py. One interface (run_trial), typed TrialResult,
 hides bench validation, server lifecycle, and metric computation behind the seam.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import subprocess
@@ -15,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from autoresearch.benchmarks.agentic_benchmarks import get_full_tier_tasks, get_quick_tier_tasks
+from autoresearch.benchmarks.agentic_coding.runner import run_agentic_coding_eval
 from autoresearch.benchmarks.agentic_runner import run_agentic_eval
 from autoresearch.benchmarks.benchmark_coding import run_benchmark as run_coding
 from autoresearch.core import config as core_config
@@ -135,6 +138,8 @@ class TrialResult:
     agentic_val: float = 0.0  # Claw-Eval quick/full tier score
     agentic_tier: str = ""  # "quick" or "full"
     agentic_task_count: int = 0  # number of tasks evaluated
+    agentic_coding_val: float | None = None  # SWE-lite passed/N (ADR 0013); None = not measured
+    agentic_coding_detail: str = ""
     avg_tps: float = 0.0
     peak_vram_gb: float = 0.0
     bench_tg_tps: float = 0.0
@@ -475,6 +480,9 @@ class ExperimentRunner:
         agentic_full = bool(
             norm.get("agentic_full", False) or norm.get("include_agentic_full", False)
         )
+        agentic_coding = bool(
+            norm.get("agentic_coding", False) or norm.get("include_agentic_coding", False)
+        )
         if is_validation:
             # Validation defaults to Claw quick smoke; respect an explicit
             # --no-agentic-quick so load/TPS-only smoke works without the
@@ -482,6 +490,7 @@ class ExperimentRunner:
             if not (agentic_quick or agentic_full):
                 agentic_quick = True
             agentic_full = False
+            agentic_coding = False
             include_coding = (
                 False  # validation = smoke gates only; coding-10 is canonical-Trial work
             )
@@ -653,13 +662,19 @@ class ExperimentRunner:
             # for tool turns + thinking models (reasoning_content) or graders see "".
             max_tokens=(
                 max(int(norm.get("max_tokens", 1024)), 2048)
-                if (agentic_quick or agentic_full)
+                if (agentic_quick or agentic_full or agentic_coding)
                 else int(norm.get("max_tokens", 1024))
             ),
         )
 
         trial_start = time.time()
-        if include_perplexity and not include_coding and not agentic_quick and not agentic_full:
+        if (
+            include_perplexity
+            and not include_coding
+            and not agentic_quick
+            and not agentic_full
+            and not agentic_coding
+        ):
             res.avg_tps = res.bench_tg_tps
             res.tps_source = "backend-bench"
             if res.avg_tps < bench_tts_threshold:
@@ -739,6 +754,15 @@ class ExperimentRunner:
                             res.agentic_val = agentic_res["score"]
                             res.agentic_task_count = agentic_res["total"]
                             res.agentic_tier = tier
+                if agentic_coding:
+                    print("  [agentic-coding] SWE-lite issue loop (ADR 0013)")
+                    ac = run_agentic_coding_eval(client, gen_params=gen_params)
+                    res.agentic_coding_val = float(ac["score"])
+                    res.agentic_coding_detail = str(ac.get("detail") or "")
+                    print(
+                        f"  [agentic-coding] {ac['passed']}/{ac['total']} "
+                        f"score={ac['score']:.4f} {res.agentic_coding_detail}"
+                    )
                 # Compute combined metrics
                 tps_list = []
                 if include_coding and res.coding_tps > 0:

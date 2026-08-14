@@ -14,6 +14,7 @@ from autoresearch.benchmarks.agentic_benchmarks import (
     get_full_tier_tasks,
     get_quick_tier_tasks,
 )
+from autoresearch.benchmarks.agentic_coding.runner import run_agentic_coding_eval
 from autoresearch.benchmarks.agentic_runner import run_agent_loop, run_agentic_eval, score_task
 from autoresearch.benchmarks.benchmark_coding import run_benchmark, run_coding_eval
 from autoresearch.benchmarks.benchmark_harness import BenchmarkResult
@@ -26,6 +27,7 @@ __all__ = [
     # Agentic benchmarks
     "run_agentic_eval",
     "run_agent_loop",
+    "run_agentic_coding_eval",
     "score_task",
     "discover_claw_tasks",
     "get_quick_tier_tasks",

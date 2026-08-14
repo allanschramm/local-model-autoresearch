@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import csv
 import json
@@ -86,6 +88,8 @@ def determine_category(args) -> str:
         return CATEGORY_VALIDATION
     if getattr(args, "agentic_full", False):
         return "agentic-full"
+    if getattr(args, "agentic_coding", False):
+        return "agentic-coding"
     if getattr(args, "agentic_quick", False):
         return "agentic-quick"
     coding = getattr(args, "coding_task_limit", 10)
@@ -227,6 +231,12 @@ def parse_args():
         action=argparse.BooleanOptionalAction,
         default=getattr(bench_config, "INCLUDE_AGENTIC_FULL", False),
         help="Run Claw-Eval full tier quality gate (15 tasks; use --no-agentic-full to disable)",
+    )
+    parser.add_argument(
+        "--agentic-coding",
+        action=argparse.BooleanOptionalAction,
+        default=getattr(bench_config, "INCLUDE_AGENTIC_CODING", False),
+        help="Run SWE-lite issue loop (ADR 0013 Night selector; use --agentic-coding to enable)",
     )
     parser.add_argument(
         "--list-agentic-benchmarks",
@@ -480,6 +490,7 @@ CATEGORY_FIELDNAMES = [
     "bigcode_score",
     "agentic",
     "coding",
+    "agentic_coding",
     "memory_gb",
     "elapsed_sec",
     "tps",
@@ -568,6 +579,7 @@ def write_row(
     bigcode_score: float = 0.0,
     agentic: float | None = None,
     coding: float | None = None,
+    agentic_coding: float | None = None,
     category: str = "",
     elapsed_sec: float = 0.0,
     model: str = "",
@@ -616,7 +628,13 @@ def write_row(
             "category": category,
             "evaluation_profile": evaluation_profile or category,
             "scoring_benchmark": scoring_benchmark
-            or ("claw-eval" if category.startswith("agentic") else "coding"),
+            or (
+                "agentic-coding"
+                if category == "agentic-coding"
+                else "claw-eval"
+                if category.startswith("agentic")
+                else "coding"
+            ),
             "outcome": outcome
             or ("OK" if not status.lower().startswith("fail") else "MODEL_REJECTED"),
             "diagnostic": diagnostic,
@@ -629,6 +647,7 @@ def write_row(
             "bigcode_score": f"{bigcode_score:.6f}",
             "agentic": _tsv_cell(agentic, ".4f"),
             "coding": _tsv_cell(coding, ".6f"),
+            "agentic_coding": _tsv_cell(agentic_coding, ".4f"),
             "memory_gb": f"{memory_gb:.1f}",
             "elapsed_sec": f"{elapsed_sec:.0f}",
             "tps": _tsv_cell(tps, ".1f"),
@@ -694,6 +713,8 @@ def run_evaluation(cfg: dict | Any, skip_bench: bool = False, **overrides) -> di
         "agentic_val": tr.agentic_val,
         "agentic_tier": tr.agentic_tier,
         "agentic_task_count": tr.agentic_task_count,
+        "agentic_coding_val": tr.agentic_coding_val,
+        "agentic_coding_detail": tr.agentic_coding_detail,
         "avg_tps": tr.avg_tps,
         "peak_vram_gb": tr.peak_vram_gb,
         "bench_tg_tps": tr.bench_tg_tps,
@@ -718,12 +739,14 @@ def handle_single_run(args):
 
     agentic_quick = getattr(args, "agentic_quick", False) is True
     agentic_full = getattr(args, "agentic_full", False) is True
+    agentic_coding = getattr(args, "agentic_coding", False) is True
 
     # Run evaluation
     res = run_evaluation(
         args,
         agentic_quick=agentic_quick,
         agentic_full=agentic_full,
+        agentic_coding=agentic_coding,
     )
 
     failed = res["status"] != "OK" or res.get("outcome", "OK") != "OK"
@@ -786,6 +809,11 @@ def handle_single_run(args):
     details += f" lcb={res.get('lcb_val', 0.0):.4f} he={res.get('he_val', 0.0):.4f} mbpp={res.get('mbpp_val', 0.0):.4f} bigcode={res.get('bigcode_val', 0.0):.4f}"
     if res.get("agentic_tier"):
         details += f" agentic_{res['agentic_tier']}={res.get('agentic_val', 0.0):.4f} (n={res.get('agentic_task_count', 0)})"
+    if res.get("agentic_coding_val") is not None:
+        details += (
+            f" agentic_coding={res['agentic_coding_val']:.4f}"
+            f" ({res.get('agentic_coding_detail') or ''})"
+        )
     details += f" bench_tg={res.get('bench_tg_tps', 0.0):.1f}"
     details += f" | {args.desc}"
 
@@ -804,6 +832,7 @@ def handle_single_run(args):
         bigcode_score=res.get("bigcode_val", 0.0),
         agentic=vector.agentic,
         coding=vector.coding,
+        agentic_coding=res.get("agentic_coding_val"),
         category=determine_category(args),
         elapsed_sec=res.get("elapsed_sec", 0.0),
         tps=res.get("avg_tps"),

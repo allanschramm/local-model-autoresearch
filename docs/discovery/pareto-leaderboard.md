@@ -18,7 +18,7 @@ Recompute live (do not invent temp scripts):
 
 | Lens | Rule | Pick (this front) |
 | :--- | :--- | :--- |
-| **Night** | `CTX ≥ 65536` then max `min(agentic, coding)` | **POCKET-35B-Q3_K_M** (min **0.615**); KAT close second (min **0.600**) |
+| **Night** | `CTX ≥ 65536` then max `min(agentic, coding)`; if `agentic_coding` is measured, max `min(agentic, coding, agentic_coding)` ([ADR 0013](../adr/0013-agentic-coding-night-selector.md)) | Recompute live; snapshot below predates the SWE-lite column |
 | **Day** | `TPS ≥ DAY_TPS_FLOOR` (default 50) then max `min(agentic, coding)` | Recompute live with `rank_results.py` (snapshot below used older ADR 0008 IQ band) |
 
 ## `on_front` (complete / merged)

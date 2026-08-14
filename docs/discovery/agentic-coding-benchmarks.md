@@ -1,20 +1,24 @@
 # Agentic Coding Benchmarks
 
-This repo evaluates local models across two tiers:
+This repo evaluates local models across three intelligence surfaces:
 
 * **Preflight (direct code gen):** HumanEval+, MBPP+, LiveCodeBench, BigCodeBench.
   Optional single-turn checks. Exactly 10 tasks per dataset when enabled.
-* **Agentic (multi-turn, tool use):** Claw-Eval quick/full tiers via `run_agentic_eval`
+* **Agentic (multi-turn, office tools):** Claw-Eval quick/full tiers via `run_agentic_eval`
   in `autoresearch/benchmarks/agentic_runner.py` (orchestrated by `ExperimentRunner`).
   Claw full = the agentic Objective Vector axis
   ([ADR 0006](../adr/0006-pareto-frontier-search.md)); Val Score is legacy display, not Search truth.
+* **Agentic coding (SWE-lite issue loop):** frozen GitHub-issue fixtures with workspace tools
+  via `run_agentic_coding_eval` ([ADR 0013](../adr/0013-agentic-coding-night-selector.md)).
+  Night selector when measured; not a Pareto axis in v1. Default **off**.
 
 ## Tier Structure
 
-| Tier | Tasks | Est. Time | Scoring | CLI Flag |
-|------|-------|-----------|---------|----------|
-| quick | 5 | ~5–10 min | Rule-based (tool_called, keywords, categories) | `--agentic-quick` / `--no-agentic-quick` |
-| full | 15 | ~15–40 min (8 GB MoE/dense) | Rule-based (same) | `--agentic-full` / `--no-agentic-full` |
+| Tier | Tasks | Scoring | CLI Flag |
+|------|-------|---------|----------|
+| quick | 5 | Rule-based (tool_called, keywords, categories) | `--agentic-quick` / `--no-agentic-quick` |
+| full | 15 | Rule-based (same) | `--agentic-full` / `--no-agentic-full` |
+| agentic-coding | 5 frozen issues | Hidden pytest; loop/hallucination = fail | `--agentic-coding` / `--no-agentic-coding` |
 
 **Task selection policy:**
 - English-only tasks (no zh variants)
@@ -22,6 +26,7 @@ This repo evaluates local models across two tiers:
 - Quick tier: `difficulty=easy`, ≤2 mock services — observational smoke (no score-floor reject), not fair cross-model score
 - Full tier: `difficulty=easy` first, then fills with `medium` — the agentic axis of the Objective Vector
 - Discovered at runtime from `claw-eval/tasks/` (local vendor tree)
+- Agentic coding: frozen fixtures under `autoresearch/benchmarks/agentic_coding/tasks/` (issue markdown + mini-workspace + hidden tests). No live GitHub. Pass = tests green and no detector flag.
 
 ## Current Code Hook
 
@@ -41,8 +46,13 @@ python benchmark_search.py --agentic-quick --desc "agentic smoke test"
 ```
 
 Run full agentic quality gate:
-```bash
-python benchmark_search.py --agentic-full --desc "agentic quality gate"
+```powershell
+.\venv\Scripts\python.exe benchmark_search.py --agentic-full --desc "agentic quality gate"
+```
+
+Run SWE-lite issue loop (Night selector, ADR 0013; default off):
+```powershell
+.\venv\Scripts\python.exe benchmark_search.py --agentic-coding --no-agentic-full --no-coding --desc "agentic-coding SWE-lite"
 ```
 
 `ExperimentRunner` starts mock services (via `run_agentic_eval`), runs the agent loop against the

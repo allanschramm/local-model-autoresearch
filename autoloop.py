@@ -95,6 +95,7 @@ BENCH_PASSTHROUGH = [
     "CODING_TASK_LIMIT",
     "INCLUDE_AGENTIC_QUICK",
     "INCLUDE_AGENTIC_FULL",
+    "INCLUDE_AGENTIC_CODING",
 ]
 PASSTHROUGH_PARAMS = CORE_PASSTHROUGH + BENCH_PASSTHROUGH
 
@@ -418,6 +419,7 @@ def _write_trial(
         bigcode_score=res.bigcode_val,
         agentic=vector.agentic,
         coding=vector.coding,
+        agentic_coding=getattr(res, "agentic_coding_val", None),
         category=tsv_category,
         tps=res.avg_tps,
         bench_tg=getattr(res, "bench_tg_tps", None),
@@ -447,11 +449,14 @@ def trial_config(
             "INCLUDE_CODING",
             "INCLUDE_AGENTIC_QUICK",
             "INCLUDE_AGENTIC_FULL",
+            "INCLUDE_AGENTIC_CODING",
             "include_coding",
             "agentic_quick",
             "agentic_full",
+            "agentic_coding",
             "include_agentic_quick",
             "include_agentic_full",
+            "include_agentic_coding",
         ]:
             res_cfg[k] = False
         res_cfg["include_perplexity"] = True
@@ -459,6 +464,7 @@ def trial_config(
         res_cfg["include_coding"] = bool(cfg.get("INCLUDE_CODING", False))
         res_cfg["agentic_quick"] = bool(cfg.get("INCLUDE_AGENTIC_QUICK", False))
         res_cfg["agentic_full"] = bool(cfg.get("INCLUDE_AGENTIC_FULL", False))
+        res_cfg["agentic_coding"] = bool(cfg.get("INCLUDE_AGENTIC_CODING", False))
         res_cfg["include_perplexity"] = False
     return res_cfg
 
