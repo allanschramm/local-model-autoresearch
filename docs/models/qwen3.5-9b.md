@@ -16,9 +16,10 @@
   - SSM: `conv_kernel=4`, `state_size=128`, `group_count=16`, `time_step_rank=32`, `inner_size=4096`
   - 8 full attention layers, 24 SSM layers
 
-## Hardware Requirements (discrete 8 GB-class NVIDIA)
-- Fits entirely in GPU VRAM (NGL = 99).
-- Model size ~6.14 GB, leaving adequate headroom for context cache.
+## Hardware Requirements (discrete 8 GB-class GPU)
+- Fits entirely in GPU VRAM (NGL = 99/999).
+- Model size ~5.46 GB (Q4_K_M) / ~6.14 GB (UD Q4_K_XL), leaving adequate headroom for context cache.
+- NVIDIA: CUDA backend. AMD: ROCm/HIP backend ([setup guide](../discovery/amd-rocm-windows-setup.md)).
 
 ## MTP (Multi-Token Prediction)
 - **MTP tensors are embedded in this GGUF** (`qwen35.nextn_predict_layers`, `blk.32.nextn.*` verified 2026-07-20).
@@ -71,5 +72,19 @@ Claw-full @ 32k+MTP fits because tool calls are short; coding-10 long generation
 
 `Qwen3.5-9B-MTP-Q4_K_M` already has coding-10 **0.4950** in TSV (separate Trial).
 
+### AMD ROCm benchmark (2026-08-16) — `Qwen3.5-9B-MTP-Q4_K_M.gguf`
+
+Discrete 8 GB-class AMD (RDNA 2, gfx1032) via ROCm/HIP b10448. Setup: [AMD ROCm Windows guide](../discovery/amd-rocm-windows-setup.md).
+
+| config | pp512 (t/s) | tg128 (t/s) | notes |
+|---|---|---|---|
+| base (no MTP), ngl 999, q4_0 KV, FA on | 551 ± 2 | **33.4 ± 0.1** | ROCm backend, full VRAM offload |
+| draft-mtp n=4 | 88.3 | **40.4** | +21% over base (llama-cli 512 tokens) |
+
+- Peak VRAM: ~5.5 GB dedicated (model) + KV cache headroom.
+- RAM overhead: ~2–4 GB (HIP runtime + VMM:no staging buffers on RDNA 2).
+- Prior Vulkan fallback was ~13 t/s; CPU-only was ~5 t/s.
+
 ## Open questions
 - None for the operator host — UD coding axis closed as failure; MTP basename vector complete (weak).
+- AMD ROCm MTP boost is +21% vs +48% on NVIDIA for the same model — ROCm speculative kernels are less optimized. May improve with future HIP SDK releases.
