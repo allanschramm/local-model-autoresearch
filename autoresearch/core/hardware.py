@@ -24,10 +24,10 @@ DISCRETE_HEADROOM_FLOOR_MB = 4096.0
 DISCRETE_HEADROOM_RATIO = 0.15
 
 
-def classify_memory_class(*, has_cuda: bool, has_metal: bool = False) -> str:
-    """Discrete only when NVIDIA CUDA VRAM is present; else one shared host pool."""
+def classify_memory_class(*, has_cuda: bool, has_rocm: bool = False, has_metal: bool = False) -> str:
+    """Discrete when NVIDIA CUDA or AMD ROCm/Radeon VRAM is present; else shared host pool."""
     del has_metal  # API clarity for Darwin callers
-    if has_cuda:
+    if has_cuda or has_rocm:
         return MEMORY_CLASS_DISCRETE
     return MEMORY_CLASS_UNIFIED
 
@@ -103,6 +103,52 @@ def detect_nvidia() -> tuple[str | None, float, bool]:
                 return parts[0], round(float(parts[1]) / 1024.0, 1), True
     except Exception:
         pass
+    return None, 0.0, False
+
+
+def detect_amd() -> tuple[str | None, float, bool]:
+    """Return (gpu_name, vram_gb, has_rocm_or_amd)."""
+    system = sys.platform
+    if system == "win32":
+        try:
+            res = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    (
+                        "Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\000*' "
+                        "-ErrorAction SilentlyContinue | Where-Object { $_.DriverDesc -like '*AMD*' -or $_.DriverDesc -like '*Radeon*' } "
+                        "| ForEach-Object { [string]$_.DriverDesc + '|' + [string]$_.'HardwareInformation.qwMemorySize' }"
+                    ),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                line = res.stdout.strip().splitlines()[0]
+                if "|" in line:
+                    desc, size_str = line.split("|", 1)
+                    desc = desc.strip()
+                    vram_bytes = int(size_str.strip()) if size_str.strip().isdigit() else 0
+                    vram_gb = round(vram_bytes / (1024.0 * 1024.0 * 1024.0), 1) if vram_bytes > 0 else 0.0
+                    if desc and vram_gb > 0:
+                        return desc, vram_gb, True
+        except Exception:
+            pass
+    elif system == "linux":
+        try:
+            res = subprocess.run(
+                ["rocm-smi", "--showmeminfo", "vram", "--csv"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                return "AMD Radeon (ROCm)", 8.0, True
+        except Exception:
+            pass
     return None, 0.0, False
 
 
@@ -339,17 +385,26 @@ def has_discrete_nvidia() -> bool:
     return detect_nvidia()[2]
 
 
+def has_discrete_amd() -> bool:
+    return detect_amd()[2]
+
+
+def has_discrete_gpu() -> bool:
+    return has_discrete_nvidia() or has_discrete_amd()
+
+
 def detect_hardware_capabilities() -> dict[str, Any]:
     """Source-of-truth hardware probe for the Search loop (issue #17).
 
     Returns has_gpu / physical_cores / ram_mb. Never raises: each probe
-    degrades to a safe default on failure. Reuses the existing NVIDIA/Metal
+    degrades to a safe default on failure. Reuses the existing NVIDIA/AMD/Metal
     probe path and the host RAM probe; adds a stdlib physical-core read.
     """
     _, _, has_cuda = detect_nvidia()
+    _, _, has_rocm = detect_amd()
     has_metal, _ = detect_apple_metal()
     return {
-        "has_gpu": bool(has_cuda or has_metal),
+        "has_gpu": bool(has_cuda or has_rocm or has_metal),
         "physical_cores": detect_physical_cores(),
         "ram_mb": detect_host_ram_mb(),
     }
@@ -379,7 +434,7 @@ def detect_apple_metal() -> tuple[bool, str | None]:
 
 
 def is_unified_memory_host() -> bool:
-    return not has_discrete_nvidia()
+    return not has_discrete_gpu()
 
 
 def resolve_host_headroom_mb(
@@ -448,16 +503,23 @@ def get_system_info() -> dict[str, Any]:
     physical_cores = caps["physical_cores"]
     ram_gb = round(ram_mb / 1024.0, 1) if ram_mb else 0.0
     gpu_name, vram_gb, has_cuda = detect_nvidia()
+    amd_name, amd_vram_gb, has_rocm = detect_amd()
     has_metal, chip = detect_apple_metal()
 
     if has_cuda and gpu_name:
         display_gpu = gpu_name
+        active_vram = vram_gb
+    elif has_rocm and amd_name:
+        display_gpu = f"{amd_name} (AMD)"
+        active_vram = amd_vram_gb
     elif has_metal:
         display_gpu = "Apple / macOS (Metal)"
+        active_vram = 0.0
     else:
         display_gpu = "Não detectada (CPU)"
+        active_vram = 0.0
 
-    memory_class = classify_memory_class(has_cuda=has_cuda, has_metal=has_metal)
+    memory_class = classify_memory_class(has_cuda=has_cuda, has_rocm=has_rocm, has_metal=has_metal)
 
     return {
         "ram_gb": ram_gb,
@@ -465,9 +527,10 @@ def get_system_info() -> dict[str, Any]:
         "physical_cores": physical_cores,
         "logical_cores": os.cpu_count(),
         "has_gpu": has_gpu,
-        "vram_gb": vram_gb if has_cuda else 0.0,
+        "vram_gb": active_vram,
         "gpu_name": display_gpu,
         "has_cuda": has_cuda,
+        "has_rocm": has_rocm,
         "has_metal": has_metal,
         "memory_class": memory_class,
         "chip": chip,

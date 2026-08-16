@@ -92,11 +92,18 @@ def _is_gpu_working(binary_name: str, probe_flag: str) -> bool:
 def should_prefer_gpu_build() -> bool:
     if _parse_bool_env("AUTORESEARCH_PREFER_CPU"):
         return False
-    if os.environ.get("CUDA_VISIBLE_DEVICES") == "-1":
+    if os.environ.get("CUDA_VISIBLE_DEVICES") == "-1" or os.environ.get("ROCR_VISIBLE_DEVICES") == "-1":
         return False
     if sys.platform == "darwin":
         return platform.machine() == "arm64"
-    return _is_gpu_working("nvidia-smi", "-L") or _is_gpu_working("rocm-smi", "-i")
+    if _is_gpu_working("nvidia-smi", "-L") or _is_gpu_working("rocm-smi", "-i"):
+        return True
+    try:
+        from autoresearch.core.hardware import has_discrete_amd, has_discrete_nvidia
+
+        return has_discrete_nvidia() or has_discrete_amd()
+    except Exception:
+        return False
 
 
 def _build_dir_candidates(root: Path, build_dir: str, exe: str) -> tuple[Path, ...]:
@@ -112,7 +119,14 @@ def _candidate_binary(root: Path, name: str) -> tuple[Path, ...]:
     generic_paths = _build_dir_candidates(root, "build", exe)
 
     if should_prefer_gpu_build():
-        return cuda_paths + rocm_paths + cpu_paths + generic_paths
+        try:
+            from autoresearch.core.hardware import has_discrete_amd
+
+            if has_discrete_amd():
+                return rocm_paths + cuda_paths + generic_paths + cpu_paths
+        except Exception:
+            pass
+        return cuda_paths + rocm_paths + generic_paths + cpu_paths
     return cpu_paths + generic_paths + cuda_paths + rocm_paths
 
 

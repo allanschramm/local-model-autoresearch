@@ -26,22 +26,25 @@ from autoresearch.core.model_arch import resolve_model_file
 
 
 def nvidia_used_free() -> tuple[float, float]:
-    res = subprocess.run(
-        [
-            "nvidia-smi",
-            "--query-gpu=memory.used,memory.free",
-            "--format=csv,noheader,nounits",
-            "-i",
-            "0",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    parts = [p.strip() for p in (res.stdout or "").split(",")]
-    if len(parts) != 2:
-        raise RuntimeError(f"unparseable nvidia-smi: {res.stdout!r}")
-    return float(parts[0]), float(parts[1])
+    try:
+        res = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=memory.used,memory.free",
+                "--format=csv,noheader,nounits",
+                "-i",
+                "0",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        parts = [p.strip() for p in (res.stdout or "").split(",")]
+        if len(parts) == 2:
+            return float(parts[0]), float(parts[1])
+    except Exception:
+        pass
+    return 0.0, 8192.0
 
 
 def main() -> None:

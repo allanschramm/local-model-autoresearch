@@ -162,8 +162,9 @@ def build_args(cfg: dict) -> tuple[list[str], str, int, str]:
     # --- mmap / mlock ---
     if cfg.get("NO_MMAP"):
         args += ["--no-mmap"]
-    # NOTE: --mlock is intentionally NOT auto-added. It requires Docker IPC
-    # lock + LXC perms on containerized setups; let user add explicitly.
+
+    # --- single slot & hardware tuning ---
+    args += ["--parallel", "1"]
 
     return args, host, port, alias
 

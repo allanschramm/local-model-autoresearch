@@ -14,6 +14,10 @@ def _nvidia_probe(has: bool):
     return (None, 0.0, has)
 
 
+def _amd_probe(has: bool):
+    return ("AMD Radeon RX 6600", 8.0, has) if has else (None, 0.0, False)
+
+
 class TestDetectPhysicalCores(unittest.TestCase):
     def test_windows_reads_wmic_number_of_cores(self):
         proc = MagicMock(stdout="NumberOfCores\n8\n")
@@ -89,12 +93,13 @@ class TestGetSystemInfo(unittest.TestCase):
             return_value={"has_gpu": False, "physical_cores": 6, "ram_mb": 24576.0},
         ):
             with patch("autoresearch.core.hardware.detect_nvidia", return_value=(None, 0.0, False)):
-                with patch(
-                    "autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)
-                ):
-                    with patch("os.cpu_count", return_value=12):
-                        with patch("autoresearch.core.hardware.detect_simd_hints", return_value=[]):
-                            info = hardware.get_system_info()
+                with patch("autoresearch.core.hardware.detect_amd", return_value=(None, 0.0, False)):
+                    with patch(
+                        "autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)
+                    ):
+                        with patch("os.cpu_count", return_value=12):
+                            with patch("autoresearch.core.hardware.detect_simd_hints", return_value=[]):
+                                info = hardware.get_system_info()
 
         self.assertEqual(info["ram_mb"], 24576.0)
         self.assertEqual(info["ram_gb"], 24.0)
@@ -110,28 +115,52 @@ class TestGetSystemInfo(unittest.TestCase):
             with patch(
                 "autoresearch.core.hardware.detect_nvidia", return_value=("RTX 4060", 8.0, True)
             ):
-                with patch(
-                    "autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)
-                ):
-                    with patch("os.cpu_count", return_value=16):
-                        with patch("autoresearch.core.hardware.detect_simd_hints", return_value=[]):
-                            info = hardware.get_system_info()
+                with patch("autoresearch.core.hardware.detect_amd", return_value=(None, 0.0, False)):
+                    with patch(
+                        "autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)
+                    ):
+                        with patch("os.cpu_count", return_value=16):
+                            with patch("autoresearch.core.hardware.detect_simd_hints", return_value=[]):
+                                info = hardware.get_system_info()
 
         self.assertTrue(info["has_gpu"])
         self.assertTrue(info["has_cuda"])
         self.assertEqual(info["vram_gb"], 8.0)
         self.assertEqual(info["memory_class"], "discrete_gpu")
 
+    def test_has_gpu_true_for_amd_radeon(self):
+        with patch(
+            "autoresearch.core.hardware.detect_hardware_capabilities",
+            return_value={"has_gpu": True, "physical_cores": 6, "ram_mb": 16384.0},
+        ):
+            with patch("autoresearch.core.hardware.detect_nvidia", return_value=(None, 0.0, False)):
+                with patch(
+                    "autoresearch.core.hardware.detect_amd", return_value=("AMD Radeon RX 6600", 8.0, True)
+                ):
+                    with patch(
+                        "autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)
+                    ):
+                        with patch("os.cpu_count", return_value=12):
+                            with patch("autoresearch.core.hardware.detect_simd_hints", return_value=[]):
+                                info = hardware.get_system_info()
+
+        self.assertTrue(info["has_gpu"])
+        self.assertTrue(info["has_rocm"])
+        self.assertEqual(info["vram_gb"], 8.0)
+        self.assertEqual(info["memory_class"], "discrete_gpu")
+        self.assertIn("AMD Radeon RX 6600", info["gpu_name"])
+
 
 class TestDetectHardwareCapabilities(unittest.TestCase):
     def test_returns_expected_dict_shape(self):
         with patch("autoresearch.core.hardware.detect_nvidia", return_value=_nvidia_probe(True)):
-            with patch("autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)):
-                with patch("autoresearch.core.hardware.detect_physical_cores", return_value=8):
-                    with patch(
-                        "autoresearch.core.hardware.detect_host_ram_mb", return_value=32768.0
-                    ):
-                        caps = hardware.detect_hardware_capabilities()
+            with patch("autoresearch.core.hardware.detect_amd", return_value=_amd_probe(False)):
+                with patch("autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)):
+                    with patch("autoresearch.core.hardware.detect_physical_cores", return_value=8):
+                        with patch(
+                            "autoresearch.core.hardware.detect_host_ram_mb", return_value=32768.0
+                        ):
+                            caps = hardware.detect_hardware_capabilities()
 
         self.assertEqual(set(caps), {"has_gpu", "physical_cores", "ram_mb"})
         self.assertIsInstance(caps["has_gpu"], bool)
@@ -141,36 +170,51 @@ class TestDetectHardwareCapabilities(unittest.TestCase):
         self.assertEqual(caps["physical_cores"], 8)
         self.assertEqual(caps["ram_mb"], 32768.0)
 
+    def test_has_gpu_true_via_amd_rocm(self):
+        with patch("autoresearch.core.hardware.detect_nvidia", return_value=_nvidia_probe(False)):
+            with patch("autoresearch.core.hardware.detect_amd", return_value=_amd_probe(True)):
+                with patch("autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)):
+                    with patch("autoresearch.core.hardware.detect_physical_cores", return_value=6):
+                        with patch(
+                            "autoresearch.core.hardware.detect_host_ram_mb", return_value=16384.0
+                        ):
+                            caps = hardware.detect_hardware_capabilities()
+
+        self.assertTrue(caps["has_gpu"])
+
     def test_has_gpu_true_via_metal_on_mac(self):
         with patch("autoresearch.core.hardware.detect_nvidia", return_value=_nvidia_probe(False)):
-            with patch(
-                "autoresearch.core.hardware.detect_apple_metal", return_value=(True, "chip")
-            ):
-                with patch("autoresearch.core.hardware.detect_physical_cores", return_value=8):
-                    with patch(
-                        "autoresearch.core.hardware.detect_host_ram_mb", return_value=32768.0
-                    ):
-                        caps = hardware.detect_hardware_capabilities()
+            with patch("autoresearch.core.hardware.detect_amd", return_value=_amd_probe(False)):
+                with patch(
+                    "autoresearch.core.hardware.detect_apple_metal", return_value=(True, "chip")
+                ):
+                    with patch("autoresearch.core.hardware.detect_physical_cores", return_value=8):
+                        with patch(
+                            "autoresearch.core.hardware.detect_host_ram_mb", return_value=32768.0
+                        ):
+                            caps = hardware.detect_hardware_capabilities()
 
         self.assertTrue(caps["has_gpu"])
 
     def test_has_gpu_false_on_cpu_only(self):
         with patch("autoresearch.core.hardware.detect_nvidia", return_value=_nvidia_probe(False)):
-            with patch("autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)):
-                with patch("autoresearch.core.hardware.detect_physical_cores", return_value=4):
-                    with patch(
-                        "autoresearch.core.hardware.detect_host_ram_mb", return_value=16384.0
-                    ):
-                        caps = hardware.detect_hardware_capabilities()
+            with patch("autoresearch.core.hardware.detect_amd", return_value=_amd_probe(False)):
+                with patch("autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)):
+                    with patch("autoresearch.core.hardware.detect_physical_cores", return_value=4):
+                        with patch(
+                            "autoresearch.core.hardware.detect_host_ram_mb", return_value=16384.0
+                        ):
+                            caps = hardware.detect_hardware_capabilities()
 
         self.assertFalse(caps["has_gpu"])
 
     def test_degrades_to_defaults_when_probes_fail(self):
         with patch("autoresearch.core.hardware.detect_nvidia", return_value=_nvidia_probe(False)):
-            with patch("autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)):
-                with patch("autoresearch.core.hardware.detect_physical_cores", return_value=None):
-                    with patch("autoresearch.core.hardware.detect_host_ram_mb", return_value=None):
-                        caps = hardware.detect_hardware_capabilities()
+            with patch("autoresearch.core.hardware.detect_amd", return_value=_amd_probe(False)):
+                with patch("autoresearch.core.hardware.detect_apple_metal", return_value=(False, None)):
+                    with patch("autoresearch.core.hardware.detect_physical_cores", return_value=None):
+                        with patch("autoresearch.core.hardware.detect_host_ram_mb", return_value=None):
+                            caps = hardware.detect_hardware_capabilities()
 
         self.assertEqual(
             caps,
