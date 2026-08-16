@@ -288,6 +288,11 @@ DEFAULT_PHYSICAL_VRAM_KEEPOUT_MB = 512.0
 # for dedicated to fill.
 DEFAULT_SHARED_VRAM_LIMIT_MB = 2048.0
 
+# Startup health-poll deadline: a wedged-but-alive llama-server (never returns
+# 200 on /health) must not hang a Trial forever. Generous enough for slow GGUF
+# loads (HDD / 9p bridges); the loop still returns early on child exit.
+SERVER_HEALTH_TIMEOUT_SECONDS = 300.0
+
 
 def dedicated_vram_kill_ceil(
     limit_mb: float,
@@ -297,7 +302,7 @@ def dedicated_vram_kill_ceil(
     """Kill ceiling: ``min(limit, physical − keepout)`` when total is known."""
     ceil = float(limit_mb)
     if total_mb is not None and total_mb > 0:
-        return min(ceil, max(1024.0, float(total_mb) - keepout_mb))
+        return min(ceil, max(0.0, float(total_mb) - keepout_mb))
     return ceil
 
 
@@ -1054,8 +1059,15 @@ class LlamaServerRunner:
 
     def _wait_for_server(self, port: int) -> bool:
         delay = 0.05
+        deadline = time.monotonic() + SERVER_HEALTH_TIMEOUT_SECONDS
         while True:
             if self._server_proc is None or self._server_proc.poll() is not None:
+                return False
+            if time.monotonic() >= deadline:
+                print(
+                    f"  [server] /health did not return 200 within "
+                    f"{SERVER_HEALTH_TIMEOUT_SECONDS:.0f}s on port {port}; failing over."
+                )
                 return False
             try:
                 req = urllib.request.Request(f"http://127.0.0.1:{port}/health")
@@ -1064,8 +1076,9 @@ class LlamaServerRunner:
                     if response.status == 200:
                         return True
             except Exception:
-                time.sleep(delay)
-                delay = min(delay * 2, 0.4)
+                pass
+            time.sleep(delay)
+            delay = min(delay * 2, 0.4)
 
     @property
     def is_cpu_mode(self) -> bool:

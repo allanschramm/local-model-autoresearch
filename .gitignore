@@ -6,6 +6,7 @@
 
 # Local benchmark results
 results.tsv
+results.tsv.lock
 *.bak
 grid_results.csv
 coding_results/

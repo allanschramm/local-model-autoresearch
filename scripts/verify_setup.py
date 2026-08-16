@@ -38,7 +38,7 @@ def check_server(port=18080, host="127.0.0.1"):
             models = data.get("data", [])
             model_id = models[0]["id"] if models else "modelo-local"
             print(f" [OK] Servidor ativo! Modelo detectado: {model_id}")
-    except urllib.error.URLError:
+    except (urllib.error.URLError, json.JSONDecodeError, AttributeError, KeyError):
         print(f" [X] Servidor NÃO encontrado na porta {port}.")
         print("\n💡 Como resolver:")
         print(" 1. Inicie o llama-server ou LM Studio Local Server.")

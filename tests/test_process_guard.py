@@ -148,6 +148,21 @@ def test_linux_spawn_respects_caller_session_kwargs(monkeypatch):
     assert captured["kwargs"]["start_new_session"] is True
 
 
+def test_linux_spawn_composes_caller_preexec(monkeypatch):
+    monkeypatch.setattr(process_guard, "IS_WINDOWS", False)
+    monkeypatch.setattr(process_guard, "IS_LINUX", True)
+    captured: dict = {}
+    monkeypatch.setattr(process_guard.subprocess, "Popen", _fake_popen(captured))
+    guard = process_guard.ProcessGuard(grace_seconds=0.1)
+    calls: list[str] = []
+    monkeypatch.setattr(process_guard, "_linux_child_setup", lambda: calls.append("pdeathsig"))
+    guard.spawn(["llama-server"], preexec_fn=lambda: calls.append("caller"))
+    preexec = captured["kwargs"]["preexec_fn"]
+    assert preexec is not None
+    preexec()
+    assert calls == ["pdeathsig", "caller"]
+
+
 def test_linux_child_setup_arms_pdeathsig(monkeypatch):
     monkeypatch.setattr(process_guard, "IS_LINUX", True)
     libc = MagicMock()

@@ -189,10 +189,25 @@ def _os_spawn_kwargs(given: dict[str, Any]) -> dict[str, Any]:
     """OS bind Popen kwargs, unless the caller already chose a session mode."""
     if IS_WINDOWS:
         return {}
-    if {"preexec_fn", "process_group", "start_new_session"} & given.keys():
+    if {"process_group", "start_new_session"} & given.keys():
         return {}
     if IS_LINUX:
-        return {"preexec_fn": _linux_child_setup}
+        caller = given.get("preexec_fn")
+        if caller is None:
+            return {"preexec_fn": _linux_child_setup}
+
+        # Compose PDEATHSIG with any caller-supplied preexec (e.g. SGLang's
+        # os.setsid) so no spawn path loses the parent-death bind.
+        def _composed() -> None:
+            _linux_child_setup()
+            caller()
+
+        return {"preexec_fn": _composed}
+
+    # Non-Linux POSIX (macOS): no PDEATHSIG. Respect an explicit caller preexec
+    # (e.g. os.setsid) — pairing it with start_new_session would double-setsid.
+    if "preexec_fn" in given:
+        return {}
     return {"start_new_session": True}
 
 

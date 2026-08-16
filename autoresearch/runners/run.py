@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import json
 import os
@@ -11,6 +12,13 @@ import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
+
+
 
 from autoresearch.benchmarks import bench_config, format_agentic_benchmarks, format_claw_tiers
 from autoresearch.core import classify, config, engine_version_tag, recompute, resolve_llama_server
@@ -407,6 +415,36 @@ def read_rows(results_file: Path) -> list[dict[str, str]]:
         return [dict(row) for row in csv.DictReader(f, delimiter="\t")]
 
 
+@contextlib.contextmanager
+def _results_lock(results_file: Path):
+    """Cross-process mutex serializing results.tsv append vs read-modify-replace."""
+    lock_path = results_file.with_name(results_file.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+") as handle:
+        if sys.platform == "win32":
+            # Ensure the lockfile has at least one byte so msvcrt.locking has a
+            # region to lock.
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write("\n")
+                handle.flush()
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if sys.platform == "win32":
+                try:
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                except OSError:
+                    pass
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LK_UN)
+
+
 def recompute_statuses(results_file: Path) -> None:
     """Store-wide status refresh after a Trial write (issue #5).
 
@@ -415,32 +453,33 @@ def recompute_statuses(results_file: Path) -> None:
     config_json fingerprint are untouched. Idempotent: rerunning changes
     nothing, so a no-change store is not rewritten.
     """
-    rows = read_rows(results_file)
-    updated = recompute.recompute_rows(rows)
-    if updated == rows:
-        return
-    # Replace atomically: a killed Search must not leave a truncated TSV.
-    temp_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            "w",
-            newline="",
-            encoding="utf-8",
-            dir=results_file.parent,
-            prefix=f".{results_file.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as f:
-            temp_path = Path(f.name)
-            writer = csv.DictWriter(
-                f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
-            )
-            writer.writeheader()
-            writer.writerows(updated)
-        os.replace(temp_path, results_file)
-    finally:
-        if temp_path is not None:
-            temp_path.unlink(missing_ok=True)
+    with _results_lock(results_file):
+        rows = read_rows(results_file)
+        updated = recompute.recompute_rows(rows)
+        if updated == rows:
+            return
+        # Replace atomically: a killed Search must not leave a truncated TSV.
+        temp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                "w",
+                newline="",
+                encoding="utf-8",
+                dir=results_file.parent,
+                prefix=f".{results_file.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as f:
+                temp_path = Path(f.name)
+                writer = csv.DictWriter(
+                    f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
+                )
+                writer.writeheader()
+                writer.writerows(updated)
+            os.replace(temp_path, results_file)
+        finally:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
 
 
 def get_previous_best(results_file: Path, model_name: str | None = None) -> float:
@@ -613,84 +652,85 @@ def write_row(
     _ensure_category_column(results_file)
     if status not in TRIAL_STATUSES:
         raise ValueError(f"invalid trial status: {status!r}; allowed: {sorted(TRIAL_STATUSES)}")
-    new_file = not results_file.exists() or results_file.stat().st_size == 0
-    with open(results_file, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t")
-        if new_file:
-            writer.writeheader()
-        row = {
-            "schema_version": "2",
-            "trial_id": str(uuid.uuid4()),
-            "commit": commit,
-            "model": model,
-            "model_id": model,
-            "backend": "sglang" if model and not model.lower().endswith(".gguf") else "llama.cpp",
-            "category": category,
-            "evaluation_profile": evaluation_profile or category,
-            "scoring_benchmark": scoring_benchmark
-            or (
-                "agentic-coding"
-                if category == "agentic-coding"
-                else "claw-eval"
-                if category.startswith("agentic")
-                else "coding"
-            ),
-            "outcome": outcome
-            or ("OK" if not status.lower().startswith("fail") else "MODEL_REJECTED"),
-            "diagnostic": diagnostic,
-            "status": status,
-            "val_score": f"{val_score:.6f}",
-            "swe_score": f"{swe_score:.6f}",
-            "lcb_score": f"{lcb_score:.6f}",
-            "he_score": f"{he_score:.6f}",
-            "mbpp_score": f"{mbpp_score:.6f}",
-            "bigcode_score": f"{bigcode_score:.6f}",
-            "agentic": _tsv_cell(agentic, ".4f"),
-            "coding": _tsv_cell(coding, ".6f"),
-            "agentic_coding": _tsv_cell(agentic_coding, ".4f"),
-            "memory_gb": f"{memory_gb:.1f}",
-            "elapsed_sec": f"{elapsed_sec:.0f}",
-            "tps": _tsv_cell(tps, ".1f"),
-            "bench_tg": _tsv_cell(bench_tg, ".1f"),
-            "kv": kv,
-            "ctx": _tsv_cell(ctx),
-            "threads": _tsv_cell(threads),
-            "threads_batch": _tsv_cell(threads_batch),
-            "batch_size": _tsv_cell(batch_size),
-            "ubatch_size": _tsv_cell(ubatch_size),
-            "n_cpu_moe": _tsv_cell(n_cpu_moe),
-            "temp": _tsv_cell(temp),
-            "top_p": _tsv_cell(top_p),
-            "top_k": _tsv_cell(top_k),
-            "min_p": _tsv_cell(min_p),
-            "repeat_penalty": _tsv_cell(repeat_penalty),
-            "presence_penalty": _tsv_cell(presence_penalty),
-            "cont_batching": _tsv_cell(cont_batching),
-            "flash_attn": flash_attn,
-            "no_mmap": _tsv_cell(no_mmap),
-            "spec_draft_n_max": _tsv_cell(spec_draft_n_max),
-            "task_ids": task_ids,
-            "random_seed": "",
-            "config_json": config_json
-            or json.dumps(
-                {
-                    "kv": kv,
-                    "ctx": ctx,
-                    "threads": threads,
-                    "threads_batch": threads_batch,
-                    "batch_size": batch_size,
-                    "ubatch_size": ubatch_size,
-                    "flash_attn": flash_attn,
-                    "spec_draft_n_max": spec_draft_n_max,
-                },
-                separators=(",", ":"),
-                sort_keys=True,
-            ),
-            "binary_version": _engine_version(),
-            "tps_source": tps_source,
-            "description": description,
-        }
-        writer.writerow(row)
+    row = {
+        "schema_version": "2",
+        "trial_id": str(uuid.uuid4()),
+        "commit": commit,
+        "model": model,
+        "model_id": model,
+        "backend": "sglang" if model and not model.lower().endswith(".gguf") else "llama.cpp",
+        "category": category,
+        "evaluation_profile": evaluation_profile or category,
+        "scoring_benchmark": scoring_benchmark
+        or (
+            "agentic-coding"
+            if category == "agentic-coding"
+            else "claw-eval"
+            if category.startswith("agentic")
+            else "coding"
+        ),
+        "outcome": outcome
+        or ("OK" if not status.lower().startswith("fail") else "MODEL_REJECTED"),
+        "diagnostic": diagnostic,
+        "status": status,
+        "val_score": f"{val_score:.6f}",
+        "swe_score": f"{swe_score:.6f}",
+        "lcb_score": f"{lcb_score:.6f}",
+        "he_score": f"{he_score:.6f}",
+        "mbpp_score": f"{mbpp_score:.6f}",
+        "bigcode_score": f"{bigcode_score:.6f}",
+        "agentic": _tsv_cell(agentic, ".4f"),
+        "coding": _tsv_cell(coding, ".6f"),
+        "agentic_coding": _tsv_cell(agentic_coding, ".4f"),
+        "memory_gb": f"{memory_gb:.1f}",
+        "elapsed_sec": f"{elapsed_sec:.0f}",
+        "tps": _tsv_cell(tps, ".1f"),
+        "bench_tg": _tsv_cell(bench_tg, ".1f"),
+        "kv": kv,
+        "ctx": _tsv_cell(ctx),
+        "threads": _tsv_cell(threads),
+        "threads_batch": _tsv_cell(threads_batch),
+        "batch_size": _tsv_cell(batch_size),
+        "ubatch_size": _tsv_cell(ubatch_size),
+        "n_cpu_moe": _tsv_cell(n_cpu_moe),
+        "temp": _tsv_cell(temp),
+        "top_p": _tsv_cell(top_p),
+        "top_k": _tsv_cell(top_k),
+        "min_p": _tsv_cell(min_p),
+        "repeat_penalty": _tsv_cell(repeat_penalty),
+        "presence_penalty": _tsv_cell(presence_penalty),
+        "cont_batching": _tsv_cell(cont_batching),
+        "flash_attn": flash_attn,
+        "no_mmap": _tsv_cell(no_mmap),
+        "spec_draft_n_max": _tsv_cell(spec_draft_n_max),
+        "task_ids": task_ids,
+        "random_seed": "",
+        "config_json": config_json
+        or json.dumps(
+            {
+                "kv": kv,
+                "ctx": ctx,
+                "threads": threads,
+                "threads_batch": threads_batch,
+                "batch_size": batch_size,
+                "ubatch_size": ubatch_size,
+                "flash_attn": flash_attn,
+                "spec_draft_n_max": spec_draft_n_max,
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        ),
+        "binary_version": _engine_version(),
+        "tps_source": tps_source,
+        "description": description,
+    }
+    with _results_lock(results_file):
+        new_file = not results_file.exists() or results_file.stat().st_size == 0
+        with open(results_file, "a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t")
+            if new_file:
+                writer.writeheader()
+            writer.writerow(row)
 
 
 def run_evaluation(cfg: dict | Any, skip_bench: bool = False, **overrides) -> dict[str, Any]:
@@ -751,7 +791,14 @@ def handle_single_run(args):
 
     failed = res["status"] != "OK" or res.get("outcome", "OK") != "OK"
     if failed:
-        print(f"Evaluation failed: {res['status'] or res.get('outcome', 'OK')}")
+        # status is "FAIL: <detail>" when set; outcome is the enum. A TPS-floor
+        # reject leaves status at its OK default, so fall back to the outcome.
+        reason = (
+            res["status"]
+            if str(res["status"]).startswith("FAIL")
+            else (res.get("outcome") or "OK")
+        )
+        print(f"Evaluation failed: {reason}")
         write_row(
             RESULTS_FILE,
             commit,
@@ -761,7 +808,7 @@ def handle_single_run(args):
             0.0,
             res["peak_vram_gb"],
             "rejected",  # classifier: hard failure (VRAM policy / crash / invalid)
-            f"FAIL: {res['status'] or res.get('outcome', 'OK')} | {args.desc}",
+            f"FAIL: {reason} | {args.desc}",
             category=determine_category(args),
             elapsed_sec=res.get("elapsed_sec", 0.0),
             tps=res.get("avg_tps"),

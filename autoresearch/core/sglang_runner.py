@@ -16,7 +16,7 @@ from autoresearch.core.llama_runner import (
     candidate_ports,
     sweep_leftover_processes,
 )
-from autoresearch.core.process_guard import ProcessGuard
+from autoresearch.core.process_guard import TEARDOWN_GRACE_SECONDS, ProcessGuard
 from autoresearch.core.single_load import enforce_single_load, resolve_allow_multi
 
 IS_WINDOWS = os.name == "nt"
@@ -40,9 +40,23 @@ def _terminate_process_tree(proc: subprocess.Popen[str]) -> None:
     import signal
 
     try:
-        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        pgid = os.getpgid(proc.pid)
     except ProcessLookupError:
+        return
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    # Grace window, then force-kill the whole group so SIGTERM-ignoring
+    # workers (torch multiprocessing) cannot survive a failed startup.
+    deadline = time.monotonic() + TEARDOWN_GRACE_SECONDS
+    while time.monotonic() < deadline and proc.poll() is None:
+        time.sleep(0.05)
+    try:
+        os.killpg(pgid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
         pass
+    proc.wait()
 
 
 def run_sglang_bench_validation(
@@ -172,11 +186,12 @@ class SGLangServerRunner:
             "0.8",
             "--cpu-offload-gb",
             "12",
-            "--trust-remote-code",
             "--dtype",
             "float16",
             "--disable-cuda-graph",
         ]
+        if os.environ.get("SGLANG_TRUST_REMOTE_CODE", "1") != "0":
+            cmd.append("--trust-remote-code")
         if "GPTQ" in self.intent.model_path.name.upper():
             cmd += ["--quantization", "gptq_marlin"]
         if "AWQ" in self.intent.model_path.name.upper():
@@ -309,11 +324,7 @@ class SGLangServerRunner:
 
         if self._server_proc and self._server_proc.poll() is None and self._guard is None:
             _terminate_process_tree(self._server_proc)
-
-            try:
-                self._server_proc.wait()
-            except subprocess.TimeoutExpired:
-                self._server_proc.kill()
+            self._server_proc.wait()
 
         if self._guard:
             self._guard.teardown()

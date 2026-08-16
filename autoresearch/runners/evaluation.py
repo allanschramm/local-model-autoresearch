@@ -6,6 +6,7 @@ hides bench validation, server lifecycle, and metric computation behind the seam
 
 from __future__ import annotations
 
+import math
 import os
 import re
 import subprocess
@@ -104,9 +105,11 @@ def resolve_tps_floor(norm: dict[str, Any] | None = None) -> float:
     if norm:
         for key in ("bench_tts_threshold", "tps_floor"):
             if key in norm and norm[key] is not None:
-                return float(norm[key])
+                value = float(norm[key])
+                return value if math.isfinite(value) else BENCH_TPS_THRESHOLD
     try:
-        return float(core_config.DEFAULTS.get("TPS_FLOOR", BENCH_TPS_THRESHOLD))
+        value = float(core_config.DEFAULTS.get("TPS_FLOOR", BENCH_TPS_THRESHOLD))
+        return value if math.isfinite(value) else BENCH_TPS_THRESHOLD
     except Exception:
         return BENCH_TPS_THRESHOLD
 
@@ -289,7 +292,7 @@ def run_llama_bench_validation(
                         stop.set()
                         return
             except FileNotFoundError:
-                return
+                pass
             except (subprocess.CalledProcessError, ValueError, OSError):
                 pass
             stop.wait(0.5)

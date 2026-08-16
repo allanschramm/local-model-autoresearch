@@ -378,6 +378,24 @@ def _objective_vector(cfg: dict[str, Any], res) -> classify.ObjectiveVector:
     )
 
 
+def _seed_known_vectors(model_name: str, bucket_gb: int | None) -> list[classify.ObjectiveVector]:
+    """Complete known vectors for one model, scoped to a hardware+budget bucket.
+
+    Mirrors ``classify._known_vectors`` so the search front matches the store's
+    classification: same model, same bucket, rejected rows never compete, and
+    repeated measurements of one basename merge to a best-of-each-axis vector.
+    """
+    vectors: list[classify.ObjectiveVector] = []
+    for row in read_rows(RESULTS_FILE):
+        if row.get("status") == "rejected" or (row.get("model") or "").strip() != model_name:
+            continue
+        if bucket_gb is not None and classify.row_bucket(row) != bucket_gb:
+            continue
+        vectors.append(classify.vector_from_row(row))
+    merged = classify.merge([classify.Trial(fp=model_name, vector=v) for v in vectors])
+    return [trial.vector for trial in merged if trial.vector.complete]
+
+
 def _classify(cfg: dict[str, Any], res) -> tuple[str, dict[str, str], classify.ObjectiveVector]:
     """Classify an AutoLoop Trial vs the known Set (issue #4)."""
     vector = _objective_vector(cfg, res)
@@ -731,6 +749,18 @@ def main():
     for model_name in selected_models:
         if _stop_requested:
             break
+
+        # Seed the per-model front from results.tsv, scoped to this
+        # hardware+budget bucket (mirrors classify._known_vectors) so Neighbor
+        # acceptance sees prior sessions' points, not an empty session-local front.
+        baseline_now = state_manager.get_baseline()
+        vram_limit = baseline_now.get("VRAM_LIMIT_MB")
+        bucket_gb = classify.bucket(float(vram_limit) / 1024.0) if vram_limit else None
+        search_strategy = SearchStrategy(
+            active_search_space,
+            use_pareto_tiebreaker=True,
+            known=_seed_known_vectors(model_name, bucket_gb),
+        )
 
         print(f"\n{'#' * 60}")
         print(f"  OPTIMIZING MODEL: {model_name}")
