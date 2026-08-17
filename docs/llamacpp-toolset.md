@@ -202,6 +202,7 @@ OpenAI API-compatible HTTP server — primary inference target for autotuning.
 | `-fa` | Flash attention | on |
 | `-ctk` | K cache type | f16 |
 | `-ctv` | V cache type | f16 |
+| `-kvu` / `--kv-unified` (`-no-kvu` / `--no-kv-unified`) | One KV buffer shared across all slots: a single sequence can use the full `-c`; otherwise each slot is capped at `-c/N`. Total KV memory is unchanged — per-token size is set by `-ctk`/`-ctv`. Default on when slots are auto; inert at `-np 1`. Env `LLAMA_ARG_KV_UNIFIED`. | on (auto slots) |
 | `-sm` | Split mode | layer |
 | `-mg` | Main GPU | 0 |
 | `-nkvo` | No KV offload | 0 |
