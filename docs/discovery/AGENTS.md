@@ -1,7 +1,7 @@
 # AGENTS.md — docs/discovery
 
 ## Purpose
-User-facing guides for **discovering, evaluating, selecting, and optimizing** local LLMs and inference runtimes (GPU and CPU) that fit the `local-model-autotuning` workflow. Covers tooling (`whichllm`), evaluation methodology (Pareto frontier, Zellinger economic evaluation), quantization strategies, CPU optimization (AVX-512/AMX/NUMA), and engine architectures.
+User-facing guides for **discovering, evaluating, selecting, and optimizing** local LLMs and inference runtimes (GPU and CPU) that fit the `local-model-autotuning` workflow. Covers tooling (`whichllm`), evaluation methodology (Pareto frontier, Zellinger economic evaluation), quantization strategies, CPU optimization (AVX-512/AMX/NUMA), and engine architectures, plus harness-side capability extraction (IQ per token).
 
 ## Ownership
 - Owned by: `local-model-autotuning` developers.
@@ -64,3 +64,5 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`cpu-inference-guide.md`](./cpu-inference-guide.md) — CPU-optimized llama.cpp build flags (AVX-512/AMX), Intel vs AMD notes, NUMA, thread affinity, allocators (tcmalloc/jemalloc), GGUF quant selection for CPU cache, and weight repack (`--repack` / `-nr`) by profile.
 - [`amd-rocm-windows-setup.md`](./amd-rocm-windows-setup.md) — AMD Radeon ROCm/HIP setup on Windows: HIP SDK install, PATH, ggml-hip.dll troubleshooting, RDNA 2/3 performance notes.
 - [`openvino-genai-cpu-igpu-guide.md`](./openvino-genai-cpu-igpu-guide.md) — OpenVINO GenAI export, INT8/INT4 choices, CPU/iGPU device selection, and reproducible TPS benchmarking.
+### 5. Harness & Capability Extraction
+- [`capability-extraction-harness.md`](./capability-extraction-harness.md) — harness-side IQ-per-token techniques: led state, verification loops, test-time compute, J-Space assessment, dead-end registry.

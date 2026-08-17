@@ -62,11 +62,13 @@ The short answer is **no, they are mutually exclusive at runtime**.
     - **DFlash:** A block-parallel drafter utilizing a diffusion-like block process to predict blocks of tokens in a single step (e.g. `spiritbuun/Qwen3.6-27B-DFlash-GGUF` or `williamliao/gemma-4-31B-it-DFlash-GGUF`).
     - **DSpark:** A semi-autoregressive model combining a parallel backbone with a lightweight serial head to reduce "suffix decay" (loss of coherence at the end of draft sequences).
 *   **Availability:** The `Bonsai-27B` model (a quantized Qwen3.6-27B fork) can use DSpark speculative decoding (`Bonsai-27B-dspark-Q4_1.gguf`) with the external PrismML fork, which is not vendored in this repository. There are also official DeepSeek DSpark releases for Gemma-4 (e.g. `deepseek-ai/dspark_gemma4_12b_block7` and community GGUF conversions like `ankk98/dspark-gemma4-12b-block7-Q4_0-GGUF`). Other target models require custom training via DeepSpec or finding matching community GGUF drafts.
+- **Official DSpark integration (2026):** DeepSeek ships DSpark inside SGLang with Gemma-4 drafts (`deepseek-ai/dspark_gemma4_12b_block7`; community GGUF `ankk98/dspark-gemma4-12b-block7-Q4_0-GGUF`). Vendor claims 60-85% faster per-user generation / up to 6.6x throughput on datacenter-class hardware; measured 8 GB-class verdicts stay negative (see 4b). Reachable only via the SGLang backend with a dense on-GPU target.
 
 ### D. N-gram Decoders — `ngram-cache` / `ngram-simple`
 *   **How it works:** Instead of loading a neural network, these search the model's own active KV cache to find repeating patterns of words (N-grams) and predict subsequent tokens based on past context.
 *   **Why to use it:** 0 MB VRAM footprint. Good for code completion or summarizing highly repetitive text.
 *   **Performance:** ~5-10% speedup on repetitive text; 0% speedup on creative/non-repetitive text.
+- **2026 finding:** n-gram drafting is reported to help noticeably on repetitive/coding text (not just boilerplate); the 2026-07-20 TPS matrix has no ngram row - candidate Search neighbor on coding-10 (0 MB, universal).
 
 ---
 
