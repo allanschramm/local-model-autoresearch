@@ -19,7 +19,6 @@ else:
     import fcntl
 
 
-
 from autoresearch.benchmarks import bench_config, format_agentic_benchmarks, format_claw_tiers
 from autoresearch.core import classify, config, engine_version_tag, recompute, resolve_llama_server
 from autoresearch.runners.evaluation import ExperimentRunner, resolve_tps_floor
@@ -420,29 +419,35 @@ def _results_lock(results_file: Path):
     """Cross-process mutex serializing results.tsv append vs read-modify-replace."""
     lock_path = results_file.with_name(results_file.name + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock_path, "a+") as handle:
+    # os.open so tests that patch builtins.open do not substitute the lock fd.
+    flags = os.O_RDWR | os.O_CREAT
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+    fd = os.open(lock_path, flags)
+    try:
         if sys.platform == "win32":
             # Ensure the lockfile has at least one byte so msvcrt.locking has a
             # region to lock.
-            handle.seek(0, os.SEEK_END)
-            if handle.tell() == 0:
-                handle.write("\n")
-                handle.flush()
-            handle.seek(0)
-            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+            size = os.lseek(fd, 0, os.SEEK_END)
+            if size == 0:
+                os.write(fd, b"\n")
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
         else:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            fcntl.flock(fd, fcntl.LOCK_EX)
         try:
             yield
         finally:
             if sys.platform == "win32":
                 try:
-                    handle.seek(0)
-                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
                 except OSError:
                     pass
             else:
-                fcntl.flock(handle.fileno(), fcntl.LK_UN)
+                fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
 
 
 def recompute_statuses(results_file: Path) -> None:
@@ -669,8 +674,7 @@ def write_row(
             if category.startswith("agentic")
             else "coding"
         ),
-        "outcome": outcome
-        or ("OK" if not status.lower().startswith("fail") else "MODEL_REJECTED"),
+        "outcome": outcome or ("OK" if not status.lower().startswith("fail") else "MODEL_REJECTED"),
         "diagnostic": diagnostic,
         "status": status,
         "val_score": f"{val_score:.6f}",
@@ -794,9 +798,7 @@ def handle_single_run(args):
         # status is "FAIL: <detail>" when set; outcome is the enum. A TPS-floor
         # reject leaves status at its OK default, so fall back to the outcome.
         reason = (
-            res["status"]
-            if str(res["status"]).startswith("FAIL")
-            else (res.get("outcome") or "OK")
+            res["status"] if str(res["status"]).startswith("FAIL") else (res.get("outcome") or "OK")
         )
         print(f"Evaluation failed: {reason}")
         write_row(

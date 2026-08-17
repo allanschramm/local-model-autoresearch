@@ -611,6 +611,27 @@ class TestRun(unittest.TestCase):
             run.handle_single_run(args)
             mock_exit.assert_called_once_with(1)
 
+    def test_unix_results_lock_unlocks_with_fcntl_lock_un(self):
+        """POSIX unlock is fcntl.LOCK_UN (Windows never imports fcntl)."""
+        import tempfile
+        import types
+
+        ops: list[int] = []
+        fake = types.SimpleNamespace(
+            LOCK_EX=2,
+            LOCK_UN=8,
+            flock=lambda _fd, op: ops.append(op),
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "results.tsv"
+            with (
+                patch.object(run, "fcntl", fake, create=True),
+                patch.object(run.sys, "platform", "linux"),
+            ):
+                with run._results_lock(path):
+                    self.assertEqual(ops, [fake.LOCK_EX])
+        self.assertEqual(ops, [fake.LOCK_EX, fake.LOCK_UN])
+
     def test_write_row_keeps_zeros_and_throughput_columns(self):
         """write_row must record legitimate zeros and throughput fields, not blank them."""
         import tempfile

@@ -22,6 +22,7 @@ Repository developers.
 
 ## Verification
 - `.\venv\Scripts\python.exe -m pytest` (or `scripts/run_validate.py` / pre-commit). Never system-global Python.
+- Local Windows pytest does not execute POSIX branches (`fcntl`, Unix-only paths). After every push, wait for `.github/workflows/validate.yml` (`ubuntu-latest`) with `.\venv\Scripts\python.exe scripts\watch_validate.py` until it exits 0. A green local suite is not CI-complete.
 
 # DOX framework
 

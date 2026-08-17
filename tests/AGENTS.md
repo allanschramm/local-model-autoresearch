@@ -15,6 +15,7 @@ Repository developers.
 ## Work Guidance
 - Run `.\venv\Scripts\python.exe -m pytest tests/` locally before completing tasks. All collected tests must pass.
 - Add tests for any new options, features, or regression bugs.
+- Platform-split code (`sys.platform`, `fcntl` vs `msvcrt`) needs a test that forces the other OS branch; Windows pytest will not execute the Linux `fcntl` path otherwise.
 - Run `node --test teach/progress.test.js` for browser progress-contract changes.
 
 ## Verification
