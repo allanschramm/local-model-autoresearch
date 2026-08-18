@@ -16,7 +16,7 @@ Current headline features ([README](https://github.com/sgl-project/sglang/blob/m
 - Adoption: xAI, Cursor, NVIDIA, Intel, LinkedIn, etc.; claims 400,000+ GPUs serving, trillions of tokens/day ([README](https://github.com/sgl-project/sglang/blob/main/README.md)).
 - RL/post-training rollout backend: verl, AReaL, slime, Tunix, Miles ([README](https://github.com/sgl-project/sglang/blob/main/README.md)).
 
-Version: latest PyPI release **0.5.16**, requires Python ≥ 3.10 ([PyPI](https://pypi.org/project/sglang/)).
+Version: latest PyPI release **0.5.17**, requires Python ≥ 3.10 ([PyPI](https://pypi.org/project/sglang/)).
 
 ## 2. Core Architecture
 
@@ -156,11 +156,36 @@ Attention backends (MHA/MLA): FlashInfer, FA3, FA4, Triton, FlashMLA (DeepSeek M
 
 **Verdict:** SGLang is not a candidate engine for the operator host (8 GB VRAM, Windows, GGUF store). It stays relevant here as (1) the reference implementation for token-level radix prefix caching — the biggest architectural gap vs llama.cpp for multi-turn agent workloads, (2) the standard for server-side structured output (XGrammar; note its grammar format is the same GGML BNF family llama.cpp grammars use, so XGrammar-shaped schemas port), and (3) the engine to reach for if a future rig is an NVIDIA Linux box with 24 GB+ VRAM and a serving/agentic workload — GGUF baselines from this repo can be served directly via `--load-format gguf`. EAGLE/MTP draft models consume significant extra VRAM, so on modest GPUs the no-draft NGRAM path or llama.cpp MTP remains the cheaper speculative option.
 
+## 9.1 Measured on the operator host (2026-08-18, issue #59)
+
+Cross-engine feasibility run: SGLang 0.5.17 served from WSL2 (Ubuntu 24.04, 24 GB RAM cap) against the repo harness (`SGLangServerRunner`), same-family comparison at same ctx.
+
+| Axis | SGLang (safetensors fp16) | llama.cpp baseline (GGUF) |
+| :-- | --: | --: |
+| Model | `Qwen3.8-2B` | `Qwen3.8-2B-BF16.gguf` |
+| Decode TPS | **56.8** (bench 512/512, batch 1) | 60.5 @ 32k |
+| ctx | 32768 | 32768 |
+
+Decode 56.8–58.2 t/s across runs ≈ llama.cpp 60.5 t/s — same bandwidth-bound class on the 8 GB-class host. Result row: `results.tsv` `backend=sglang` (validation, 2026-08-18).
+
+Fit findings (8 GB-class VRAM, 24 GB WSL RAM):
+- **9B fp16 (18.5 GB) cannot reach a useful TPS floor**: harness static pool (0.9×8 GB) plus weight streaming over PCIe ≈ 1–5 t/s, below Baseline `TPS_FLOOR` 20. No AWQ/GPTQ pack exists on HF for `Qwen3.8-9B` (checked 2026-08-18), so no quant escape.
+- **27B fp16 (≈54 GB) cannot fit** 24 GB WSL RAM / 32 GB host RAM at all; the 27B llama.cpp GGUF baseline is itself VRAM-rejected at 65k ctx (`results.tsv`).
+- 2B fp16 (4.5 GB) fits the static pool fully — the only same-family model with a meaningful engine TPS comparison on this rig.
+
+Setup/flag requirements discovered (harness `autoresearch/core/sglang_runner.py` now encodes these):
+- SGLang has **no Windows build**; run from WSL2 with `venv-sglang` at repo root (POSIX branch of the runner). GPU passthrough requires a CUDA 13-era Windows driver.
+- First-load JIT needs the pip `cuda-toolkit` `nvcc` + `ninja` on PATH (both installable inside `venv-sglang`); pip's `nvidia/cu13` libs ship versioned-only `.so.13` — add unversioned `libcudart.so` symlinks or sgl-kernel JIT link fails.
+- `--mem-fraction-static` must be explicit (0.9): the auto-computed pool rejects the hybrid (linear-attention) arch even when weights fit; `--cpu-offload-gb` triggers a layernorm loader device-mismatch (`torch.add` cuda/cpu) on this arch — do not pass it.
+- Default FlashInfer path JIT-fails on this arch (nvcc-vs-cccl header mismatch with pip `cu13`); `--attention-backend triton --sampling-backend pytorch` works. `--dtype bfloat16` (native) avoids a fp16/bf16 state-cache dtype bug.
+- Server crashes on first request unless `--mm-feature-transport=cpu` (CUDA IPC multimodal pool handle goes invalid); CPU transport costs nothing for text-only evals.
+- **Tool calling caveat**: the Qwen3.5 template renders thinking OFF by default under SGLang; without request-level `chat_template_kwargs={"enable_thinking": True}` the checkpoint emits placeholder text and no `<tool_call>`. llama.cpp's template defaults thinking ON, which explains the 0.8 (llama.cpp) vs 0.0 (SGLang) quick-tier agentic gap. Verified: with `enable_thinking` the model emits valid `<tool_call><function=...>` blocks.
+
 ## 10. Sources
 
 - Repo & README: https://github.com/sgl-project/sglang
 - Docs (docs.sglang.io ↔ `docs_new/docs/` in repo `main`): install, quantization, structured_outputs, speculative_decoding, session_radix_cache, hicache_best_practices, expert_parallelism, pd_disaggregation, model_loading, attention_backend, cpu_server, apple_metal, xpu, tpu, nvidia_jetson, faq
 - Paper: https://arxiv.org/abs/2312.07104
 - LMSYS blogs: 2024-01-17 (RadixAttention), 2024-02-05 (compressed FSM), 2024-12-04 (v0.4), 2025-09-22 (deterministic), 2026-06-15 (DFlash/Spec-V2)
-- PyPI: https://pypi.org/project/sglang/ (0.5.16)
+- PyPI: https://pypi.org/project/sglang/ (0.5.17)
 - GitHub issues: #2249, #7766 (Windows/sgl-kernel)

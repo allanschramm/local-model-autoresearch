@@ -120,6 +120,13 @@ class TestSGLangRunner(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("--context-length") + 1], "131072")
         self.assertIn("--quantization", cmd)
         self.assertEqual(cmd[cmd.index("--quantization") + 1], "gptq_marlin")
+        # issue #59: 8 GB-class backend flags must stay in the server command.
+        self.assertEqual(cmd[cmd.index("--dtype") + 1], "bfloat16")
+        self.assertEqual(cmd[cmd.index("--mem-fraction-static") + 1], "0.9")
+        self.assertEqual(cmd[cmd.index("--attention-backend") + 1], "triton")
+        self.assertEqual(cmd[cmd.index("--sampling-backend") + 1], "pytorch")
+        self.assertIn("--mm-feature-transport", cmd)
+        self.assertNotIn("--cpu-offload-gb", cmd)
 
     @patch("subprocess.run")
     def test_sglang_bench_failure_closed_for_large_model_without_vram(self, mock_run):
@@ -129,6 +136,24 @@ class TestSGLangRunner(unittest.TestCase):
 
         self.assertIn("Refusing bench/server validation", str(ctx.exception))
         mock_run.assert_called_once()
+
+    @patch("autoresearch.core.sglang_runner._sglang_env", return_value={})
+    @patch("subprocess.run")
+    def test_bench_parses_median_throughput_format(self, mock_run, _mock_env):
+        """SGLang 0.5.17 prints 'Decode. median latency: ..., median throughput: N token/s'
+        instead of the legacy 'Decode token/s:' (issue #59)."""
+        fake = MagicMock()
+        fake.stdout = (
+            "Decode 0. Batch size: 1, latency: 0.01804 s, throughput: 55.42 token/s\n"
+            "Decode.  median latency: 0.01738 s, median throughput: 57.55 token/s\n"
+            "Total. latency: 9.003 s, throughput: 113.74 token/s\n"
+        )
+        fake.stderr = ""
+        mock_run.return_value = fake
+
+        tps = run_sglang_bench_validation(Path("models/sglang/Qwen3.8-2B"), 1, 512, 512)
+
+        self.assertAlmostEqual(tps, 57.55, places=2)
 
     @patch(
         "autoresearch.runners.evaluation.preflight_host_memory_for_intent",

@@ -25,6 +25,57 @@ SGLANG_BIN = REPO_ROOT / "venv-sglang" / ("Scripts" if IS_WINDOWS else "bin")
 SGLANG_PYTHON = SGLANG_BIN / ("python.exe" if IS_WINDOWS else "python3")
 
 
+def _sglang_nvcc_dir() -> Path | None:
+    """nvcc bundled by the pip ``cuda-toolkit`` inside the SGLang venv.
+
+    SGLang JIT-compiles Triton/FlashInfer kernels on first load; the compiler
+    (``nvcc``) and CUDA runtime must be discoverable. The venv ships them under
+    ``site-packages/nvidia/cu*/`` — not on PATH, and no system CUDA install is
+    assumed on the operator host. POSIX venv layout only: SGLang has no
+    Windows build (WSL2 is the only supported host here).
+    """
+    try:
+        candidates = sorted(SGLANG_BIN.parent.glob("lib/python*/site-packages/nvidia/cu*/bin/nvcc"))
+    except OSError:
+        return None
+    for nvcc in candidates:
+        if nvcc.is_file():
+            return nvcc.parent
+    return None
+
+
+# Backend flags shared by bench and server (issue #59): SGLang 0.5.17 on an
+# 8 GB-class host needs an explicit static-pool fraction (auto-computed rejects
+# the hybrid linear-attention arch), the Triton attention path (FlashInfer JIT
+# fails with the pip cu13 toolchain), and the model's native bf16 dtype (fp16
+# trips a state-cache dtype bug). Keep the two command builders in sync.
+SGLANG_BACKEND_FLAGS = [
+    "--dtype",
+    "bfloat16",
+    "--mem-fraction-static",
+    "0.9",
+    "--attention-backend",
+    "triton",
+    "--sampling-backend",
+    "pytorch",
+]
+
+
+def _sglang_env() -> dict[str, str]:
+    """Process env for SGLang subprocesses: venv bin + JIT toolchain on PATH."""
+    env = os.environ.copy()
+    sglang_bin = str(SGLANG_BIN)
+    path_dirs = [sglang_bin]
+    nvcc_dir = _sglang_nvcc_dir()
+    if nvcc_dir is not None:
+        path_dirs.append(str(nvcc_dir))
+        env["CUDA_HOME"] = str(nvcc_dir.parent)
+    env["PATH"] = f"{os.pathsep.join(path_dirs)}{os.pathsep}{env.get('PATH', '')}"
+    env["SGLANG_MAMBA_CONV_DTYPE"] = "bfloat16"
+    env["SGLANG_MAMBA_SSM_DTYPE"] = "bfloat16"
+    return env
+
+
 def _popen_group_kwargs() -> dict[str, Any]:
     if IS_WINDOWS:
         return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
@@ -116,19 +167,14 @@ def run_sglang_bench_validation(
         str(n_prompt),
         "--output-len",
         str(n_gen),
-        "--dtype",
-        "float16",
+        *SGLANG_BACKEND_FLAGS,
     ]
     if "GPTQ" in model_path.name.upper():
         cmd += ["--quantization", "gptq_marlin"]
     if "AWQ" in model_path.name.upper():
         cmd += ["--quantization", "awq"]
 
-    server_env = os.environ.copy()
-    sglang_bin = str(SGLANG_BIN)
-    server_env["PATH"] = f"{sglang_bin}{os.pathsep}{server_env.get('PATH', '')}"
-    server_env["SGLANG_MAMBA_CONV_DTYPE"] = "float16"
-    server_env["SGLANG_MAMBA_SSM_DTYPE"] = "float16"
+    server_env = _sglang_env()
 
     try:
         res = subprocess.run(cmd, env=server_env, capture_output=True, text=True, check=True)
@@ -136,8 +182,9 @@ def run_sglang_bench_validation(
         print(f"sglang.bench_one_batch failed:\n{e.stderr}")
         raise
 
-    # Parse output, looking for "Decode token/s:" or "Prefill token/s:" or similar.
-    # We want to return the decode tokens per second (tg).
+    # Parse output, looking for "Decode token/s:" (legacy) or the 0.5.x
+    # "Decode.  median ... median throughput: N token/s" format. We want the
+    # decode (generation) tokens per second (tg).
     tg_tps = 0.0
     for line in res.stdout.splitlines():
         if "Decode token/s:" in line:
@@ -148,6 +195,12 @@ def run_sglang_bench_validation(
                     tg_tps = float(parts[1].split()[0].replace("tokens/s", "").strip())
                 except ValueError:
                     pass
+        elif "median throughput:" in line and "Decode" in line:
+            try:
+                # e.g. "Decode.  median latency: 0.01738 s, median throughput: 57.55 token/s"
+                tg_tps = float(line.split("median throughput:")[1].split()[0])
+            except (ValueError, IndexError):
+                pass
     return tg_tps
 
 
@@ -182,13 +235,10 @@ class SGLangServerRunner:
             str(target_port),
             "--context-length",
             str(self.intent.ctx_size),
-            "--mem-fraction-static",
-            "0.8",
-            "--cpu-offload-gb",
-            "12",
-            "--dtype",
-            "float16",
+            *SGLANG_BACKEND_FLAGS,
             "--disable-cuda-graph",
+            "--mm-feature-transport",
+            "cpu",
         ]
         if os.environ.get("SGLANG_TRUST_REMOTE_CODE", "1") != "0":
             cmd.append("--trust-remote-code")
@@ -217,11 +267,7 @@ class SGLangServerRunner:
         else:
             self._server_log = subprocess.DEVNULL
 
-        server_env = os.environ.copy()
-        sglang_bin = str(SGLANG_BIN)
-        server_env["PATH"] = f"{sglang_bin}{os.pathsep}{server_env.get('PATH', '')}"
-        server_env["SGLANG_MAMBA_CONV_DTYPE"] = "float16"
-        server_env["SGLANG_MAMBA_SSM_DTYPE"] = "float16"
+        server_env = _sglang_env()
 
         # Single-load gate (#41): refuse a second full server while one is
         # live. The pre-flight orphan sweep would kill a live sibling on a

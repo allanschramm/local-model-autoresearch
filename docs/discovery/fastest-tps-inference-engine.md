@@ -15,6 +15,7 @@ Measured llama.cpp (upstream, CUDA build, vendored submodule at tag `b10173`) nu
 | Qwen3.5-9B-MTP | Q4_K_M | 67.5 | 131k | MTP embedded heads |
 | Ornith-1.0-9B-MTP | Q4_K_M | 63.7 | 32k | MTP |
 | Qwythos-9B-v2 | Q4_K_M | 41.6 | 100k | dense 9B at huge ctx |
+| Qwen3.8-2B (SGLang 0.5.17, WSL2) | fp16 safetensors | 56.8 | 32k | dense 2B; ≈ llama.cpp 60.5 — same class, no engine win ([issue #59](./sglang-inference-engine.md#91-measured-on-the-operator-host-2026-08-18-issue-59)) |
 
 Pattern: **small-active MoE + speculative MTP heads beat dense 9B by 2.5–4x** on the operator host. Context is expensive: dense 9B at 100k ctx ≈ 42 TPS, at 32k ctx ≈ 64 TPS (KV cache + attention dominate).
 
@@ -28,7 +29,7 @@ Pattern: **small-active MoE + speculative MTP heads beat dense 9B by 2.5–4x** 
 | koboldcpp / Ollama | ✅ | ✅ | ✅ | same llama.cpp kernels | wrapper, no TPS gain |
 | TensorRT-LLM (Windows) | ⚠️ 2023-era, repo removed | ❌ | — | "up to 4x" (2023 blog, vague baseline) | deprecated on Windows; model coverage stale |
 | vLLM | ❌ (WSL2) | ✅ (CUDA) | ⚠️ | — | server engine, Linux-first, heavy for single-user 8 GB |
-| SGLang | ❌ (WSL2) | ⚠️ (NVIDIA-only) | ❌ | — | see [sglang-inference-engine.md](./sglang-inference-engine.md) |
+| SGLang | ❌ (WSL2) | ⚠️ (NVIDIA-only) | ⚠️ (2B-class only) | measured: Qwen3.8-2B 56.8 t/s ≈ llama.cpp (issue #59) | server engine, Linux-first; no TPS win on 8 GB-class; see [sglang-inference-engine.md](./sglang-inference-engine.md) |
 | LMDeploy | ❌ | ❌ | — | — | Linux |
 | llama.cpp Vulkan | ✅ | ✅ | ✅ | CUDA > Vulkan on NVIDIA (qualitative) | fallback only |
 | Colibrì | ✅ | n/a | — | — | niche: biggest MoE on RAM, not fastest TPS ([colibri-inference-engine.md](./colibri-inference-engine.md)) |
