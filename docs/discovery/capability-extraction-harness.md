@@ -15,7 +15,7 @@ Reference: [thinking-models-claw-harness.md](./thinking-models-claw-harness.md) 
 ## 2. Inference-engine / ctx survey (August 2026) — what's real
 
 - **Pinned engine is already current.** Prebuilt `llama.cpp-releases/upstream/b10375` (build dated 2026-08-13) postdates the 2026 Gemma-4 KV-cache fix (~40% memory cut in context-heavy scenarios, Apr 2026), the upstream MTP merge (May 2026), and the MMVQ kernel rewrites. No upgrade action.
-- **N-gram speculation on coding text.** `ngram-cache` / `ngram-simple` are universal (any model), 0 MB VRAM, and 2026 reports show n-gram drafting is surprisingly effective on repetitive/coding text. The 2026-07-20 small-model TPS matrix has **no ngram row** — candidate Search neighbor on coding-10. **TBD:** measured gain.
+- **N-gram speculation on coding text.** Five draftless variants (`ngram-cache`, `ngram-simple`, `ngram-map-k`, `ngram-map-k4v`, `ngram-mod`) are universal (any model), 0 MB VRAM (~16 MB host RAM for `ngram-mod`), and composable with a neural drafter (`--spec-type draft-mtp,ngram-mod`). Mechanism + flags: [speculative-decoding-formats.md](./speculative-decoding-formats.md) §2/§3D. **External measured prior on this repo's own A3B family is negative** — RTX 3090 matrix (2026-04, N=3-reproducible, cross-checked on A100): `ngram-cache` −12%, `ngram-mod` −3–5%, 0.8B draft −39–60% despite 100% acceptance (MoESD expert-union verify cost, [speculative-decoding-formats.md](./speculative-decoding-formats.md) §4b). The 2026-07-20 small-model TPS matrix has **no ngram row** — the falsifiable coding-10 Neighbor stays open, but the prior is negative on small-active MoE and positive on dense (A10B-class gets +15–45%). **TBD:** measured gain on this rig.
 - **`--model-draft` external drafts** merged upstream May 2026: equivalent to MTP for dense targets; known-fail on MoE + CPU-expert offload (see [speculative-decoding-formats.md](./speculative-decoding-formats.md) §4b). Skip.
 - **DFlash KV ideas are 3× this rig's VRAM scale.** The DFlash 256K-ctx-on-24-GB-class demo (TQ3_0 3.5 bpv KV, 4096-slot target-feature ring buffer, 2048-token sliding-window flash attention) is a concept reference only — no transfer to a discrete 8 GB-class rig.
 
@@ -28,7 +28,7 @@ Reference: [thinking-models-claw-harness.md](./thinking-models-claw-harness.md) 
 
 **Durable rule:** neural speculation wins only when target **and** draft fit on GPU and the draft is faster per token than the target. On this rig's MoE/CPU-offload fingerprints it is a proven loss.
 
-**New (untested) path:** official DeepSeek DSpark is integrated into SGLang with Gemma-4 drafts (`deepseek-ai/dspark_gemma4_12b_block7`; community GGUF `ankk98/dspark-gemma4-12b-block7-Q4_0-GGUF`). Only reachable via the SGLang backend with a dense on-GPU target. **TBD:** one SGLang Trial only if that path is ever exercised.
+**DSpark reachability (updated 2026-08-18):** upstream llama.cpp merged native `draft-dspark` on 2026-07-28 ([#25173](https://github.com/ggml-org/llama.cpp/pull/25173)) — inside the pinned b10375 — for **Qwen3-backbone** drafts (`deepseek-ai/dspark_qwen3_{4b,8b,14b}_block7`). The official Gemma-4 drafts (`deepseek-ai/dspark_gemma4_12b_block7`; community GGUF `ankk98/dspark-gemma4-12b-block7-Q4_0-GGUF`) remain **SGLang-only** (upstream docs: other backbones "planned"). `speculators`-format (SpecForge/RedHat) DSpark conversion merged 2026-08-17 ([#26275](https://github.com/ggml-org/llama.cpp/pull/26275)) — post-b10375. Any path still requires a dense target fully on GPU to beat the measured dead ends. **TBD:** only if that path is ever exercised.
 
 ## 4. J-Space report (Tiger3807861189) — assessment
 
@@ -73,10 +73,10 @@ Protocol rule: harness is fixed unless the operator approves a change; every can
 
 ## 8. Open questions
 
-- **TBD:** ngram-cache gain on coding-10 — unmeasured in the 2026-07-20 matrix.
-- **TBD:** DSpark-in-SGLang — untested on this rig; only relevant with a dense on-GPU target via the SGLang backend.
-- **TBD:** best-of-N token cost vs agentic gain — no local measurement yet.
-- **TBD:** whether newer upstream builds than `b10375` contain further CUDA kernel rewrites (Ada/Blackwell-class gains) — verify at the next engine bump; keep `nextn_predict_layers` (Nemotron-3.5 embedded-MTP) load as the gating criterion.
+- **TBD:** ngram gain on coding-10 — unmeasured locally; external prior negative on A3B-class (MoESD expert-union), positive on dense. Run stays cheap and falsifiable (0 MB VRAM, same Fingerprint, switch on/off).
+- **TBD:** DSpark on this rig — llama.cpp-native path exists in pinned b10375 for Qwen3-backbone drafts; Gemma-4-backbone drafts remain SGLang-only. Both require a dense on-GPU target to beat the measured dead ends (quantization-speed inversion).
+- **TBD:** best-of-N token cost vs agentic gain — harness-side (parked until a harness fork); no local measurement yet.
+- **Engine bump (checked 2026-08-18):** no release newer than `b10375` exists (`llama.cpp-releases/upstream` holds `b10375` + a CUDA-12.4 asset variant only). Post-b10375 master merges contain **no general CUDA kernel rewrites for this hardware class** — the only CUDA MMVQ change is DGX-Spark bs=1 dense tuning ([#26843](https://github.com/ggml-org/llama.cpp/pull/26843)); other relevant merges: Nemotron recurrent-state rollback for spec decode ([#26623](https://github.com/ggml-org/llama.cpp/pull/26623), correctness for the gating model), `--mmap` → `--load-mode` migration ([#26934](https://github.com/ggml-org/llama.cpp/pull/26934)), `--models-dir` MTP-assistant discovery ([#24431](https://github.com/ggml-org/llama.cpp/pull/24431)), negative `--spec-draft-n-max` validation ([#27071](https://github.com/ggml-org/llama.cpp/pull/27071)). Re-verify at the next engine bump; keep `nextn_predict_layers` (Nemotron-3.5 embedded-MTP) load as the gating criterion.
 
 ## Sources
 

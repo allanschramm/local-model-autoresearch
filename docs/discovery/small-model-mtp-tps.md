@@ -102,5 +102,5 @@ For Gemma MTP, keep `SPEC_DRAFT_MODEL='draft/mtp-gemma-4-E4B-it.gguf'` (path rel
 
 ## Open questions
 
-- Mythos MTP: does `SPEC_DRAFT_N_MAX` sweep (1–8) recover acceptance, or are heads ineffective for this quant/prompt?
+- Mythos MTP: does `SPEC_DRAFT_N_MAX` sweep (1–8) recover acceptance, or are heads ineffective for this quant/prompt? Research prior (2026-08-18): draft length trades acceptance vs tokens/pass — Qwen3.6-27B q8_0 MTP n=3 accept 0.72 @ 21.6 t/s vs n=2 accept 0.83 @ 17.4 t/s on code (upstream [#22673](https://github.com/ggml-org/llama.cpp/pull/22673)); acceptance <~0.6 makes MTP a net loss and aggressively quantized MTP heads are a known acceptance killer (dev.to, 2026-05-18). Mythos' ~+1% fits the "head damaged by quant" pattern — the sweep is still the falsifiable test. See [speculative-decoding-formats.md](./speculative-decoding-formats.md) §3A.
 - Qwythos-9B-v2: watch Hub for a CUDA GGUF MTP; MLX-only does not help this stack.
