@@ -49,7 +49,7 @@ The short answer is **no, they are mutually exclusive at runtime**.
     - **Ornith-1.0-9B UD:** no MTP. Use Hub `protoLabsAI/Ornith-1.0-9B-MTP-GGUF` (local: `Ornith-1.0-9B-MTP-Q4_K_M.gguf`).
     - **Mythos 5-1M:** Hub `mradermacher/Qwythos-9B-Claude-Mythos-5-1M-MTP-GGUF` (local MTP Q4_K_M). Loads; short-gen gain negligible in 2026-07-20 matrix.
     - **Qwythos-9B-v2:** no useful CUDA GGUF MTP on Hub (MLX-only) as of 2026-07-20.
-*   **Detect:** metadata keys `nextn` / `blk.*.nextn.*` (embedded) or `gemma4-assistant` (draft). See [small-model-mtp-tps.md](./small-model-mtp-tps.md).
+*   **Detect:** metadata keys `nextn` / `blk.*.nextn.*` (embedded) or `gemma4-assistant` (draft). See [small-model-mtp-tps.md](./small-model-mtp-tps.md). **Caveat:** low-bit quants may drop the head — verify per-file. Example: `Qwen3.8-27B-Q1Q-XYZ-v2.gguf` declares `nextn_predict_layers` value 0 and zero `nextn.*` tensors despite pack docs claiming embedded MTP (2026-08-18 validation).
 
 ### B. Eagle 3 — `draft-eagle3`
 *   **How it works:** A tree-based speculative decoder that trains a small recurrent neural network head directly on top of the target model's hidden states.

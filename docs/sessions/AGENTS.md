@@ -30,6 +30,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-18-qwen38-27b-rejected.md`](./2026-08-18-qwen38-27b-rejected.md) — Qwen3.8-27B Q1Q validation: rejected (Day 27.9 TPS / Night ~61k ctx gates fail); no MTP head in file; tqp turbo2 KV ≈ 0.137×f16 (issue #58).
 - [`2026-08-17-qwen38-27b-candidate.md`](./2026-08-17-qwen38-27b-candidate.md) — Qwen3.8-27B coding-loop candidate research; scope lock (perf w/o IQ loss, Gemma excluded); Q1Q/Q1Z fit analysis; 3-way shootout plan.
 - [`2026-08-12-qwen36-dflash-tps.md`](./2026-08-12-qwen36-dflash-tps.md) — Qwen3.6-35B Q3 DFlash vs MTP vs no-spec @ 65k; DFlash dead end on 8 GB-class + `n-cpu-moe`.
 - [`2026-08-08-thinking-claw-harness-fix.md`](./2026-08-08-thinking-claw-harness-fix.md) — Agentic ignored `reasoning_content` + `max_tokens=512`; Ornith UD claw 0.3333→0.9333; thinking remasure policy.

@@ -167,6 +167,8 @@ Performance testing. Measures prompt processing (pp) and text generation (tg) in
 
 Upstream KV types only (`q4_0`, …). `turbo*` KV cache types are **not** in upstream `llama.cpp`.
 
+Measured `-ctk/-ctv` allowed values (b10362/b10375): f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q5_1. TurboQuant `tqp-v0.3.0` adds `turbo2`, `turbo3`, `turbo4`. Measured turbo2 ≈ 0.137×f16 on tqp (harness `VRAM_QUANT_FACTORS` 0.10 under-reads; [issue #58](https://github.com/allanschramm/local-model-autotuning/issues/58)).
+
 ```bash
 # Context-depth bench WITHOUT speculation:
 ./bin/llama-bench -m model.gguf -pg 512,128 -d 0
