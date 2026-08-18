@@ -35,6 +35,7 @@
 *   **Upstream `ggml-org/llama.cpp` and forks are not interchangeable** for advanced features. TurboQuant, MTP, QAT, and diffusion support require specific forks. If a flag (`--spec-type`, `--cache-type-k`, `--n-cpu-moe`) is silently rejected, the build lacks that feature — try a different fork.
 *   **Default install path is `./llama.cpp/` in the repo root.** Forks or custom builds must be cloned with the literal name `llama.cpp` to be auto-discovered, OR exported via `AUTORESEARCH_LLAMA_CPP_ROOT=/path/to/llama.cpp`. On Windows, the same env var can point to a native Windows checkout/build root.
 *   **Directory model paths use SGLang**: when `MODEL` resolves to a directory under `models/`, the harness uses `autoresearch/core/sglang_runner.py` and `venv-sglang/`. Do not launch SGLang directly for evaluation.
+*   **`models/` store — real directory:** never run recursive/forced deletes on the `models/` root (`Remove-Item -Recurse`, `rm -rf`, `rmdir /s`). Per-file deletes inside `models/<publisher>/` are normal maintenance.
 *   **`scripts/setup-check.sh` validates** that the build supports the expected flags (probes `--help`). Run it before the autoloop.
 
 ## 4. Loop Agent Constraints

@@ -1,12 +1,12 @@
-# `models/` — Shared GGUF store (LM Studio + harness)
+# `models/` — Shared GGUF store (harness)
 
 ## Layout (canonical)
 
-LM Studio needs `publisher/model/file.gguf`. This repo resolves by **basename**, so both work:
+Models live at `publisher/model/file.gguf`; the repo resolves by **basename**, so nested paths work:
 
 ```
 models/
-  lmstudio-community/gemma-4-e4b-it-gguf/<file>.gguf   # LM Studio My Models
+  <publisher>/<model>/<file>.gguf                  # canonical store layout
   local/<name>/<file>.gguf                             # other GGUFs
   draft/<file>.gguf                                    # speculative drafts (keep flat here)
   vision/mmproj-*.gguf                                 # multimodal projectors
@@ -15,9 +15,9 @@ models/
 
 Config / CLI still use short names: `MODEL=gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf` — harness finds nested path via `resolve_model_path`.
 
-## Download rules
+> **Store safety:** `models/` is a real directory. Recursive/forced deletes on the `models/` root are forbidden; per-file deletes inside `models/<publisher>/` are normal maintenance.
 
-**LM Studio:** downloads already land nested under this folder (set as downloads folder). Repo finds them by filename.
+## Download rules
 
 **Repo (`hf`):** put files under publisher/model, not the root:
 
@@ -39,6 +39,6 @@ Special dirs stay as-is: `--local-dir models/draft` for MTP/DFlash drafts; `--lo
 
 ## Do not
 
-- Drop main GGUFs in `models/` root (LM Studio will not list them).
+- Drop main GGUFs in `models/` root — keep the `publisher/model/` layout.
 - Put drafts under `publisher/model` unless you also update `SPEC_DRAFT_MODEL` paths.
 - Commit alias names, ports, or personal `config.yaml` into the repo.
