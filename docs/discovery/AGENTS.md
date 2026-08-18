@@ -59,6 +59,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`mtp-baseline-guide.md`](./mtp-baseline-guide.md) — guide on verifying and benchmarking MTP speculative decoding with llama-bench/llama-cli.
 - [`small-model-mtp-tps.md`](./small-model-mtp-tps.md) — inventory of local MTP packaging + fair TPS matrix (8 GB, 2026-07-20).
 - [`unsloth-qwen-guides.md`](./unsloth-qwen-guides.md) — reference guide on Unsloth dynamic quantization and Qwen fine-tuning mechanics.
+- [`speculative-and-multi-gpu-tuning.md`](./speculative-and-multi-gpu-tuning.md) — Universal speculative decoding & multi-GPU playbook: temperature/MTP symbiosis, single-GPU vs layer-split penalty, multi-instance pinning, and reasoning effort controls across model families.
 
 ### 4. CPU Inference & Build Optimization
 - [`cpu-inference-guide.md`](./cpu-inference-guide.md) — CPU-optimized llama.cpp build flags (AVX-512/AMX), Intel vs AMD notes, NUMA, thread affinity, allocators (tcmalloc/jemalloc), GGUF quant selection for CPU cache, and weight repack (`--repack` / `-nr`) by profile.
