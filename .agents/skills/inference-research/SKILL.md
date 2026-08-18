@@ -46,8 +46,8 @@ commit.** Each phase below.
    external sources: root `AGENTS.md` + `CONTEXT.md` (domain language,
    Fingerprint/Trial contracts), `results.tsv` (measured history),
    `docs/sessions/` and `docs/discovery/` (prior findings and dead ends),
-   `models/TASK.md` (open queue), and the pinned-build notes
-   (`docs/llamacpp-toolset.md`, `docs/models/` cards). A measured dead end
+   and the pinned-build notes (`docs/llamacpp-toolset.md`, `docs/models/`
+   cards). A measured dead end
    stays dead unless the Fingerprint or engine changed. Do not re-research
    what the repo already knows.
 2. **Research primary sources.** Official docs, llama.cpp source and
@@ -73,14 +73,12 @@ commit.** Each phase below.
    `docs/sessions/YYYY-MM-DD-<topic>.md` following the sessions schema
    (Goal/Hardware/Findings/Decisions/Open questions; hardware-class
    language; no SKU, no absolute paths, no PII; cross-link related logs).
-   Actionable queue → `models/TASK.md` checklist items with evidence links.
    Session logs are not edited after completion; add a follow-up file for
    new work.
-6. **Commit the discoveries.** Commit the docs and queue changes from this
-   pass only: `docs/discovery/`, `docs/sessions/`, `models/TASK.md`. Never
-   commit `results.tsv`, `models/aliases/`, machine Baseline, private
-   paths, or harness code — a research pass changes docs and the queue
-   only.
+6. **Commit the discoveries.** Commit the doc changes from this pass only:
+   `docs/discovery/`, `docs/sessions/`. Never commit `results.tsv`,
+   `models/aliases/`, machine Baseline, private paths, or harness code —
+   a research pass changes docs only.
 7. **Constraints.** Investigation is read-only: no Trials, downloads, or
    `config.py` edits without operator go-ahead. One command at a time, no
    execution timeouts, venv Python only, never autoloop. Creating a new
@@ -101,13 +99,12 @@ logs) instead of repeating them. Mark anything unverified as
 - Trusting vendor TPS/IQ numbers over the repo's own measurements.
 - Answering with a model pick from this skill — model selection is out of
   scope.
-- Editing code while investigating; a research pass changes docs and the
-  queue only.
+- Editing code while investigating; a research pass changes docs only.
 - Researching without the repo-docs read first — re-discovering ground the
   repo already measured.
 - Committing more than the discoveries with a research pass (`results.tsv`,
   `models/aliases/`, machine Baseline, harness code) — the commit covers
-  docs and the queue only.
+  docs only.
 
 ## Verification
 
@@ -116,5 +113,5 @@ logs) instead of repeating them. Mark anything unverified as
 - TBD items appear as **TBD:** and live in the doc's Open questions until
   resolved.
 - A research pass ends committed: the discoveries (`docs/discovery/`,
-  `docs/sessions/`, `models/TASK.md`) land in git, and nothing else
+  `docs/sessions/`) land in git, and nothing else
   (`results.tsv`, aliases, Baseline, code stay out).
