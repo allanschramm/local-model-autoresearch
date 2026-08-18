@@ -30,6 +30,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-17-qwen38-27b-candidate.md`](./2026-08-17-qwen38-27b-candidate.md) — Qwen3.8-27B coding-loop candidate research; scope lock (perf w/o IQ loss, Gemma excluded); Q1Q/Q1Z fit analysis; 3-way shootout plan.
 - [`2026-08-12-qwen36-dflash-tps.md`](./2026-08-12-qwen36-dflash-tps.md) — Qwen3.6-35B Q3 DFlash vs MTP vs no-spec @ 65k; DFlash dead end on 8 GB-class + `n-cpu-moe`.
 - [`2026-08-08-thinking-claw-harness-fix.md`](./2026-08-08-thinking-claw-harness-fix.md) — Agentic ignored `reasoning_content` + `max_tokens=512`; Ornith UD claw 0.3333→0.9333; thinking remasure policy.
 - [`2026-08-07-qwen36-35b-dflash-tps.md`](./2026-08-07-qwen36-35b-dflash-tps.md) — Qwen3.6-35B Q4 DFlash vs MTP vs no-spec TPS smokes @ 32k; harness MoE VRAM fixes; max-TPS brainstorm.

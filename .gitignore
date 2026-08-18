@@ -59,6 +59,8 @@ copilot-instructions.md
 !.agents/skills/onboarding/**
 !.agents/skills/validation/
 !.agents/skills/validation/**
+!.agents/skills/inference-research/
+!.agents/skills/inference-research/**
 .claude/
 .pi/
 .gemini/
