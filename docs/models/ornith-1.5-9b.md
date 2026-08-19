@@ -46,23 +46,26 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 | Metric | Value |
 |---|---|
 | Status | **on_front** (both axes) |
-| Agentic (claw-full) | **0.8000** (12/15) |
+| Agentic (claw-full) | **0.9333** (14/15; rerun @ max_tokens 4096) |
 | Coding | **0.6150** (HE+ 1.0000 / MBPP+ 0.7000 / LCB 0.5000 / BC 0.1000) |
-| bench_tg | 43.2 t/s |
+| bench_tg | 44.3 t/s |
 | Combined TPS | 54.5 (first run) |
 | Peak VRAM | 7.4 GB |
 
-Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic beats 1.0's 0.6000 UD / 0.4000 Q4_K_M.
+Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 0.9333 ties 1.0-9B UD's 0.9333 (both measured after the 4096-token fix; 1.0's 0.9333 was measured at the 2048 cap and is a slight understatement).
 
 **Harness fixes required for correct measurement (2026-08-19):**
 - `autoresearch/benchmarks/agentic_runner.py` Claw-loop turn timeout raised **30 s → 120 s** (reasoning-model `<think>` traces + max_tokens=2048 at ~40-55 t/s exceed 30 s; original 0.2667 was truncation artifact). Re-measured: 0.2667 → 0.8000.
+- Agentic `max_tokens` floor raised **2048 → 4096** in `autoresearch/runners/evaluation.py` + `agentic_runner.py`; Claw turn timeout **240 s → 420 s** (2026-08-19). 1.5-class CoT still exhausted 2048 mid-`<think>` — server log `n_decoded = 2048` exactly; turns now decode 3000–4100 tokens. Re-measured: 0.8000 → **0.9333**. One mid-run turn hit the 65k ctx ceiling (`n_tokens = 65535, truncated = 1` at ~61k accumulated context) — that research task still passed; T054 (0.00) failed on retrieval, not truncation (`truncated = 0`, 45.8k ctx, 31 calls, no ARPPU keywords found). 65k ctx is the next limiter, not a 2048-token cap.
+- `REASONING_PRESERVE=True` seeded in Baseline (2026-08-19): `GET /props` reports `chat_template_caps.supports_preserve_reasoning = true` for this GGUF; full-history think preservation for agentic continuity.
 - `autoresearch/core/llama_runner.py` `dedicated_vram_kill_ceil` now honors `AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB` (preflight and runtime monitor were inconsistent; at 65k this model's steady state ~7.7 GB exceeds the default 7676 MB ceiling).
 
 ## Sources / Verification
 - https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF (README, 2026-08-19)
 - Local GGUF metadata via `scripts/model_info.py` (2026-08-19)
-- Trial rows: `results.tsv` `f19d991d` (coding 0.6150 + agentic 0.2667), `9b1af29d` (agentic 0.8000); rejected preflight/kill rows `6fde4721`/`716efd9a`/`06043927` kept for the record
+- Trial rows: `results.tsv` `f19d991d` (coding 0.6150 + agentic 0.2667), `9b1af29d` (agentic 0.8000 @ 2048 cap), `bf729951` (agentic 0.9333 @ 4096); rejected preflight/kill rows `6fde4721`/`716efd9a`/`06043927` kept for the record
 
 ## Open questions
-- 3 remaining agentic failures (T044/T046, T054) logged mid-loop **HTTP 400/500** — long research sessions; likely server-side context/request limit at ~50k+ tokens. Investigate if agentic >0.8 matters.
+- T054 (finance ARPPU) scores 0.00 with 31 tool calls and `truncated = 0` — the model never finds the yearly values; retrieval-path failure, not truncation. Possible target for a budget/efficiency A/B later.
+- One mid-run 65k ctx truncation event (`truncated = 1`) — long research tasks can fill 65k at 4096 tokens/turn. Next limiter if agentic >0.9333 matters.
 - Full SSM layout for 1.5 (interval/hidden) — verify from GGUF when next card edit happens.

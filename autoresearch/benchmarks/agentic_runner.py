@@ -209,7 +209,7 @@ def run_agent_loop(
 
     Uses llama-server's native /v1/chat/completions with tool calling.
     """
-    gen = gen_params or GenerationParams(max_tokens=2048)
+    gen = gen_params or GenerationParams(max_tokens=4096)
     tool_defs = _build_tool_defs(task)
     endpoint_map = _build_tool_endpoint_map(task)
 
@@ -251,9 +251,11 @@ def run_agent_loop(
 
         try:
             # Bound idle network waits while allowing long model generations
-            # (reasoning models: <think> traces + max_tokens=2048 exceed 30 s at
-            # ~40-55 t/s; matches llama_client.py / agentic_coding 120 s).
-            with urllib.request.urlopen(req, timeout=120.0) as resp:
+            # (reasoning models: <think> traces + max_tokens=4096 at ~27 t/s
+            # ≈ 152 s plus heavy prefill on 30-50k-token contexts; slow
+            # CPU-offloaded MoE rigs (~8-15 t/s effective) need up to ~420 s
+            # for a full 4096-token turn).
+            with urllib.request.urlopen(req, timeout=420.0) as resp:
                 raw = json.loads(resp.read().decode())
         except Exception as e:
             print(f"    [agent] turn {turn + 1} request failed: {e}")

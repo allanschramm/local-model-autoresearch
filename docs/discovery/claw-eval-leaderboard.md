@@ -6,7 +6,7 @@ Hardware: discrete **8 GB-class** NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstrea
 
 Ground truth: `results.tsv`. Ignore rows with `val_score` outside `[0, 1]` (historical Autoloop pollution — TPS leaked into score). Global frontier: [pareto-leaderboard.md](pareto-leaderboard.md). Leaderboard text is a view of TSV — never drop a measured GGUF because it is weak or deleted.
 
-**Thinking / hybrid-reasoning models (2026-08-08):** Pre-fix Claw rows for families that emit `reasoning_content` (Ornith, Qwen3.x thinking, Gemma-4 `enable_thinking`, Qwythos/Mythos, KAT-Coder, Nanbeige, Pocket, …) may be **false lows** (empty graders, HTTP 400, `max_tokens=512`). Ornith UD remasured **0.3333 → 0.9333** @ 65k after the harness fix. Do not treat those old ranks as IQ. Checklist + remasure policy: [thinking-models-claw-harness.md](thinking-models-claw-harness.md).
+**Thinking / hybrid-reasoning models (2026-08-08):** Pre-fix Claw rows for families that emit `reasoning_content` (Ornith, Qwen3.x thinking, Gemma-4 `enable_thinking`, Qwythos/Mythos, KAT-Coder, Nanbeige, Pocket, …) may be **false lows** (empty graders, HTTP 400, `max_tokens=512`). Ornith UD remasured **0.3333 → 0.9333** @ 65k after the harness fix. **2026-08-19:** rows measured between the 2026-08-08 fix and the 4096-token floor (2048 cap, e.g. Ornith-1.5-9B's 0.8000) are slight understatements for long-CoT families — remeasure when agentic matters. Do not treat those old ranks as IQ. Checklist + remasure policy: [thinking-models-claw-harness.md](thinking-models-claw-harness.md).
 
 ## Claw-Eval full (n=15) — ranked by agentic score
 

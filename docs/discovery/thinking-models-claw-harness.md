@@ -26,7 +26,7 @@ Ground truth for scores remains `results.tsv`. This note is the **harness failur
 **Fix (owned harness):**
 
 - `autoresearch/benchmarks/agentic_runner.py` — surface reasoning when `content` empty; round-trip reasoning in chat history.
-- `autoresearch/runners/evaluation.py` — agentic tiers use `max_tokens ≥ 2048`.
+- `autoresearch/runners/evaluation.py` — agentic tiers use `max_tokens ≥ 2048`; floor raised to **≥ 4096** on 2026-08-19 (1.5-class CoT exhausted 2048 mid-`<think>`; server log `n_decoded = 2048` exactly; Ornith-1.5-9B agentic 0.8000 → 0.9333 after the raise, Claw turn timeout 240 → 420 s).
 - Related (same ship): Pareto merge keeps **best** remasured maximize-axes; budget bucket prefers `VRAM_LIMIT_MB` over peak; optional `AUTORESEARCH_SKIP_FREE_CLAMP=1` for WDDM free-clamp false-rejects.
 
 Code pointer: `autoresearch/AGENTS.md` (Claw/agentic loop bullet).
@@ -61,7 +61,7 @@ When adding a new agentic path, client, or mock:
 
 - [ ] Assistant text for graders = `content` or fallback `reasoning_content` (never ignore reasoning-only turns).
 - [ ] Multi-turn history preserves whatever the server needs to continue (reasoning and/or content).
-- [ ] Agentic `max_tokens` large enough for think + tools + answer (floor **2048**; raise if card recommends huge think budgets).
+- [ ] Agentic `max_tokens` large enough for think + tools + answer (floor **4096** since 2026-08-19; raise if card recommends huge think budgets).
 - [ ] Tool-call / JSON extraction still strips think wrappers without poisoning tool args.
 - [ ] Smoke one known thinking GGUF (e.g. Ornith UD or Qwen3.x) before trusting a new loop against the whole library.
 - [ ] Treat score cliffs on thinking families as **harness suspects** first, model IQ second.

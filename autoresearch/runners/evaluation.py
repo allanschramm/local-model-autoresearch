@@ -663,8 +663,10 @@ class ExperimentRunner:
             frequency_penalty=norm.get("frequency_penalty"),
             # GenerationParams defaults max_tokens=512; agentic loops need headroom
             # for tool turns + thinking models (reasoning_content) or graders see "".
+            # Floor 4096: reasoning models (Ornith-1.5) exhaust 2048 mid-<think>
+            # and starve the answer; server log showed n_decoded == 2048 exactly.
             max_tokens=(
-                max(int(norm.get("max_tokens", 1024)), 2048)
+                max(int(norm.get("max_tokens", 1024)), 4096)
                 if (agentic_quick or agentic_full or agentic_coding)
                 else int(norm.get("max_tokens", 1024))
             ),
