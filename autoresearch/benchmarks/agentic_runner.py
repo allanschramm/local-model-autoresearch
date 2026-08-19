@@ -250,7 +250,10 @@ def run_agent_loop(
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=30.0) as resp:
+            # Bound idle network waits while allowing long model generations
+            # (reasoning models: <think> traces + max_tokens=2048 exceed 30 s at
+            # ~40-55 t/s; matches llama_client.py / agentic_coding 120 s).
+            with urllib.request.urlopen(req, timeout=120.0) as resp:
                 raw = json.loads(resp.read().decode())
         except Exception as e:
             print(f"    [agent] turn {turn + 1} request failed: {e}")

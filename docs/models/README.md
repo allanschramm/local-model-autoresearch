@@ -28,6 +28,7 @@ Cards:
 - [Qwen-AgentWorld-35B-A3B](qwen-agentworld-35b-a3b.md)
 - [Gemma-4-26B-A4B](gemma-4-26b-a4b.md) — claw **0.1333** / coding **0.590**
 - [Ornith-1.0-9B](ornith-1.0-9b.md) — UD / MTP / deepreinforce `ornith-1.0-9b-Q4_K_M` are separate Trials
+- [Ornith-1.5-9B](ornith-1.5-9b.md) — claw **0.8000** + coding **0.615**; on_front; required 120 s Claw turn timeout + keepout env fixes
 - [Ornith-1.0-35B](ornith-1.0-35b.md) — UD-Q4 / Q3 / deepreinforce Q4_K_M are separate Trials
 - [Ornith-1.0-35B IQ3_M](ornith-1.0-35b-iq3_m.md) — IQ3_M variant
 - [KAT-Coder-V2.5-Dev](kat-coder-v2.5-dev.md) — IQ4_XS; claw **0.6000** + coding **0.640**

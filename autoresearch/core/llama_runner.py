@@ -92,7 +92,10 @@ def _is_gpu_working(binary_name: str, probe_flag: str) -> bool:
 def should_prefer_gpu_build() -> bool:
     if _parse_bool_env("AUTORESEARCH_PREFER_CPU"):
         return False
-    if os.environ.get("CUDA_VISIBLE_DEVICES") == "-1" or os.environ.get("ROCR_VISIBLE_DEVICES") == "-1":
+    if (
+        os.environ.get("CUDA_VISIBLE_DEVICES") == "-1"
+        or os.environ.get("ROCR_VISIBLE_DEVICES") == "-1"
+    ):
         return False
     if sys.platform == "darwin":
         return platform.machine() == "arm64"
@@ -311,9 +314,17 @@ SERVER_HEALTH_TIMEOUT_SECONDS = 300.0
 def dedicated_vram_kill_ceil(
     limit_mb: float,
     total_mb: float | None,
-    keepout_mb: float = DEFAULT_PHYSICAL_VRAM_KEEPOUT_MB,
+    keepout_mb: float | None = None,
 ) -> float:
-    """Kill ceiling: ``min(limit, physical − keepout)`` when total is known."""
+    """Kill ceiling: ``min(limit, physical − keepout)`` when total is known.
+
+    keepout defaults to env AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB, else
+    DEFAULT_PHYSICAL_VRAM_KEEPOUT_MB — single source so the preflight clamp,
+    runtime monitor, and cli-bench monitor all agree on the ceiling.
+    """
+    if keepout_mb is None:
+        env_keep = os.environ.get("AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB")
+        keepout_mb = float(env_keep) if env_keep else DEFAULT_PHYSICAL_VRAM_KEEPOUT_MB
     ceil = float(limit_mb)
     if total_mb is not None and total_mb > 0:
         return min(ceil, max(0.0, float(total_mb) - keepout_mb))
