@@ -19,6 +19,7 @@ __pycache__/
 *.pyc
 venv/
 venv-sglang/
+venv-wsl/
 .venv/
 .nexus_venv/
 .pytest_cache/
