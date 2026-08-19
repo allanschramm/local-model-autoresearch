@@ -10,9 +10,7 @@ For small models (e.g. Gemma-4 E4B, Qwen3.5-9B), GPU kernels execute so quickly 
 
 *   **Technique:** CUDA Graphs allow the engine to record the execution sequence of GPU kernels once during initialization and replay the entire sequence with a single launch command.
 *   **Performance Impact:** Eliminates CPU-to-GPU launch latency. Can boost TPS by **15% to 40%** on small models.
-*   **In `llama.cpp`:**
-    - Enable using the `--cuda-graph` or `-cgraph` flags.
-    - Capturing CUDA graphs requires fixed input shapes. It is most effective when combined with a fixed batch size and context window during serving.
+*   **In `llama.cpp`:** there is **no `--cuda-graph` CLI flag** — CUDA graphs are compiled into the CUDA backend (`USE_CUDA_GRAPH`) and **enabled automatically** at runtime. Each graph is checked for compatibility (graph capture is skipped when the node mix needs it); disable via the `GGML_CUDA_DISABLE_GRAPHS` environment variable, not a flag. b10488 relaxed one over-conservative disable for `mul_mat_id` ([#26802](https://github.com/ggml-org/llama.cpp/pull/26802)). Capturing requires fixed input shapes; effective with a fixed batch size and context window during serving.
 
 ---
 
@@ -65,7 +63,7 @@ As discovered in our Qwen3.6-35B-A3B and Bonsai-27B speculative decoding benchma
 
 | Hardware/Model Scenario | Recommended Engine | Essential Flags | Memory Settings |
 | :--- | :--- | :--- | :--- |
-| **Small Models (<10B) on GPU** | `llama.cpp` / `vLLM` | `--cuda-graph`, `-fa on` | tcmalloc, MTP active |
+| **Small Models (<10B) on GPU** | `llama.cpp` / `vLLM` | `-fa on` (CUDA graphs are automatic in llama.cpp; `GGML_CUDA_DISABLE_GRAPHS` to disable) | tcmalloc, MTP active |
 | **Large Models (>20B) fully on GPU** | `llama.cpp` | `-ctk q4_0 -ctv q4_0`, `-fa on` | MTP active |
 | **MoE Models with CPU expert offloading** | `llama.cpp` | `--n-cpu-moe <N>`, `--spec-type none` | Disable speculative decoding |
 | **Ultra low-bit Quantization (e.g. Q1_0)** | `llama.cpp` | `--spec-type none`, `--dry-multiplier 0.8` | Disable speculative decoding, DRY active |

@@ -43,8 +43,8 @@ Quality ordering (**external / unverified on this rig**): UD-Q4_K_XL ≈ AWQ > G
 
 **TBDs (research sharpened, still open):**
 
-- **TBD:** AWQ vs GGUF Q4_K_M quality parity **on this rig** — external evidence only; no local measurement. Falsifiable: same model, same tasks, llama.cpp Q4_K_M vs SGLang/vLLM AWQ (needs the SGLang path from issue #59).
-- **TBD:** SGLang `--load-format gguf` same-bytes run — support documented (NVIDIA-only), never executed on this hardware (`venv-sglang` absent; upstream no-Windows).
+- **TBD:** AWQ vs GGUF Q4_K_M quality parity **on this rig** — external evidence only; no local measurement. Falsifiable: same model, same tasks, llama.cpp Q4_K_M vs SGLang/vLLM AWQ. The blocker from issue #59 (SGLang harness path) is **resolved 2026-08-18**: `SGLangServerRunner` + `venv-sglang` (WSL2) exist and produced a `backend=sglang` row; the parity run is now executable, still unmeasured. Next missing piece: a Qwen3.8-class AWQ pack (no AWQ/GPTQ pack exists on HF for Qwen3.8-9B as of 2026-08-18 — the 2B fp16 fit is the only same-family SGLang comparison so far).
+- **TBD:** SGLang `--load-format gguf` same-bytes run — support still documented (server args; NVIDIA-only) and on the SGLang 2H2026 quantization refactor roadmap (GGUF/Autoround standardization); never executed on this hardware. `venv-sglang` now exists (WSL2), so the run is executable — still unmeasured.
 - **TBD:** NVFP4 W4A16 vs W4A4 delta on Qwen3.6-35B-A3B (Unsloth NVFP4 GGUF) — Blackwell-only, out of rig scope.
 
 ---
