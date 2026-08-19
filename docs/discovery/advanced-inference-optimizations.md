@@ -68,4 +68,41 @@ As discovered in our Qwen3.6-35B-A3B and Bonsai-27B speculative decoding benchma
 | **Small Models (<10B) on GPU** | `llama.cpp` / `vLLM` | `--cuda-graph`, `-fa on` | tcmalloc, MTP active |
 | **Large Models (>20B) fully on GPU** | `llama.cpp` | `-ctk q4_0 -ctv q4_0`, `-fa on` | MTP active |
 | **MoE Models with CPU expert offloading** | `llama.cpp` | `--n-cpu-moe <N>`, `--spec-type none` | Disable speculative decoding |
-| **Ultra low-bit Quantization (e.g. Q1_0)** | `llama.cpp` | `--spec-type none` | Disable speculative decoding |
+| **Ultra low-bit Quantization (e.g. Q1_0)** | `llama.cpp` | `--spec-type none`, `--dry-multiplier 0.8` | Disable speculative decoding, DRY active |
+
+---
+
+## 7. DRY Sampling Guardrails for Ultra-Low-Bit Quants
+
+Aggressively quantized reasoning models (e.g. 1-bit to 2.5-bit quants like Q1Q/Q1Z/Q2) are prone to degenerate repetition and infinite thinking loops under default samplers.
+
+*   **Technique:** Use Don't Repeat Yourself (DRY) sampling to apply an exponential penalty to repeated token sequences dynamically.
+*   **Key Flags (`llama.cpp`):**
+    - `--dry-multiplier N`: Penalty multiplier strength (default `0.0`, recommended `0.8`).
+    - `--dry-base N`: Base for exponential penalty curve (default `1.75`).
+    - `--dry-allowed-length N`: Allowed unpenalized repeat length (default `2`).
+    - `--dry-penalty-last-n N`: History window scanned for matching prefixes (default `64`).
+    - `--dry-sequence-breaker STRING`: Sequence breakers interrupting repetition matching (defaults: `\n`, `:`, `"`, `*`).
+
+---
+
+## 8. Reasoning Budget & Multi-Turn Preservation
+
+When serving reasoning-capable models (e.g. Qwen3.5/3.8, DeepSeek R1-derived architectures) in automated coding or agentic loops, unbounded reasoning tokens can cause latency explosions.
+
+*   **Technique:** Bound reasoning step length and control reasoning trace persistence across multi-turn sessions.
+*   **Key Flags (`llama.cpp`):**
+    - `--reasoning [on|off|auto]`: Control reasoning template activation (`-rea`).
+    - `--reasoning-budget N`: Enforce a hard ceiling of $N$ thinking tokens per generation turn.
+    - `--reasoning-budget-message STRING`: Custom transition injected when budget is exhausted before concluding thoughts.
+    - `--reasoning-preserve` / `--no-reasoning-preserve`: Control whether thinking traces are kept in long multi-turn context or stripped to conserve KV budget.
+    - `--reasoning-format [deepseek|deepseek-legacy|none]`: Structure thought output into `message.reasoning_content`.
+
+---
+
+## 9. Unified Dynamic KV Buffer Allocation (`-kvu`)
+
+*   **Technique:** Allocate a single unified KV buffer shared across all sequences and slots rather than pre-partitioning fixed slot memory slices.
+*   **Impact:** Minimizes VRAM memory fragmentation on multi-turn agentic workloads with variable query lengths.
+*   **Flag (`llama.cpp`):** `-kvu` / `--kv-unified` (default enabled with `-np auto`).
+
