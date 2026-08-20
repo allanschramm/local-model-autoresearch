@@ -1,6 +1,10 @@
 """Tests for autoresearch.benchmarks.agentic_runner — Claw-Eval runner and scoring."""
 
+import email.message
+import io
+import json
 import sys
+import urllib.error
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -132,6 +136,10 @@ def test_run_agentic_eval_missing_task(mock_llama_client: MagicMock):
     assert res["score"] == 0.0
     assert len(res["task_results"]) == 1
     assert res["task_results"][0]["details"] == "missing"
+    assert res["task_results"][0]["final_text_length"] == 0
+    assert res["task_results"][0]["tool_calls_count"] == 0
+    assert res["task_results"][0]["length_stops"] == 0
+    assert res["task_results"][0]["http_errors"] == []
 
 
 def test_service_manager_does_not_sweep_before_start(
@@ -282,6 +290,7 @@ scoring_components:
             "Operation completed with success.",
             [{"tool": "get_weather", "arguments": {"city": "Paris"}, "result": {}, "turn": 1}],
             0.1,
+            {"length_stops": 2, "http_errors": ["HTTP 500: boom"]},
         ),
     )
 
@@ -293,6 +302,13 @@ scoring_components:
     assert len(res["task_results"]) == 1
     assert res["task_results"][0]["score"] == 1.0
     assert "check_success: PASS" in res["task_results"][0]["details"]
+    # Observability fields flow into the sidecar JSON.
+    row = res["task_results"][0]
+    assert row["final_text_length"] == len("Operation completed with success.")
+    assert row["tool_calls_count"] == 1
+    assert row["elapsed_sec"] == 0.1
+    assert row["length_stops"] == 2
+    assert row["http_errors"] == ["HTTP 500: boom"]
 
 
 def test_assistant_visible_text_falls_back_to_reasoning_content():
@@ -343,10 +359,75 @@ def test_run_agent_loop_uses_reasoning_when_content_empty(monkeypatch, mock_llam
         "autoresearch.benchmarks.agentic_runner.urllib.request.urlopen",
         lambda *a, **k: _Resp(),
     )
-    text, calls, _elapsed = run_agent_loop(
+    text, calls, _elapsed, _meta = run_agent_loop(
         mock_llama_client,
         {"prompt": {"text": "triage"}, "tools": [], "tool_endpoints": []},
         max_turns=2,
     )
     assert "needs reply" in text
     assert calls == []
+    assert _meta == {"length_stops": 0, "http_errors": []}
+
+
+def test_run_agent_loop_logs_http_error_body(monkeypatch, mock_llama_client, capsys):
+    """HTTP 400/500 bodies must survive post-mortem (printed + in loop_meta)."""
+    mock_llama_client.base_url = "http://127.0.0.1:18080"
+
+    def _raise(*a, **k):
+        raise urllib.error.HTTPError(
+            "http://127.0.0.1:18080/v1/chat/completions",
+            400,
+            "Bad Request",
+            email.message.Message(),
+            io.BytesIO(b'{"error":{"message":"reasoning content after final"}}'),
+        )
+
+    monkeypatch.setattr("autoresearch.benchmarks.agentic_runner.urllib.request.urlopen", _raise)
+    text, calls, _elapsed, meta = run_agent_loop(
+        mock_llama_client,
+        {"prompt": {"text": "triage"}, "tools": [], "tool_endpoints": []},
+        max_turns=2,
+    )
+    assert text == ""
+    assert calls == []
+    assert "HTTP 400" in capsys.readouterr().out
+    assert meta["http_errors"] == [
+        'HTTP 400: {"error":{"message":"reasoning content after final"}}'
+    ]
+
+
+def test_run_agent_loop_counts_finish_reason_length(monkeypatch, mock_llama_client, capsys):
+    """finish_reason == 'length' (max_tokens exhausted) must be counted and surfaced."""
+    mock_llama_client.base_url = "http://127.0.0.1:18080"
+    payload = {
+        "choices": [
+            {
+                "finish_reason": "length",
+                "message": {"content": "partial", "tool_calls": []},
+            }
+        ]
+    }
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return json.dumps(payload).encode()
+
+    monkeypatch.setattr(
+        "autoresearch.benchmarks.agentic_runner.urllib.request.urlopen",
+        lambda *a, **k: _Resp(),
+    )
+    text, calls, _elapsed, meta = run_agent_loop(
+        mock_llama_client,
+        {"prompt": {"text": "triage"}, "tools": [], "tool_endpoints": []},
+        max_turns=2,
+    )
+    assert text == "partial"
+    assert calls == []
+    assert meta["length_stops"] == 1
+    assert "finish_reason=length" in capsys.readouterr().out

@@ -6,6 +6,7 @@ hides bench validation, server lifecycle, and metric computation behind the seam
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import re
@@ -40,6 +41,31 @@ from autoresearch.core.model_arch import gguf_block_count, gguf_has_mtp, gguf_is
 from autoresearch.core.sglang_runner import SGLangServerRunner, run_sglang_bench_validation
 
 BASE_DIR = Path(__file__).resolve().parent
+
+# ── per-run artifact rotation ───────────────────────────────────────────
+LOG_DIR = BASE_DIR / "logs"
+LOG_KEEP = 20
+
+
+def _prune_glob(directory: Path, pattern: str, keep: int) -> None:
+    """Delete oldest matching files, keeping the `keep` newest. Missing dir → no-op."""
+    if not directory.exists():
+        return
+    paths = sorted(directory.glob(pattern), key=lambda p: p.stat().st_mtime)
+    for path in paths[:-keep] if keep > 0 else paths:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+
+
+def _new_server_log(model_filename: str) -> Path:
+    """Unique per-run llama-server log path under LOG_DIR (keep last LOG_KEEP)."""
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    _prune_glob(LOG_DIR, "llama-server-*.log", LOG_KEEP - 1)  # leave room for the new file
+    stem = Path(model_filename).stem if model_filename else "unknown"
+    return LOG_DIR / f"llama-server-{time.strftime('%Y%m%d-%H%M%S')}-{stem}.log"
+
 
 # ── llama-bench defaults ────────────────────────────────────────────────
 # Fallback only when Baseline omits TPS_FLOOR (legacy local config.py).
@@ -646,12 +672,10 @@ class ExperimentRunner:
                 return res
 
         # ── Full evaluation ──────────────────────────────────────────────
-        server_log = BASE_DIR / "llama_server.log"
-        if server_log.exists():
-            try:
-                server_log.unlink()
-            except OSError:
-                pass
+        # Per-run log (rotated; the old shared llama_server.log got wiped by
+        # every Trial, destroying post-mortem evidence like HTTP 400 bodies).
+        server_log = _new_server_log(model_filename)
+        print(f"  [server-log] {server_log}")
 
         gen_params = GenerationParams(
             temp=norm.get("temp", 0.2),
@@ -759,6 +783,32 @@ class ExperimentRunner:
                             res.agentic_val = agentic_res["score"]
                             res.agentic_task_count = agentic_res["total"]
                             res.agentic_tier = tier
+                    # Per-trial agentic sidecar (rotated; JSON is not *.log so the
+                    # dir is gitignored separately). Uses the last tier's result —
+                    # matches res.agentic_val when full runs after quick.
+                    try:
+                        LOG_DIR.mkdir(parents=True, exist_ok=True)
+                        _prune_glob(LOG_DIR, "agentic-*.json", LOG_KEEP - 1)
+                        sidecar = {
+                            "model": model_filename,
+                            "tier": res.agentic_tier,
+                            "score": agentic_res.get("score", 0.0),
+                            "passed": agentic_res.get("passed", 0),
+                            "total": agentic_res.get("total", 0),
+                            "elapsed_sec": agentic_res.get("elapsed_sec", 0.0),
+                            "max_tokens": gen_params.max_tokens,
+                            "server_log": str(server_log),
+                            "tasks": agentic_res.get("task_results", []),
+                        }
+                        sidecar_path = (
+                            LOG_DIR
+                            / f"agentic-{time.strftime('%Y%m%d-%H%M%S')}-{Path(model_filename).stem}.json"
+                        )
+                        with open(sidecar_path, "w", encoding="utf-8") as fh:
+                            json.dump(sidecar, fh, indent=2)
+                        print(f"  [agentic] wrote {sidecar_path}")
+                    except OSError as e:
+                        print(f"  [WARNING] could not write agentic sidecar: {e}")
                 if agentic_coding:
                     print("  [agentic-coding] SWE-lite issue loop (ADR 0013)")
                     ac = run_agentic_coding_eval(client, gen_params=gen_params)

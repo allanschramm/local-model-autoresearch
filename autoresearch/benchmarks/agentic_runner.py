@@ -205,9 +205,11 @@ def run_agent_loop(
     gen_params: GenerationParams | None = None,
     max_turns: int = 20,
 ) -> tuple[str, list[dict], float]:
-    """Run one agent loop for a task. Returns (final_text, tool_calls_made, elapsed_sec).
+    """Run one agent loop for a task.
 
     Uses llama-server's native /v1/chat/completions with tool calling.
+    Returns (final_text, tool_calls_made, elapsed_sec, loop_meta) where
+    loop_meta = {"length_stops": int, "http_errors": list[str]}.
     """
     gen = gen_params or GenerationParams(max_tokens=4096)
     tool_defs = _build_tool_defs(task)
@@ -226,6 +228,8 @@ def run_agent_loop(
     ]
 
     all_tool_calls: list[dict] = []
+    length_stops = 0
+    http_errors: list[str] = []
     t_start = time.time()
 
     for turn in range(max_turns):
@@ -257,11 +261,24 @@ def run_agent_loop(
             # for a full 4096-token turn).
             with urllib.request.urlopen(req, timeout=420.0) as resp:
                 raw = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            try:
+                body = e.read().decode("utf-8", errors="replace")[:2000]
+            except Exception:
+                body = ""
+            msg = f"HTTP {e.code}: {body}"
+            print(f"    [agent] turn {turn + 1} request failed: {msg}")
+            http_errors.append(msg)
+            break
         except Exception as e:
             print(f"    [agent] turn {turn + 1} request failed: {e}")
+            http_errors.append(str(e))
             break
 
         choice = (raw.get("choices") or [{}])[0]
+        if choice.get("finish_reason") == "length":
+            length_stops += 1
+            print(f"    [agent] turn {turn + 1} finish_reason=length (max_tokens exhausted)")
         msg = choice.get("message", {})
 
         # Check for tool calls
@@ -306,7 +323,15 @@ def run_agent_loop(
             # Model produced final answer
             messages.append(_assistant_history_message(msg))
             elapsed = time.time() - t_start
-            return content, all_tool_calls, elapsed
+            return (
+                content,
+                all_tool_calls,
+                elapsed,
+                {
+                    "length_stops": length_stops,
+                    "http_errors": http_errors,
+                },
+            )
 
     elapsed = time.time() - t_start
     # If we hit max_turns, use last assistant message visible text
@@ -315,7 +340,15 @@ def run_agent_loop(
         if m.get("role") == "assistant":
             last_content = _assistant_visible_text(m)
             break
-    return last_content, all_tool_calls, elapsed
+    return (
+        last_content,
+        all_tool_calls,
+        elapsed,
+        {
+            "length_stops": length_stops,
+            "http_errors": http_errors,
+        },
+    )
 
 
 # ── Rule-Based Scorer ────────────────────────────────────────────────────────
@@ -421,7 +454,7 @@ def run_agentic_eval(
 
     Returns dict with keys: passed, total, score, task_results, elapsed_sec.
     """
-    gen = gen_params or GenerationParams(max_tokens=2048, temp=0.4)
+    gen = gen_params or GenerationParams(max_tokens=4096, temp=0.4)
     results: list[dict] = []
     passed = 0
     t_start = time.time()
@@ -431,7 +464,18 @@ def run_agentic_eval(
         yaml_path = task_dir / "task.yaml"
         if not yaml_path.exists():
             print(f"  [agentic] SKIP {tid}: task.yaml not found")
-            results.append({"task_id": tid, "score": 0.0, "details": "missing"})
+            results.append(
+                {
+                    "task_id": tid,
+                    "score": 0.0,
+                    "details": "missing",
+                    "final_text_length": 0,
+                    "tool_calls_count": 0,
+                    "elapsed_sec": 0.0,
+                    "length_stops": 0,
+                    "http_errors": [],
+                }
+            )
             continue
 
         with open(yaml_path, encoding="utf-8") as f:
@@ -442,7 +486,7 @@ def run_agentic_eval(
 
         for trial in range(trials):
             with ServiceManager(task_dir, task) as svc:
-                final_text, tool_calls, elapsed = run_agent_loop(
+                final_text, tool_calls, elapsed, loop_meta = run_agent_loop(
                     client,
                     task,
                     gen_params=gen,
@@ -456,10 +500,15 @@ def run_agentic_eval(
                 task_detail = scoring["details"]
 
             status = "PASS" if scoring["score"] >= 0.5 else "FAIL"
+            length_note = (
+                f" length_stops={loop_meta['length_stops']}"
+                if loop_meta["length_stops"] > 0
+                else ""
+            )
             print(
                 f"  [agentic] {tid} trial{trial + 1}: {status} "
                 f"score={scoring['score']:.2f} calls={scoring['tool_calls_count']} "
-                f"({scoring['details']})"
+                f"len={len(final_text)}{length_note} ({scoring['details']})"
             )
 
         if task_best >= 0.5:
@@ -470,6 +519,11 @@ def run_agentic_eval(
                 "task_id": tid,
                 "score": task_best,
                 "details": task_detail,
+                "final_text_length": len(final_text),
+                "tool_calls_count": len(tool_calls),
+                "elapsed_sec": round(elapsed, 1),
+                "length_stops": loop_meta["length_stops"],
+                "http_errors": loop_meta["http_errors"],
             }
         )
 
