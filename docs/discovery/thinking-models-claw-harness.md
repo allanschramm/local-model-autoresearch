@@ -31,6 +31,22 @@ Ground truth for scores remains `results.tsv`. This note is the **harness failur
 
 Code pointer: `autoresearch/AGENTS.md` (Claw/agentic loop bullet).
 
+## Effort vs budget vs preserve (llama.cpp levers, verified 2026-08-19)
+
+Reasoning control on llama.cpp is **not** a single knob; "effort" and "budget" are different levers and only some are expressible:
+
+- **Effort tiers (off / minimal / low / medium / high / xhigh / max) are NOT a llama.cpp CLI flag.** They are `chat-template-kwargs` consumed only by templates that implement them (DeepSeek-V4, gpt-oss class). The qwen35 template (Ornith, Qwen3.5/3.6/3.8 families) does **not** read `reasoning_effort`.
+- **llama-server OpenAI API**: request body `reasoning_effort` — only the value `"none"` is handled (disables thinking); other values are explicitly *"model-specific and not yet handled"* (server-common.cpp). So effort tiers are **not expressible for qwen35-family models** on this stack.
+- **Hard levers that DO work** (all plumbed in Baseline):
+  | Lever | Baseline key | Effect |
+  |---|---|---|
+  | `--reasoning on/off` | `REASONING` | allow / kill thinking entirely |
+  | `--reasoning-budget N` | `REASONING_BUDGET` | hard think-token cap (-1 unrestricted, 0 immediate end) |
+  | `max_tokens` | harness per-turn | think + answer **pool** — the lever that truncates |
+  | `--reasoning-preserve` | `REASONING_PRESERVE` | re-render older turns' think traces into the prompt; only meaningful when `GET /props` reports `chat_template_caps.supports_preserve_reasoning` (verified **true** for Ornith-1.5 GGUFs, 2026-08-19) |
+
+**Measurement policy (capability first):** capability evals run at default effort (thinking unrestricted) with a generous `max_tokens` (floor **4096** since 2026-08-19) — measuring a model under an artificial think cap under-scores it. An **efficiency profile** (bounded thinking) is a separate choice: `REASONING_BUDGET` N + modest `max_tokens` → separate Fingerprint, documented in the card. Never set `REASONING_BUDGET` to "fix" a low capability score — raise `max_tokens` first; the 65k ctx ceiling (not a token cap) is the next real limiter on long research tasks.
+
 ## Who to remasure (Claw-full only)
 
 **Remasure** when any of:
@@ -48,8 +64,8 @@ Evidence: [2026-08-08 session](../sessions/2026-08-08-thinking-claw-harness-fix.
 
 ## Operator checklist (before Claw-full on a thinking GGUF)
 
-1. Confirm harness on `main` (or later) includes the agentic `reasoning_content` + `max_tokens≥2048` fix.
-2. Seed Baseline from the model card (thinking / agentic sampler profile), not leftover `config.py`. Optional engine seed: `REASONING_PRESERVE=True` only when llama-server `GET /props` reports `chat_template_caps.supports_preserve_reasoning` and the publisher wants preserved thinking for agentic. Default `None` (omit flag). Not an IQ Search neighbor; coding-10 does not use it.
+1. Confirm harness on `main` (or later) includes the agentic `reasoning_content` + `max_tokens≥4096` fix (floor since 2026-08-19).
+2. Seed Baseline from the model card (thinking / agentic sampler profile), not leftover `config.py`. Optional engine seed: `REASONING_PRESERVE=True` only when llama-server `GET /props` reports `chat_template_caps.supports_preserve_reasoning` and the publisher wants preserved thinking for agentic (verified **true** for Ornith-1.5 GGUFs, 2026-08-19 → seeded). Default `None` (omit flag). Not an IQ Search neighbor; coding-10 does not use it.
 3. Same Fingerprint / `VRAM_LIMIT_MB` / ctx you care about for Pareto merge.
 4. Run claw-full via harness only (`benchmark_search.py --agentic-full …`). One Trial at a time.
 5. If dense false-rejects on free VRAM while measured peaks fit budget: `AUTORESEARCH_SKIP_FREE_CLAMP=1` (runtime monitor still kills true OOM).

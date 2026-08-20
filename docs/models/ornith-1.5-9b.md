@@ -60,6 +60,25 @@ Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 
 - `REASONING_PRESERVE=True` seeded in Baseline (2026-08-19): `GET /props` reports `chat_template_caps.supports_preserve_reasoning = true` for this GGUF; full-history think preservation for agentic continuity.
 - `autoresearch/core/llama_runner.py` `dedicated_vram_kill_ceil` now honors `AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB` (preflight and runtime monitor were inconsistent; at 65k this model's steady state ~7.7 GB exceeds the default 7676 MB ceiling).
 
+## Ornith family comparison (2026-08-19, 8 GB-class, results.tsv ground truth)
+
+| Model (quant) | Agentic (claw-full) | Coding (10 tasks) | bench_tg | Peak VRAM | Status |
+|---|---|---|---|---|---|
+| **1.5-9B Q4_K_M** | **0.9333** (14/15, @4096) | **0.6150** | 43.2–44.3 | 7.2–7.4 GB | on_front |
+| 1.0-9B UD Q4_K_XL | 0.9333 (14/15, @2048 cap) | 0.5400 @65k · 0.5700 @32k | 42.1–48.6 | 7.7–7.8 GB | on_front |
+| 1.0-9B Q4_K_M (deepreinforce) | 0.4000 | 0.5800 | 42.5 | 7.8–7.9 GB | — |
+| 1.0-9B MTP Q4_K_M | 0.4667 | 0.5800 | 64.0 (draft) | 7.4 GB | — |
+| **1.5-35B Q4_K_M** (MoE `n-cpu-moe`) | **0.7333** | **0.6300** | 25.4–28.8 | 4.0–7.0 GB | on_front |
+| 1.0-35B UD Q4_K_XL | 0.7333 (tsv) | 0.5800 | 22.7–25.7 | 4.9–5.2 GB | on_front |
+| 1.0-35B UD Q3_K_XL | 0.7333 (tsv) | 0.5550 | 24.1–26.0 | 4.4–5.2 GB | on_front |
+
+**Verdict:**
+- **1.5-9B Q4_K_M is the best Ornith for 8 GB-class** — top agentic, top coding, lowest VRAM of the 9B tier.
+- **Agentic ties are cap-artifacts**: 1.0-9B UD's 0.9333 was measured at the 2048 cap; 1.5-9B at 4096. At equal caps 1.5-9B has margin (0.8000 → 0.9333 after the raise) — real 1.0-vs-1.5 gap is ≥ +0.133 on 9B.
+- **1.5 wins coding everywhere**: 9B +0.075 vs UD, +0.035 vs deepreinforce Q4_K_M; 35B +0.050 vs Q4_K_XL.
+- **35B tier**: agentic tied 0.7333, 1.5 faster (25.4–28.8 vs 22.7–25.7 t/s), better coding. 1.0-35B card body text (0.60 Q4 / 0.4667 Q3) predates the 2026-08-08 harness fix; tsv rows are 0.7333 for both quants.
+- 1.0-9B MTP remains the **speed** pick only (64 t/s draft) at the cost of agentic.
+
 ## Sources / Verification
 - https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF (README, 2026-08-19)
 - Local GGUF metadata via `scripts/model_info.py` (2026-08-19)

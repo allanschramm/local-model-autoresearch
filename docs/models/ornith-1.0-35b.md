@@ -128,3 +128,4 @@ See [IQ3_M variant card](ornith-1.0-35b-iq3_m.md) for detailed testing results.
 
 ## Open questions
 - None (baseline verified).
+- **Card body vs results.tsv (2026-08-19):** tsv rows for both UD quants now show **agentic 0.7333** (rows `82c693d7` Q4_K_XL, `e242a1a5` Q3_K_XL) — post-2026-08-08 harness-fix remeasures; the Q4 0.6000 / Q3 0.4667 text above predates the fix and is **stale**. tsv is ground truth; coding (0.5800 / 0.5550) unchanged. Family comparison: [ornith-1.5-9b.md](ornith-1.5-9b.md).

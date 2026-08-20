@@ -30,6 +30,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-19-agentic-max-tokens-4096.md`](./2026-08-19-agentic-max-tokens-4096.md) — agentic `max_tokens` floor 2048→4096 + 420 s Claw timeout; Ornith-1.5-9B agentic 0.8000→0.9333; `/props` supports_preserve_reasoning=true → `REASONING_PRESERVE`; 65k ctx ceiling hit; T054 retrieval failure.
 - [`2026-08-18-issue-59-sglang.md`](./2026-08-18-issue-59-sglang.md) — issue #59 cross-engine validation: SGLang 0.5.17 (WSL2) 56.8 t/s ≈ llama.cpp 60.5 on `Qwen3.8-2B` @32k; 9B/27B fit limits; store junction removed after recursive-delete wipe.
 - [`2026-08-18-qwen38-27b-rejected.md`](./2026-08-18-qwen38-27b-rejected.md) — Qwen3.8-27B Q1Q validation: rejected (Day 27.9 TPS / Night ~61k ctx gates fail); no MTP head in file; tqp turbo2 KV ≈ 0.137×f16 (issue #58).
 - [`2026-08-17-qwen38-27b-candidate.md`](./2026-08-17-qwen38-27b-candidate.md) — Qwen3.8-27B coding-loop candidate research; scope lock (perf w/o IQ loss, Gemma excluded); Q1Q/Q1Z fit analysis; 3-way shootout plan.
