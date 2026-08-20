@@ -45,25 +45,30 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 - `KV q4_0`, batch 256/128, threads 6/8, `FLASH_ATTN on`, `NO_MMAP False` (mmap — 21.7 GB file pages), `CONT_BATCHING True`, NGL 99, `N_CPU_MOE=None` (auto → 41)
 - Sampler: TEMP 0.6 / TOP_P 0.95 / TOP_K 20 / MIN_P 0.0 / presence 0.0 / repeat 1.0
 
-## Trial results (2026-08-19, claw-full + coding-10 @ 65k)
+## Trial results (2026-08-19 claw-full + coding-10 @ 65k; 2026-08-20 agentic rerun @ 4096 floor)
 | Metric | Value |
 |---|---|
 | Status | **on_front** |
-| Agentic (claw-full) | **0.7333** (11/15) — stable across 120 s and 240 s turn-timeout runs |
+| Agentic (claw-full) | **0.8667** (13/15; rerun @ max_tokens 4096, 2026-08-20) — was 0.7333 (11/15) under the 2048 cap |
 | Coding | **0.6300** (HE+ 1.0000 / MBPP+ 0.9000 / LCB 0.4000 / BC 0.1000) |
-| bench_tg | 25.4 t/s |
+| bench_tg | 27.8 t/s |
 | Combined TPS | 36.8 |
-| Peak VRAM | 4.0 GB |
+| Peak VRAM | 3.6–4.0 GB |
 
-Best coding in the Ornith family (1.5-9B 0.6150 / 1.0-35B 0.580). Agentic close to 1.5-9B's 0.8000, above 1.0-35B's 0.6000. Card's own ClawEval claims 72.5 — local 0.7333 aligns.
+Best coding in the Ornith family (1.5-9B 0.6150 / 1.0-35B 0.580). Agentic 0.8667 now **above 1.0-35B's 0.7333 and 1.5-9B's 0.9333's tail** — the 4096 floor recovered the web_research cluster (T046/T048/T050 all PASS **1.00** with 9.8–11.7k-char reports; T044 1.00). Card's own ClawEval claims 72.5 — local 0.8667 exceeds it under the fixed floor.
 
-**Remaining agentic failures (4/15, web_research cluster):** T046/T048/T050/T054 — model loops on long research sessions without synthesizing a final report (T048: 42 calls, no timeout, empty report). Not timeout truncation (stable across 120 s/240 s). Possible TEMP 1.0 / presence lever.
+**Remaining agentic failures (2/15, 2026-08-20):**
+- **T053 (finance US-Steel): 0.00 — 65k ctx ceiling, now proven.** HTTP 400 captured verbatim: `request (124983 tokens) exceeds the available context size (65536 tokens)` (`exceed_context_size_error`, n_prompt_tokens 124983, n_ctx 65536). Accumulated history + `REASONING_PRESERVE` think re-renders ballooned the request past 65k; server log shows one `truncated = 1` (n_tokens 65535) before it. This is the documented next-limiter, now with direct evidence.
+- **T054 (finance NFLX ARPPU): 0.00 — content failure, not truncation.** 29 calls, report **len=7173** (well above rubric floors), but no yearly-value keywords; same retrieval-path failure as both 9B generations. Family-wide task weakness.
+- No max_tokens cap hits: **0 turns decoded to 4096** in the run log (the 5 `length_stops` flags were `</s>`-stop-string stops — see harness caveat).
 
 ## Sources / Verification
 - https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B-GGUF (README, 2026-08-19)
 - Local GGUF metadata via `scripts/model_info.py` + field scan (2026-08-19)
-- Trial rows: `results.tsv` `53ba75b7` (complete vector on_front), `500e9967` (agentic rerun @240 s)
+- Trial rows: `results.tsv` `53ba75b7` (complete vector on_front), `500e9967` (agentic rerun @240 s), `f8980537` (agentic 0.8667 @4096)
+- Evidence artifacts (2026-08-20): `autoresearch/runners/logs/llama-server-20260820-121648-Ornith-1.5-35B-Q4_K_M.log`, `agentic-20260820-135750-Ornith-1.5-35B-Q4_K_M.json`
 
 ## Open questions
 - MTP speed path (`SPEC_TYPE=draft-mtp`) untested — expected +20-46% TPS, separate fingerprint.
-- Web-research looping: does TEMP 1.0 / presence penalty break the loop? (card benchmark repro uses TEMP 1.0)
+- T053: does a larger ctx (131072) or lighter history (no `REASONING_PRESERVE`) clear the 65k ceiling? REASONING_PRESERVE inflates request size by re-rendering think traces — worth an A/B.
+- T054: task content/research path is family-wide weak; possible target for a budget/efficiency A/B later.

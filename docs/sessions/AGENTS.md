@@ -30,6 +30,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-20-ornith-35b-4096-rerun.md`](./2026-08-20-ornith-35b-4096-rerun.md) — Ornith-1.5-35B agentic remeasure @ 4096 floor: 0.7333→0.8667 (13/15); T046/T048/T050 recovered; T053 = 65k ctx ceiling proven via HTTP 400 body (124983 > 65536 tokens); T054 content failure; `length_stops` metric noise (stop-string stops).
 - [`2026-08-19-agentic-max-tokens-4096.md`](./2026-08-19-agentic-max-tokens-4096.md) — agentic `max_tokens` floor 2048→4096 + 420 s Claw timeout; Ornith-1.5-9B agentic 0.8000→0.9333; `/props` supports_preserve_reasoning=true → `REASONING_PRESERVE`; 65k ctx ceiling hit; T054 retrieval failure.
 - [`2026-08-18-issue-59-sglang.md`](./2026-08-18-issue-59-sglang.md) — issue #59 cross-engine validation: SGLang 0.5.17 (WSL2) 56.8 t/s ≈ llama.cpp 60.5 on `Qwen3.8-2B` @32k; 9B/27B fit limits; store junction removed after recursive-delete wipe.
 - [`2026-08-18-qwen38-27b-rejected.md`](./2026-08-18-qwen38-27b-rejected.md) — Qwen3.8-27B Q1Q validation: rejected (Day 27.9 TPS / Night ~61k ctx gates fail); no MTP head in file; tqp turbo2 KV ≈ 0.137×f16 (issue #58).

@@ -47,7 +47,7 @@ Reasoning control on llama.cpp is **not** a single knob; "effort" and "budget" a
 
 **Measurement policy (capability first):** capability evals run at default effort (thinking unrestricted) with a generous `max_tokens` (floor **4096** since 2026-08-19) — measuring a model under an artificial think cap under-scores it. An **efficiency profile** (bounded thinking) is a separate choice: `REASONING_BUDGET` N + modest `max_tokens` → separate Fingerprint, documented in the card. Never set `REASONING_BUDGET` to "fix" a low capability score — raise `max_tokens` first; the 65k ctx ceiling (not a token cap) is the next real limiter on long research tasks.
 
-**`finish_reason == "length"` caveat (verified 2026-08-19):** llama.cpp reports `length` both when `max_tokens` is exhausted AND when a tool-call turn stops at a template boundary (no EOS). The agentic loop counts only tool-call-free length stops as truncation suspects; to confirm an actual cap hit, check `n_decoded == max_tokens` in the per-run server log (`autoresearch/runners/logs/`).
+**`finish_reason == "length"` caveat (verified 2026-08-19/20):** llama.cpp reports `length` in THREE cases on this stack: max_tokens exhaustion, tool-call boundary stops, **and stops on the `</s>` stop string (not the EOS token)** — the latter fires on every complete final answer. Evidence: 2026-08-20 35B run flagged 5 `length_stops` while **0** turns decoded to max_tokens. The agentic loop counts only tool-call-free length stops; the print is labeled as "stop-string stop or cap hit". The only reliable cap signal is `n_decoded == max_tokens` (or `truncated = 1` for the ctx ceiling) in the per-run server log (`autoresearch/runners/logs/`).
 
 ## Who to remasure (Claw-full only)
 
