@@ -431,3 +431,46 @@ def test_run_agent_loop_counts_finish_reason_length(monkeypatch, mock_llama_clie
     assert calls == []
     assert meta["length_stops"] == 1
     assert "finish_reason=length" in capsys.readouterr().out
+
+
+def test_run_agent_loop_tool_call_length_stop_not_counted(monkeypatch, mock_llama_client):
+    """llama.cpp reports finish_reason='length' on tool-call boundary stops too.
+
+    Those are not max_tokens exhaustion — they must not inflate length_stops.
+    """
+    mock_llama_client.base_url = "http://127.0.0.1:18080"
+    payload = {
+        "choices": [
+            {
+                "finish_reason": "length",
+                "message": {
+                    "content": "",
+                    "tool_calls": [
+                        {"id": "c1", "function": {"name": "gmail_list_messages", "arguments": "{}"}}
+                    ],
+                },
+            }
+        ]
+    }
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return json.dumps(payload).encode()
+
+    monkeypatch.setattr(
+        "autoresearch.benchmarks.agentic_runner.urllib.request.urlopen",
+        lambda *a, **k: _Resp(),
+    )
+    _, calls, _elapsed, meta = run_agent_loop(
+        mock_llama_client,
+        {"prompt": {"text": "triage"}, "tools": [], "tool_endpoints": []},
+        max_turns=2,
+    )
+    assert calls and calls[0]["tool"] == "gmail_list_messages"
+    assert meta["length_stops"] == 0

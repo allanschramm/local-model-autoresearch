@@ -52,7 +52,7 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 | Combined TPS | 54.5 (first run) |
 | Peak VRAM | 7.4 GB |
 
-Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 0.9333 ties 1.0-9B UD's 0.9333 (both measured after the 4096-token fix; 1.0's 0.9333 was measured at the 2048 cap and is a slight understatement).
+Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 0.9333 beats 1.0-9B UD's fair rerun **0.8667** (2026-08-19, same 4096 floor + TEMP 0.4); 1.0's older 0.9333 was a 2048-cap run whose success was run variance, not a floor artifact — the fair remeasure scored lower, not higher.
 
 **Harness fixes required for correct measurement (2026-08-19):**
 - `autoresearch/benchmarks/agentic_runner.py` Claw-loop turn timeout raised **30 s → 120 s** (reasoning-model `<think>` traces + max_tokens=2048 at ~40-55 t/s exceed 30 s; original 0.2667 was truncation artifact). Re-measured: 0.2667 → 0.8000.
@@ -65,7 +65,7 @@ Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 
 | Model (quant) | Agentic (claw-full) | Coding (10 tasks) | bench_tg | Peak VRAM | Status |
 |---|---|---|---|---|---|
 | **1.5-9B Q4_K_M** | **0.9333** (14/15, @4096) | **0.6150** | 43.2–44.3 | 7.2–7.4 GB | on_front |
-| 1.0-9B UD Q4_K_XL | 0.9333 (14/15, @2048 cap) | 0.5400 @65k · 0.5700 @32k | 42.1–48.6 | 7.7–7.8 GB | on_front |
+| 1.0-9B UD Q4_K_XL | 0.8667 (13/15, @4096 rerun) · 0.9333 (@2048 cap run) | 0.5400 @65k · 0.5700 @32k | 41.6–48.6 | 7.7–7.8 GB | on_front |
 | 1.0-9B Q4_K_M (deepreinforce) | 0.4000 | 0.5800 | 42.5 | 7.8–7.9 GB | — |
 | 1.0-9B MTP Q4_K_M | 0.4667 | 0.5800 | 64.0 (draft) | 7.4 GB | — |
 | **1.5-35B Q4_K_M** (MoE `n-cpu-moe`) | **0.7333** | **0.6300** | 25.4–28.8 | 4.0–7.0 GB | on_front |
@@ -74,7 +74,7 @@ Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 
 
 **Verdict:**
 - **1.5-9B Q4_K_M is the best Ornith for 8 GB-class** — top agentic, top coding, lowest VRAM of the 9B tier.
-- **Agentic ties are cap-artifacts**: 1.0-9B UD's 0.9333 was measured at the 2048 cap; 1.5-9B at 4096. At equal caps 1.5-9B has margin (0.8000 → 0.9333 after the raise) — real 1.0-vs-1.5 gap is ≥ +0.133 on 9B.
+- **Agentic, fair-measured**: 1.5-9B **0.9333** beats 1.0-9B UD's 0.8667 on the same 4096 floor (2026-08-19 rerun, TEMP 0.4 per 1.0 card). 1.0's older 0.9333 @ 2048 was run variance — the equal-cap remeasure scored lower, refuting the "cap understatement" hypothesis. T053 (1.0 FAIL 0.20 vs 1.5 PASS 0.70) and T054 (both fail) drive the gap.
 - **1.5 wins coding everywhere**: 9B +0.075 vs UD, +0.035 vs deepreinforce Q4_K_M; 35B +0.050 vs Q4_K_XL.
 - **35B tier**: agentic tied 0.7333, 1.5 faster (25.4–28.8 vs 22.7–25.7 t/s), better coding. 1.0-35B card body text (0.60 Q4 / 0.4667 Q3) predates the 2026-08-08 harness fix; tsv rows are 0.7333 for both quants.
 - 1.0-9B MTP remains the **speed** pick only (64 t/s draft) at the cost of agentic.
@@ -85,6 +85,6 @@ Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 
 - Trial rows: `results.tsv` `f19d991d` (coding 0.6150 + agentic 0.2667), `9b1af29d` (agentic 0.8000 @ 2048 cap), `bf729951` (agentic 0.9333 @ 4096); rejected preflight/kill rows `6fde4721`/`716efd9a`/`06043927` kept for the record
 
 ## Open questions
-- T054 (finance ARPPU) scores 0.00 with 31 tool calls and `truncated = 0` — the model never finds the yearly values; retrieval-path failure, not truncation. Possible target for a budget/efficiency A/B later.
+- T054 (finance ARPPU) scores 0.00 for **both** 9B generations — 1.5: 31 calls/`truncated=0`; 1.0: **100 calls, len=154**, no keywords. Retrieval-path failure common to the family, not truncation. Possible target for a budget/efficiency A/B later.
 - One mid-run 65k ctx truncation event (`truncated = 1`) — long research tasks can fill 65k at 4096 tokens/turn. Next limiter if agentic >0.9333 matters.
 - Full SSM layout for 1.5 (interval/hidden) — verify from GGUF when next card edit happens.

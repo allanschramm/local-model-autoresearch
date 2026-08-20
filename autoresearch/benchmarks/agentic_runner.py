@@ -276,13 +276,21 @@ def run_agent_loop(
             break
 
         choice = (raw.get("choices") or [{}])[0]
-        if choice.get("finish_reason") == "length":
-            length_stops += 1
-            print(f"    [agent] turn {turn + 1} finish_reason=length (max_tokens exhausted)")
         msg = choice.get("message", {})
 
         # Check for tool calls
         tool_calls = msg.get("tool_calls") or []
+
+        # llama.cpp reports finish_reason="length" both when max_tokens is
+        # exhausted AND when a tool-call turn stops at a template boundary
+        # (no EOS; verified 2026-08-19: 3 length stops, 0 turns decoded to
+        # max_tokens in the server log). Only tool-call-free length stops
+        # indicate answer truncation — confirm n_decoded in the server log.
+        if choice.get("finish_reason") == "length" and not tool_calls:
+            length_stops += 1
+            print(
+                f"    [agent] turn {turn + 1} finish_reason=length, no tool_calls (answer truncation suspect)"
+            )
         content = _assistant_visible_text(msg)
 
         if tool_calls:

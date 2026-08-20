@@ -124,6 +124,11 @@ Since the model is ~5.6 GB and we have 8 GB of VRAM, we can run with maximum GPU
 - First claw re-run after Jul scored **0.3333** — harness bug (ignored `reasoning_content`, `max_tokens=512`). After agentic fix: claw-full **0.9333** (14/15), peak **7.7 GB**, TPS **42.1**.
 - Merged vector **complete** (`agentic=0.9333`, `coding=0.5400`); status **on_front** / Night #3. Historical Jul coding **0.5700** @ 32k remains a different Fingerprint.
 
+### Fair remeasure @ 4096 floor (2026-08-19, row `29b91359`)
+- Same fingerprint as above (65k, TEMP 0.4, `AUTORESEARCH_SKIP_FREE_CLAMP=1`) but agentic `max_tokens` floor 4096 (harness fix).
+- **agentic 0.8667** (13/15): T046/T048/T050 now PASS 1.00 with full reports (12.5–14.5k chars); **T053 FAIL 0.20** (12 calls; 1.5-9B passes this task at 0.70) and **T054 FAIL 0.00** (100 calls, len=154 — same retrieval-path failure as 1.5). No 65k ctx truncations (`truncated=0`), no turns hit 4096 (`n_decoded` max ≈ 3.6k).
+- **Verdict: the old 0.9333 was run variance, not a cap understatement** — the equal-cap remeasure scored lower. 1.5-9B UD's fair 0.9333 beats it. Note: `VRAM_LIMIT_MB` must be ≥ 8100-class for this quant (Q4_K_XL): at the 8000/keepout-256 ceiling (7932 MB) the runtime monitor killed at 7946 MB (`used > limit`); keepout 64 (ceiling 8124) is the proven config, peak 7.7 GB.
+
 ### Coding-10 (2026-07-24, UD-Q4_K_XL)
 
 | Metric | Value |
