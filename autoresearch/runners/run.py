@@ -20,7 +20,14 @@ else:
 
 
 from autoresearch.benchmarks import bench_config, format_agentic_benchmarks, format_claw_tiers
-from autoresearch.core import classify, config, engine_version_tag, recompute, resolve_llama_server
+from autoresearch.core import (
+    classify,
+    config,
+    engine_version_tag,
+    recompute,
+    resolve_llama_server,
+    results_db,
+)
 from autoresearch.runners.evaluation import ExperimentRunner, resolve_tps_floor
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -461,30 +468,33 @@ def recompute_statuses(results_file: Path) -> None:
     with _results_lock(results_file):
         rows = read_rows(results_file)
         updated = recompute.recompute_rows(rows)
-        if updated == rows:
-            return
-        # Replace atomically: a killed Search must not leave a truncated TSV.
-        temp_path: Path | None = None
-        try:
-            with tempfile.NamedTemporaryFile(
-                "w",
-                newline="",
-                encoding="utf-8",
-                dir=results_file.parent,
-                prefix=f".{results_file.name}.",
-                suffix=".tmp",
-                delete=False,
-            ) as f:
-                temp_path = Path(f.name)
-                writer = csv.DictWriter(
-                    f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
-                )
-                writer.writeheader()
-                writer.writerows(updated)
-            os.replace(temp_path, results_file)
-        finally:
-            if temp_path is not None:
-                temp_path.unlink(missing_ok=True)
+        if updated != rows:
+            # Replace atomically: a killed Search must not leave a truncated TSV.
+            temp_path: Path | None = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    "w",
+                    newline="",
+                    encoding="utf-8",
+                    dir=results_file.parent,
+                    prefix=f".{results_file.name}.",
+                    suffix=".tmp",
+                    delete=False,
+                ) as f:
+                    temp_path = Path(f.name)
+                    writer = csv.DictWriter(
+                        f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
+                    )
+                    writer.writeheader()
+                    writer.writerows(updated)
+                os.replace(temp_path, results_file)
+            finally:
+                if temp_path is not None:
+                    temp_path.unlink(missing_ok=True)
+        # Derived mirror: refresh after every call (write or no-op), inside
+        # the lock, so the DB always reflects post-recompute TSV state. Must
+        # not affect the Trial outcome — try_* never raises.
+        results_db.try_sync_from_tsv(results_file)
 
 
 def get_previous_best(results_file: Path, model_name: str | None = None) -> float:

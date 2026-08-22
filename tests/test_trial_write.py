@@ -159,3 +159,51 @@ def test_write_row_missing_hygiene_kwargs_blank(tmp_path):
     assert row["gpu_temp_c"] == ""
     assert row["tps_reps"] == ""
     assert row["tps_spread"] == ""
+
+
+def _read_db(tsv):
+    import sqlite3
+
+    db = tsv.with_name("results.db")
+    if not db.exists():
+        return None
+    conn = sqlite3.connect(db)
+    try:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(trials)")]
+        return cols, conn.execute("SELECT COUNT(*) FROM trials").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def test_recompute_statuses_refreshes_mirror(tmp_path, monkeypatch):
+    """Every recompute call (write or no-op) leaves the mirror in sync."""
+    from autoresearch.runners import run
+
+    monkeypatch.setattr(run, "RESULTS_FILE", tmp_path / "results.tsv")
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv, status="on_front")
+    run.recompute_statuses(tsv)
+    assert _read_db(tsv) is not None
+    cols, n = _read_db(tsv)
+    assert n == 1 and "trial_id" in cols and "tps" in cols
+
+    # No-op path (statuses unchanged) must ALSO refresh: append a dominated
+    # row directly, then recompute — mirror must now hold 2 rows.
+    _write_row(tsv, status="dominated")
+    run.recompute_statuses(tsv)
+    assert _read_db(tsv)[1] == 2
+
+
+def test_recompute_statuses_survives_mirror_failure(tmp_path, monkeypatch):
+    """A broken mirror never breaks the TSV write path."""
+    from autoresearch.core import results_db
+    from autoresearch.runners import run
+
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv, status="on_front")
+    monkeypatch.setattr(
+        run.results_db, "try_sync_from_tsv", lambda *a, **k: 0
+    )
+    run.recompute_statuses(tsv)  # must not raise
+    rows = _read(tsv)
+    assert len(rows) == 1 and rows[0]["status"] == "on_front"
