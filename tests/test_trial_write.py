@@ -200,9 +200,7 @@ def test_recompute_statuses_survives_mirror_failure(tmp_path, monkeypatch):
 
     tsv = tmp_path / "results.tsv"
     _write_row(tsv, status="on_front")
-    monkeypatch.setattr(
-        run.results_db, "try_sync_from_tsv", lambda *a, **k: 0
-    )
+    monkeypatch.setattr(run.results_db, "try_sync_from_tsv", lambda *a, **k: 0)
     run.recompute_statuses(tsv)  # must not raise
     rows = _read(tsv)
     assert len(rows) == 1 and rows[0]["status"] == "on_front"
