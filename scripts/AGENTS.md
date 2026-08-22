@@ -21,6 +21,7 @@ Repository operators and developers.
 - Use `recompute_status.py` to refresh Trial statuses in a `results.tsv` after the fact (Pareto Set recompute, issue #5). Write paths (`run.py`, `autoloop.py`) already recompute after every Trial; the script covers retroactive refreshes. Idempotent, no GPU.
 - `rank_results.py` to print Pareto / Day / Night / claw / coding / agentic-coding rankings from `results.tsv` (Point = GGUF basename, ADR 0012 / Night `agentic_coding` ADR 0013). Agents must use this CLI for model rankings — no ad-hoc temp filter scripts.
 - Use `model_info.py` to query GGUF ground truth read-only: arch (MoE/dense), block count, KV sizing, `--n-cpu-moe` resolution, and (with `--tensors`) the full tensor inventory. Agents must use this for model details / GGUF forensics — never parse the raw `.gguf` or dump tensors with ad-hoc scripts.
+- Use `rebuild_results_db.py` to force-rebuild the derived `results.db` SQLite mirror from `results.tsv` and verify parity (`trial_id` set + duplicate detection). Exit 0 on parity, 1 on drift. The mirror is refreshed automatically after every Trial write; this script covers manual rebuilds after hand-patching the TSV.
 
 ## Verification
 - Test script changes locally by executing them.
@@ -39,6 +40,7 @@ Repository operators and developers.
 - [recompute_status.py](recompute_status.py) — store-wide Pareto status recompute over a results.tsv (issue #5; `autoresearch/core/recompute.py` owns the logic).
 - [rank_results.py](rank_results.py) — Pareto / Day / Night / claw / coding / agentic-coding ranking over `results.tsv` (ADR 0006/0009/0012/0013).
 - [model_info.py](model_info.py) — read-only GGUF metadata query (arch, block count, KV sizing, `--tensors` inventory) via `autoresearch.core.model_arch`.
+- [rebuild_results_db.py](rebuild_results_db.py) — force-rebuild derived `results.db` mirror + parity check (`autoresearch/core/results_db.py` owns the logic).
 - [backfill_2026_08_08_missing_claw.py](backfill_2026_08_08_missing_claw.py) — one-shot restore of session-documented claw/coding rows that never landed in TSV (idempotent).
 - [measure_vram_peak.py](measure_vram_peak.py) — real peak-VRAM measurement for the Baseline model, gate bypass (estimator calibration, issue #10).
 - Git pre-commit: [../.pre-commit-config.yaml](../.pre-commit-config.yaml) + [../pyproject.toml](../pyproject.toml).
