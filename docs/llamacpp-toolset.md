@@ -410,4 +410,43 @@ alias lc-build="cmd //c $LLAMA_CPP/rebuild-cuda.bat"
 
 # Quick bench
 alias lbench="$LLAMA_CPP/build-cuda/bin/llama-bench"
-```
+---
+
+## Flag inventory & harness audit (upstream-first)
+
+**Rule:** harness is passthrough mapper in `autoresearch/core/llama_runner.py:895 _build_cmd` (~26 wired) vs `llama.cpp/common/arg.cpp:1424` (~348 `add_opt`, ~310 distinct flags). Before adding any `ENGINE_*/SAMPLER_*` estimator, `grep add_opt` — `90%` already exists. Full matrix in `docs/llamacpp-flags-audit.md`.
+
+**Currently wired (~26):** `--model -c/--ctx-size -b/--batch-size -ub/--ubatch-size -t/--threads --threads-batch --parallel -ngl/--n-gpu-layers --numa --cache-type-k/v --flash-attn --no-mmap --mlock --jinja --reasoning/--reasoning-budget/message/--reasoning-preserve --cont-batching --cache-reuse --spec-type --spec-draft-n-max --spec-draft-type-k/v --spec-draft-model --n-cpu-moe` (+ bench `-p -n -r -o`). Everything else untapped.
+
+**Upstream lacks — keep (value-add):** `preflight_host_memory:662` full `GGUF(21.7GB)+KV+draft` vs `RAM-max(6144,0.2RAM)` unified / `max(4096,0.15RAM)` discrete fail-closed `autoresearch/core/hardware.py:506`; `physical-512 keepout` + `SHARED 2048` kill + `GGML_CUDA_NO_PINNED=1` `llama_runner.py:305`; `free-at-start - headroom` clamp issue #10; `thermal` wait; `TPS_FLOOR/REPS`; Pareto Day/Night `scripts/rank_results.py` (`common/fit.h:14` assumes unlimited host, so host/WDDM/Pareto gates are the only keepers).
+
+### Safety gaps (wire before new code)
+
+| Upstream | Opportunity |
+|---|---|
+| `--fit on/off` `arg.cpp:2813` `--fit-target MiB` `:2842` `--fit-ctx N` `:2866` `--fit-print` `:2827` `fit.h:14` `common_fit_params fit.cpp:178` VRAM-only via `ggml_backend_dev_memory` | `fit-print`/`tools/fit-params` for manual sizing only; Trials keep deterministic reject (`fit=on 256` would silently shrink `c=65536` but still `mmap 21.7GB` -> host OOM). |
+| `--load-mode none/mmap` `--mmap/--no-mmap` `--mlock` `--direct-io` `--defrag-thold` `:2402` | `NO_MMAP bool` conflates; `load-mode` superset. `mmap+mlock` locks 21.7GB on 16GB unified -> OOM. Default `mmap`+`mlock False`. |
+| `--warmup/--no-warmup` | Not wired; `THERMAL_WAIT` only. `--no-warmup` required 8GB tight (empty warmup OOM). |
+| `--cache-ram -1` `--kv-unified/--no-kv-unified` `--no-kv-offload` `--repack/--no-repack` `--op-offload/--no-op-offload` `:1704` | `cache-ram` caps KV MiB, `kv-unified` ~512MB @65k save, `no-kv-offload` keeps KV on CPU for MoE (0.7GB `q4_0` vs 2.6GB `f16`), `repack` +3% tg (see `docs/discovery/cpu-inference-guide.md:6`). |
+
+### Perf gaps
+
+| Flag | Opportunity |
+|---|---|
+| `--cache-type-k/v f16/q8_0/q4_0/turbo2/3/4` `:1735` | We `q4_0` only; `turbo3` `76t/s` vs `73t/s` gemma `results.tsv:94` (tqp fork only). |
+| `--swa-full --ctx-checkpoints/--swa-checkpoints --checkpoint-min-step` `:1678` | `swa-full` +15% long ctx SWA. |
+| `--threads --threads-batch --cpu-mask/--cpu-range/--cpu-strict --poll/--poll-batch --prio --threads-http` `:1439` | We `THREADS 8`; pin `cpu-mask` P-cores + `poll` +5% on 5800X. |
+| `--spec-type mtp/draft-mtp/draft/dflash/ngram` `--spec-draft-n-max/min --spec-draft-p-min/--p-split --spec-draft-backend-sampling` `--spec-ngram-*` `--lookup-cache-static/dynamic` `:1613,2201` | We `draft-mtp` only; `ngram` +8-20% no draft VRAM, `p-min 0.8 p-split 0.9` +10% acceptance. |
+| `--flash-attn on/off/auto` `:1735` | We hard `on`; `auto` avoids SWA fallback loss. |
+| `--tensor-split --split-mode --main-gpu --device --override-tensor` | Single-GPU defer; `override-tensor blk.40.*=CPU` explicit vs fit regex. |
+
+### Quality gaps
+
+| Flag | Opportunity |
+|---|---|
+| `--rope-scaling linear/yarn --rope-freq-base/scale --yarn-* --grp-attn-n/w` | `yarn-ext-factor 1.5` extends `65k->98k` for T053 `124k` overflow. |
+| `--samplers --sampling-seq --temp/--top-p/--top-k/--min-p/--repeat-penalty --dry-* --xtc-* --top-nsigma/--typical-p --dynatemp-* --mirostat` `:2004` | We 7 keys only; `dry 1.1` fixes loops, `xtc 0.1` diversity. |
+| `--override-kv --override-tensor --lora --control-vector --grammar/--json-schema` | `override-kv tokenizer.add_bos=false` fix; `lora` without retrain. |
+
+**Prioritize:** Safety `load-mode/no-warmup/fit-print` > Perf `turbo/repack/kv-unified/ngram/poll/swa` > Quality `dry/xtc/yarn`. Full `~310` list + per-flag file:line in `docs/llamacpp-flags-audit.md` + `docs/discovery/` guides (`cpu-inference-guide`, `mtp-baseline-guide`, `speculative-decoding-formats`).
+
