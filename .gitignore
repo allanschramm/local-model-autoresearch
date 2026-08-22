@@ -8,6 +8,10 @@ autoresearch/runners/logs/
 # Local benchmark results
 results.tsv
 results.tsv.lock
+results.db
+results.db-journal
+results.db-wal
+results.db-shm
 *.bak
 grid_results.csv
 coding_results/
