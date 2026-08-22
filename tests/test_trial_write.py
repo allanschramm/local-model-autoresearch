@@ -196,7 +196,6 @@ def test_recompute_statuses_refreshes_mirror(tmp_path, monkeypatch):
 
 def test_recompute_statuses_survives_mirror_failure(tmp_path, monkeypatch):
     """A broken mirror never breaks the TSV write path."""
-    from autoresearch.core import results_db
     from autoresearch.runners import run
 
     tsv = tmp_path / "results.tsv"
