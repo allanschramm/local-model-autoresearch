@@ -104,7 +104,7 @@ def test_replace_all_inserts_and_is_idempotent(tmp_path):
 
 
 def test_upsert_row_updates_existing_trial(tmp_path):
-    conn = _conn(updates := tmp_path) or None
+    conn = _conn(tmp_path)
     results_db.replace_all(conn, [_row()])
     results_db.upsert_row(conn, _row(status="dominated"))
     got = conn.execute("SELECT status FROM trials WHERE trial_id='t-0001'").fetchone()[0]
