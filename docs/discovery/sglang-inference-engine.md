@@ -16,7 +16,7 @@ Current headline features ([README](https://github.com/sgl-project/sglang/blob/m
 - Adoption: xAI, Cursor, NVIDIA, Intel, LinkedIn, etc.; claims 400,000+ GPUs serving, trillions of tokens/day ([README](https://github.com/sgl-project/sglang/blob/main/README.md)).
 - RL/post-training rollout backend: verl, AReaL, slime, Tunix, Miles ([README](https://github.com/sgl-project/sglang/blob/main/README.md)).
 
-Version: latest PyPI release **0.5.17**, requires Python ≥ 3.10 ([PyPI](https://pypi.org/project/sglang/)).
+Version: latest PyPI release **0.5.18** (GitHub [releases/tag/v0.5.18](https://github.com/sgl-project/sglang/releases/tag/v0.5.18), PyPI 2026-08; previous doc pinned 0.5.17 from 2026-08-08 — re-checked 2026-08-22 via `web_search`), requires Python ≥ 3.10 ([PyPI](https://pypi.org/project/sglang/)).
 
 ## 2. Core Architecture
 

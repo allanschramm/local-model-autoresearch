@@ -36,18 +36,19 @@ Pattern: **small-active MoE + speculative MTP heads beat dense 9B by 2.5–4x** 
 
 ## 3. ExLlamaV3 — the one challenger (primary sources)
 
-ExLlamaV2 is **archived** ("This project is archived for now. Development continues on ExLlamaV3") ([ExLlamaV2 README](https://github.com/turboderp/ExLlamaV2)). ExLlamaV3 ([repo](https://github.com/turboderp-org/exllamav3), Apache? — active, pushed 2026-07-31, 1.1k stars) is the live project: "optimized quantization and inference library for running LLMs locally on modern consumer-class GPUs."
+ExLlamaV2 is **archived** ("This project is archived for now. Development continues on ExLlamaV3") ([ExLlamaV2 README](https://github.com/turboderp/ExLlamaV2)). ExLlamaV3 ([repo](https://github.com/turboderp-org/exllamav3) — active, **v1.4.2 published 2026-08-11** ships `win_amd64` prebuilt wheels `cp310–cp313`, `cu128`/`torch2.10.x` on [releases](https://github.com/turboderp-org/exllamav3/releases) — verified via GitHub API 2026-08-22) is the live project: "optimized quantization and inference library for running LLMs locally on modern consumer-class GPUs."
 
 Headline facts from the [ExLlamaV3 README](https://github.com/turboderp-org/exllamav3):
 - **EXL3 format**: streamlined variant of **QTIP** (Cornell RelaxML); one-step quantization (fused Viterbi kernel), minutes for small models on one RTX 4090; coherent at 1.6 bpw (Llama-3.1-70B in <16 GB). TPS-relevant: **Marlin-inspired GEMM kernel ≈ memory-bound at 4 bpw on RTX 4090**; author notes efficiency on Ampere (30-series) "still needs work" — Ada (8GB-class, sm89) unverified.
 - **Tensor-parallel + expert-parallel** for consumer setups; 2–8-bit KV cache quantization (helps long ctx on 8 GB); speculative decoding; LoRA; multimodal.
-- **Windows**: build from source with VS Build Tools + CUDA ≥12.4 + `flash-attn-2` wheel + `triton-windows` (recommended). Prebuilt wheels on releases are `linux_x86_64` only — Windows = source/JIT build.
+- **Windows (updated 2026-08-22):** earlier "source-build only / `linux_x86_64` only" note was stale — **v1.4.2** (2026-08-11) ships `win_amd64` wheels for `cp310–cp313`, `cu128`/`torch2.10.x` on [releases](https://github.com/turboderp-org/exllamav3/releases) (GitHub API, 2026-08-22). Caveat: torch/CUDA pin must match host env; PyPI path still requires VS Build Tools per README.
 - **NVIDIA-only** ("ROCm support" on to-do list).
-- Arch list (vs this repo's inventory, [README](https://github.com/turboderp-org/exllamav3)):
+- Arch list (vs this repo's inventory, [README](https://github.com/turboderp-org/exllamav3), re-checked 2026-08-22 via `web_search`):
   - ✅ **LFM 2.5** (`Lfm2MoeForCausalLM`) — the 178-TPS king *could* run on ExLlamaV3
   - ✅ **Qwen 3.5 / Qwen 3.5 MoE** — dense 4B/9B supported (MTP-head behavior unverified)
   - ✅ **Laguna 2.1** (`LagunaForCausalLM`) — Laguna-XS
-  - ❌ **Gemma 4 E2B/E4B not supported** — kills the 122-TPS MTP champion
+  - ✅ **Gemma 4** (dense 31B/12B etc.: `Gemma4ForConditionalGeneration`, `Gemma4UnifiedForConditionalGeneration`) — **now supported** as of 0.0.29+ (see [HaoweiShen/Gemma-4-31B-it-EXL3](https://huggingface.co/HaoweiShen/Gemma-4-31B-it-EXL3-6.0bpw) EXL3 pack; the earlier "Gemma 4 not supported" for this repo's era was accurate at 2026-07-31 but is stale for the family). Caveat: a `layer_scalar` inference bug required a patched fork for correct 31B inference (fixed upstream after); verify current wheel before use.
+  - ❌ **Gemma 4 E2B/E4B specifically still not supported** — the E2B/E4B efficient variants remain listed as unsupported (kills the 122-TPS MTP champion on this rig) — confirmed via `web_search` 2026-08-22.
   - ❓ Ornith-1.0-9B, Qwythos-9B, POCKET-35B, KAT-Coder — archs not in the supported list; must check HF config per model before assuming anything
 
 Historical TPS context (ExLlamaV2-era, **4090**, primary README tables): Llama-7B EXL2 4.0 bpw **211 t/s**, TinyLlama-1.1B EXL2 4.0 bpw 700 t/s. Directional secondary sources claim ExLlamaV2 was 50–85% faster than llama.cpp on 3090/4090 (blog aggregator; ExLlamaV2-era; not primary, treat as directional). **No primary 8GB-class-class ExLlamaV3-vs-llama.cpp TPS benchmark exists in the sources gathered** — any speedup on this specific rig is unverified until measured.
@@ -58,7 +59,7 @@ Historical TPS context (ExLlamaV2-era, **4090**, primary README tables): Llama-7
 2. **Model coverage gaps**: top TPS models on the operator host are MoE (LFM2.5-8B-A1B) and MTP-packaged (gemma-4-E4B, Qwen3.5-MTP). Gemma-4 E2B/E4B is explicitly unsupported; MTP-head behavior on Qwen3.5 unverified. ExLlamaV3's win condition (dense Llama/Qwen EXL3 4bpw) is exactly the class that's *slower* than MoE/MTP on the operator host under llama.cpp.
 3. **Context regime mismatch**: this repo's Pareto runs 65k–131k ctx (KV-heavy). ExLlamaV3 targets shorter-context consumer chat; KV quant helps but no evidence at 131k on 8 GB.
 4. **Harness contract**: benchmark_search/validation run llama-server only; ExLlamaV3 (TabbyAPI/OpenAI server) is a different process, no `config.py` Baseline path, would violate "no ad-hoc eval" until a harness adapter exists (not requested).
-5. **Windows build burden**: CUDA toolkit + VS Build Tools + flash-attn wheel + triton-windows for a JIT-compiled torch extension — vs llama.cpp prebuilt release (download, no build).
+5. **Windows build burden (softened 2026-08-22):** prebuilt `win_amd64` wheels now exist for `cu128`/`torch2.10.x` (`cp310–cp313`, v1.4.2), so source-build with CUDA toolkit + VS Build Tools + `flash-attn-2` + `triton-windows` is now fallback, not the only path. Remaining pin: wheel's torch/CUDA must match host env vs llama.cpp prebuilt release (download, no build, no torch pin).
 
 ## 4. Why the others lose on the operator host
 
