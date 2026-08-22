@@ -469,15 +469,13 @@ def estimate_vram_mb(
     )
 
     spec_enabled = bool(spec_type and spec_type.lower() != "none" and spec_draft_n_max > 0)
-    # MoE expert-CPU offload + external draft file: charge draft weights only.
-    # Flat workspace (512 + 256*n) false-rejects DFlash (measured ~4 GB peaks on 8 GB).
-    # Embedded MTP / dense targets keep the conservative workspace allowance.
-    moe_external_draft = (
-        n_cpu_moe is not None and int(n_cpu_moe) > 0 and bool(draft_path) and draft_mb > 0
-    )
+    # MoE expert-CPU offload: speculative workspace is already covered by the
+    # offload shrink — charging flat 512+256*n false-rejects embedded-MTP
+    # (measured 131k n=4 = 4.2GB actual vs 9104 est). Keep workspace for dense.
+    moe_spec = n_cpu_moe is not None and int(n_cpu_moe) > 0 and spec_enabled
     spec_workspace_mb = (
         0.0
-        if (not spec_enabled) or moe_external_draft
+        if (not spec_enabled) or moe_spec
         else VRAM_SPECULATIVE_BASE_MB + VRAM_SPECULATIVE_PER_DRAFT_TOKEN_MB * spec_draft_n_max
     )
 

@@ -15,6 +15,8 @@ Detect: scan GGUF metadata for `nextn` / `gemma4-assistant`. Inventory + measure
 
 Prefer the harness gate (`run_llama_bench_validation`) over raw `llama-bench` — bench binaries do not accept MTP draft flags. Canonical `n_max` on the operator host for speed matrix: **4** (not 2).
 
+The `n_max=4` canon is for **dense** targets. On small-active MoE with `--n-cpu-moe` (Qwen3.6-35B-A3B, Gemma-4-26B-A4B), MTP is a measured **loss** — keep n ≤ 1 or skip spec; see [speculative-decoding-formats.md](./speculative-decoding-formats.md) §4b.
+
 ---
 
 ## 2. Test MTP Speedup via `llama-cli`
@@ -80,3 +82,13 @@ llama.cpp-releases/upstream/<tag>/build-cuda/bin/llama-bench.exe \
   -ngl 99 -ncmoe 30 -fa on -ctk q4_0 -ctv q4_0 -d 65000 -p 0 -n 128
 ```
 *Note: Gemma-4-26B requires `--n-cpu-moe 30` on 8 GB GPUs to prevent VRAM swapping and thrashing.*
+
+---
+
+## 4. Verdict (2026-08-22): dense win, MoE+CPU-offload loss
+
+Dense MTP nearly **doubles** throughput on this 8 GB-class rig: Ornith 38.7→56.3 (+46%), Qwen3.5-9B 38.7→57.3 (+48%), Gemma-4 E4B 67.6→122.0 (+80%) — consistent with external ~1.9× on dense ([PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673), [Frontier Lab](https://thefrontierlab.ai/mtp-defaults-are-a-trap/)).
+
+MoE with `--n-cpu-moe` inverts it (Qwen3.6-35B-A3B): 65k n0 **27.8** → n1 **27.6** (−0.7%) → n2 **24.6** (−11%); 131k n4 **18.1** (−34%, below harness `TPS_FLOOR` 20). Acceptance 0.54 → 0.11. Mechanism: every draft/verify token fetches CPU-offloaded expert weights over PCIe (~144 MB/token), MTP adds a separate KV cache (~2.5 GiB), and acceptance collapses with context depth. The workspace estimator was also fixed (est 9104 → direct 4243 MB; MoE MTP workspace now 0).
+
+**Rule of thumb:** tune MTP only on dense; on MoE+`n_cpu_moe`, `--spec-draft-n-max 1` at most, `none` preferred at deep context. Full evidence, URLs, and the falsifiable sweep probe: [speculative-decoding-formats.md](./speculative-decoding-formats.md) §4b.

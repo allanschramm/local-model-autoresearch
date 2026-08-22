@@ -31,7 +31,14 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 **Seeded for this Trial:** TEMP 0.6 / TOP_P 0.95 / TOP_K 20 / MIN_P 0.0 / presence 0.0 / repeat 1.0 (matches card's general profile and the 1.5-9B coding profile).
 
 ## MTP (Multi-Token Prediction)
-- **Embedded `nextn` tensors present.** `gguf_has_mtp() == true`, `qwen35moe.nextn_predict_layers = 1`, 4 tensors (`blk.40.nextn.eh_proj/enorm/hnorm/shared_head_norm`) — verified 2026-08-22 `GGUFReader` (753 total). `SPEC_TYPE='draft-mtp'`, `SPEC_DRAFT_N_MAX=4` should work (llama.cpp embedded-MTP path, proven on qwen3.5-9B: +48% on NVIDIA). **Untested on this file** — separate fingerprint from the non-MTP vector; speed-path candidate.
+- **Verified tested (2026-08-22).** `gguf_has_mtp() == true`, `qwen35moe.nextn_predict_layers = 1`, 4 tensors (`blk.40.nextn.eh_proj/enorm/hnorm/shared_head_norm`), 753 total. `SPEC_TYPE='draft-mtp'`, `SPEC_DRAFT_N_MAX=4` (binary b10549). Separate fingerprint from the non-MTP vector.
+- **Measured on this file — no speedup on this MoE:**
+  - 65k `n=1`: bench **27.6** t/s, peak 3.9 GB — trial `1c1bc293`, validation **PASS**
+  - 65k `n=2`: bench **24.6** t/s, peak 3.7 GB — trial `e568c5e0`, validation **PASS** (`draft_accept` 0.54, `mean_len` 2.08)
+  - 65k `n=4` pre-fix: **rejected**, est 8369 > 7676 (`1329dc50`)
+  - 131k `n=4` pre-fix: **rejected**, est 9104 > 7676 (`60ddaec2`) — direct server on :18081 fit at **4243 MB** (nvidia-smi 4243,8188), `predicted_per_second` 12.9, draft 346 / accepted 38 (11%); post-fix harness `67cb12d9` (ctx 131072, spec 4) bench **18.1** — rejected under TPS_FLOOR 20.0
+- **Pareto-dominated:** TPS −0.7% at `n=1`, −11% at `n=2`, −34% at 131k `n=4` vs the 27.8 t/s non-MTP baseline (`f8980537`).
+- **Estimator fixed:** MoE workspace zeroed — the VRAM estimator (not the binary) was the limiter; post-fix runs estimate correctly.
 - 1.0-35B had NO MTP — do not carry that assumption to 1.5.
 
 ## VITRIOL / Split strategy (MoE expert offloading)
@@ -68,6 +75,6 @@ Best coding in the Ornith family (1.5-9B 0.6150 / 1.0-35B 0.580). Agentic 0.8667
 - Trial rows: `results.tsv` `53ba75b7` (complete vector on_front), `500e9967` (agentic rerun @240 s), `f8980537` (agentic 0.8667 @4096)
 - Evidence artifacts (2026-08-20): `autoresearch/runners/logs/llama-server-20260820-121648-Ornith-1.5-35B-Q4_K_M.log`, `agentic-20260820-135750-Ornith-1.5-35B-Q4_K_M.json`
 ## Open questions
-- MTP speed path (`SPEC_TYPE=draft-mtp`) untested — expected +20-46% TPS, separate fingerprint.
+- MTP measured: no speedup on this MoE; 131k n4 fits at 4.24GB actual vs 9104 est bench 18.1 < floor.
 - T053: does a larger ctx (131072) or lighter history (no `REASONING_PRESERVE`) clear the 65k ceiling? REASONING_PRESERVE inflates request size by re-rendering think traces — worth an A/B.
 - T054: task content/research path is family-wide weak; possible target for a budget/efficiency A/B later.

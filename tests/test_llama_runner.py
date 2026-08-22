@@ -640,10 +640,11 @@ class TestLlamaRunner(unittest.TestCase):
         self.assertAlmostEqual(mtp_four - mtp_two, 512.0)
 
     def test_estimate_vram_mb_moe_external_draft_skips_spec_workspace(self):
-        """MoE expert-CPU offload + external draft: charge draft weights only.
+        """MoE expert-CPU offload + any speculative draft: charge draft weights only.
 
         Flat speculative workspace (512 + 256*n) false-rejects DFlash on 8 GB
-        when measured peaks are ~4 GB. Embedded MTP (no draft file) keeps workspace.
+        when measured peaks are ~4 GB. Embedded MTP (no draft file) also skips the
+        flat workspace — measured peaks are 3.6-4.2 GB vs 6.8-9.1 GB estimated.
         """
         from autoresearch.core.llama_runner import estimate_vram_mb
 
@@ -679,7 +680,7 @@ class TestLlamaRunner(unittest.TestCase):
                 )
 
             self.assertAlmostEqual(with_dflash - base, 10.0, places=1)
-            self.assertAlmostEqual(embedded_mtp - base, 1024.0)
+            self.assertAlmostEqual(embedded_mtp - base, 0.0, places=1)
 
     def test_estimate_vram_mb_n_cpu_moe_shrinks_weight(self):
         from autoresearch.core.llama_runner import estimate_vram_mb
