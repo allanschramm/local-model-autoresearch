@@ -62,8 +62,8 @@ One markdown file per GGUF model we run on the operator host. Cards are the cano
 - [`gemma-4-26b-a4b.md`](./gemma-4-26b-a4b.md) — Gemma 4 26B A4B; claw 0.1333 / coding 0.590 @ 65k.
 - [`gemma-4-e4b.md`](./gemma-4-e4b.md) — Gemma 4 E4B model card.
 - [`ornith-1.0-9b.md`](./ornith-1.0-9b.md) — UD / MTP / deepreinforce Q4_K_M are separate Trials (coding 0.580 on deepreinforce basename; claw pending for that id).
-- [`ornith-1.5-9b.md`](./ornith-1.5-9b.md) — Ornith-1.5-9B official Q4_K_M; on_front claw **0.8000** / coding **0.6150**; needed 120 s Claw turn timeout + `AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB=256`.
-- [`ornith-1.5-35b.md`](./ornith-1.5-35b.md) — Ornith-1.5-35B-A3B official Q4_K_M; on_front claw **0.7333** / coding **0.6300**; MoE `n-cpu-moe 41` auto; embedded MTP untested.
+- [`ornith-1.5-9b.md`](./ornith-1.5-9b.md) — Ornith-1.5-9B official Q4_K_M; on_front claw **0.9333** / coding **0.6150**; dense `qwen35` **no MTP** (0/427, 2026-08-22 `GGUFReader`); needed 4096-token agentic floor + 420 s Claw timeout + keepout env fixes.
+- [`ornith-1.5-35b.md`](./ornith-1.5-35b.md) — Ornith-1.5-35B-A3B official Q4_K_M; on_front claw **0.8667** / coding **0.6300**; MoE `n-cpu-moe 41` auto; **embedded MTP** `qwen35moe.nextn_predict_layers=1` 4/753 `blk.40.nextn.*` (2026-08-22).
 - [`ornith-1.0-35b.md`](./ornith-1.0-35b.md) — Ornith 1.0 35B; Q4 claw 0.6000 / coding 0.580; Q3 claw 0.4667 / coding 0.555.
 - [`ornith-1.0-35b-iq3_m.md`](./ornith-1.0-35b-iq3_m.md) — Ornith 1.0 35B IQ3_M quant model card.
 - [`qwen-agentworld-35b-a3b.md`](./qwen-agentworld-35b-a3b.md) — Qwen AgentWorld 35B A3B model card.

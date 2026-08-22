@@ -6,11 +6,11 @@
 **Family:** Ornith-1.5 (ornith-ai; Qwen 3.5 architecture)
 **Quantization:** official Q4_K_M (only official GGUF repo; no Unsloth/MTP pack yet)
 
-## Architecture (verified from local GGUF, harness-backed `model_info.py` 2026-08-19)
+## Architecture (verified from local GGUF, `gguf.GGUFReader` + `autoresearch/core/model_arch.py:126` `gguf_has_mtp()`, 2026-08-22)
 - Causal LM, Qwen 3.5 arch (`qwen35.*` fields), **dense**
 - **`block_count` = 32**
 - `kv_f16_mb @ 65536 ctx` = 4096 MB (q4_0 KV ≈ 1 GB at 65k)
-- No `nextn` / `mtp` / `draft` tensors in the GGUF (verified field scan)
+- **No MTP:** `gguf_has_mtp() == false` — no `qwen35.nextn_predict_layers` field, 0 `nextn`/`mtp`/`eh_proj` tensors of 427 total (verified `GGUFReader` field+tensor scan 2026-08-22; `model_arch.py:126` `nextn_predict_layers` check)
 - **TBD:** exact SSM/attention layout (full_attention_interval, hidden dim) — same file size and arch family as Ornith-1.0-9B Q4_K_M; see [ornith-1.0-9b.md](./ornith-1.0-9b.md) for the family layout.
 
 ## Hardware requirements
@@ -30,7 +30,7 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 **Seeded for this Trial:** coding profile (TEMP 0.6) — matches the card's own ClawEval eval config (temp=0.6).
 
 ## MTP (Multi-Token Prediction)
-- **This GGUF has NO MTP/nextn tensors.** `SPEC_TYPE=None`. No MTP pack exists for 1.5 yet.
+- **This GGUF has NO MTP/nextn tensors.** `gguf_has_mtp() == false`, `SPEC_TYPE=None`. Verified 2026-08-22: `GGUFReader` 0 `nextn` tensors / 427 total, no `nextn_predict_layers` field (`autoresearch/core/model_arch.py:126`). No MTP pack exists for 1.5-9B yet; speculative decoding requires external draft only.
 
 ## VITRIOL / Split strategy
 - Dense — no expert offload. Full GPU: `-ngl 99`, `N_CPU_MOE=None`.
@@ -81,9 +81,8 @@ Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 
 
 ## Sources / Verification
 - https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF (README, 2026-08-19)
-- Local GGUF metadata via `scripts/model_info.py` (2026-08-19)
+- Local GGUF metadata via `scripts/model_info.py` (2026-08-19) + `gguf.GGUFReader` field+tensor scan 2026-08-22 (`autoresearch/core/model_arch.py:126` `gguf_has_mtp()` → false, 0/427 `nextn` tensors, no `nextn_predict_layers`)
 - Trial rows: `results.tsv` `f19d991d` (coding 0.6150 + agentic 0.2667), `9b1af29d` (agentic 0.8000 @ 2048 cap), `bf729951` (agentic 0.9333 @ 4096); rejected preflight/kill rows `6fde4721`/`716efd9a`/`06043927` kept for the record
-
 ## Open questions
 - T054 (finance ARPPU) scores 0.00 for **all four Ornith variants** — 1.5-9B: 31 calls; 1.0-9B: 100 calls, len=154; 1.5-35B: 29 calls, report len=7173 (no keywords). Retrieval-path failure common to the family, not truncation. Possible target for a budget/efficiency A/B later.
 - **65k ctx ceiling is the next limiter (now proven)**: the 1.5-35B rerun hit an HTTP 400 `exceed_context_size_error` — `request (124983 tokens) exceeds the available context size (65536)` (row `f8980537`, T053). `REASONING_PRESERVE` think re-renders inflate request size; candidate A/B: ctx 131072 or `REASONING_PRESERVE` off. Long research tasks can fill 65k at 4096 tokens/turn.

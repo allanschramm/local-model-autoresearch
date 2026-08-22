@@ -6,12 +6,12 @@
 **Family:** Ornith-1.5 (ornith-ai; Qwen 3.5 MoE architecture)
 **Quantization:** official Q4_K_M (only official GGUF repo)
 
-## Architecture (verified from local GGUF, harness-backed `model_info.py` 2026-08-19)
+## Architecture (verified from local GGUF, `gguf.GGUFReader` + `autoresearch/core/model_arch.py:126` `gguf_has_mtp()`, 2026-08-22)
 - Causal LM, Qwen 3.5 MoE arch (`qwen35moe.*`), **MoE**
 - **`block_count` = 41** (1.0-35B was 40)
 - **~35B total / ~3B activated** per card (MoE, 256 experts, 8 active + shared)
 - `kv_f16_mb @ 65536 ctx` = 2624 MB (q4_0 KV ≈ 0.7 GB at 65k)
-- **Embedded MTP:** `qwen35moe.nextn_predict_layers` present (verified field scan) — unlike 1.0-35B
+- **Embedded MTP:** `gguf_has_mtp() == true` — `qwen35moe.nextn_predict_layers = 1` (UINT32), 4 `nextn` tensors at `blk.40.nextn.*` (`eh_proj.weight`, `enorm.weight`, `hnorm.weight`, `shared_head_norm.weight`) of 753 total (verified `GGUFReader` 2026-08-22; `model_arch.py:126` `nextn_predict_layers` check) — unlike 1.0-35B (no MTP)
 - **TBD:** exact expert/hidden layout — verify full SSM/MoE params on next card edit
 
 ## Hardware requirements
@@ -31,7 +31,7 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 **Seeded for this Trial:** TEMP 0.6 / TOP_P 0.95 / TOP_K 20 / MIN_P 0.0 / presence 0.0 / repeat 1.0 (matches card's general profile and the 1.5-9B coding profile).
 
 ## MTP (Multi-Token Prediction)
-- **Embedded `nextn` tensors present.** `SPEC_TYPE='draft-mtp'`, `SPEC_DRAFT_N_MAX=4` should work (llama.cpp embedded-MTP path, proven on qwen3.5-9B: +48% on NVIDIA). **Untested on this file** — separate fingerprint from the non-MTP vector; speed-path candidate.
+- **Embedded `nextn` tensors present.** `gguf_has_mtp() == true`, `qwen35moe.nextn_predict_layers = 1`, 4 tensors (`blk.40.nextn.eh_proj/enorm/hnorm/shared_head_norm`) — verified 2026-08-22 `GGUFReader` (753 total). `SPEC_TYPE='draft-mtp'`, `SPEC_DRAFT_N_MAX=4` should work (llama.cpp embedded-MTP path, proven on qwen3.5-9B: +48% on NVIDIA). **Untested on this file** — separate fingerprint from the non-MTP vector; speed-path candidate.
 - 1.0-35B had NO MTP — do not carry that assumption to 1.5.
 
 ## VITRIOL / Split strategy (MoE expert offloading)
@@ -64,10 +64,9 @@ Best coding in the Ornith family (1.5-9B 0.6150 / 1.0-35B 0.580). Agentic 0.8667
 
 ## Sources / Verification
 - https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B-GGUF (README, 2026-08-19)
-- Local GGUF metadata via `scripts/model_info.py` + field scan (2026-08-19)
+- Local GGUF metadata via `scripts/model_info.py` + `gguf.GGUFReader` field+tensor scan 2026-08-22 (`autoresearch/core/model_arch.py:126` `gguf_has_mtp()` → true, `qwen35moe.nextn_predict_layers = 1`, 4/753 `nextn` tensors at `blk.40.nextn.*`)
 - Trial rows: `results.tsv` `53ba75b7` (complete vector on_front), `500e9967` (agentic rerun @240 s), `f8980537` (agentic 0.8667 @4096)
 - Evidence artifacts (2026-08-20): `autoresearch/runners/logs/llama-server-20260820-121648-Ornith-1.5-35B-Q4_K_M.log`, `agentic-20260820-135750-Ornith-1.5-35B-Q4_K_M.json`
-
 ## Open questions
 - MTP speed path (`SPEC_TYPE=draft-mtp`) untested — expected +20-46% TPS, separate fingerprint.
 - T053: does a larger ctx (131072) or lighter history (no `REASONING_PRESERVE`) clear the 65k ceiling? REASONING_PRESERVE inflates request size by re-rendering think traces — worth an A/B.

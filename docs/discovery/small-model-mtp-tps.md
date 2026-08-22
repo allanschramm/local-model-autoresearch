@@ -28,9 +28,10 @@ MTP is a **training/inference feature**, not a Dense-vs-MoE class.
 | Gemma-4 E4B | `gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf` | external draft | `draft/mtp-gemma-4-E4B-it.gguf` |
 | Qwen3.5-9B | `Qwen3.5-9B-UD-Q4_K_XL.gguf` | embedded | same file (`nextn`) |
 | Ornith-1.0-9B | `Ornith-1.0-9B-UD-Q4_K_XL.gguf` | Hub MTP GGUF | `Ornith-1.0-9B-MTP-Q4_K_M.gguf` |
+| Ornith-1.5-9B | `Ornith-1.5-9B-Q4_K_M.gguf` | **none** — `qwen35`, `gguf_has_mtp()==false` (0 `nextn` / 427 total, no `nextn_predict_layers`; 2026-08-22 `GGUFReader`) | — |
+| Ornith-1.5-35B-A3B | `Ornith-1.5-35B-Q4_K_M.gguf` | **embedded** — `qwen35moe.nextn_predict_layers=1`, 4 `nextn` at `blk.40.nextn.*` / 753 total (2026-08-22 `GGUFReader`, `model_arch.py:126`) | same file (`nextn`) |
 | Mythos 5-1M | `Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf` | Hub MTP GGUF | `Qwythos-9B-Claude-Mythos-5-1M-MTP.Q4_K_M.gguf` |
 | Qwythos-9B-v2 | `Qwythos-9B-v2-Q4_K_M.gguf` | none (CUDA) | — |
-
 ### Hub sources used
 - Ornith MTP: `protoLabsAI/Ornith-1.0-9B-MTP-GGUF` → `Ornith-1.0-9B-MTP-Q4_K_M.gguf`
 - Mythos MTP: `mradermacher/Qwythos-9B-Claude-Mythos-5-1M-MTP-GGUF` → `Qwythos-9B-Claude-Mythos-5-1M-MTP.Q4_K_M.gguf`
