@@ -36,8 +36,8 @@ Q4_K_M is llama.cpp's classic 4-bit "good enough" pack: mixed 4/6-bit (attention
 Best-per-engine on this repo's hardware class (discrete 8 GB-class NVIDIA, SM89):
 
 - **llama.cpp**: UD-Q4_K_XL — repo-measured (Qwen3.5-9B-UD, gemma-4-E4B rows in `results.tsv`; cascade doc).
-- **vLLM / SGLang**: AWQ (Marlin W4A16, SM75+ — runs on this GPU class) — or GGUF when a same-bytes claim is wanted (vLLM plugin experimental/under-optimized; SGLang GGUF NVIDIA-only). See [vllm-quant-deep-dive.md](./vllm-quant-deep-dive.md) §5 for the SM75/SM80-usable list (GPTQ/AWQ/INT8/FP8-W8A16-Marlin/GGUF; bnb = slow dequant path).
-- **Blackwell-only tier** (future rig): NVFP4 W4A4/W4A16 or MXFP4 — native FP4 tensor cores, ~2.3× INT4 throughput (**external**); FP8 W8A8 is the 8-bit tier (Q8_0-class quality), **not** a Q4 equivalent.
+- **vLLM / SGLang**: AWQ (Marlin W4A16, SM75+ — runs on this GPU class) — or GGUF when a same-bytes claim is wanted (vLLM plugin experimental/under-optimized; SGLang GGUF NVIDIA-only). **NVFP4 also loads on this class via Marlin W4A16 fallback** (memory win, W4A16 speed — not native W4A4) — see [nvfp4-quantization.md](./nvfp4-quantization.md). See [vllm-quant-deep-dive.md](./vllm-quant-deep-dive.md) §5 for the SM75/SM80-usable list (GPTQ/AWQ/INT8/FP8-W8A16-Marlin/GGUF/NVFP4-Marlin; bnb = slow dequant path).
+- **Native Blackwell tier** (Blackwell rig, for speed): NVFP4 **W4A4** or MXFP4 — native FP4 tensor cores, ~2.3× INT4 throughput (**external**); W4A16 is the same checkpoint without the activation-quant speed edge. FP8 W8A8 is the 8-bit tier (Q8_0-class quality), **not** a Q4 equivalent.
 
 Quality ordering (**external / unverified on this rig**): UD-Q4_K_XL ≈ AWQ > GPTQ ≈ Q4_K_M > Q4_0. NVFP4 W4A16 sits in the AWQ band (2–4× better KLD than W4A4 from the same weights — config switch, not re-quant; NVIDIA forums 2026); NVFP4 W4A4 slightly behind INT4/AWQ on some tasks; AWQ beats GPTQ in PPL/MMLU and is more calibration-robust (AWQ paper arXiv 2306.00978; gingerlabs 2024; Microsoft Data Science guide). Caveat: one vLLM-GGUF-plugin benchmark showed GGUF worst-PPL-but-best-HumanEval among quants — GGUF path was unoptimized there; not a llama.cpp verdict (r/LocalLLaMA, 2026-05).
 
@@ -45,10 +45,7 @@ Quality ordering (**external / unverified on this rig**): UD-Q4_K_XL ≈ AWQ > G
 
 - **TBD:** AWQ vs GGUF Q4_K_M quality parity **on this rig** — external evidence only; no local measurement. Falsifiable: same model, same tasks, llama.cpp Q4_K_M vs SGLang/vLLM AWQ. The blocker from issue #59 (SGLang harness path) is **resolved 2026-08-18**: `SGLangServerRunner` + `venv-sglang` (WSL2) exist and produced a `backend=sglang` row; the parity run is now executable, still unmeasured. Next missing piece: a Qwen3.8-class AWQ pack (no AWQ/GPTQ pack exists on HF for Qwen3.8-9B as of 2026-08-18 — the 2B fp16 fit is the only same-family SGLang comparison so far).
 - **TBD:** SGLang `--load-format gguf` same-bytes run — support still documented (server args; NVIDIA-only) and on the SGLang 2H2026 quantization refactor roadmap (GGUF/Autoround standardization); never executed on this hardware. `venv-sglang` now exists (WSL2), so the run is executable — still unmeasured.
-- **TBD:** NVFP4 W4A16 vs W4A4 delta on Qwen3.6-35B-A3B (Unsloth NVFP4 GGUF) — Blackwell-only, out of rig scope.
-
----
-
+- **TBD:** NVFP4 Marlin fallback (W4A16) vs GGUF Q4_K_M on the 8 GB-class rig — NVFP4 *loads* (SM89 Marlin), but TPS/quality gap unmeasured. Falsifiable: `ornith-ai/Ornith-1.5-35B-A3B-NVFP4` via `vllm --quantization modelopt_fp4` (Marlin) vs `Ornith-1.5-35B-A3B-GGUF Q4_K_M` via `llama-server`, same tasks. Native W4A4 delta still needs Blackwell.
 ## Technical Comparison Matrix
 
 | Engine | Primary Memory Innovation | KV Cache Sharing Mechanism | Primary Target Hardware | Ideal Workload Pattern | Status / Lifecycle |

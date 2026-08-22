@@ -89,16 +89,15 @@ Measured (Llama-3.1-8B, MT-bench, 1x H100, [docs](https://docs.sglang.io/docs/ad
 | `quark` / `quark_int4fp8_moe` / `quark_mxfp4` | — | ✅ | — | AMD paths |
 | `auto-round` | ✅ | ✅ | partial | Intel INC |
 | `awq_marlin` / `gptq_marlin` | ✅ | ❌ | ❌ | CUDA-only Marlin |
-| **`gguf`** | ✅ | ❌ | ✅ | CUDA kernels in sgl-kernel; Ascend CPU pre-dequant at load |
 | `modelopt_fp8` | ✅ (SM90+) | ❌ | ❌ | NVIDIA ModelOpt |
-| `modelopt_fp4` / `nvfp4_online` | ✅ (SM100+) | ❌ | ❌ | Blackwell FP4; online MoE-only NVFP4 |
+| `modelopt_fp4` / `nvfp4_online` | ✅ (SM75+ via Marlin W4A16 fallback; SM100+ native W4A4) | ❌ | ❌ | Blackwell native FP4; `PR #19652` Marlin fallback SM75+ — see [nvfp4-quantization.md](./nvfp4-quantization.md) |
 | `petit_nvfp4` | ❌ | ✅ (MI250+) | ❌ | NVFP4 on ROCm |
 | `bitsandbytes` | ✅ | experimental | ❌ | |
 | `torchao` (`int4wo-128` etc.) | ✅ | partial | ❌ | PyTorch AO |
 | `modelslim` | ❌ | ❌ | ✅ | Ascend |
 
 - Offline (pre-quantized) loading is preferred; quantization method auto-detected from HF config — **do not** also pass `--quantization`. Online quantization flags exist (`--quantization fp8`, `--torchao-config int4wo-128`, `--quantization nvfp4_online`, `--quantization auto-round-int8`).
-- FP4/FP8 GEMM backends: `--fp8-gemm-backend` / `--fp4-gemm-backend` — deep_gemm (SM90/100), flashinfer_trtllm/cutlass (SM100/120), marlin (SM80-90), cutlass, triton fallback, aiter (ROCm) ([quantization docs](https://docs.sglang.io/docs/advanced_features/quantization)).
+- FP4/FP8 GEMM backends: `--fp8-gemm-backend` / `--fp4-gemm-backend` — deep_gemm (SM90/100), flashinfer_trtllm/cutlass (SM100/120), **marlin (SM75+ NVFP4 W4A16 fallback, auto-selected on SM80–90; native W4A4 needs SM100+)**, cutlass, triton fallback, aiter (ROCm) ([quantization docs](https://docs.sglang.io/docs/advanced_features/quantization)). Force Marlin: `SGLANG_FORCE_NVFP4_MARLIN=1`.
 - KV cache quantization (FP8) documented under [quantized_kv_cache](https://docs.sglang.io/docs/advanced_features/quantized_kv_cache).
 
 ### 5.2 GGUF specifics
