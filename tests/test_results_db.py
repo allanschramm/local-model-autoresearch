@@ -166,3 +166,21 @@ def test_parity_check_detects_drift(tmp_path):
     ok, report = results_db.parity_check(tsv, db)
     assert not ok
     assert "t-0002" in report
+
+
+def test_parity_check_missing_db_is_drift_not_crash(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_tsv(tsv, [_row()])
+    ok, report = results_db.parity_check(tsv, tmp_path / "results.db")
+    assert not ok
+    assert "mirror missing" in report
+
+
+def test_parity_check_tableless_db_is_drift_not_crash(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_tsv(tsv, [_row()])
+    db = tmp_path / "results.db"
+    sqlite3.connect(db).close()  # exists but no schema
+    ok, report = results_db.parity_check(tsv, db)
+    assert not ok
+    assert "no 'trials' table" in report

@@ -192,11 +192,20 @@ def try_sync_from_tsv(results_file: Path, db_path: Path | None = None) -> int:
 
 
 def parity_check(results_file: Path, db_path: Path | None = None) -> tuple[bool, str]:
-    """Compare mirror vs TSV: row count + trial_id set (+ duplicate detection)."""
+    """Compare mirror vs TSV: row count + trial_id set (+ duplicate detection).
+
+    A missing or un-migrated mirror (no `trials` table) is drift, not a
+    crash: reports (False, reason) so callers can rebuild.
+    """
     db_path = db_path or default_db_path(Path(results_file))
     rows = _read_tsv(Path(results_file))
+    if not db_path.exists():
+        return False, f"mirror missing: {db_path}"
     conn = sqlite3.connect(db_path)
     try:
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if "trials" not in tables:
+            return False, "mirror has no 'trials' table (un-migrated or corrupt)"
         db_ids = {r[0] for r in conn.execute("SELECT trial_id FROM trials")}
     finally:
         conn.close()
