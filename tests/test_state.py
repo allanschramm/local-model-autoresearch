@@ -64,7 +64,7 @@ class TestSearchState(unittest.TestCase):
         self.assertEqual(fresh_state.visited, {"config_key_1"})
 
         data = self.state_file.read_text(encoding="utf-8")
-        self.assertIn('"schema_version": 2', data)
+        self.assertIn('"schema_version": 3', data)
         self.assertNotIn('"baseline"', data)
 
         self.state.mark_visited("config_key_2")
@@ -85,6 +85,24 @@ class TestSearchState(unittest.TestCase):
         state = SearchState(self.state_file)
         self.assertTrue(state.is_visited("a"))
         self.assertEqual(state.get_baseline()["MODEL"], config.DEFAULTS["MODEL"])
+
+    def test_loads_schema_v2_without_morris(self):
+        self.state_file.write_text(
+            '{"schema_version": 2, "visited": ["a"]}\n',
+            encoding="utf-8",
+        )
+        state = SearchState(self.state_file)
+        self.assertTrue(state.is_visited("a"))
+        self.assertEqual(state.morris_pins_for("m.gguf"), {})
+
+    def test_morris_pins_round_trip(self):
+        self.state.set_morris(
+            "m.gguf", {"THREADS": 8}, {"THREADS": {"mu_star": 1.0, "sigma": 0.0, "n": 2}}
+        )
+        fresh = SearchState(self.state_file)
+        self.assertEqual(fresh.morris_pins_for("m.gguf"), {"THREADS": 8})
+        self.state.reset()
+        self.assertEqual(self.state.morris_pins_for("m.gguf"), {})
 
 
 class TestWriteBaseline(unittest.TestCase):

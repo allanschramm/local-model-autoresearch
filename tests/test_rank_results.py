@@ -328,3 +328,19 @@ def test_day_and_night_tables_are_aligned_columns():
     assert "POCKET.gguf" not in day_section
     assert "POCKET.gguf" in night_section
     assert "35.7" in night_section
+
+
+def test_build_vectors_ignores_morris_screen_tps():
+    # ADR 0016: screen probes (reps=1) must not set the basename TPS axis.
+    rows = [
+        {"model": "M.gguf", "outcome": "", "tps": "30.0", "agentic": "0.5", "coding": "0.5"},
+        {
+            "model": "M.gguf",
+            "outcome": "OK",
+            "evaluation_profile": "morris-screen",
+            "category": "morris-screen",
+            "tps": "999.0",
+        },
+    ]
+    complete, _ = rr.build_vectors(rows)
+    assert complete[0].tps == 30.0

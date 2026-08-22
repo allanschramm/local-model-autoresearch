@@ -24,7 +24,9 @@ DISCRETE_HEADROOM_FLOOR_MB = 4096.0
 DISCRETE_HEADROOM_RATIO = 0.15
 
 
-def classify_memory_class(*, has_cuda: bool, has_rocm: bool = False, has_metal: bool = False) -> str:
+def classify_memory_class(
+    *, has_cuda: bool, has_rocm: bool = False, has_metal: bool = False
+) -> str:
     """Discrete when NVIDIA CUDA or AMD ROCm/Radeon VRAM is present; else shared host pool."""
     del has_metal  # API clarity for Darwin callers
     if has_cuda or has_rocm:
@@ -106,6 +108,68 @@ def detect_nvidia() -> tuple[str | None, float, bool]:
     return None, 0.0, False
 
 
+def detect_gpu_temp_c() -> float | None:
+    """First GPU temperature in C, or None if no sensor."""
+    try:
+        res = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=temperature.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            line = res.stdout.strip().splitlines()[0]
+            return float(line.strip())
+    except Exception:
+        pass
+    try:
+        res = subprocess.run(
+            ["rocm-smi", "--showtemp"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if res.returncode == 0 and res.stdout:
+            import re
+
+            match = re.search(r"([\d.]+)\s*[cC]", res.stdout)
+            if match:
+                return float(match.group(1))
+    except Exception:
+        pass
+    return None
+
+
+def wait_gpu_near_idle(
+    *,
+    idle_c: float | None,
+    delta_c: float = 8.0,
+    timeout_s: float = 90.0,
+    poll_s: float = 2.0,
+    enabled: bool = True,
+) -> float | None:
+    """Poll until GPU temp is near the captured idle, or timeout."""
+    import time
+
+    if not enabled:
+        return None
+    current = detect_gpu_temp_c()
+    if idle_c is None or current is None:
+        return current
+    deadline = time.monotonic() + timeout_s
+    while current > idle_c + delta_c and time.monotonic() < deadline:
+        time.sleep(poll_s)
+        nxt = detect_gpu_temp_c()
+        if nxt is None:
+            return current
+        current = nxt
+    return current
+
+
 def detect_amd() -> tuple[str | None, float, bool]:
     """Return (gpu_name, vram_gb, has_rocm_or_amd)."""
     system = sys.platform
@@ -132,7 +196,9 @@ def detect_amd() -> tuple[str | None, float, bool]:
                     desc, size_str = line.split("|", 1)
                     desc = desc.strip()
                     vram_bytes = int(size_str.strip()) if size_str.strip().isdigit() else 0
-                    vram_gb = round(vram_bytes / (1024.0 * 1024.0 * 1024.0), 1) if vram_bytes > 0 else 0.0
+                    vram_gb = (
+                        round(vram_bytes / (1024.0 * 1024.0 * 1024.0), 1) if vram_bytes > 0 else 0.0
+                    )
                     if desc and vram_gb > 0:
                         return desc, vram_gb, True
         except Exception:

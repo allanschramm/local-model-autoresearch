@@ -35,7 +35,7 @@ def _ensure_repo_root_on_sys_path() -> None:
 
 _ensure_repo_root_on_sys_path()
 
-from autoresearch.core.classify import fp_from_config_json
+from autoresearch.core.classify import MORRIS_SCREEN_PROFILE, fp_from_config_json
 from autoresearch.core.pareto import pareto_set
 
 DEFAULT_TSV = REPO_ROOT / "results.tsv"
@@ -189,6 +189,8 @@ def build_vectors(
         model = (row.get("model") or "").strip()
         if not model:
             continue
+        if (row.get("evaluation_profile") or "").strip() == MORRIS_SCREEN_PROFILE:
+            continue  # ADR 0016: reps=1 screen TPS must not set the basename axis
         fp = fp_from_config_json(row.get("config_json"))
         tps = _tps_of(row)
         if tps is not None:

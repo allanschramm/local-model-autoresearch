@@ -42,15 +42,53 @@ class TestAutoLoop(unittest.TestCase):
 
     def test_seed_known_vectors_filters_by_bucket(self):
         rows = [
-            {"model": "a.gguf", "status": "on_front", "ctx": "8192", "tps": "50.0",
-             "agentic": "0.5", "coding": "0.6", "config_json": '{"vram_limit_mb": 8192}'},
-            {"model": "a.gguf", "status": "on_front", "ctx": "8192", "tps": "60.0",
-             "agentic": "0.7", "coding": "0.8", "config_json": '{"vram_limit_mb": 6144}'},
-            {"model": "a.gguf", "status": "rejected", "ctx": "8192", "tps": "70.0",
-             "agentic": "0.9", "coding": "0.9", "config_json": '{"vram_limit_mb": 8192}'},
+            {
+                "model": "a.gguf",
+                "status": "on_front",
+                "ctx": "8192",
+                "tps": "50.0",
+                "agentic": "0.5",
+                "coding": "0.6",
+                "config_json": '{"vram_limit_mb": 8192}',
+            },
+            {
+                "model": "a.gguf",
+                "status": "on_front",
+                "ctx": "8192",
+                "tps": "60.0",
+                "agentic": "0.7",
+                "coding": "0.8",
+                "config_json": '{"vram_limit_mb": 6144}',
+            },
+            {
+                "model": "a.gguf",
+                "status": "rejected",
+                "ctx": "8192",
+                "tps": "70.0",
+                "agentic": "0.9",
+                "coding": "0.9",
+                "config_json": '{"vram_limit_mb": 8192}',
+            },
         ]
         with patch("autoloop.read_rows", return_value=rows):
             vectors = autoloop._seed_known_vectors("a.gguf", bucket_gb=8)
+        self.assertEqual(len(vectors), 1)
+        self.assertEqual(vectors[0].tps, 50.0)
+
+    def test_seed_known_vectors_skips_morris_screen_rows(self):
+        rows = [
+            {"model": "a.gguf", "ctx": "8192", "tps": "50.0", "agentic": "0.5", "coding": "0.6"},
+            {
+                "model": "a.gguf",
+                "ctx": "8192",
+                "tps": "99.0",
+                "agentic": "",
+                "coding": "",
+                "evaluation_profile": "morris-screen",
+            },
+        ]
+        with patch("autoloop.read_rows", return_value=rows):
+            vectors = autoloop._seed_known_vectors("a.gguf", bucket_gb=None)
         self.assertEqual(len(vectors), 1)
         self.assertEqual(vectors[0].tps, 50.0)
 

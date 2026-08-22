@@ -54,6 +54,7 @@ ENGINE_DEFAULTS = {
     # Not a Search neighbor.
     'REASONING_PRESERVE': None,
     'CONT_BATCHING': False,
+    'CACHE_REUSE': 256,
     # MoE: None = auto --n-cpu-moe {GGUF block_count}; 0 = full GPU; N>0 = manual.
     'N_CPU_MOE': None,
     'VRAM_LIMIT_MB': 7900,
@@ -66,8 +67,11 @@ ENGINE_DEFAULTS = {
     'HOST_MEMORY_HEADROOM_MB': None,
     # Min tg t/s for Trial reject gate. MoE on 8GB often lands 15–19 — lower per model if needed.
     'TPS_FLOOR': 20.0,
+    # llama-cli / SGLang bench: median of this many generations after GPU cooldown.
+    'TPS_REPS': 3,
+    # Wait for GPU near captured idle temp before each bench / server spawn.
+    'THERMAL_WAIT': True,
 }
-
 # Generation/Sampling — seed from the model card "Recommended settings"
 # for the job (agentic/general vs coding) BEFORE the first Trial. When the
 # card has no "Recommended settings" section, seed from
@@ -154,6 +158,14 @@ def validate_config(cfg: dict) -> dict:
     numa = normalized.get("numa", normalized.get("NUMA", DEFAULTS.get("NUMA")))
     if numa is not None and numa not in ("distribute", "isolate"):
         raise ConfigError(f"NUMA must be None, 'distribute', or 'isolate'; got {numa!r}")
+    cache_reuse = normalized.get("cache_reuse", normalized.get("CACHE_REUSE", DEFAULTS.get("CACHE_REUSE", 256)))
+    if cache_reuse is not None:
+        try:
+            cache_reuse = int(cache_reuse)
+        except (TypeError, ValueError):
+            raise ConfigError(f"CACHE_REUSE must be an int >= 0; got {cache_reuse!r}")
+        if cache_reuse < 0:
+            raise ConfigError(f"CACHE_REUSE must be >= 0; got {cache_reuse}")
     for key, value in normalized.items():
         if isinstance(value, float) and not math.isfinite(value):
             raise ConfigError(f"{key} must be finite")
@@ -165,9 +177,10 @@ def validate_config(cfg: dict) -> dict:
     normalized["REASONING_PRESERVE"] = reasoning_preserve
     normalized["N_GPU_LAYERS"] = n_gpu_layers
     normalized["NUMA"] = numa
+    normalized["CACHE_REUSE"] = cache_reuse if cache_reuse is not None else DEFAULTS.get("CACHE_REUSE", 256)
     return normalized
 
-STATE_SCHEMA_VERSION = 2
+STATE_SCHEMA_VERSION = 3
 STATE_FILE = Path(__file__).resolve().parents[2] / ".autoresearch_state.json"
 
 # Derived dynamically from DEFAULTS keys (replaces static CONFIG_KEYS tuple)

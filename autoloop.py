@@ -15,17 +15,21 @@ Baseline persists in config.py; results in results.tsv.
 """
 
 import json
+import random
 import re
 import signal
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from autoresearch.core import classify
+from autoresearch.core.classify import MORRIS_SCREEN_PROFILE
 from autoresearch.core.config import (
     ENGINE_DEFAULTS,
     SAMPLER_DEFAULTS,
 )
+from autoresearch.core.crash_journal import clear_journal, read_journal, write_journal
 from autoresearch.core.hardware import detect_hardware_capabilities
 from autoresearch.core.llama_runner import (
     estimate_vram_mb,
@@ -34,9 +38,20 @@ from autoresearch.core.llama_runner import (
     resolve_spec_estimate_args,
 )
 from autoresearch.core.model_arch import resolve_n_cpu_moe
+from autoresearch.core.morris import (
+    elementary_effects,
+    generate_trajectories,
+    pins_from_effects,
+    varying_space,
+)
 from autoresearch.core.search import SearchStrategy
 from autoresearch.core.state import SearchState
-from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
+from autoresearch.runners.evaluation import (
+    BENCH_N_GEN,
+    ExperimentRunner,
+    TrialOutcome,
+    median_llama_bench_validation,
+)
 from autoresearch.runners.run import (
     MODELS_DIR,
     RESULTS_FILE,
@@ -131,6 +146,156 @@ def filter_search_space_for_cpu(
     if n_gpu_layers == 0:
         return {k: v for k, v in search_space.items() if k not in CPU_EXCLUDED_SEARCH_KEYS}
     return dict(search_space)
+
+
+def apply_pins(search_space: dict[str, list[Any]], pins: dict[str, Any]) -> dict[str, list[Any]]:
+    """Collapse pinned keys to a single legal level."""
+    out = {k: list(v) for k, v in search_space.items()}
+    for key, val in pins.items():
+        if key in out and val in out[key]:
+            out[key] = [val]
+    return out
+
+
+def consume_crash_journal(state, retry: bool = False, results_file: Path | None = None) -> None:
+    """At process start: reject the in-flight Fingerprint or drop the journal."""
+    pending = read_journal()
+    if not pending:
+        return
+    if retry:
+        clear_journal()
+        return
+    target = results_file if results_file is not None else RESULTS_FILE
+    write_row(
+        target,
+        get_git_commit(),
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        "rejected",
+        "crash journal: started but process died",
+        outcome="CRASH",
+        diagnostic="crash journal: started but process died",
+        model=str(pending.get("model") or ""),
+        config_json=str(pending.get("config_json") or ""),
+        tps=0.0,
+        bench_tg=0.0,
+    )
+    key = pending.get("config_key")
+    if key:
+        state.mark_visited(str(key))
+    clear_journal()
+    recompute_statuses(target)
+
+
+def _llama_bench_kwargs(cfg: dict[str, Any]) -> dict[str, Any]:
+    model = cfg.get("MODEL", "")
+    model_path = resolve_model_path(MODELS_DIR, model)
+    n_cpu_moe, _ = resolve_n_cpu_moe(model_path, cfg.get("N_CPU_MOE"))
+    return {
+        "model_path": model_path,
+        "ngl": int(
+            cfg.get("N_GPU_LAYERS", 99) if cfg.get("N_GPU_LAYERS", -1) not in (-1, None) else 99
+        ),
+        "threads": int(cfg.get("THREADS", 8) or 8),
+        "batch_size": int(cfg.get("BATCH_SIZE", 512) or 512),
+        "ubatch_size": int(cfg.get("UBATCH_SIZE", 128) or 128),
+        "flash_attn": str(cfg.get("FLASH_ATTN", "on") or "on"),
+        "cache_type_k": str(cfg.get("KV_CACHE_K") or cfg.get("KV_CACHE") or "q4_0"),
+        "cache_type_v": str(cfg.get("KV_CACHE_V") or cfg.get("KV_CACHE") or "q4_0"),
+        "ctx_size": int(cfg.get("CTX_SIZE", 131072) or 131072),
+        "threads_batch": cfg.get("THREADS_BATCH"),
+        "no_mmap": bool(cfg.get("NO_MMAP", False)),
+        "mlock": bool(cfg.get("MLOCK", False)),
+        "cont_batching": bool(cfg.get("CONT_BATCHING", False)),
+        "spec_type": cfg.get("SPEC_TYPE"),
+        "spec_draft_n_max": int(cfg.get("SPEC_DRAFT_N_MAX", 0) or 0),
+        "spec_draft_model": cfg.get("SPEC_DRAFT_MODEL"),
+        "n_cpu_moe": n_cpu_moe,
+        "n_gen": BENCH_N_GEN,
+        "vram_limit_mb": cfg.get("VRAM_LIMIT_MB"),
+    }
+
+
+def run_morris_screen(
+    model_name: str,
+    seed_cfg: dict[str, Any],
+    engine_space: dict[str, list[Any]],
+    runner: ExperimentRunner,
+    state_manager: SearchState,
+    trajectories: int,
+    rng: random.Random,
+) -> dict[str, Any]:
+    """Measure elementary effects on engine knobs; persist pins. y = llama-cli TPS."""
+    space = {k: v for k, v in engine_space.items() if k in ENGINE_DEFAULTS}
+    space = varying_space(space)
+    trajs = generate_trajectories(space, trajectories, rng, seed_cfg)
+    samples: list[tuple[str, float, float]] = []
+    measured: list[tuple[dict[str, Any], float]] = []
+    vram_limit = seed_cfg.get("VRAM_LIMIT_MB")
+    for traj in trajs:
+        prev_y = 0.0
+        for cfg, param in traj:
+            point = {**seed_cfg, **cfg, "MODEL": model_name}
+            if not preflight_vram_ok(point, vram_limit):
+                y = 0.0
+            else:
+                try:
+                    y, _, _ = median_llama_bench_validation(
+                        **_llama_bench_kwargs(point),
+                        reps=1,
+                        idle_c=getattr(runner, "_idle_gpu_c", None),
+                        thermal_wait=getattr(runner, "thermal_wait", True),
+                    )
+                except Exception:
+                    y = 0.0
+            measured.append((point, y))
+            if param:
+                samples.append((param, prev_y, y))
+            prev_y = y
+            write_row(
+                RESULTS_FILE,
+                get_git_commit(),
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                "incomplete",
+                f"Morris screen {param}",
+                category=MORRIS_SCREEN_PROFILE,
+                evaluation_profile=MORRIS_SCREEN_PROFILE,
+                tps=y,
+                bench_tg=y,
+                model=model_name,
+                config_json=json.dumps(point, sort_keys=True, default=repr),
+            )
+            recompute_statuses(RESULTS_FILE)
+    effects = elementary_effects(samples)
+    best_cfg = measured[0][0] if measured else seed_cfg
+    best_y = measured[0][1] if measured else 0.0
+    for cfg, y in measured:
+        if y > best_y:
+            best_cfg, best_y = cfg, y
+    pins = pins_from_effects(effects, space, best_cfg)
+    state_manager.set_morris(model_name, pins, effects)
+    return pins
+
+
+def _journaled_run_trial(runner, cfg, model_name, search_strategy):
+    payload = {
+        "model": model_name,
+        "config_key": search_strategy.get_config_key(cfg),
+        "config_json": json.dumps(cfg, sort_keys=True, default=repr),
+        "started_at": datetime.now(UTC).isoformat(),
+    }
+    write_journal(payload)
+    try:
+        return runner.run_trial(cfg)
+    finally:
+        clear_journal()
 
 
 # ── Graceful shutdown ────────────────────────────────────────────────────
@@ -387,7 +552,11 @@ def _seed_known_vectors(model_name: str, bucket_gb: int | None) -> list[classify
     """
     vectors: list[classify.ObjectiveVector] = []
     for row in read_rows(RESULTS_FILE):
-        if row.get("status") == "rejected" or (row.get("model") or "").strip() != model_name:
+        if (
+            row.get("status") == "rejected"
+            or (row.get("evaluation_profile") or "").strip() == MORRIS_SCREEN_PROFILE
+            or (row.get("model") or "").strip() != model_name
+        ):
             continue
         if bucket_gb is not None and classify.row_bucket(row) != bucket_gb:
             continue
@@ -447,6 +616,9 @@ def _write_trial(
         scoring_benchmark="claw-eval",
         task_ids=",".join(getattr(res, "task_ids", ())),
         tps_source=getattr(res, "tps_source", ""),
+        gpu_temp_c=getattr(res, "gpu_temp_c", None),
+        tps_reps=",".join(f"{x:.4g}" for x in getattr(res, "tps_reps", ()) or ()),
+        tps_spread=getattr(res, "tps_spread", None),
         **{
             **tsv_fields_from_cfg(cfg),
             "model": model_name,
@@ -599,6 +771,30 @@ def main():
         default="both",
         help="Optimization mode: 'tps' (speed), 'quality' (accuracy), 'both' (everything)",
     )
+    parser.add_argument("--no-screen", action="store_true", help="Skip Morris engine-knob screen")
+    parser.add_argument(
+        "--rescreen", action="store_true", help="Ignore stored Morris pins and screen again"
+    )
+    parser.add_argument(
+        "--screen-trajectories",
+        type=int,
+        default=4,
+        help="Morris trajectories R (default 4)",
+    )
+    parser.add_argument(
+        "--no-thermal-wait", action="store_true", help="Skip GPU cooldown before benches"
+    )
+    parser.add_argument(
+        "--tps-reps",
+        type=int,
+        default=int(ENGINE_DEFAULTS.get("TPS_REPS", 3) or 3),
+        help="Median-of-reps for llama-cli / SGLang bench TPS",
+    )
+    parser.add_argument(
+        "--retry-crashed",
+        action="store_true",
+        help="Do not consume crash journal as a rejected Trial",
+    )
     parser.add_argument(
         "--profile",
         choices=["day", "night"],
@@ -615,6 +811,7 @@ def main():
     max_rounds = cli_args.max_rounds
 
     state_manager = SearchState()
+    consume_crash_journal(state_manager, retry=cli_args.retry_crashed)
 
     if cli_args.reset_visited:
         state_manager.reset()
@@ -745,7 +942,7 @@ def main():
         state_manager.update_baseline(cpu_seed)
         print("[AUTOLOOP] CPU-only host: N_GPU_LAYERS Auto (-1) -> 0 (CPU Baseline seeded).")
 
-    runner = ExperimentRunner(MODELS_DIR)
+    runner = ExperimentRunner(MODELS_DIR, thermal_wait=not cli_args.no_thermal_wait)
     for model_name in selected_models:
         if _stop_requested:
             break
@@ -756,8 +953,27 @@ def main():
         baseline_now = state_manager.get_baseline()
         vram_limit = baseline_now.get("VRAM_LIMIT_MB")
         bucket_gb = classify.bucket(float(vram_limit) / 1024.0) if vram_limit else None
+        model_space = dict(active_search_space)
+        do_screen = (not cli_args.no_screen) and cli_args.mode != "quality"
+        stored_pins = state_manager.morris_pins_for(model_name)
+        if do_screen and (cli_args.rescreen or not stored_pins):
+            seed_cfg = load_config(state_manager.get_baseline())
+            seed_cfg["MODEL"] = model_name
+            seed_cfg["TPS_REPS"] = cli_args.tps_reps
+            pins = run_morris_screen(
+                model_name,
+                seed_cfg,
+                model_space,
+                runner,
+                state_manager,
+                cli_args.screen_trajectories,
+                random.Random(),
+            )
+            model_space = apply_pins(model_space, pins)
+        elif stored_pins:
+            model_space = apply_pins(model_space, stored_pins)
         search_strategy = SearchStrategy(
-            active_search_space,
+            model_space,
             use_pareto_tiebreaker=True,
             known=_seed_known_vectors(model_name, bucket_gb),
         )
@@ -794,10 +1010,12 @@ def main():
             # ── Step 2: Evaluate baseline ────────────────────────────────
             print("\n[EVAL] Running baseline benchmarks...")
             is_tps_mode = cli_args.mode == "tps"
-            baseline_res = runner.run_trial(
-                trial_config(
-                    baseline_cfg, _defaults, include_ppl=(is_tps_mode or cli_args.perplexity_val)
-                )
+            baseline_trial_cfg = trial_config(
+                baseline_cfg, _defaults, include_ppl=(is_tps_mode or cli_args.perplexity_val)
+            )
+            baseline_trial_cfg["TPS_REPS"] = cli_args.tps_reps
+            baseline_res = _journaled_run_trial(
+                runner, baseline_trial_cfg, model_name, search_strategy
             )
             baseline_score = baseline_res.val_score
             baseline_tps = baseline_res.avg_tps
@@ -869,13 +1087,13 @@ def main():
                     continue
 
                 print(f"\n  [EVAL] Trying {changed}: {old_val} -> {new_val}")
-                res = runner.run_trial(
-                    trial_config(
-                        neighbor.config,
-                        _defaults,
-                        include_ppl=(is_tps_mode or cli_args.perplexity_val),
-                    )
+                neighbor_trial_cfg = trial_config(
+                    neighbor.config,
+                    _defaults,
+                    include_ppl=(is_tps_mode or cli_args.perplexity_val),
                 )
+                neighbor_trial_cfg["TPS_REPS"] = cli_args.tps_reps
+                res = _journaled_run_trial(runner, neighbor_trial_cfg, model_name, search_strategy)
                 score = res.val_score
                 tps = res.avg_tps
                 vram = res.peak_vram_gb

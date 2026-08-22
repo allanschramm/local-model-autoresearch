@@ -206,6 +206,13 @@ def gguf_kv_f16_mb(path: Path, ctx_size: int) -> float | None:
 
     Honors per-layer ``head_count_kv``, sliding-window pattern/window, and
     SWA key/value lengths (gemma4). Non-SWA arches = bytes/token × ctx.
+
+    Quant scaling (calibrated 2026-08-20, b10375, 8 GB-class): the f16
+    estimate matches measured peaks at ×1; scale by bits/16 for the actual
+    cache type — q8_0 ×0.5, q4_0/tq4 ×0.25, tq2_0 ×0.125, tq1_0 ×0.0625.
+    Total VRAM ≈ resident weights + scaled KV + residual (~1.0 GiB on
+    8 GB-class: CUDA ctx + compute buffers + allocator slack; the residual
+    grows with ctx prefill scratch — budget margin accordingly).
     """
     meta = _gguf_kv_meta(path)
     if meta is None:

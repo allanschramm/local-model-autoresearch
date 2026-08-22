@@ -18,6 +18,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from autoresearch.core.classify import (
+    MORRIS_SCREEN_PROFILE,
     row_bucket,
     vector_from_row,
 )
@@ -44,7 +45,12 @@ def recompute_rows(
     for idx, row in enumerate(rows):
         model = (row.get("model") or "").strip()
         bucket_gb = row_bucket(row)
-        if not model or bucket_gb is None or row.get("status") == "rejected":
+        if (
+            not model
+            or bucket_gb is None
+            or row.get("status") == "rejected"
+            or (row.get("evaluation_profile") or "").strip() == MORRIS_SCREEN_PROFILE
+        ):
             continue
         # bucket scope: (bucket, model); model scope: (model, bucket) — one point
         # per basename per budget; model scope never demotes across basenames.

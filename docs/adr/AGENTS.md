@@ -43,3 +43,4 @@ Durable record of architecture decisions for the `local-model-autotuning` projec
 - [`0013-agentic-coding-night-selector.md`](./0013-agentic-coding-night-selector.md) — SWE-lite `agentic_coding` Night selector; Claw stays the agentic axis; four-axis Pareto unchanged.
 - [`0014-fingerprint-bus-product-split.md`](./0014-fingerprint-bus-product-split.md) — Fingerprint bus; TPS-then-Pi journey; Pareto Set remains a report; `teach/` frozen.
 - [`0015-rocm-first-binary-resolution-windows.md`](./0015-rocm-first-binary-resolution-windows.md) — ROCm-first binary resolution on Windows; Vulkan0 hardcode removal; `--no-reasoning-preserve` fix.
+- [`0016-measurement-hygiene-and-morris-screen.md`](./0016-measurement-hygiene-and-morris-screen.md) — Thermal settle, TPS median, crash journal, Morris engine-knob pin; Neighbor Search unchanged.

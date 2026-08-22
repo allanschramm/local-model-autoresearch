@@ -561,6 +561,9 @@ CATEGORY_FIELDNAMES = [
     "config_json",
     "binary_version",
     "tps_source",
+    "gpu_temp_c",
+    "tps_reps",
+    "tps_spread",
     "description",
 ]
 
@@ -653,6 +656,9 @@ def write_row(
     task_ids: str = "",
     config_json: str = "",
     tps_source: str = "",
+    gpu_temp_c: float | None = None,
+    tps_reps: str = "",
+    tps_spread: float | None = None,
 ):
     _ensure_category_column(results_file)
     if status not in TRIAL_STATUSES:
@@ -726,6 +732,9 @@ def write_row(
         ),
         "binary_version": _engine_version(),
         "tps_source": tps_source,
+        "gpu_temp_c": _tsv_cell(gpu_temp_c),
+        "tps_reps": tps_reps,
+        "tps_spread": _tsv_cell(tps_spread),
         "description": description,
     }
     with _results_lock(results_file):
@@ -768,6 +777,9 @@ def run_evaluation(cfg: dict | Any, skip_bench: bool = False, **overrides) -> di
         "diagnostic": tr.diagnostic,
         "task_ids": list(tr.task_ids),
         "tps_source": tr.tps_source,
+        "gpu_temp_c": tr.gpu_temp_c,
+        "tps_reps": list(tr.tps_reps),
+        "tps_spread": tr.tps_spread,
     }
 
 
@@ -890,6 +902,9 @@ def handle_single_run(args):
         diagnostic=res.get("diagnostic", ""),
         task_ids=",".join(res.get("task_ids", [])),
         tps_source=res.get("tps_source", ""),
+        gpu_temp_c=res.get("gpu_temp_c"),
+        tps_reps=",".join(f"{x:.4g}" for x in res.get("tps_reps", ()) or ()),
+        tps_spread=res.get("tps_spread"),
         **_result_config(),
     )
     recompute_statuses(RESULTS_FILE)

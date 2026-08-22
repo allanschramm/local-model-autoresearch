@@ -17,12 +17,14 @@ class SearchState:
     def __init__(self, state_path: Path | str | None = None):
         self.state_path = Path(state_path) if state_path is not None else config.STATE_FILE
         self._visited = set()
+        self._morris: dict[str, Any] = {}
         self._load_from_disk()
 
     def _load_from_disk(self) -> None:
         """Load visited history from disk. Ignore legacy baseline payloads."""
         if not self.state_path.exists():
             self._visited = set()
+            self._morris = {}
             return
 
         try:
@@ -31,16 +33,20 @@ class SearchState:
             raise ConfigError(f"Failed to read state file: {exc}")
 
         schema_version = data.get("schema_version")
-        if schema_version not in (1, config.STATE_SCHEMA_VERSION):
+        if schema_version not in (1, 2, 3):
             raise ConfigError(f"Unsupported state schema: {schema_version}")
 
         self._visited = set(data.get("visited", []))
+        self._morris = data.get("morris") or {}
+        if not isinstance(self._morris, dict):
+            self._morris = {}
 
     def _write_to_disk(self) -> None:
         """Atomically serialize visited memory. Sync write for crash resilience."""
         data = {
             "schema_version": config.STATE_SCHEMA_VERSION,
             "visited": sorted(list(self._visited)),
+            "morris": self._morris,
         }
 
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,7 +94,19 @@ class SearchState:
         if persist:
             self._write_to_disk()
 
+    def morris_pins_for(self, model: str) -> dict:
+        """Return stored Morris pins for a model basename, or {}."""
+        entry = self._morris.get(model) or {}
+        pins = entry.get("pins") if isinstance(entry, dict) else None
+        return dict(pins) if isinstance(pins, dict) else {}
+
+    def set_morris(self, model: str, pins: dict, effects: dict) -> None:
+        """Persist Morris pins and elementary-effects for a model."""
+        self._morris[model] = {"pins": dict(pins), "effects": dict(effects)}
+        self._write_to_disk()
+
     def reset(self) -> None:
-        """Clear visited history only. Baseline stays in config.py."""
+        """Clear visited history and Morris pins. Baseline stays in config.py."""
         self._visited = set()
+        self._morris = {}
         self._write_to_disk()

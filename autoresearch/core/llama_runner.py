@@ -181,6 +181,7 @@ class ServerIntent:
     reasoning: str | None = None
     reasoning_preserve: bool | None = None
     cont_batching: bool = False
+    cache_reuse: int = 256
     host: str = "127.0.0.1"
     spec_type: str | None = None
     spec_draft_model: str | None = None
@@ -251,6 +252,9 @@ class ServerIntent:
             reasoning=norm.get("reasoning"),
             reasoning_preserve=norm.get("reasoning_preserve"),
             cont_batching=norm.get("cont_batching", False),
+            cache_reuse=int(norm.get("cache_reuse", 256))
+            if norm.get("cache_reuse") is not None
+            else 256,
             spec_type=norm.get("spec_type"),
             spec_draft_model=draft_path,
             n_cpu_moe=resolved_n_cpu_moe,
@@ -951,8 +955,8 @@ class LlamaServerRunner:
             cmd += ["--no-reasoning-preserve"]
         if self.intent.cont_batching:
             cmd += ["--cont-batching"]
-
-        # MTP/Speculative Optimization: Detect MTP models and enable speculative decoding.
+        if self.intent.cache_reuse is not None and int(self.intent.cache_reuse) > 0:
+            cmd += ["--cache-reuse", str(int(self.intent.cache_reuse))]
         spec_type_val = self.intent.spec_type
         if (
             spec_type_val is None

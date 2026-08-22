@@ -343,3 +343,21 @@ def test_cli_help_exits_zero():
         text=True,
     )
     assert proc.returncode == 0
+
+
+def test_morris_screen_rows_never_join_domination(store):
+    # ADR 0016: a reps=1 Morris screen point must not compete with, demote,
+    # or merge into real Trials — even in the same bucket and model.
+    real = row(trial_id="real", tps="30.0", agentic="0.6", coding="0.6")
+    screen = row(
+        trial_id="scr",
+        evaluation_profile="morris-screen",
+        category="morris-screen",
+        tps="99.0",
+        agentic="",
+        coding="",
+        outcome="OK",
+    )
+    write_store(store, [screen, real])
+    run.recompute_statuses(store)
+    assert read_store(store) == {"real": "on_front", "scr": "incomplete"}

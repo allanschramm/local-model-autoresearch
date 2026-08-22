@@ -163,6 +163,11 @@ def build_args(cfg: dict) -> tuple[list[str], str, int, str]:
     if cfg.get("NO_MMAP"):
         args += ["--no-mmap"]
 
+    # --- prefix cache reuse (prompt KV shifting) ---
+    cache_reuse = cfg.get("CACHE_REUSE", cfg.get("cache_reuse"))
+    if cache_reuse is not None and int(cache_reuse) > 0:
+        args += ["--cache-reuse", str(int(cache_reuse))]
+
     # --- single slot & hardware tuning ---
     args += ["--parallel", "1"]
 

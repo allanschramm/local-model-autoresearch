@@ -10,10 +10,11 @@ import json
 import math
 import os
 import re
+import statistics
 import subprocess
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -23,7 +24,12 @@ from autoresearch.benchmarks.agentic_coding.runner import run_agentic_coding_eva
 from autoresearch.benchmarks.agentic_runner import run_agentic_eval
 from autoresearch.benchmarks.benchmark_coding import run_benchmark as run_coding
 from autoresearch.core import config as core_config
-from autoresearch.core.hardware import detect_pid_gpu_shared_mb, detect_used_total_vram_mb
+from autoresearch.core.hardware import (
+    detect_gpu_temp_c,
+    detect_pid_gpu_shared_mb,
+    detect_used_total_vram_mb,
+    wait_gpu_near_idle,
+)
 from autoresearch.core.llama_client import GenerationParams, LlamaClient
 from autoresearch.core.llama_runner import (
     ConfigError,
@@ -179,6 +185,47 @@ class TrialResult:
     diagnostic: str = ""
     task_ids: tuple[str, ...] = ()
     tps_source: str = ""
+    gpu_temp_c: float | None = None
+    tps_reps: list[float] = field(default_factory=list)
+    tps_spread: float | None = None
+
+
+def _tps_spread(values: list[float], median: float) -> float:
+    if median == 0:
+        return 0.0
+    return (max(values) - min(values)) / median * 100.0
+
+
+def median_llama_bench_validation(
+    *args,
+    reps: int = 3,
+    idle_c: float | None = None,
+    thermal_wait: bool = True,
+    **kwargs,
+) -> tuple[float, list[float], float | None]:
+    reps = max(1, int(reps))
+    values: list[float] = []
+    last_temp: float | None = None
+    for _ in range(reps):
+        last_temp = wait_gpu_near_idle(idle_c=idle_c, enabled=thermal_wait)
+        values.append(run_llama_bench_validation(*args, **kwargs))
+    return statistics.median(values), values, last_temp
+
+
+def median_sglang_bench_validation(
+    *args,
+    reps: int = 3,
+    idle_c: float | None = None,
+    thermal_wait: bool = True,
+    **kwargs,
+) -> tuple[float, list[float], float | None]:
+    reps = max(1, int(reps))
+    values: list[float] = []
+    last_temp: float | None = None
+    for _ in range(reps):
+        last_temp = wait_gpu_near_idle(idle_c=idle_c, enabled=thermal_wait)
+        values.append(run_sglang_bench_validation(*args, **kwargs))
+    return statistics.median(values), values, last_temp
 
 
 def run_llama_bench_validation(
@@ -435,8 +482,10 @@ class ExperimentRunner:
     Locality: trial orchestration logic and bugs concentrate in one module.
     """
 
-    def __init__(self, models_dir: Path):
+    def __init__(self, models_dir: Path, thermal_wait: bool = True):
         self.models_dir = Path(models_dir)
+        self.thermal_wait = thermal_wait
+        self._idle_gpu_c = detect_gpu_temp_c()
 
     def run_trial(
         self,
@@ -544,13 +593,24 @@ class ExperimentRunner:
         if not skip_bench:
             if intent.model_path.is_dir():
                 try:
-                    bench_tg = run_sglang_bench_validation(
+                    reps = int(
+                        cfg_dict.get("TPS_REPS", core_config.ENGINE_DEFAULTS.get("TPS_REPS", 3))
+                        or 3
+                    )
+                    wait_gpu_near_idle(idle_c=self._idle_gpu_c, enabled=self.thermal_wait)
+                    bench_tg, rep_vals, gpu_c = median_sglang_bench_validation(
                         model_path=intent.model_path,
                         batch_size=1,  # We use 1 here for bench
                         n_prompt=BENCH_N_PROMPT,
                         n_gen=BENCH_N_GEN,
+                        reps=reps,
+                        idle_c=self._idle_gpu_c,
+                        thermal_wait=self.thermal_wait,
                     )
                     res.bench_tg_tps = bench_tg
+                    res.tps_reps = rep_vals
+                    res.tps_spread = _tps_spread(rep_vals, bench_tg)
+                    res.gpu_temp_c = gpu_c
                     print(f"  [bench] sglang.bench_one_batch tg {BENCH_N_GEN}: {bench_tg:.1f} t/s")
 
                     if bench_tg < bench_tts_threshold:
@@ -573,7 +633,12 @@ class ExperimentRunner:
                     return res
             else:
                 try:
-                    bench_tg = run_llama_bench_validation(
+                    reps = int(
+                        cfg_dict.get("TPS_REPS", core_config.ENGINE_DEFAULTS.get("TPS_REPS", 3))
+                        or 3
+                    )
+                    wait_gpu_near_idle(idle_c=self._idle_gpu_c, enabled=self.thermal_wait)
+                    bench_tg, rep_vals, gpu_c = median_llama_bench_validation(
                         model_path=intent.model_path,
                         ngl=intent.ngl,
                         threads=intent.threads,
@@ -593,6 +658,9 @@ class ExperimentRunner:
                         n_cpu_moe=intent.n_cpu_moe,
                         n_gen=BENCH_N_GEN,
                         vram_limit_mb=vram_limit_mb,
+                        reps=reps,
+                        idle_c=self._idle_gpu_c,
+                        thermal_wait=self.thermal_wait,
                     )
                 except FileNotFoundError as e:
                     print(f"  [FAIL] llama-cli not found: {e}")
@@ -629,6 +697,10 @@ class ExperimentRunner:
                     return res
 
                 res.bench_tg_tps = bench_tg
+                res.tps_reps = rep_vals
+                res.tps_spread = _tps_spread(rep_vals, bench_tg)
+                if gpu_c is not None:
+                    res.gpu_temp_c = gpu_c
                 print(f"  [bench] tg {BENCH_N_GEN}: {bench_tg:.1f} t/s")
 
                 if bench_tg < bench_tts_threshold:
@@ -722,6 +794,9 @@ class ExperimentRunner:
 
         runner = None
         try:
+            gpu_c = wait_gpu_near_idle(idle_c=self._idle_gpu_c, enabled=self.thermal_wait)
+            if gpu_c is not None:
+                res.gpu_temp_c = gpu_c
             runner_cls = SGLangServerRunner if intent.model_path.is_dir() else LlamaServerRunner
             runner_kwargs: dict[str, Any] = {"log_path": server_log}
             if runner_cls is LlamaServerRunner:

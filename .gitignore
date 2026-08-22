@@ -110,6 +110,8 @@ autoresearch/core/config.py
 models/sglang/
 .autoresearch_state.json
 .autoresearch_state.json.*
+.autoresearch_crash.journal
+.autoresearch_crash.journal.*
 
 # Local agent/auto scratch (session artifacts)
 .auto/

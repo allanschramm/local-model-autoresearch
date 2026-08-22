@@ -248,9 +248,16 @@ def build_command(cfg: AliasConfig) -> tuple[list[str], Path]:
     return cmd, model_path
 
 
+def _probe_host(host: str) -> str:
+    """0.0.0.0/:: are valid bind targets but not connect targets on Windows."""
+    return "127.0.0.1" if host in ("0.0.0.0", "::") else host
+
+
 def _is_healthy(host: str, port: int) -> bool:
     try:
-        with urllib.request.urlopen(f"http://{host}:{port}/health", timeout=2) as response:
+        with urllib.request.urlopen(
+            f"http://{_probe_host(host)}:{port}/health", timeout=2
+        ) as response:
             return response.status == 200
     except Exception:
         return False
@@ -258,7 +265,7 @@ def _is_healthy(host: str, port: int) -> bool:
 
 def _is_listening(host: str, port: int) -> bool:
     try:
-        with socket.create_connection((host, port), timeout=1):
+        with socket.create_connection((_probe_host(host), port), timeout=1):
             return True
     except OSError:
         return False

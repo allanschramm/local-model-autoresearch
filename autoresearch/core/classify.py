@@ -19,6 +19,10 @@ from autoresearch.core.pareto import ObjectiveVector, Trial, dominates, fingerpr
 # two write paths that share the same engine+sampler Baseline.
 _IDENTITY_KEYS = frozenset(str(k).lower() for k in DEFAULTS)
 
+# Diagnostic profiles never compete for any front (ADR 0016): Morris screen
+# rows carry reps=1 llama-cli TPS probes, not Trial measurements.
+MORRIS_SCREEN_PROFILE = "morris-screen"
+
 # Hardware+budget identity of the known Set (ADR 0006: the global front is
 # ranked per hardware+budget). Prefer configured VRAM_LIMIT_MB; peak memory_gb
 # is legacy fallback only (same Fingerprint can peak differently across Trials).
@@ -117,6 +121,8 @@ def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[Ob
     for row in rows:
         if row.get("status") == "rejected":
             continue  # rejected Trials never compete for the front
+        if (row.get("evaluation_profile") or "").strip() == MORRIS_SCREEN_PROFILE:
+            continue  # Morris screen points are diagnostic, never front seeds
         if row_bucket(row) != bucket_gb:
             continue
         model = (row.get("model") or "").strip()

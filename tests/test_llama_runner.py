@@ -271,12 +271,17 @@ class TestLlamaRunner(unittest.TestCase):
             "BATCH_SIZE": 512,
             "UBATCH_SIZE": 128,
         }
-        on, _ = ServerIntent.from_config({**cfg, "REASONING_PRESERVE": True}, Path("models"))
-        self.assertIs(on.reasoning_preserve, True)
-        off, _ = ServerIntent.from_config({**cfg, "REASONING_PRESERVE": False}, Path("models"))
-        self.assertIs(off.reasoning_preserve, False)
-        omitted, _ = ServerIntent.from_config(cfg, Path("models"))
-        self.assertIsNone(omitted.reasoning_preserve)
+        # Hermetic: pin the Baseline default so an operator's live
+        # config.py REASONING_PRESERVE cannot leak into the omitted case.
+        from autoresearch.core import config as core_config
+
+        with patch.dict(core_config.DEFAULTS, {"REASONING_PRESERVE": None}):
+            on, _ = ServerIntent.from_config({**cfg, "REASONING_PRESERVE": True}, Path("models"))
+            self.assertIs(on.reasoning_preserve, True)
+            off, _ = ServerIntent.from_config({**cfg, "REASONING_PRESERVE": False}, Path("models"))
+            self.assertIs(off.reasoning_preserve, False)
+            omitted, _ = ServerIntent.from_config(cfg, Path("models"))
+            self.assertIsNone(omitted.reasoning_preserve)
 
     @patch("autoresearch.core.llama_runner.resolve_n_cpu_moe", return_value=(None, False))
     @patch("autoresearch.core.llama_runner.resolve_model_path")

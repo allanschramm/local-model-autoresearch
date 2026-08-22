@@ -100,6 +100,22 @@ _Avoid_: score, result, metric (when meaning frontier truth)
 Legacy minimum throughput knob in Baseline `ENGINE_DEFAULTS['TPS_FLOOR']`. Does **not** gate Pareto Set membership. Day selection uses a Day TPS floor then max IQ ([ADR 0009](docs/adr/0009-day-profile-tps-floor.md)). Removable once callers stop depending on it.
 _Avoid_: threshold as frontier rule, minimum TPS for on_front, Day = TPS Floor
 
+**TPS median**:
+Backend bench gate (`llama-cli` / SGLang) reports the median of `TPS_REPS` generations after GPU cooldown. Floor check uses that median. Coding-generation TPS is unchanged ([ADR 0016](docs/adr/0016-measurement-hygiene-and-morris-screen.md)).
+_Avoid_: single-shot bench as Search truth
+
+**gpu_temp_c**:
+GPU sensor temperature (°C) recorded at bench/server start. Distinct from sampler `temp` / `TEMP`.
+_Avoid_: using TSV `temp` for GPU heat
+
+**Morris Screen**:
+Pre-Round elementary-effects probe over **engine** Search Space knobs using llama-cli TPS as y. Low-effect knobs are pinned to the best measured level so Neighbor Search does not step them. Not a replacement for Neighbors. Off in `--mode quality` and `--no-screen` ([ADR 0016](docs/adr/0016-measurement-hygiene-and-morris-screen.md)).
+_Avoid_: Taguchi, orthogonal array, replacing Neighbor
+
+**Crash Journal**:
+Gitignored `.autoresearch_crash.journal` written immediately before an autoloop Trial and cleared when it returns. If the process dies, the next autoloop start records that Fingerprint as `rejected` / `CRASH` unless `--retry-crashed` ([ADR 0016](docs/adr/0016-measurement-hygiene-and-morris-screen.md)).
+_Avoid_: storing crashes as a second scores file, TSV as journal
+
 ### Benchmarks
 
 **Nexus**:

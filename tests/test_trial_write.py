@@ -141,3 +141,21 @@ def test_previous_best_ignores_legacy_keep_cells(tmp_path):
         writer.writeheader()
         writer.writerows(rows)
     assert get_previous_best(tsv) == 0.55
+
+
+def test_write_row_gpu_temp_and_tps_reps(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv, gpu_temp_c=71.0, tps_reps="1,2,3", tps_spread=10.0)
+    row = _read(tsv)[0]
+    assert row["gpu_temp_c"] == "71.0"
+    assert row["tps_reps"] == "1,2,3"
+    assert row["tps_spread"] == "10.0"
+
+
+def test_write_row_missing_hygiene_kwargs_blank(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv)
+    row = _read(tsv)[0]
+    assert row["gpu_temp_c"] == ""
+    assert row["tps_reps"] == ""
+    assert row["tps_spread"] == ""
