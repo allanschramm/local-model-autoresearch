@@ -57,12 +57,15 @@ Exact domination membership can shift when TPS sources differ (claw vs coding Co
 
 - `POCKET-35B-Q3_K_M.gguf` (0.6667 / 0.6150 @65k, 35.7 t/s) — covered by `Qwen3.8-4B-Q4_K_M`: higher ctx + agentic + coding + TPS (2026-08-23).
 - `Kwaipilot_KAT-Coder-V2.5-Dev-IQ4_XS.gguf` (0.6000 / 0.6400 @65k, 30.2 t/s) — covered by `Qwen3.8-4B-Q4_K_M`: same coding, higher agentic + ctx + TPS (2026-08-23).
+- `Ornith-1.5-35B-A3B-Heretic-MTP-APEX-I-Mini.gguf` (0.8667 / 0.5300 @65k, 34.9 t/s, 2.5 GB) — covered by `Qwen3.8-4B-Q4_K_M`: higher coding + TPS + ctx at equal agentic (2026-08-23).
+- `Ling-3.0-tiny-Q4_K_M.gguf` (0.8667 / 0.3900 @65k, 52.8 t/s, 2.5 GB) — covered by `Qwen3.8-4B-Q4_K_M`: higher coding + TPS + ctx at equal agentic; kept as VRAM-efficient fallback (2026-08-23).
 - `Ornith-1.0-35B-UD-Q3_K_XL.gguf` (0.4667 / 0.5550 @65k) — covered by KAT: same ctx, better agentic + coding + TPS.
 - `Qwythos-9B-Claude-Mythos-5-1M-MTP.Q4_K_M.gguf` (0.2667 / 0.5500 @65k) — covered by v2-MTP: higher ctx + agentic + TPS.
 - `POCKET-26B-Q4_K_M.gguf` (0.2000 / 0.4900 @65k) — covered by POCKET-35B.
 - `Qwen3.8-4B-Heretic (model-Q4_K_M.gguf)` (0.6667 / 0.6400 @131k) — covered by base `Qwen3.8-4B-Q4_K_M`: same ctx + coding + TPS, higher agentic. Abliterated variant not superior.
-- `SmolLM3-3B-Q4_K_M.gguf` (0.5333 / 0.3650 @131k) — speed-only point; covered on both IQ axes by Qwen3.8-4B distill.
 - `MindSparQ-Coder-1.5B.Q4_K_M.gguf` (0.0000 / 0.0250 @65k) — 1.5B too small for tool use; complete but dominated everywhere.
+
+Note: `SmolLM3-3B` is **not** in this list — it survives the front via its TPS axis (110 > 74.9), so it appears in the Day table above despite lower IQ axes. Domination here is strict Pareto over ctx × TPS × agentic × coding (`autoresearch/core/pareto.py::dominates`); a point with any single higher axis stays on the front.
 
 ## `incomplete` / rejected
 
@@ -79,6 +82,7 @@ Exact domination membership can shift when TPS sources differ (claw vs coding Co
 **Config-split history** — pre-0012, agentic and coding under different Baselines never merged. ADR 0012 merges max axes by basename; prefer remeasuring both axes under a Preferred Baseline when reproducing a single Fingerprint.
 
 ## Quantizations are separate Trials
+Different quants of the same family (e.g. Ornith-35B **Q3_K_XL** vs **Q4_K_XL**) are **not** duplicates. Each needs its own Objective Vector. Prefer the better quant for aliases; keep both scores in leaderboards until a delete decision.
 
 ## Prefer by job (the operator host)
 
