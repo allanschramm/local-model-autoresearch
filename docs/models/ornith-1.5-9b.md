@@ -83,6 +83,29 @@ Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 
 - https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF (README, 2026-08-19)
 - Local GGUF metadata via `scripts/model_info.py` (2026-08-19) + `gguf.GGUFReader` field+tensor scan 2026-08-22 (`autoresearch/core/model_arch.py:126` `gguf_has_mtp()` → false, 0/427 `nextn` tensors, no `nextn_predict_layers`)
 - Trial rows: `results.tsv` `f19d991d` (coding 0.6150 + agentic 0.2667), `9b1af29d` (agentic 0.8000 @ 2048 cap), `bf729951` (agentic 0.9333 @ 4096); rejected preflight/kill rows `6fde4721`/`716efd9a`/`06043927` kept for the record
+
+## TPS Hill Climb — dense plateau (2026-08-22, b10549, 8 GB-class discrete NVIDIA, ctx >65k, bench-only no validation)
+
+**Request:** hill climb TPS only, keep `CTX_SIZE > 65k`, no agentic/coding validation. Explicit harness `benchmark_search.py --no-coding --no-agentic-*` (`llama-cli` `n=512`, `c=4096` capped, `TPS_REPS=3` median) with `AUTORESEARCH_LLAMA_CPP_ROOT=llama.cpp-releases/upstream/b10549` + `AUTORESEARCH_SKIP_FREE_CLAMP=1` + `AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB=256` (required — `estimate 100k q4_0=7418MB` vs ceiling 7932).
+
+| Config (ctx, batch/ubatch, threads, KV, flags) | median t/s (3 reps) | harness log | decision |
+|---|---|---|---|
+| **100000, 512/128, 8/8, q4_0/q4_0, --no-mmap --flash-attn on --cont-batching** | **44.40 [44.3,44.4,44.4] 0.2%** | `llama-server-20260822-204923` (44.4) + `205115` (6/8 44.3) plateau pair | **winner — persisted to `autoresearch/core/config.py:30,38-39` (VRAM_LIMIT 8000)** |
+| 70000, 512/128, 6/8, q4_0 | 44.4 [44.3,44.4,44.4] | `llama-server-20260822-203840` | tie — ctx flat 70k–120k |
+| 110000, 512/128, 6/8, q4_0 | 44.3 | `llama-server-20260822-2039xx` | tie |
+| 120000, 512/128, 6/8, q4_0 | 44.4 | `llama-server-20260822-204015` max viable q4_0 (7768<7932) | tie |
+| 100000, 1024/512, 6/8, q4_0 | 44.3 | `llama-server-20260822-204150` | tie — batch neutral |
+| 100000, 512/128, 6/8, q4_0 (vs 8/8) | 44.3 vs 44.4 | `205115` vs `204923` | tie ±0.1 (0.2% noise) — reconciled thread discrepancy (alias 6/8 vs probe leftover 8/8); standardized to 8/8 |
+| 100000, 512/128, 8/8, q4_0, --mmap (NO_MMAP False) | 44.4 | `llama-server-20260822-205829` (8/8) + `205329` (6/8) | tie — mmap neutral |
+| 100000, 512/128, 8/8, q4_0, --cont-batching off | 44.4 | `llama-server-20260822-205653` | tie — cont-batching neutral |
+| 100000, 512/128, 8/8, q4_0, --flash-attn off | ConfigError `FLASH_ATTN must be on` | validate_config:99 | closed — not a valid axis |
+| 100000, 512/128, 8/8, q8_0 | preflight FAIL `est 9106MB >7932` | bench harness | **reject** — VRAM (repeat confirmed 2026-08-22) |
+| 131072, 512/128, 6/8, q4_0 | bench 44.4 but `est 7962>7932` preflight FAIL | — | needs keepout 0 (risky) — out of scope |
+| 100000, 512/128, 6/8, f16 | 44.50 +0.10 | prior sweep | bench win but `est 11918>7932` not server-viable |
+
+**Plateau:** dense 32-layer qwen35 at `Q4_K_M` saturates **44.3–44.4 t/s** on 8 GB-class discrete NVIDIA without MTP. No `BATCH`/`UBATCH`/`THREADS`/`NO_MMAP`/`CONT_BATCHING`/`FLASH_ATTN`/`KV` lift beyond ±0.1 (0.2–0.7% noise). `CTX >65k` does not affect `bench_tg` (capped `c=4096`) — VRAM estimate is limiter. Viable `70k–120k q4_0` all same; `100000` chosen as ≥100k sweet spot, `8/8` threads persisted. Previous ad-hoc `hill_bench_only.py` plateau now reproduced via durable `benchmark_search.py` logs — not prose.
+
+**Env for reproduction:** `AUTORESEARCH_LLAMA_CPP_ROOT=b10549`, `AUTORESEARCH_SKIP_FREE_CLAMP=1`, `AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB=256`, `VRAM_LIMIT_MB=8000`, `TPS_REPS=3`.
 ## Open questions
 - T054 (finance ARPPU) scores 0.00 for **all four Ornith variants** — 1.5-9B: 31 calls; 1.0-9B: 100 calls, len=154; 1.5-35B: 29 calls, report len=7173 (no keywords). Retrieval-path failure common to the family, not truncation. Possible target for a budget/efficiency A/B later.
 - **65k ctx ceiling is the next limiter (now proven)**: the 1.5-35B rerun hit an HTTP 400 `exceed_context_size_error` — `request (124983 tokens) exceeds the available context size (65536)` (row `f8980537`, T053). `REASONING_PRESERVE` think re-renders inflate request size; candidate A/B: ctx 131072 or `REASONING_PRESERVE` off. Long research tasks can fill 65k at 4096 tokens/turn.
