@@ -72,6 +72,43 @@ Splitting a model across two GPUs across PCIe introduces synchronization barrier
 - **Long context (50k+ tokens):** Up to **37% slower** than running on a single GPU.
 - **Conclusion:** Only use `-sm layer` when the model + desired context physically cannot fit inside the VRAM of a single GPU.
 
+### Cross-axis rule: MTP depth optimum **shifts with the tensor-split ratio**
+
+When the target forces a layer split across two GPUs (e.g. `--tensor-split 70,30`
+on 12 GB + 8 GB), the **optimum `--spec-draft-n-max` changes with the split**,
+not just with the target. Mechanism: a larger headroom on the fast device lets
+draft-tokens land there, shifting where the verify cost is spent; deeper drafts
+diverge more on the overflow device.
+
+Empirical (heterogeneous dual-GPU, Qwen3.8-27B-UD-IQ3_S @ 131k, MTP embedded):
+
+| `--tensor-split` | best `--spec-draft-n-max` | peak t/s |
+|---|---|---:|
+| `75,25` | **1** | 18.68 |
+| `70,30` | **2** | 20.03 |
+
+→ Sweep both axes together (`tensor-split` ∈ {`75,25`, `70,30`, `65,35`} ×
+`spec-draft-n-max` ∈ {`1`, `2`, `3`}) on any target that needs a layer split.
+Do not copy the dense single-GPU `n_max=4` canon onto a split config — the
+optimum is one or two lower.
+
+Hard ceiling caveats for this case (still apply): at 131k ctx the **native**
+context can OOM mid-session at 45-61k tokens on dual-GPU; drop
+`--ctx 49152` as a stable fallback if the 131k run dies.
+
+### Token-budget hazard on 131k ctx (dual-GPU layer split)
+
+Layer-split targets that pass preflight at startup can **still OOM
+mid-session** once the KV cache fills past ~45-61k tokens — the failure
+mode is not at load time, it is during prefill of a long Turn-N prompt.
+
+- **Symptom:** server exits with `failed to allocate KV cache` at request
+  time, after the model has been running fine for several shorter turns.
+- **Mitigation:** ship a `ctx 49152` companion profile for any dual-GPU
+  split target; the agent / Trial can fall back to it on OOM without
+  restarting the workflow.
+
+
 ### The Multi-Instance Architecture (Best Practice for Multiple Agents)
 Instead of serving multiple agent slots on a single multi-GPU instance (`-np 2`), run **isolated instances pinned to specific GPUs**:
 
@@ -125,6 +162,37 @@ Modern reasoning LLMs (DeepSeek-R1, Qwen 3.x, Nemotron) generate internal thinki
 | **`xhigh` / unconstrained** | Allows unlimited chain-of-thought (often exceeding 16k–25k tokens). | Complex mathematical proofs, deep algorithm synthesis. |
 
 > **Note:** In `llama-server`, pass `reasoning_effort` inside `chat_template_kwargs` or via environment variable `LLAMA_ARG_CHAT_TEMPLATE_KWARGS`. A top-level OpenAI-style `reasoning_effort` key is ignored by GGUF Jinja templates.
+
+> **Qwen 3.8+ caveat (verified 2026-08-23):** The open-source Qwen3.8 chat template (e.g. `Qwen/Qwen3.8-27B-FP8` [chat_template.jinja](https://huggingface.co/Qwen/Qwen3.8-27B-FP8/raw/main/chat_template.jinja), accessed 2026-08-23) **does** read `chat_template_kwargs.reasoning_effort` and **raises** on anything outside the ladder `xhigh / medium / low` (default `xhigh`). The `unconstrained` cell above is shorthand for "no `reasoning_instructions` injected", which is exactly what `medium` does in the Qwen3.8 template. Unsloth's stock template aliases `high → xhigh` so passing `reasoning_effort: "high"` reaches the same prompt as `xhigh` ([gist walk-through](https://gist.github.com/mdierolf/cb86ee2925e48777143346bc78933d59), accessed 2026-08-23). `chat_template_kwargs.enable_thinking: false` is **accepted** by the official template (it renders an empty `<think>` block) but causes downstream "empty-think poisoning" — the community froggeric patch restores clean fast mode for it ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates), accessed 2026-08-23). On the engine side, llama.cpp upstream exposes `--reasoning on|off|auto` (full on/off kill), `--reasoning-budget N` (-1 unrestricted / 0 immediate end / N>0 cap), and `--reasoning-effort LEVEL` (`minimal/low/medium/high/xhigh/max/default`) which is forwarded into `chat_template_kwargs` ([tools/server/README.md](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/tools/server/README.md), accessed 2026-08-23; `common_chat_templates_inputs.enable_thinking = true` and the `chat_template_kwargs` map live in [common/chat.h](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/common/chat.h), accessed 2026-08-23). The hosted QwenCloud API for `qwen3.8-max` documents a different surface (`reasoning_effort ∈ {low, medium, xhigh}`, default `xhigh`, and `enable_thinking`/`thinking_budget` are separate toggles; `reasoning_effort` and `thinking_budget` cannot be set simultaneously) ([QwenCloud Thinking guide](https://docs.qwencloud.com/developer-guides/text-generation/thinking), accessed 2026-08-23). External / unverified on this rig — confirm via `GET /props` `chat_template_caps` and a one-shot `llama-cli -p "..."` smoke before relying on `enable_thinking=false` for a Trial.
+>
+> **Server-side vs template-side reasoning (verified 2026-08-23):** `common/arg.cpp` is the **engine-side** surface; it writes into `params.default_template_kwargs` — the same map Jinja reads as `chat_template_kwargs`. The two layers **compose**, they don't compete:
+>
+> - **`--reasoning-format FORMAT`** ([`common/arg.cpp` L3638-3649](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/common/arg.cpp)) — `none | deepseek | deepseek-legacy | auto`. Controls `<think>` → `message.reasoning_content`; default `auto`.
+> - **`--reasoning [on|off|auto]`** ([`common/arg.cpp` L3651-3667](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/common/arg.cpp)) — default `auto`. `on`→`enable_thinking:"true"`; `off`→`"false"`; `auto` leaves the template default. Only engine knob mapped onto the Qwen 3.8+ `enable_thinking` flag.
+> - **`--reasoning-effort LEVEL`** ([`common/arg.cpp` L3669-3679](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/common/arg.cpp)) — `default | minimal | low | medium | high | xhigh | max`. `default` **erases** the kwarg; else dumps the string. C++ doesn't validate against the template's ladder — Qwen 3.8 above only accepts `xhigh | medium | low`, so `--reasoning-effort minimal` raises in Jinja.
+> - **`--reasoning-budget N`** ([`common/arg.cpp` L3681-3688](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/common/arg.cpp)) — `-1` unrestricted (default), `0` immediate end, `N>0` cap; `<-1` throws.
+> - **`--reasoning-budget-message MESSAGE`** ([`common/arg.cpp` L3690-3696](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/common/arg.cpp)) — prepended to end-of-thinking tag on exhaustion; default `none`.
+> - **`--reasoning-preserve` / `--no-reasoning-preserve`** ([`common/arg.cpp` L3698-3713](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/common/arg.cpp)) — sets `"preserve_reasoning":"true"|"false"`; only when template declares `supports_preserve_reasoning`.
+>
+> **OpenAI-compat wire surface** (request body — same machinery, no restart):
+>
+> - **`chat_template_kwargs`** ([`tools/server/README.md` L1312](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/tools/server/README.md)) — JSON merged into `default_template_kwargs` per request. Flag equivalent `--chat-template-kwargs STRING` ([README L212](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/tools/server/README.md)).
+> - **`reasoning_effort`** ([`tools/server/README.md` L1314](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/tools/server/README.md)) — **`"none"` disables** reasoning/thinking (the wire knob the Qwen 3.8+ empty-think-poisoning caveat wants); other values pass to the template.
+> - **`reasoning_budget_tokens` / `thinking_budget_tokens`** ([`tools/server/server-common.cpp` L1353-1367](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/tools/server/server-common.cpp)) — `-1` unrestricted, else cap; `thinking_budget_tokens` is the legacy alias.
+> - **`reasoning_budget_message`** — same L1353-1367 block; injected on exhaustion; default `opt.reasoning_budget_message` from server start.
+> - **`reasoning_control: true`** ([`tools/server/README.md` L1316](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/tools/server/README.md)) — arms **early-end-of-reasoning** via `POST /v1/chat/completions/control` body `{"id":"...","action":"reasoning_end"}` ([README L1439-1447](https://raw.githubusercontent.com/ggml-org/llama.cpp/master/tools/server/README.md)). Default `false`; no-op on finished completions.
+>
+> **Falsifiable experiment** — confirm `reasoning_effort: "none"` kills thinking on a Qwen 3.8 GGUF without restart:
+>
+> ```bash
+> curl -s http://127.0.0.1:1234/v1/chat/completions \
+>   -H 'Content-Type: application/json' \
+>   -d '{"model":"qwen3.8-27b","messages":[{"role":"user","content":"2+2=?"}],
+>        "reasoning_effort":"none","max_tokens":64}' \
+> | jq '.choices[0].message | {reasoning_content, content}'
+> # Expect: reasoning_content="" (or null), content="4".
+> # Non-empty → template ignored the flag.
+> ```
 
 ---
 
