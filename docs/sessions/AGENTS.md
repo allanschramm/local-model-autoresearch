@@ -30,6 +30,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-23-ling-tiny-full-trial.md`](./2026-08-23-ling-tiny-full-trial.md) — Ling-3.0-tiny Q4_K_M 4.9G @65536 full trial: **dominated** coding 0.39 (HE 0.3/MBPP 0.7/LCB 0.4) + agentic 0.8667 (13/15) + bench 52.8 + combined 62.0, VRAM 2.5G lowest — trails Qwen distill on coding.
 - [`2026-08-23-ling-tiny-validation.md`](./2026-08-23-ling-tiny-validation.md) — Ling-3.0-tiny Q4_K_M 4.9G @65536 (MoE n-cpu-moe 24): bench 53.5 + agentic-quick 4/5 0.8000 in 242s — **PASS**, VRAM 2.5G lowest, `incomplete`.
 - [`2026-08-23-mindsparq-full-trial.md`](./2026-08-23-mindsparq-full-trial.md) — MindSparQ-Coder-1.5B Q4_K_M 986M @65536 full trial: **dominated** coding 0.025 (HE 0.10) + agentic 0.0000 (0/15) + bench 181.6 + combined 213.8, VRAM 2.7G — weakest, 509s.
 - [`2026-08-23-mindsparq-validation.md`](./2026-08-23-mindsparq-validation.md) — MindSparQ-Coder-1.5B Q4_K_M 986M @65536: bench 182.3 + agentic-quick 0/5 0.0000 in 95s — **bench PASS, 0 tool calls + length_stops**, VRAM 2.7G, `incomplete`.
