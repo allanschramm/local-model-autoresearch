@@ -30,6 +30,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-23-cesium2-v7-validation.md`](./2026-08-23-cesium2-v7-validation.md) — Cesium2-v7 Q8 1.6G @65536: bench 112.0 + agentic-quick 0/5 0.0000 in 154s — **bench PASS, 0 tool calls + HTTP 500 peg-native**, VRAM 3.3G, `incomplete`.
 - [`2026-08-23-qwen9b-abliterated-full-trial.md`](./2026-08-23-qwen9b-abliterated-full-trial.md) — Qwen3.8-9B Abliterated IQ4_XS 5.2G @65536 full trial: **dominated** coding 0.475 (HE 0.4/MBPP 0.8/LCB 0.5) + agentic 0.8667 (13/15, T054 exceed) + bench 48.7 + combined 63.4, VRAM 6.5G, 2840s — trails Qwen 4B distill.
 - [`2026-08-23-qwen9b-abliterated-validation.md`](./2026-08-23-qwen9b-abliterated-validation.md) — Qwen3.8-9B Abliterated IQ4_XS 5.2G @65536: bench 48.6 + agentic-quick 5/5 1.0000 in 229s — **PASS** (incomplete), VRAM 6.4G, 109s download, NEW at 04:44.
 - [`2026-08-23-qwen-heretic-full-trial.md`](./2026-08-23-qwen-heretic-full-trial.md) — Qwen3.8-4B-Heretic Q4_K_M 2.8G @131072 full trial: **on_front** coding 0.64 (HE 0.9/MBPP 0.9/LCB 0.5) + agentic 0.6667 (10/15, T046 exceed) + bench 74.9 + combined 94.3, VRAM 5.5G — trails base 0.8667.
