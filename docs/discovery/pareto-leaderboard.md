@@ -23,7 +23,7 @@ Recompute live (do not invent temp scripts):
 
 ## `on_front` (complete / merged)
 
-**Snapshot synced from `scripts\rank_results.py` output 2026-08-23** (earlier hand-patched snapshot missed `LFM2.5-2.6B` and `Nemotron-Nano` front points — always recompute live; **TSV wins over this doc**). Sorted by `min(agentic, coding)` descending.
+**Snapshot synced from `scripts\rank_results.py` output 2026-08-23** (earlier hand-patched snapshot missed `LFM2.5-2.6B` and `Nemotron-Nano` front points — always recompute live; **the store wins over this doc**). Sorted by `min(agentic, coding)` descending.
 
 ### Day lens (TPS ≥ 50)
 
