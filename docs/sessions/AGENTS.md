@@ -30,6 +30,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-23-qwen-heretic-full-trial.md`](./2026-08-23-qwen-heretic-full-trial.md) — Qwen3.8-4B-Heretic Q4_K_M 2.8G @131072 full trial: **on_front** coding 0.64 (HE 0.9/MBPP 0.9/LCB 0.5) + agentic 0.6667 (10/15, T046 exceed) + bench 74.9 + combined 94.3, VRAM 5.5G — trails base 0.8667.
 - [`2026-08-23-qwen-heretic-validation.md`](./2026-08-23-qwen-heretic-validation.md) — Qwen3.8-4B-Heretic Q4_K_M 2.8G @131072: bench 74.8 + agentic-quick 5/5 1.0000 in 162s — **PASS** (incomplete), VRAM 5.5G, 70s download, heretic variant of winning distill.
 - [`2026-08-23-ornith-35b-heretic-full-trial.md`](./2026-08-23-ornith-35b-heretic-full-trial.md) — Ornith-1.5-35B Heretic MTP APEX I-Mini 14.3G @65536 full trial: **on_front** coding 0.53 (HE 0.6/MBPP 0.9/LCB 0.4) + agentic 0.8667 (13/15) + bench 34.9 + combined 42.9, VRAM 3.1G, 5731s.
 - [`2026-08-23-ornith-35b-heretic-validation.md`](./2026-08-23-ornith-35b-heretic-validation.md) — Ornith-1.5-35B Heretic MTP APEX I-Mini 14.3G @65536: bench 34.7 + agentic-quick 4/5 0.8000 in 441s — **PASS** (incomplete), VRAM 3.0G, Day <50 but Night eligible.
