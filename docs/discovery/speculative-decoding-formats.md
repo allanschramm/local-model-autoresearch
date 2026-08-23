@@ -93,6 +93,25 @@ Five draftless (statistical) variants ship in upstream llama.cpp. All search the
 
 - The 2026-07-20 small-model TPS matrix has **no ngram row** — candidate Search neighbor on coding-10 (0 MB, universal); prior is negative on A3B-class per [external measurement](./capability-extraction-harness.md) §3/§8.
 
+### Refuted on this rig: `ngram-simple` (with healthy MTP)
+
+**Tested 2026-08-20 (Qwen3.8-27B via Hermes, IQ3_S @ 131k, ts 70,30,
+MTP `draft_n_max=2` already delivering ~20 t/s).** Stacking
+`--spec-type draft-mtp,ngram-simple` produced:
+
+- Server **died during warmup** — no health response, process gone. Last
+  log was a `Gated DeltaNet layer 0 on CPU` warning followed by a stalled
+  warmup; the server never finished coming up.
+- Same target without ngram-simple warmup **clean** in a single shot.
+
+**Verdict:** do not chase `ngram-simple` as an extra win on top of a
+working MTP path. The `--spec-type` comma-list combination is supported
+upstream but the warmup instability is a stop-the-presses failure mode
+that gives no benefit to lose. `ngram-mod` (the LCG rolling-hash variant
+enabled by `--spec-default`) is a different code path with its own
+trade-offs; it remains a candidate for dense non-MTP targets only.
+
+
 ---
 
 ## 4. Local Performance Comparison

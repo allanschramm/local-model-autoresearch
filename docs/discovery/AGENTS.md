@@ -66,4 +66,5 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`amd-rocm-windows-setup.md`](./amd-rocm-windows-setup.md) — AMD Radeon ROCm/HIP setup on Windows: HIP SDK install, PATH, ggml-hip.dll troubleshooting, RDNA 2/3 performance notes.
 - [`openvino-genai-cpu-igpu-guide.md`](./openvino-genai-cpu-igpu-guide.md) — OpenVINO GenAI export, INT8/INT4 choices, CPU/iGPU device selection, and reproducible TPS benchmarking.
 ### 5. Harness & Capability Extraction
+- [`prefix-cache-reuse.md`](./prefix-cache-reuse.md) — multi-turn KV-cache prefix reuse: `--cache-reuse` 256 already on in pinned build; ~15x prefill speedup on shared-prefix 2nd turn; wiring + A/B validation.
 - [`capability-extraction-harness.md`](./capability-extraction-harness.md) — harness-side IQ-per-token techniques: led state, verification loops, test-time compute, J-Space assessment, dead-end registry.
