@@ -30,7 +30,8 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
-- [`2026-08-23-new-models-qwen38-distill.md`](./2026-08-23-new-models-qwen38-distill.md) — NEW post-2026-08-02 8GB/100K sweep — only `empero-ai/Qwen3.8-4B-Distill-GGUF` Q4_K_M 2.783 GB fits; corrects 404, mixed mmlu/gsm8k deltas, stale-queue dropped.
+- [`2026-08-23-new-models-api-exhaustive.md`](./2026-08-23-new-models-api-exhaustive.md) — API-exhaustive HF `filter=gguf&sort=createdAt` sweep 2026-08-23: confirms no NEW ≤6G text-gen GGUF beyond the 2 in 2026-08-23-new-models; raw feed dominated by mradermacher 0-signal re-quants.
+- [`2026-08-23-new-models-qwen38-distill.md`](./2026-08-23-new-models-qwen38-distill.md) — NEW post-2026-08-02 8GB/100K sweep — `empero-ai/Qwen3.8-4B-Distill-GGUF` Q4_K_M 2.8G primary + `deepgrove/maple-preview` TQ 5.0G secondary (hf-verified).
 - [`2026-08-20-ornith-35b-4096-rerun.md`](./2026-08-20-ornith-35b-4096-rerun.md) — Ornith-1.5-35B agentic remeasure @ 4096 floor: 0.7333→0.8667 (13/15); T046/T048/T050 recovered; T053 = 65k ctx ceiling proven via HTTP 400 body (124983 > 65536 tokens); T054 content failure; `length_stops` metric noise (stop-string stops).
 - [`2026-08-19-agentic-max-tokens-4096.md`](./2026-08-19-agentic-max-tokens-4096.md) — agentic `max_tokens` floor 2048→4096 + 420 s Claw timeout; Ornith-1.5-9B agentic 0.8000→0.9333; `/props` supports_preserve_reasoning=true → `REASONING_PRESERVE`; 65k ctx ceiling hit; T054 retrieval failure.
 - [`2026-08-18-issue-59-sglang.md`](./2026-08-18-issue-59-sglang.md) — issue #59 cross-engine validation: SGLang 0.5.17 (WSL2) 56.8 t/s ≈ llama.cpp 60.5 on `Qwen3.8-2B` @32k; 9B/27B fit limits; store junction removed after recursive-delete wipe.
