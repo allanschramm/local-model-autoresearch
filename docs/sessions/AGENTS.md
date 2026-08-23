@@ -30,6 +30,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-23-ornith-fc-validation.md`](./2026-08-23-ornith-fc-validation.md) — Ornith-1.5-9B Function-Calling Q2_K 3.8G @131072: **MODEL_REJECTED** — `blk.32.attn_norm.weight not found` (45s), truncated quant, no bench.
 - [`2026-08-23-smollm3-3b-full-trial.md`](./2026-08-23-smollm3-3b-full-trial.md) — SmolLM3-3B Q4_K_M @131072 full trial: **on_front** (speed) coding 0.365 (HE 0.3/MBPP 0.6/LCB 0.4) + agentic 0.5333 (8/15) + bench 109.9 + combined 138.5, VRAM 5.9G — weak IQ.
 - [`2026-08-23-smollm3-3b-validation.md`](./2026-08-23-smollm3-3b-validation.md) — SmolLM3-3B Q4_K_M @131072: bench 110.0 t/s + agentic-quick 2/5 0.4000 in 56s — **bench PASS, weak agentic**, VRAM 5.8G, `incomplete`.
 - [`2026-08-23-maple-preview-validation.md`](./2026-08-23-maple-preview-validation.md) — Maple Preview TQ1_0 Q4_K 5.0G @65536: **MODEL_REJECTED** — `unknown model architecture: 'maple'` on b10549 (29s), no bench/agentic.
