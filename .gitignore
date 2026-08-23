@@ -120,6 +120,7 @@ models/sglang/
 # Local agent/auto scratch (session artifacts)
 .auto/
 
+.hermes/
 # Coding-10 sandbox side effects (BigCodeBench relative paths if cwd leaks)
 /files.zip
 
