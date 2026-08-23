@@ -1,8 +1,8 @@
 # Best Model for 8 GB VRAM (Web-Sourced)
 
-Selection guide: fastest + smartest local LLM that fits **8 GB physical VRAM** on a consumer NVIDIA GPU running llama.cpp. Evidence is **primary web sources only** (official publisher model cards, first-party technical reports, quant-provider cards) — see [Sources / Verification](#sources--verification). No locally measured numbers are used; speed figures published by publishers are typically measured on server hardware and are flagged as such.
+**Research date:** 2026-08-02. **Superseded by measurement (2026-08-23):** this guide's web-sourced picks are now measured on the rig — see [pareto-leaderboard.md](./pareto-leaderboard.md) and the `docs/sessions/2026-08-23-*` sweep logs. Measured winner: `Qwen3.8-4B-Q4_K_M.gguf` (`empero-ai/Qwen3.8-4B-Distill-GGUF`, min **0.6400** @131k) — a release newer than anything in the table below. Treat §1 ranks as historical candidate research only.
 
-**Research date:** 2026-08-02.
+**Historical web-research note (2026-08-02):**
 
 ---
 

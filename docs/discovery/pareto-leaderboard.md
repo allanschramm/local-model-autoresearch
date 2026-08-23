@@ -27,16 +27,19 @@ Sorted by `min(agentic, coding)` descending. TPS = claw-full preferred.
 
 | # | Model | ctx | TPS | agentic | coding | min | Note |
 | :---: | :--- | ---: | ---: | :---: | :---: | :---: | :--- |
-| 1 | `POCKET-35B-Q3_K_M.gguf` | 65k | 35.7 | 0.6667 | 0.6150 | **0.6150** | **NIGHT**; balanced champ |
-| 2 | `Kwaipilot_KAT-Coder-V2.5-Dev-IQ4_XS.gguf` | 65k | 30.2 | 0.6000 | 0.6400 | **0.6000** | coding king |
-| 3 | `Qwythos-9B-v2-Q4_K_M.gguf` | 100k | 41.6 | 0.4667 | 0.4900 | **0.4667** | **DAY** (0.75); coding = combined column |
-| 4 | `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` | 100k | 24.5 | 0.5333 | 0.4300 | 0.4300 | combined column vector |
-| 5 | `Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf` | 100k | 42.1 | 0.4000 | 0.4500 | 0.4000 | v1; combined column vector |
-| 6 | `LFM2.5-1.2B-Instruct-Q8_0.gguf` | 65k | 166.4 | 0.6000 | 0.3500 | 0.3500 | fast; IQ below Day floor |
-| 7 | `Qwythos-9B-v2-MTP-Q4_K_M.gguf` | 100k | 55.4 | 0.3333 | 0.5550 | 0.3333 | MTP v2; combined column vector |
-| 8 | `gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf` | 65k | 113.3 | 0.3333 | 0.5550 | 0.3333 | fast; IQ below Day floor |
-| 9 | `LFM2.5-8B-A1B-Q4_K_M.gguf` | 65k | 178.5 | 0.2000 | 0.3650 | 0.2000 | max TPS; not Day pick |
-| 10 | `Laguna-XS-2.1-Q3_K_XL.gguf` | 65k | 37.2 | 0.6667 | 0.1950 | 0.1950 | agentic top; coding weak |
+| 1 | `Qwen3.8-4B-Q4_K_M.gguf` | 131k | 74.9 | 0.8667 | 0.6400 | **0.6400** | **DAY+NIGHT** (2026-08-23); dense Gated DeltaNet hybrid; current Baseline |
+| 2 | `POCKET-35B-Q3_K_M.gguf` | 65k | 35.7 | 0.6667 | 0.6150 | **0.6150** | balanced champ before 08-23 sweep |
+| 3 | `Kwaipilot_KAT-Coder-V2.5-Dev-IQ4_XS.gguf` | 65k | 30.2 | 0.6000 | 0.6400 | **0.6000** | coding king |
+| 4 | `Ornith-1.5-35B-A3B-Heretic-MTP-APEX-I-Mini.gguf` | 65k | 34.9 | 0.8667 | 0.5300 | **0.5300** | MoE `n-cpu-moe 41`; 2.5 GB peak (2026-08-23) |
+| 5 | `Qwythos-9B-v2-Q4_K_M.gguf` | 100k | 41.6 | 0.4667 | 0.4900 | **0.4667** | **DAY** (0.75); coding = combined column |
+| 6 | `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` | 100k | 24.5 | 0.5333 | 0.4300 | 0.4300 | combined column vector |
+| 7 | `Ling-3.0-tiny-Q4_K_M.gguf` | 65k | 52.8 | 0.8667 | 0.3900 | 0.3900 | VRAM-efficient fallback; **2.5 GB peak** lowest (2026-08-23) |
+| 8 | `Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf` | 100k | 42.1 | 0.4000 | 0.4500 | 0.4000 | v1; combined column vector |
+| 9 | `LFM2.5-1.2B-Instruct-Q8_0.gguf` | 65k | 166.4 | 0.6000 | 0.3500 | 0.3500 | fast; IQ below Day floor |
+| 10 | `Qwythos-9B-v2-MTP-Q4_K_M.gguf` | 100k | 55.4 | 0.3333 | 0.5550 | 0.3333 | MTP v2; combined column vector |
+| 11 | `gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf` | 65k | 113.3 | 0.3333 | 0.5550 | 0.3333 | fast; IQ below Day floor |
+| 12 | `LFM2.5-8B-A1B-Q4_K_M.gguf` | 65k | 178.5 | 0.2000 | 0.3650 | 0.2000 | max TPS; not Day pick |
+| 13 | `Laguna-XS-2.1-Q3_K_XL.gguf` | 65k | 37.2 | 0.6667 | 0.1950 | 0.1950 | agentic top; coding weak |
 
 Exact domination membership can shift when TPS sources differ (claw vs coding Combined TPS). Treat the table as the teaching front; recompute from `results.tsv` before deleting GGUFs. **TSV wins over this doc.**
 
@@ -45,12 +48,18 @@ Exact domination membership can shift when TPS sources differ (claw vs coding Co
 - `Ornith-1.0-35B-UD-Q3_K_XL.gguf` (0.4667 / 0.5550 @65k) — covered by KAT: same ctx, better agentic + coding + TPS.
 - `Qwythos-9B-Claude-Mythos-5-1M-MTP.Q4_K_M.gguf` (0.2667 / 0.5500 @65k) — covered by v2-MTP: higher ctx + agentic + TPS.
 - `POCKET-26B-Q4_K_M.gguf` (0.2000 / 0.4900 @65k) — covered by POCKET-35B.
+- `Qwen3.8-4B-Heretic (model-Q4_K_M.gguf)` (0.6667 / 0.6400 @131k) — covered by base `Qwen3.8-4B-Q4_K_M`: same ctx + coding + TPS, higher agentic. Abliterated variant not superior.
+- `SmolLM3-3B-Q4_K_M.gguf` (0.5333 / 0.3650 @131k) — speed-only point; covered on both IQ axes by Qwen3.8-4B distill.
+- `MindSparQ-Coder-1.5B.Q4_K_M.gguf` (0.0000 / 0.0250 @65k) — 1.5B too small for tool use; complete but dominated everywhere.
 
 ## `incomplete` / rejected
 
 | Model | Gap | Status |
 | :--- | :--- | :--- |
 | `Qwen3.5-9B-UD-Q4_K_XL.gguf` | coding | **Rejected** — VRAM kill @ 32k+MTP and 65k no MTP mid coding-10 (attempt rows in TSV). |
+| `deepgrove/maple-preview-TQ1_0-head-Q4_K.gguf` | load | **Rejected** — `unknown model architecture: 'maple'` on b10549; needs upstream arch support. |
+| `ornith-1.5-9b-function-calling-xlam-unsloth.q2_k.gguf` | load | **Rejected** — `blk.32.attn_norm.weight not found`; truncated/corrupt Q2_K quant. |
+| `cesium2-v7-q8_0.gguf` | coding | **Rejected** — coding preflight 0/40 tasks (not instruction-tuned for code); agentic quick 0/5. |
 | `Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf` | coding-10 | claw-full **0.4000** in TSV; **no** fair coding-10 row |
 | `nanbeige4.2-3b-Q4_K_M.gguf` | coding-10 | claw-full **0.2667** in TSV; **no** fair coding-10 row |
 | `Qwythos-9B-v2*` failed trials | — | reclassified `incomplete` → **`rejected`** in results.tsv (MODEL_REJECTED / INFRA_ERROR) |
