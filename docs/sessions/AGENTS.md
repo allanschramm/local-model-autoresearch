@@ -30,6 +30,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - "Correções M3" or similar self-correction sections are encouraged.
 
 ## Child DOX Index
+- [`2026-08-23-qwen38-4b-distill-full-trial.md`](./2026-08-23-qwen38-4b-distill-full-trial.md) — Qwen3.8-4B-Distill Q4_K_M @131072 full trial: **on_front** coding 0.64 (HE 0.9/MBPP 0.9/LCB 0.5) + agentic 0.8667 (13/15) + bench 74.9 + combined 94.2, VRAM 5.4G.
 - [`2026-08-23-qwen38-4b-distill-validation.md`](./2026-08-23-qwen38-4b-distill-validation.md) — Qwen3.8-4B-Distill Q4_K_M @131072 q4_0 validation: bench 74.9 t/s + agentic-quick 1.0000 (5/5) — **pass**, VRAM 5.5G, 48G free, `incomplete` pending full vector.
 - [`2026-08-23-new-models-api-exhaustive.md`](./2026-08-23-new-models-api-exhaustive.md) — API-exhaustive HF `filter=gguf&sort=createdAt` sweep 2026-08-23: confirms no NEW ≤6G text-gen GGUF beyond the 2 in 2026-08-23-new-models; raw feed dominated by mradermacher 0-signal re-quants.
 - [`2026-08-23-new-models-qwen38-distill.md`](./2026-08-23-new-models-qwen38-distill.md) — NEW post-2026-08-02 8GB/100K sweep — `empero-ai/Qwen3.8-4B-Distill-GGUF` Q4_K_M 2.8G primary + `deepgrove/maple-preview` TQ 5.0G secondary (hf-verified).
