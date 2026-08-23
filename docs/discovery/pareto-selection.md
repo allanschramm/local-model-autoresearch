@@ -8,17 +8,17 @@ Front membership is plain Pareto non-domination on the four axes ([ADR 0006](../
 
 ## Status recompute (issue #5)
 
-Stored statuses (`results.tsv`) are refreshed after every Trial write and via `scripts/recompute_status.py`: a new `on_front` point demotes rows it dominates to `dominated`. Each row's status derives from its (hardware+budget bucket, fingerprint) merged vector ([`autoresearch/core/recompute.py`](../../autoresearch/core/recompute.py)); incomplete and rejected rows never compete; rows without a `config_json` fingerprint are left untouched. The recompute is pure and idempotent. The canonical stored status is the global-by-bucket front across models; a per-model lens is available read-only (`scripts/recompute_status.py --scope model`, no rewrite).
+Stored statuses (results store: canonical `results.db`, legacy TSV fallback) are refreshed after every Trial write and via `scripts/recompute_status.py`: a new `on_front` point demotes rows it dominates to `dominated`. Each row's status derives from its (hardware+budget bucket, fingerprint) merged vector ([`autoresearch/core/recompute.py`](../../autoresearch/core/recompute.py)); incomplete and rejected rows never compete; rows without a `config_json` fingerprint are left untouched. The recompute is pure and idempotent. The canonical stored status is the global-by-bucket front across models; a per-model lens is available read-only (`scripts/recompute_status.py --scope model`, no rewrite).
 
 ## Agent contract: Trial-a-Trial workflow (issue #9)
 
 Agent-facing step list for driving a model toward the front one Trial at a time, no autoloop required. Same rules that autoloop follows, spelled out for a manual loop.
 
-> **Autoloop shortcut (issue #8):** `autoloop.py --profile day|night` replaces steps 1–3's Baseline start — it picks the Day/Night point off the `results.tsv` front (`pick_day`/`pick_night`), loads that row's `config_json` as the Baseline, and runs rounds from there. Neighbor acceptance inside the loop is the same Pareto rule as step 4 (`improves_set`); the legacy scalar keep only applies to incomplete vectors (engine-only / quality-only modes). `--dry-run` prints the plan (pick, baseline, neighbors) without running benchmarks.
+> **Autoloop shortcut (issue #8):** `autoloop.py --profile day|night` replaces steps 1–3's Baseline start — it picks the Day/Night point off the results-store front (canonical `results.db`, legacy TSV fallback) (`pick_day`/`pick_night`), loads that row's `config_json` as the Baseline, and runs rounds from there. Neighbor acceptance inside the loop is the same Pareto rule as step 4 (`improves_set`); the legacy scalar keep only applies to incomplete vectors (engine-only / quality-only modes). `--dry-run` prints the plan (pick, baseline, neighbors) without running benchmarks.
 
 1. **Profile pick** — choose the job profile the Trial must serve (agentic/general vs coding); before the first Trial on a model, seed `SAMPLER_DEFAULTS` from the model card's Recommended settings for that profile.
 2. **Edit Baseline** — set the knobs in `autoresearch/core/config.py` (`ENGINE_DEFAULTS` / `SAMPLER_DEFAULTS`), never as CLI flags. `config.py` is the only mutable Baseline; harnesses and `program.md` stay fixed.
-3. **Run the Trial** — invoke a harness (validation smoke → TPS exploration → complete the Objective Vector: Claw full + coding-10 on the same Fingerprint). A Trial is one `results.tsv` row keyed by (hardware+budget bucket, Fingerprint).
+3. **Run the Trial** — invoke a harness (validation smoke → TPS exploration → complete the Objective Vector: Claw full + coding-10 on the same Fingerprint). A Trial is one results-store row keyed by (hardware+budget bucket, Fingerprint).
 4. **Read the status** — `scripts/recompute_status.py` refreshes statuses after every Trial write; a point with a complete, non-dominated vector is what can become `on_front` ([ADR 0006](../adr/0006-pareto-frontier-search.md), [CONTEXT.md](../../CONTEXT.md)).
 5. **Merge by Fingerprint** — rows sharing a Fingerprint are the same point; later Trials on it complete the vector, they do not spawn new points. Different GGUF basenames = different points.
 
@@ -38,7 +38,7 @@ Picking a single point from a Pareto Set is the classic **a posteriori** MCDM pr
 **Rejected as overkill for this repo:**
 - Full **interactive EMO** (decision-maker-in-the-loop weight elicitation, e.g. interactive Tchebycheff procedures) — needs a live human steering weights per query; this repo wants a fixed, teachable default.
 - **Surrogate-assisted knee search** (training a model to predict knee regions, Bayesian optimization over front shape) — solves a problem (huge many-objective fronts) this repo doesn't have.
-- **Heavy MCDM libraries** (`pymoo` decision-making module, full TOPSIS/AHP pipelines) — adds a dependency and a black box for a front anyone can read off `results.tsv` by eye.
+- **Heavy MCDM libraries** (`pymoo` decision-making module, full TOPSIS/AHP pipelines) — adds a dependency and a black box for a front anyone can read off the results store by eye.
 
 Two closed-form rules — **maximin/Chebyshev** for Night, **ε-constraint** for Day — cover both usage modes with nothing beyond `min()`, a ratio, and a threshold.
 
@@ -75,3 +75,4 @@ This guarantees daytime interactive users get snappy throughput (>= 50.0 TPS) wh
 - [`coding-leaderboard.md`](./coding-leaderboard.md) — coding axis scores.
 - [`pareto-leaderboard.md`](./pareto-leaderboard.md) — global front + current Day/Night picks.
 - [`../adr/`](../adr/) — architecture decision records.
+

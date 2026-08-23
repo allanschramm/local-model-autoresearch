@@ -1,5 +1,6 @@
 import csv
 import json
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
@@ -577,9 +578,11 @@ class TestRun(unittest.TestCase):
         args.ctx_size = 131072
         args.validation = True
 
-        with patch("sys.exit") as mock_exit:
-            run.handle_single_run(args)
-            mock_exit.assert_not_called()
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(run, "RESULTS_FILE", Path(tmp) / "results.tsv"):
+                with patch("sys.exit") as mock_exit:
+                    run.handle_single_run(args)
+                    mock_exit.assert_not_called()
 
     @patch("autoresearch.runners.run.run_evaluation")
     @patch("autoresearch.runners.run.get_git_commit")
@@ -607,9 +610,11 @@ class TestRun(unittest.TestCase):
         args.ctx_size = 131072
         args.validation = True
 
-        with patch("sys.exit") as mock_exit:
-            run.handle_single_run(args)
-            mock_exit.assert_called_once_with(1)
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(run, "RESULTS_FILE", Path(tmp) / "results.tsv"):
+                with patch("sys.exit") as mock_exit:
+                    run.handle_single_run(args)
+                    mock_exit.assert_called_once_with(1)
 
     def test_unix_results_lock_unlocks_with_fcntl_lock_un(self):
         """POSIX unlock is fcntl.LOCK_UN (Windows never imports fcntl)."""

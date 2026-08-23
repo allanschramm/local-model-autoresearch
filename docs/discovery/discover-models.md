@@ -1,6 +1,6 @@
 # Discover Models for Your Hardware
 
-End-to-end workflow: **find models that fit your rig, filter for coding quality, run the autoloop on the Pareto-optimal pick.** Start it with `autoloop.py --profile day|night` to continue from the current Day/Night pick off `results.tsv` (issue #8).
+End-to-end workflow: **find models that fit your rig, filter for coding quality, run the autoloop on the Pareto-optimal pick.** Start it with `autoloop.py --profile day|night` to continue from the current Day/Night pick off the results store (issue #8).
 
 ## Step 0 — Detect local hardware (`check_hardware`)
 
@@ -99,7 +99,7 @@ Do **not** burn overnight Claw full while hunting flags. Default path — the pi
 1. Seed the FULL Baseline (ENGINE + SAMPLER) in `autoresearch/core/config.py` from the model card's Recommended settings
 2. Follow [`good-enough-tuning.md`](./good-enough-tuning.md): `--validation` → `autoloop.py --mode tps` → **complete the Objective Vector** (`--agentic-full` + coding-10 on the same Fingerprint)
 3. Read status (`on_front` / `dominated` / `incomplete` / `rejected`) via `scripts/recompute_status.py` — `on_front` requires a complete, non-dominated vector; partial vectors merge by Fingerprint
-4. **Baseline via Profile**: `autoloop.py --profile day|night` starts from the Day/Night pick off the `results.tsv` front, loading that row's `config_json` as the Baseline (issue #8)
+4. **Baseline via Profile**: `autoloop.py --profile day|night` starts from the Day/Night pick off the results-store front (canonical `results.db`, legacy TSV fallback), loading that row's `config_json` as the Baseline (issue #8)
 
 ```bash
 # Edit autoresearch/core/config.py
@@ -113,13 +113,13 @@ cd local-model-autotuning
 .\venv\Scripts\python.exe autoloop.py --mode tps --vram-limit-mb=<your-VRAM-budget-in-MB>
 ```
 
-The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (engine-only vectors use the legacy scalar keep; complete vectors use `improves_set`), and appends rows to `results.tsv` (gitignored, stays local).
+The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (engine-only vectors use the legacy scalar keep; complete vectors use `improves_set`), and appends rows to the results store (canonical `results.db` SQLite + legacy `results.tsv` append-log, both gitignored, stay local).
 
 **Only after TPS is acceptable**, complete the Objective Vector (Claw full + coding-10) on the same Fingerprint (good-enough-tuning.md §4). Overnight `--mode both` is for quality search *after* speed, not the default first pass.
 
 **Expected behavior (TPS mode)**:
 - Cheap Trials (bench + PPL ceiling) — minutes, not Claw-full hours
-- Each Trial writes 1 row to `results.tsv` with TPS / VRAM / status
+- Each Trial writes 1 row to the results store (both `results.db` and legacy `results.tsv`) with TPS / VRAM / status
 - On acceptance, `config.py` rewrites with the better config
 - SIGINT handler saves state — kill any time, resume later
 - TPS Floor (`TPS_FLOOR` in Baseline `config.py`, default 20): configs below the floor are auto-`rejected`; lower it for large MoE on constrained VRAM
@@ -159,3 +159,4 @@ The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (e
 - `docs/sessions/` — empirical session logs (yours and others)
 - `docs/adr/` — architecture decisions (why certain conventions exist)
 - `docs/AGENTS.md` — top-level documentation index
+

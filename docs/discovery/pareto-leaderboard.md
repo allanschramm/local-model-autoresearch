@@ -3,7 +3,7 @@
 Global **Pareto Set** on this hardware budget: maximize **ctx × TPS × agentic × coding** ([ADR 0006](../adr/0006-pareto-frontier-search.md)). Selection lenses: **Day** ([ADR 0009](../adr/0009-day-profile-tps-floor.md)) / **Night** ([ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md) Night rule).
 
 Hardware: discrete **8 GB-class** NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.  
-Ground truth: `results.tsv`. TPS axis = claw-full `bench_tg` when available. Complete vector = claw-full **and** coding-10 (exact 10 tasks/dataset).
+Ground truth: the results store — canonical `results.db` (SQLite), legacy `results.tsv` fallback (`scripts\rebuild_results_db.py` keeps them in sync). TPS axis = claw-full `bench_tg` when available. Complete vector = claw-full **and** coding-10 (exact 10 tasks/dataset).
 
 **Point = GGUF basename** (ADR 0012): max claw × coding × TPS × ctx across Trials for that file. Different quants stay separate. ENGINE+SAMPLER Fingerprint is a Baseline/Search hint, not Day/Night Point identity. Live recompute: `scripts/rank_results.py`.
 
@@ -51,7 +51,7 @@ Night adds the sub-floor-TPS high-IQ points that Day excludes:
 
 Notable drops vs older snapshots: `POCKET-35B` (min 0.615 @35.7 t/s) and `KAT-Coder` (0.60 @30.2 t/s) are now **dominated** by Qwen3.8-4B (≥ every axis, higher ctx).
 
-Exact domination membership can shift when TPS sources differ (claw vs coding Combined TPS). Treat the table as the teaching front; recompute from `results.tsv` before deleting GGUFs. **TSV wins over this doc.**
+Exact domination membership can shift when TPS sources differ (claw vs coding Combined TPS). Treat the table as the teaching front; recompute from the results store (`scripts\rank_results.py`) before deleting GGUFs. **The store wins over this doc.**
 
 ## `dominated` (complete, someone covers)
 

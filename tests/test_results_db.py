@@ -173,7 +173,7 @@ def test_parity_check_missing_db_is_drift_not_crash(tmp_path):
     _write_tsv(tsv, [_row()])
     ok, report = results_db.parity_check(tsv, tmp_path / "results.db")
     assert not ok
-    assert "mirror missing" in report
+    assert "canonical DB missing" in report
 
 
 def test_parity_check_tableless_db_is_drift_not_crash(tmp_path):
@@ -184,3 +184,73 @@ def test_parity_check_tableless_db_is_drift_not_crash(tmp_path):
     ok, report = results_db.parity_check(tsv, db)
     assert not ok
     assert "no 'trials' table" in report
+
+
+# ── canonical-first store contract (SQLite primary, legacy TSV fallback) ──
+
+
+def test_read_rows_returns_none_when_db_missing(tmp_path):
+    assert results_db.read_rows(tmp_path / "results.db") is None
+
+
+def test_read_rows_round_trips_writer_text(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_tsv(tsv, [_row(tps="27.8", ctx="32768", val_score="0.570000")])
+    db = tmp_path / "results.db"
+    results_db.sync_from_tsv(tsv, db)
+    rows = results_db.read_rows(db)
+    assert rows[0]["tps"] == "27.8"
+    assert rows[0]["ctx"] == "32768"
+    assert rows[0]["val_score"] == "0.570000"
+    assert rows[0]["model"] == "Ornith-35B"
+
+
+def test_store_rows_falls_back_to_tsv_when_db_unseeded(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_tsv(tsv, [_row()])
+    rows, source = results_db.store_rows(tsv, tmp_path / "results.db")
+    assert source == "tsv"
+    assert rows[0]["trial_id"] == "t-0001"
+
+
+def test_store_rows_prefers_db_over_stale_tsv(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_tsv(tsv, [_row(status="dominated")])
+    db = tmp_path / "results.db"
+    results_db.sync_from_tsv(tsv, db)
+    # TSV now edited to a stale status; DB must win.
+    _write_tsv(tsv, [_row(status="on_front")])
+    rows, source = results_db.store_rows(tsv, db)
+    assert source == "db"
+    assert rows[0]["status"] == "dominated"
+
+
+def test_store_rows_empty_db_empty_tsv_is_empty_not_fallback_crash(tmp_path):
+    rows, source = results_db.store_rows(tmp_path / "results.tsv", tmp_path / "results.db")
+    assert rows == []
+    assert source == "tsv"
+
+
+def test_upsert_rows_opens_own_connection(tmp_path):
+    db = tmp_path / "results.db"
+    results_db.upsert_rows(db, [_row()])
+    results_db.upsert_rows(db, [_row(trial_id="t-0002", status="dominated")])
+    conn = sqlite3.connect(db)
+    n = conn.execute("SELECT COUNT(*) FROM trials").fetchone()[0]
+    conn.close()
+    assert n == 2
+
+
+def test_sync_to_tsv_round_trips_from_db(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    db = tmp_path / "results.db"
+    results_db.sync_from_tsv(tsv if tsv.exists() else _write_tsv(tsv, [_row()]) or tsv, db)
+    n = results_db.sync_to_tsv(tsv, db)
+    assert n == 1
+    rows = list(csv.DictReader(open(tsv, encoding="utf-8"), delimiter="\t"))
+    assert rows[0]["tps"] == "27.8"
+    assert rows[0]["ctx"] == "32768"
+
+
+def test_try_sync_to_tsv_never_raises_when_db_missing(tmp_path):
+    assert results_db.try_sync_to_tsv(tmp_path / "results.tsv", tmp_path / "results.db") == 0

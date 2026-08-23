@@ -1,15 +1,20 @@
-"""Derived SQLite mirror of results.tsv (TSV stays canonical).
+"""Canonical SQLite results store with legacy TSV fallback.
 
-Read-mostly convenience layer: scripts and dashboards can query indexed
-columns without scanning the multi-MB append-log. The mirror is rebuilt from
-the TSV, never hand-edited; a stale or corrupt mirror is always fixable with
-scripts/rebuild_results_db.py.
+``results.db`` is the ground-truth Trial store (indexed, typed columns);
+``results.tsv`` is the legacy append-log kept in sync as a fallback. Reads
+prefer the DB and fall back to the TSV when it is missing or unseeded
+(:func:`load_rows` / :func:`store_rows`). Writes go to both (:func:`upsert_rows`
+primary, TSV append best-effort in ``run.write_row``). Either store can be
+rebuilt from the other: :func:`sync_from_tsv` seeds the DB, :func:`sync_to_tsv`
+rewrites the legacy log.
 """
 
 from __future__ import annotations
 
 import csv
+import os
 import sqlite3
+import tempfile
 from pathlib import Path
 
 # Columns stored as REAL (blank -> NULL). Everything else TEXT.
@@ -167,7 +172,7 @@ def _read_tsv(results_file: Path) -> list[dict]:
 
 
 def sync_from_tsv(results_file: Path, db_path: Path | None = None) -> int:
-    """Full rebuild of the mirror from the canonical TSV. Returns row count."""
+    """Seed / repair the canonical DB from the legacy TSV. Returns row count."""
     db_path = db_path or default_db_path(Path(results_file))
     rows = _read_tsv(Path(results_file))
     conn = sqlite3.connect(db_path)
@@ -179,10 +184,10 @@ def sync_from_tsv(results_file: Path, db_path: Path | None = None) -> int:
 
 
 def try_sync_from_tsv(results_file: Path, db_path: Path | None = None) -> int:
-    """Best-effort sync for the hot write path: never raises, logs on failure.
+    """Best-effort DB seed/heal from the legacy TSV: never raises, logs.
 
-    The Trial result is already durable in the TSV when this runs; a mirror
-    failure must not affect the Trial outcome.
+    Used for one-shot seeding when the canonical DB is missing and for
+    healing after a failed DB write (the TSV mirror holds the rows).
     """
     try:
         return sync_from_tsv(results_file, db_path)
@@ -192,15 +197,15 @@ def try_sync_from_tsv(results_file: Path, db_path: Path | None = None) -> int:
 
 
 def parity_check(results_file: Path, db_path: Path | None = None) -> tuple[bool, str]:
-    """Compare mirror vs TSV: row count + trial_id set (+ duplicate detection).
+    """Compare the canonical DB vs the legacy TSV: row count + trial_id set.
 
-    A missing or un-migrated mirror (no `trials` table) is drift, not a
+    A missing or un-migrated DB (no `trials` table) is drift, not a
     crash: reports (False, reason) so callers can rebuild.
     """
     db_path = db_path or default_db_path(Path(results_file))
     rows = _read_tsv(Path(results_file))
     if not db_path.exists():
-        return False, f"mirror missing: {db_path}"
+        return False, f"canonical DB missing: {db_path}"
     conn = sqlite3.connect(db_path)
     try:
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -222,3 +227,142 @@ def parity_check(results_file: Path, db_path: Path | None = None) -> tuple[bool,
     if problems:
         return False, "; ".join(problems)
     return True, f"parity OK: {len(rows)} rows"
+
+
+# Text formats mirroring the write path (run.write_row cell formatting), so DB
+# reads round-trip to the same text the TSV writer produced.
+_TEXT_FMT: dict[str, str] = {
+    "val_score": "{:.6f}",
+    "swe_score": "{:.6f}",
+    "lcb_score": "{:.6f}",
+    "he_score": "{:.6f}",
+    "mbpp_score": "{:.6f}",
+    "bigcode_score": "{:.6f}",
+    "coding": "{:.6f}",
+    "agentic": "{:.4f}",
+    "agentic_coding": "{:.4f}",
+    "memory_gb": "{:.1f}",
+    "tps": "{:.1f}",
+    "bench_tg": "{:.1f}",
+    "elapsed_sec": "{:.0f}",
+}
+_INT_COLUMNS = frozenset(
+    {
+        "ctx",
+        "threads",
+        "threads_batch",
+        "batch_size",
+        "ubatch_size",
+        "n_cpu_moe",
+        "top_k",
+        "spec_draft_n_max",
+    }
+)
+
+
+def _from_cell(column: str, value: float | str | None) -> str:
+    """DB cell -> TSV text: NULL -> blank; floats via the writer's format."""
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        if column in _INT_COLUMNS:
+            return str(int(value))
+        fmt = _TEXT_FMT.get(column)
+        return fmt.format(value) if fmt else str(value)
+    return value
+
+
+def read_rows(db_path: Path) -> list[dict[str, str]] | None:
+    """All trials as TSV-shaped dict rows from the canonical store.
+
+    None when the DB is missing or un-migrated (no ``trials`` table) —
+    callers fall back to the legacy TSV. Numeric cells read back as their
+    TSV text form (integral floats as ints, blanks as "").
+    """
+    db_path = Path(db_path)
+    if not db_path.exists():
+        return None
+    conn = sqlite3.connect(db_path)
+    try:
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if "trials" not in tables:
+            return None
+        conn.row_factory = sqlite3.Row
+        cursor = conn.execute(
+            f"SELECT {', '.join(_q(c) for c in _COLUMNS)} FROM trials ORDER BY rowid"
+        )
+        rows = cursor.fetchall()
+    finally:
+        conn.close()
+    return [{c: _from_cell(c, row[c]) for c in _COLUMNS} for row in rows]
+
+
+def upsert_rows(db_path: Path, rows: list[dict]) -> None:
+    """Upsert TSV-shaped dict rows into the canonical store (own connection)."""
+    conn = sqlite3.connect(db_path)
+    try:
+        ensure_schema(conn)
+        with conn:
+            conn.executemany(_insert_sql(), (_cells(r) for r in rows))
+    finally:
+        conn.close()
+
+
+def store_rows(results_file: Path, db_path: Path | None = None) -> tuple[list[dict[str, str]], str]:
+    """Canonical-first store read with legacy TSV fallback.
+
+    Returns ``(rows, source)`` where source is ``"db"`` or ``"tsv"`` so
+    callers know which store needs backfill after a read-modify-rewrite.
+    An existing-but-empty DB over a non-empty TSV counts as unseeded and
+    falls back (a fresh DB must not hide legacy rows).
+    """
+    db_path = db_path or default_db_path(Path(results_file))
+    rows = read_rows(db_path)
+    if rows is None or not rows:
+        tsv_rows = _read_tsv(Path(results_file))
+        if rows is None or tsv_rows:
+            return tsv_rows, "tsv"
+    return rows, "db"
+
+
+def load_rows(results_file: Path, db_path: Path | None = None) -> list[dict[str, str]]:
+    """Store rows via :func:`store_rows`, dropping the source tag."""
+    return store_rows(results_file, db_path)[0]
+
+
+def sync_to_tsv(results_file: Path, db_path: Path | None = None) -> int:
+    """Rewrite the legacy TSV from the canonical store (atomic replace)."""
+    db_path = db_path or default_db_path(Path(results_file))
+    rows = read_rows(db_path)
+    if rows is None:
+        raise FileNotFoundError(f"canonical store unavailable: {db_path}")
+    results_file = Path(results_file)
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            newline="",
+            encoding="utf-8",
+            dir=results_file.parent,
+            prefix=f".{results_file.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as f:
+            temp_path = Path(f.name)
+            writer = csv.DictWriter(f, fieldnames=_COLUMNS, delimiter="\t", extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(rows)
+        os.replace(temp_path, results_file)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+    return len(rows)
+
+
+def try_sync_to_tsv(results_file: Path, db_path: Path | None = None) -> int:
+    """Best-effort legacy-TSV rewrite: never raises, logs on failure."""
+    try:
+        return sync_to_tsv(results_file, db_path)
+    except Exception as exc:  # legacy mirror must never break the store
+        print(f"[results-db] legacy TSV rewrite failed (DB unaffected): {exc}")
+        return 0

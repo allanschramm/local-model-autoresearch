@@ -21,7 +21,7 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 
 ## Work Guidance
 - New session → new file with `YYYY-MM-DD-<topic>.md` filename.
-- Captured data: tool output (results.tsv excerpts, logs), measured TPS, config tested, errors hit, decisions taken, who approved what.
+- Captured data: tool output (results-store excerpts, logs), measured TPS, config tested, errors hit, decisions taken, who approved what.
 - Cross-link to related session logs and to model cards / ADRs / discovery guides when relevant.
 
 ## Verification
@@ -103,3 +103,4 @@ Single-day empirical session logs. Captures what was run, on which hardware, wit
 - [`2026-07-31-day-model-candidates-100k.md`](./2026-07-31-day-model-candidates-100k.md) — primary-source shortlist for new 100k+ DAY candidates on the 8 GB rig; no downloads or Trials.
 - [`2026-08-01-day-models-131k-pipeline.md`](./2026-08-01-day-models-131k-pipeline.md) — full 131k throughput, coding-10, and Claw full results for Nemotron 3 Nano and Granite 4.0/4.1 candidates.
 - [`2026-08-01-ornith-mtp-100k-preflight.md`](./2026-08-01-ornith-mtp-100k-preflight.md) — Ornith 9B embedded-MTP rejection at the 100k context floor by the physical-VRAM hard gate.
+

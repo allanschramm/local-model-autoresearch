@@ -1,6 +1,6 @@
 """Trial classifier over the Pareto nucleus (issue #4).
 
-Pure decision logic — no file I/O. The run.py write path feeds results.tsv
+Pure decision logic — no file I/O. The run.py write path feeds results-store
 rows as dicts and persists the outcome. Vocabulary follows CONTEXT.md /
 ADR 0006: `rejected` | `incomplete` | `on_front` | `dominated`.
 """
@@ -65,7 +65,7 @@ def _cell_float(cell: Any) -> float | None:
 
 
 def vector_from_row(row: Mapping[str, Any]) -> ObjectiveVector:
-    """Objective Vector of a results.tsv row; blank axis = not measured."""
+    """Objective Vector of a results-store row; blank axis = not measured."""
     return ObjectiveVector(
         ctx=_cell_float(row.get("ctx")),
         tps=_cell_float(row.get("tps")),
@@ -138,7 +138,7 @@ def _known_vectors(rows: Sequence[Mapping[str, Any]], bucket_gb: int) -> list[Ob
 
 
 def row_bucket(row: Mapping[str, Any]) -> int | None:
-    """Bucket of a results.tsv row (None when budget cannot be resolved).
+    """Bucket of a results-store row (None when budget cannot be resolved).
 
     Prefer ``round(VRAM_LIMIT_MB / 1024)`` from ``config_json`` so Trials of
     the same basename merge across peaks that round differently (e.g. 7.4 vs

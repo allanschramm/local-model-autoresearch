@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
-"""Rank models from results.tsv (Pareto / Day / Night / claw / coding).
+"""Rank models from the results store (Pareto / Day / Night / claw / coding).
 
-Ground truth stays TSV. This CLI is the agent-facing query surface so ranking
-never needs ad-hoc temp scripts.
+Reads the canonical SQLite store (``results.db``) first and falls back to the
+legacy ``results.tsv`` append-log when the DB is missing or unseeded. This CLI
+is the agent-facing query surface so ranking never needs ad-hoc temp scripts.
 
 Usage (repo root):
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py --mode claw
     .\\venv\\Scripts\\python.exe scripts\\rank_results.py --mode coding
-    .\\venv\\Scripts\\python.exe scripts\\rank_results.py --mode agentic-coding
-    .\\venv\\Scripts\\python.exe scripts\\rank_results.py --day-tps-floor 50
 """
 
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import sys
@@ -35,6 +33,7 @@ def _ensure_repo_root_on_sys_path() -> None:
 
 _ensure_repo_root_on_sys_path()
 
+from autoresearch.core import results_db
 from autoresearch.core.classify import MORRIS_SCREEN_PROFILE, fp_from_config_json
 from autoresearch.core.pareto import pareto_set
 
@@ -143,8 +142,8 @@ def _is_measurement_row(row: dict[str, str]) -> bool:
 
 
 def load_rows(path: Path) -> list[dict[str, str]]:
-    with path.open("r", encoding="utf-8", newline="") as handle:
-        return list(csv.DictReader(handle, delimiter="\t"))
+    """Canonical-first store read (results.db, legacy results.tsv fallback)."""
+    return results_db.load_rows(path)
 
 
 def _axis_values(row: dict[str, str]) -> tuple[float | None, float | None]:
@@ -462,13 +461,13 @@ def format_report(
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Rank models from results.tsv (ADR 0006/0009).",
+        description="Rank models from the results store (results.db, legacy TSV fallback; ADR 0006/0009).",
     )
     parser.add_argument(
         "--tsv",
         type=Path,
         default=DEFAULT_TSV,
-        help="Path to results.tsv (default: repo root)",
+        help="Base path of the store: reads <base>.db first, <base> TSV as fallback (default: repo root results.tsv)",
     )
     parser.add_argument(
         "--mode",

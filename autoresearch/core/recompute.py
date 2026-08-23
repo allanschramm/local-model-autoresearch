@@ -1,6 +1,6 @@
 """Store-wide Pareto status recompute (issue #5).
 
-Pure decision logic — no file I/O. Takes results.tsv rows and returns a new
+Pure decision logic — no file I/O. Takes results-store rows and returns a new
 list with every row's status refreshed so the Pareto Set stays consistent:
 a new on_front point demotes rows it dominates to dominated. Two scopes per
 ADR 0006 / 0012: `bucket` (default) is the canonical stored status — the

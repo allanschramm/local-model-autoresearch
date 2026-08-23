@@ -54,7 +54,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`vllm-quant-deep-dive.md`](./vllm-quant-deep-dive.md) — per-format quantization mechanics from vLLM source: kernels, group sizes, min SMs, NVFP4 status, config flags, repo relevance.
 - [`colibri-inference-engine.md`](./colibri-inference-engine.md) — architectural & performance guide for Colibrì zero-dependency C streaming MoE runtime.
 - [`sglang-inference-engine.md`](./sglang-inference-engine.md) — SGLang research guide: RadixAttention, scheduler, structured outputs (XGrammar), speculative decoding, quantization matrix, hardware support, GGUF/Windows limits.
-- [`fastest-tps-inference-engine.md`](./fastest-tps-inference-engine.md) — fastest-TPS engine research on the operator host (discrete 8 GB-class NVIDIA / Win): llama.cpp CUDA baseline vs ExLlamaV3/EXL3, TRT-LLM, vLLM/SGLang; measured results.tsv evidence + MoE/MTP speed levers.
+- [`fastest-tps-inference-engine.md`](./fastest-tps-inference-engine.md) — fastest-TPS engine research on the operator host (discrete 8 GB-class NVIDIA / Win): llama.cpp CUDA baseline vs ExLlamaV3/EXL3, TRT-LLM, vLLM/SGLang; measured results-store evidence + MoE/MTP speed levers.
 - [`speculative-decoding-formats.md`](./speculative-decoding-formats.md) — architectural and performance comparison of speculative formats (MTP vs Eagle vs DFlash vs N-gram).
 - [`mtp-baseline-guide.md`](./mtp-baseline-guide.md) — guide on verifying and benchmarking MTP speculative decoding with llama-bench/llama-cli.
 - [`small-model-mtp-tps.md`](./small-model-mtp-tps.md) — inventory of local MTP packaging + fair TPS matrix (8 GB, 2026-07-20).
@@ -68,3 +68,4 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 ### 5. Harness & Capability Extraction
 - [`prefix-cache-reuse.md`](./prefix-cache-reuse.md) — multi-turn KV-cache prefix reuse: `--cache-reuse` 256 already on in pinned build; ~15x prefill speedup on shared-prefix 2nd turn; wiring + A/B validation.
 - [`capability-extraction-harness.md`](./capability-extraction-harness.md) — harness-side IQ-per-token techniques: led state, verification loops, test-time compute, J-Space assessment, dead-end registry.
+

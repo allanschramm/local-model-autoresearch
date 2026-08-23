@@ -414,16 +414,17 @@ def get_git_commit() -> str:
 
 
 def read_rows(results_file: Path) -> list[dict[str, str]]:
-    """All results.tsv rows as dicts ([] when missing or empty)."""
-    if not results_file.exists() or results_file.stat().st_size == 0:
-        return []
-    with open(results_file, encoding="utf-8") as f:
-        return [dict(row) for row in csv.DictReader(f, delimiter="\t")]
+    """All store rows as dicts ([] when missing or empty).
+
+    Reads the canonical SQLite store (``results.db``) first; falls back to
+    the legacy ``results.tsv`` append-log when the DB is missing or unseeded.
+    """
+    return results_db.load_rows(results_file)
 
 
 @contextlib.contextmanager
 def _results_lock(results_file: Path):
-    """Cross-process mutex serializing results.tsv append vs read-modify-replace."""
+    """Cross-process mutex serializing results-store writes (DB upsert + legacy TSV append/rewrite)."""
     lock_path = results_file.with_name(results_file.name + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     # os.open so tests that patch builtins.open do not substitute the lock fd.
@@ -464,37 +465,55 @@ def recompute_statuses(results_file: Path) -> None:
     and rejected rows are left out; fingerprint-less legacy rows without a
     config_json fingerprint are untouched. Idempotent: rerunning changes
     nothing, so a no-change store is not rewritten.
+
+    Reads the canonical SQLite store first (legacy TSV when unseeded).
+    Refreshed statuses are written to the DB (primary) and the TSV is
+    rewritten as the legacy mirror. A missing DB is seeded from the TSV
+    (one-shot migration).
     """
     with _results_lock(results_file):
-        rows = read_rows(results_file)
+        rows, source = results_db.store_rows(results_file)
         updated = recompute.recompute_rows(rows)
         if updated != rows:
-            # Replace atomically: a killed Search must not leave a truncated TSV.
-            temp_path: Path | None = None
+            if source == "db":
+                changed = [u for u, o in zip(updated, rows, strict=False) if u != o]
+                try:
+                    results_db.upsert_rows(results_db.default_db_path(results_file), changed)
+                except Exception as exc:
+                    print(f"[results] DB status update failed, healing from TSV: {exc}")
+                    results_db.try_sync_from_tsv(results_file)
             try:
-                with tempfile.NamedTemporaryFile(
-                    "w",
-                    newline="",
-                    encoding="utf-8",
-                    dir=results_file.parent,
-                    prefix=f".{results_file.name}.",
-                    suffix=".tmp",
-                    delete=False,
-                ) as f:
-                    temp_path = Path(f.name)
-                    writer = csv.DictWriter(
-                        f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
-                    )
-                    writer.writeheader()
-                    writer.writerows(updated)
-                os.replace(temp_path, results_file)
-            finally:
-                if temp_path is not None:
-                    temp_path.unlink(missing_ok=True)
-        # Derived mirror: refresh after every call (write or no-op), inside
-        # the lock, so the DB always reflects post-recompute TSV state. Must
-        # not affect the Trial outcome — try_* never raises.
-        results_db.try_sync_from_tsv(results_file)
+                _replace_tsv(results_file, updated)
+            except Exception as exc:
+                print(f"[results] legacy TSV rewrite failed: {exc}")
+        if source == "tsv":
+            # One-shot migration: seed the canonical store from legacy TSV.
+            results_db.try_sync_from_tsv(results_file)
+
+
+def _replace_tsv(results_file: Path, rows: list[dict[str, str]]) -> None:
+    """Atomically rewrite the legacy TSV (a killed Search must not truncate it)."""
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            newline="",
+            encoding="utf-8",
+            dir=results_file.parent,
+            prefix=f".{results_file.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as f:
+            temp_path = Path(f.name)
+            writer = csv.DictWriter(
+                f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t", extrasaction="ignore"
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+        os.replace(temp_path, results_file)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 def get_previous_best(results_file: Path, model_name: str | None = None) -> float:
@@ -519,7 +538,7 @@ def get_previous_best(results_file: Path, model_name: str | None = None) -> floa
                     except ValueError:
                         pass
     except Exception as e:
-        print(f"Error reading results.tsv: {e}")
+        print(f"Error reading results store: {e}")
     return best_score
 
 
@@ -748,12 +767,26 @@ def write_row(
         "description": description,
     }
     with _results_lock(results_file):
-        new_file = not results_file.exists() or results_file.stat().st_size == 0
-        with open(results_file, "a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t")
-            if new_file:
-                writer.writeheader()
-            writer.writerow(row)
+        # Canonical store first: SQLite upsert. On failure the legacy TSV
+        # append below still captures the row (heal via try_sync_from_tsv).
+        db_ok = True
+        try:
+            results_db.upsert_rows(results_db.default_db_path(results_file), [row])
+        except Exception as exc:
+            db_ok = False
+            print(f"[results] canonical DB write failed ({exc}); logging to legacy TSV only")
+        # Legacy append-log: kept in sync as the fallback store (best-effort).
+        try:
+            new_file = not results_file.exists() or results_file.stat().st_size == 0
+            with open(results_file, "a", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=CATEGORY_FIELDNAMES, delimiter="\t")
+                if new_file:
+                    writer.writeheader()
+                writer.writerow(row)
+        except Exception as exc:
+            if not db_ok:
+                raise  # both stores failed — the Trial result would be lost
+            print(f"[results] legacy TSV append failed (DB unaffected): {exc}")
 
 
 def run_evaluation(cfg: dict | Any, skip_bench: bool = False, **overrides) -> dict[str, Any]:
@@ -888,7 +921,7 @@ def handle_single_run(args):
     details += f" bench_tg={res.get('bench_tg_tps', 0.0):.1f}"
     details += f" | {args.desc}"
 
-    # Log to results.tsv
+    # Log to the results store (DB + legacy TSV)
     write_row(
         RESULTS_FILE,
         commit,

@@ -3,7 +3,7 @@
 Autonomous Hill-Climbing Evaluation Loop.
 
 Reads Baseline from autoresearch/core/config.py — or starts from a Day/Night
-Usage Profile pick off the results.tsv Pareto front (issue #8) — then runs
+Usage Profile pick off the results-store Pareto front (canonical results.db, legacy TSV fallback) (issue #8) — then runs
 active benchmarks → perturbs one flag → if the Neighbor joins or improves the
 per-model Pareto Set, writes Baseline back to config.py → loops forever. The
 legacy scalar keep rule survives only for incomplete vectors (engine-only /
@@ -11,7 +11,7 @@ quality-only modes never measure agentic+coding, so they cannot compete on
 the four-axis front; ADR 0006).
 
 Stop with Ctrl+C (SIGINT). Visited memory persists in .autoresearch_state.json;
-Baseline persists in config.py; results in results.tsv.
+Baseline persists in config.py; results in the results store (results.db canonical + legacy results.tsv fallback).
 """
 
 import json
@@ -313,7 +313,7 @@ signal.signal(signal.SIGTERM, _signal_handler)
 
 
 def pick_baseline(profile: str) -> tuple[str, dict[str, Any]]:
-    """Day/Night Usage Profile pick → (model, Baseline cfg) from results.tsv.
+    """Day/Night Usage Profile pick → (model, Baseline cfg) from the results store (canonical results.db, legacy TSV fallback).
 
     Issue #8 / ADR 0012: pick is a GGUF basename on the front. Prefer the row
     whose Fingerprint matches the pick hint (best-claw config); else any
@@ -798,7 +798,7 @@ def main():
     parser.add_argument(
         "--profile",
         choices=["day", "night"],
-        help="Start from the Day/Night Usage Profile pick off the results.tsv Pareto front "
+        help="Start from the Day/Night Usage Profile pick off the results-store Pareto front (canonical results.db, legacy TSV fallback) "
         "(sets Baseline from the picked row; ignores --models)",
     )
     parser.add_argument(
@@ -843,7 +843,7 @@ def main():
         selected_models = [pick_model]
         print(
             f"[AUTOLOOP] Profile '{cli_args.profile}' pick: {pick_model} "
-            "(Baseline loaded from results.tsv row)"
+            "(Baseline loaded from a results-store row)"
         )
     else:
         selected_models = []
@@ -897,7 +897,9 @@ def main():
     print("  AUTONOMOUS HILL-CLIMBING LOOP")
     print(f"  Target models: {', '.join(selected_models)}")
     print("  Trial budget: none (runs to completion)")
-    print("  Stop with Ctrl+C. State persists in .autoresearch_state.json + results.tsv")
+    print(
+        "  Stop with Ctrl+C. State persists in .autoresearch_state.json + the results store (results.db + legacy results.tsv)"
+    )
     print("=" * 60)
 
     print(f"[AUTOLOOP] Loaded {len(state_manager.visited)} previously visited configs.")
@@ -947,7 +949,7 @@ def main():
         if _stop_requested:
             break
 
-        # Seed the per-model front from results.tsv, scoped to this
+        # Seed the per-model front from the results store, scoped to this
         # hardware+budget bucket (mirrors classify._known_vectors) so Neighbor
         # acceptance sees prior sessions' points, not an empty session-local front.
         baseline_now = state_manager.get_baseline()
@@ -1192,7 +1194,7 @@ def main():
     print("  AUTOLOOP STOPPED")
     print(f"{'=' * 60}")
     print(f"  Final config: {search_strategy.format_config_summary(final_cfg)}")
-    print(f"  Results logged to: {RESULTS_FILE}")
+    print(f"  Results logged to: {RESULTS_FILE} (.db canonical + .tsv fallback)")
     print(f"{'=' * 60}")
 
 

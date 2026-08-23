@@ -13,7 +13,7 @@ Durable documentation for this repo: model cards, technique notes, architecture 
 ## Local Contracts
 - **One `AGENTS.md` per durable boundary.** A folder becomes a boundary when it has its own purpose, rules, workflow, or quality standards.
 - **DOX hierarchy** is mandatory: walk root → leaf before editing; update nearest owning doc + affected parents after meaningful changes.
-- **No run logs, no commit logs, no diary entries** in `/docs/` proper. Run logs go to `results.tsv`, git history, or `docs/sessions/` (only if capturing methodology for reproducibility).
+- **No run logs, no commit logs, no diary entries** in `/docs/` proper. Run logs go to the results store (`results.db` SQLite canonical, `results.tsv` legacy fallback), git history, or `docs/sessions/` (only if capturing methodology for reproducibility).
 - **Stable contracts only.** If a doc will be stale in a week, it doesn't belong here.
 - **Markdown only** in this tree (except media assets and the architecture diagram `architecture.html`).
 - **Reference external sources by URL**, not by copy-paste. We're a local repo, not a doc mirror.

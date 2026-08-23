@@ -8,9 +8,11 @@ write_row into results.tsv. Legacy keep/discard are rejected on write.
 from __future__ import annotations
 
 import csv
+import json
 
 import pytest
 
+from autoresearch.runners import run
 from autoresearch.runners.run import (
     TRIAL_STATUSES,
     get_previous_best,
@@ -204,3 +206,73 @@ def test_recompute_statuses_survives_mirror_failure(tmp_path, monkeypatch):
     run.recompute_statuses(tsv)  # must not raise
     rows = _read(tsv)
     assert len(rows) == 1 and rows[0]["status"] == "on_front"
+
+
+# ── dual-write contract: canonical SQLite primary, legacy TSV fallback ──
+
+
+def test_write_row_writes_both_stores(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv, status="on_front", tps=74.9, ctx=131072)
+    # Legacy TSV append-log captured the row.
+    assert len(_read(tsv)) == 1
+    # Canonical DB captured the same row (keyed by trial_id).
+    db_rows = run.read_rows(tsv)
+    assert len(db_rows) == 1
+    assert db_rows[0]["tps"] == "74.9"
+    assert db_rows[0]["ctx"] == "131072"
+
+
+def test_read_rows_survives_missing_db_via_tsv_fallback(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    _write_row(tsv, status="on_front", tps=50.0)
+    (tmp_path / "results.db").unlink()  # simulate lost canonical store
+    rows = run.read_rows(tsv)
+    assert len(rows) == 1
+    assert rows[0]["status"] == "on_front"
+
+
+def _fp_json() -> str:
+    """Minimal valid Baseline fingerprint (same shape as test_recompute.py)."""
+    baseline = {
+        "model": "M.gguf",
+        "ctx_size": 131072,
+        "kv_cache": "turbo2",
+        "threads": 6,
+        "temp": 0.4,
+        "top_p": 0.95,
+    }
+    return json.dumps(baseline, sort_keys=True, separators=(",", ":"))
+
+
+def test_recompute_statuses_updates_both_stores(tmp_path):
+    tsv = tmp_path / "results.tsv"
+    # Two models in the same budget bucket: the weaker complete vector is
+    # dominated by the stronger one (ADR 0006/0012 bucket scope).
+    _write_row(
+        tsv,
+        status="on_front",
+        model="B.gguf",
+        tps=100.0,
+        ctx=131072,
+        agentic=0.9,
+        coding=0.9,
+        config_json=_fp_json(),
+    )
+    _write_row(
+        tsv,
+        status="on_front",
+        model="M.gguf",
+        tps=50.0,
+        ctx=131072,
+        agentic=0.5,
+        coding=0.5,
+        config_json=_fp_json(),
+    )
+    assert sorted(r["status"] for r in _read(tsv)) == ["on_front", "on_front"]
+    run.recompute_statuses(tsv)
+    tsv_statuses = sorted(r["status"] for r in _read(tsv))
+    db_statuses = sorted(r["status"] for r in run.read_rows(tsv))
+    # Dominated row demoted in BOTH stores (DB canonical, TSV mirror).
+    assert tsv_statuses == db_statuses
+    assert "dominated" in tsv_statuses
