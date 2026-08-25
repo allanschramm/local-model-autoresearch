@@ -67,5 +67,6 @@ Activation line: `init_moe_expert_cache: expert cache: 40 layers x 48 slots, 349
 
 - Model-dependent spec verdict: embedded MTP *helps* Qwen3.6 (+16 %) but *hurts* Ornith-1.5 (−25 %, low draft acceptance) under full offload. The cache gain is the reliable lever on both; stacking must be validated per model, not assumed.
 - Cache packs 40 of 41 layers (draft layer excluded from routing during normal decode).
+- **Why Ornith MTP loses — acceptance stats** (`-lv 5`, server-reported): Qwen3.6 draft acceptance **0.734**, mean accepted len 2.47; Ornith **0.380**, mean 1.76, per-position `(0.660, 0.100)` — the first drafted token accepts decently, the second almost never (10 %), while `n-max 2` pays draft+verify for both every cycle. `--spec-draft-n-max 1` recovers most of the loss (26.8–27.7 t/s vs −25 %) but still nets ~−5 % vs control: even 66 % pos-0 acceptance does not cover the draft-pass overhead at this model's decode speed. Recipe: Ornith → cache only, no spec; Qwen3.6 → stack both.
 
 ## Decisions
