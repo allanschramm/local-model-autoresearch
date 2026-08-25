@@ -101,6 +101,7 @@ run_nexus_only.py
 # Local vendor/runtime artifacts (do not commit)
 /claw-eval/
 /llama.cpp-releases/
+/llama.cpp-codacus/
 /VITRIOL/
 
 # Local mutable Baseline (seed from config.py.example)
