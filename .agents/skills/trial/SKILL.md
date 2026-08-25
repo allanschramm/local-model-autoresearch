@@ -119,7 +119,7 @@ ALWAYS end with this table (one row per queue item):
 | 2 | `model-Q3_K_M.gguf` | rejected | 65536 | — | — | — | `family-preferred` | HOST_MEMORY_PREFLIGHT |
 ```
 
-- Pull numbers from `results.tsv` (ground truth), not memory.
+- Pull numbers from the results store (`results.db` canonical, `results.tsv` legacy fallback — `scripts/rank_results.py` reads DB-first), not memory.
 - `status` = Trial Status label from the store.
 - `notes` = reject reason, crash summary, or empty.
 - Optional follow-up: `.\venv\Scripts\python.exe scripts/rank_results.py` if the
