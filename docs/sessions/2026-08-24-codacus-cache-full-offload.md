@@ -56,10 +56,16 @@ Activation line: `init_moe_expert_cache: expert cache: 40 layers x 48 slots, 349
 - Prompt-processing verdict: the cache **costs ~11 % prefill** at this coverage (slot-map overhead + dual-pass bookkeeping during large batches); MTP is prefill-neutral (+6 %, within noise); combined −4 %. Decode: levers compound — cache +7 %, MTP +16 %, stacked +46 %.
 - **False-crash correction**: three earlier "stacked config crashes" were **self-inflicted** — the RAM circuit-breaker watchdog (2.5 GB floor) force-killed the server during the transient host-RAM dip of a large-prompt prefill (`circuit-brake.log` shows all three kills; exit `0x7FFFFFFF`, no WER record). Re-run without the watchdog: no crash, stable across repeated requests (41.5 / 42.1 t/s). Lesson: an external watchdog can masquerade as target instability — always audit kill logs before blaming the process.
 - Free RAM at end of stacked run: ~2.5 GB — full offload + MTP + cache sits at the host-RAM envelope on 32 GB; a watchdog for this config should floor near 1–1.5 GB, not 2.5 GB.
-- Output remains non-token-identical to baseline in every cache configuration (stacked run hashes differ from control); MTP-only vs control also differs (draft acceptance path).
+- **Ornith-1.5-35B-Q4_K_M ladder** (same protocol; `nextn_predict_layers=1` with a full MoE `blk.40` draft layer — embedded MTP present, contrary to expectation):
+
+| Config | prompt t/s (1465-tok) | decode t/s |
+| --- | --- | --- |
+| control | 183.3 | 29.6–31.0 |
+| cache only, 48 slots (40 layers packed, ~19 % coverage) | 237.0 | **36.3–36.9 (+18–22 %)** |
+| MTP only | 262.7 | 21.4–24.2 (**−25 %**) |
+| MTP + cache stacked | 234.0 | 29.4–29.8 (≈ control — MTP cancels the cache gain) |
+
+- Model-dependent spec verdict: embedded MTP *helps* Qwen3.6 (+16 %) but *hurts* Ornith-1.5 (−25 %, low draft acceptance) under full offload. The cache gain is the reliable lever on both; stacking must be validated per model, not assumed.
+- Cache packs 40 of 41 layers (draft layer excluded from routing during normal decode).
 
 ## Decisions
-
-- Correct verdict for this rig: **cache = viable only at full expert offload** — +7 % decode alone, **+46 % stacked with MTP** (28.5 → 42.0 t/s) at ~19–20 % slot coverage, at a ~11 % prefill tax; non-bit-exact in all cache modes. Keep out of the pinned runtime; revisit if upstream absorbs it or coverage ≥ 25–30 % becomes possible (smaller expert sets).
-- MTP requires the `-MTP-GGUF` packaging (separate repo, same basenames); the plain-GGUF + `--spec-type draft-mtp` combination cannot work.
-- Watchdog protocol: floor must sit below the config's transient dip (~2.2 GB observed here) — set 1–1.5 GB and audit `circuit-brake.log` before attributing any process death to the binary under test.
