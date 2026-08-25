@@ -70,6 +70,16 @@ Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 
 - `REASONING_PRESERVE=True` seeded in Baseline (2026-08-19): `GET /props` reports `chat_template_caps.supports_preserve_reasoning = true` for this GGUF; full-history think preservation for agentic continuity.
 - `autoresearch/core/llama_runner.py` `dedicated_vram_kill_ceil` now honors `AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB` (preflight and runtime monitor were inconsistent; at 65k this model's steady state ~7.7 GB exceeds the default 7676 MB ceiling).
 
+## Overthinking behavior + daily-driver levers (2026-08-25)
+
+Operator benchmark sessions (2026-08-20/21, agent loops) are ~90 % thinking by volume: think blocks mean 3.4k chars/turn (median 1.6k, p90 8.7k, max 17.9k), answer+tool text mean 406 chars; one session had a single 146,893-char think (~35k tokens ≈ 13 min at 44 t/s). Long thinks show **zero self-repetition** (no repeated 8-grams) — verbose RL-trained deliberation, not a repetition loop. Vendor evaluates with max_new_tokens up to 131k / 256k ctx, so unbounded thinking was rewarded.
+
+Lever verdicts (mechanisms verified in pinned-build source, 2026-08-25):
+- `--reasoning-budget` (already 4096 in the daily-driver alias, operator-bumped from 2048) is the only direct think cap; it forces the end-of-think tag at exhaustion and is template-independent. 4096 ≈ 93 s/turn at 44 t/s. Add `--reasoning-budget-message "Stop thinking and act now."` — forced cutoff without a nudge degrades quality. Per-request `reasoning_budget_tokens` (OpenAI API) allows per-task override without restart.
+- Repeat/presence penalties are windowed to the last 64 tokens by default (`--repeat-last-n` 64) — the card's `presence 1.5` / alias `repeat 1.15` cannot see a 4k think as configured; raise `--repeat-last-n` (e.g. 2048) if A/B-ing presence. Measured zero repetition ⇒ modest expected effect.
+- KV q4_0→q8_0 does NOT address think length; on this hybrid arch q4_0@131k measured ≥ q8_0@131k (family A/B 2026-08-25), and q8_0 KV @131k adds ~2.1 GB (peak ~9.5 GB) — physically unloadable on 8 GB-class. Not a loop lever.
+- Suggested active profile: budget 2048 + budget message; per-request `reasoning_budget_tokens` override for hard tasks. **TBD:** think-token distribution at budget ∈ {1024, 2048, 4096} × {no message, message}.
+
 ## Ornith family comparison (2026-08-19, 8 GB-class, results.tsv ground truth)
 
 | Model (quant) | Agentic (claw-full) | Coding (10 tasks) | bench_tg | Peak VRAM | Status |

@@ -69,6 +69,10 @@ Best coding in the Ornith family (1.5-9B 0.6150 / 1.0-35B 0.580). Agentic 0.8667
 - **T054 (finance NFLX ARPPU): 0.00 — content failure, not truncation.** 29 calls, report **len=7173** (well above rubric floors), but no yearly-value keywords; same retrieval-path failure as both 9B generations. Family-wide task weakness.
 - No max_tokens cap hits: **0 turns decoded to 4096** in the run log (the 5 `length_stops` flags were `</s>`-stop-string stops — see harness caveat).
 
+## Overthinking (2026-08-25)
+
+Same family behavior as 1.5-9B: a 2026-08-22 operator session shows 18/19 turns thinking (mean 3.7k chars, max 18.8k ≈ 4.7k tokens ≈ 3 min at 27.8 t/s); another session ran near-zero thinking (mean 27 chars) — variance by session. Daily-driver alias already caps at `--reasoning-budget 4096` (≈ 2 min/turn at 27.8 t/s); add `--reasoning-budget-message` and consider 2048 for interactive use. KV q8_0 fits on this MoE (KV 1.3→2.6 GB @131k) but does not change think length — budget is the lever.
+
 ## Sources / Verification
 - https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B-GGUF (README, 2026-08-19)
 - Local GGUF metadata via `scripts/model_info.py` + `gguf.GGUFReader` field+tensor scan 2026-08-22 (`autoresearch/core/model_arch.py:126` `gguf_has_mtp()` → true, `qwen35moe.nextn_predict_layers = 1`, 4/753 `nextn` tensors at `blk.40.nextn.*`)

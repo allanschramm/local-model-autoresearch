@@ -139,8 +139,11 @@ $$\text{Step Time} \approx T_{\text{fixed}} + \alpha \cdot \text{Context Tokens}
 - Generation throughput naturally drops from ~69 tok/s at 10k context to ~40 tok/s at 118k context.
 - For long-running agent loops, resetting or compacting session context periodically provides greater throughput gains than any runtime flag.
 
----
+### 3. MoE server prefill is micro-batch-bound (measured 2026-08-25)
+35B-A3B @ `--n-cpu-moe 41` (full expert offload, codacus fork): server-side prefill was **~89 t/s at `--ubatch-size 128`** vs **704+ t/s at llama-bench `-ub 2048`** (fork features-off baseline; 820 t/s stock b10549; see [2026-08-24-codacus-fork-validation](../sessions/2026-08-24-codacus-fork-validation.md)). The bench gap is **ubatch**, NOT the host-register env levers (`GGML_CUDA_REGISTER_HOST` + `GGML_SCHED_PREFETCH_EXPERTS`, +78 % at full offload) — register-host cannot close an 8× gap. Raising the alias to `--batch-size 512 --ubatch-size 512` → **~292 t/s (3.3×)**, VRAM +0.1 GB (7.64 GB at 131k + 48-slot expert cache on 8 GB-class). ub 2048 server-side is VRAM-gated at 131k + expert cache; freeing VRAM (ctx 65k or fewer cache slots) is the prerequisite, with decode-speed tradeoffs. Falsifiable: sweep `--ubatch-size` ∈ {128, 512, 1024, 2048} at fixed ctx, record prefill t/s + peak VRAM.
 
+
+---
 ## 6. Controlling Overthinking in Reasoning Models
 
 Modern reasoning LLMs (DeepSeek-R1, Qwen 3.x, Nemotron) generate internal thinking chains (`<think>...</think>`). Without explicit constraint, open-ended tasks can cause runaway reasoning:
