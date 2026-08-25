@@ -30,7 +30,7 @@ hf download ursb01/Ornith-1.5-35B-A3B-Heretic-MTP-APEX-GGUF Ornith-1.5-35B-A3B-H
 
 ## Decisions
 - Validation **PASS on IQ** (0.8) but **TPS 34.7 <50 Day floor** — still run full trial per instruction (`--agentic-full --include-coding`) to complete vector for Night/support. Expect dominated on Day but possible Night `on_front` if coding strong.
-- Keep 14.3G file (D: ~34G → ~20G after download, still >10G guard — see Disk).
+- Keep the 14.3G file.
 
 ## Open questions
 - **TBD:** Full vector (Claw-full 15 + coding-10) on same Fingerprint — falsifiable via next run.

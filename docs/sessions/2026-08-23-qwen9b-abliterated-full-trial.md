@@ -31,7 +31,7 @@ Complete Objective Vector for NEW `nuofang/Qwen3.8-9B-abliterated-25-GGUF` IQ4_X
 - T054 ctx exceed 66919 >65536 at 65K — same as Heretic at 131K but now at 65K for 9B — 9B's longer reasoning trace exceeds 65K.
 
 ## Decisions
-- **Keep** 5.2G file for now (D: ~17G → ~12G after download, still >10G guard) — dominated but documented as NEW abliterated 9B not superior to 4B distill.
+- **Keep** the 5.2G file for now — dominated but documented as NEW abliterated 9B not superior to 4B distill.
 - Baseline stays Qwen 9B for this trial only — revert to winning `Qwen3.8-4B-Distill` Q4_K_M @131072 for next.
 
 ## Open questions

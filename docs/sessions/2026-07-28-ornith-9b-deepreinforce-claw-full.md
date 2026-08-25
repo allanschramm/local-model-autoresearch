@@ -36,4 +36,4 @@ Vector: claw **0.4000** + coding **0.5800** → complete (`iq_min=0.4000`). Weak
 
 ## Decisions
 - Vector closed. Prefer UD/MTP Ornith-9B aliases for agentic; deepreinforce Q4_K_M stays as measured point in TSV.
-- Next incomplete by TPS: `Qwen3.5-9B-MTP` claw-full (~49 t/s) — after confirming GGUF on disk.
+- Next incomplete by TPS: `Qwen3.5-9B-MTP` claw-full (~49 t/s) — after confirming the GGUF is present.

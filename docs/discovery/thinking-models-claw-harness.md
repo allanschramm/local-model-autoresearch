@@ -35,7 +35,7 @@ Code pointer: `autoresearch/AGENTS.md` (Claw/agentic loop bullet).
 
 Reasoning control on llama.cpp is **not** a single knob; "effort" and "budget" are different levers and only some are expressible:
 
-- **Effort tiers (off / minimal / low / medium / high / xhigh / max) are NOT a llama.cpp CLI flag.** They are `chat-template-kwargs` consumed only by templates that implement them (DeepSeek-V4, gpt-oss class). The qwen35 template (Ornith, Qwen3.5/3.6/3.8 families) does **not** read `reasoning_effort`.
+- **Effort tiers (off / minimal / low / medium / high / xhigh / max) are NOT a llama.cpp CLI flag.** They are `chat-template-kwargs` consumed only by templates that implement them (DeepSeek-V4, gpt-oss class). The qwen35 arch template (Ornith, Qwen3.5/3.6, qwen35moe, and the Qwen3.8-4B distill) does **not** read `reasoning_effort`; the Qwen3.8-**27B** open-source template is the verified exception — it reads `reasoning_effort` with ladder xhigh/medium/low, default xhigh (2026-08-23; see [speculative-and-multi-gpu-tuning.md](./speculative-and-multi-gpu-tuning.md)).
 - **llama-server OpenAI API**: request body `reasoning_effort` — only the value `"none"` is handled (disables thinking); other values are explicitly *"model-specific and not yet handled"* (server-common.cpp). So effort tiers are **not expressible for qwen35-family models** on this stack.
 - **Hard levers that DO work** (all plumbed in Baseline):
   | Lever | Baseline key | Effect |

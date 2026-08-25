@@ -65,11 +65,11 @@ Point to the parent directory containing `build-rocm/`:
 
 Expected output:
 ```
-ggml_cuda_init: found 1 ROCm devices (Total VRAM: 8176 MiB):
-  Device 0: AMD Radeon RX 6600, gfx1032, VMM: no, Wave Size: 32, VRAM: 8176 MiB
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 8 GB-class):
+  Device 0: RDNA 2, gfx1032, VMM: no, Wave Size: 32, VRAM: 8 GB-class
 load_backend: loaded ROCm backend from ...\ggml-hip.dll
 Available devices:
-  ROCm0: AMD Radeon RX 6600 (8176 MiB, 8034 MiB free)
+  ROCm0: RDNA 2 8 GB-class (~8 GB total, ~7.8 GB free)
 ```
 
 If devices still show `(none)`, check:
@@ -77,7 +77,7 @@ If devices still show `(none)`, check:
 - `rocblas.dll` exists in that directory
 - The `ggml-hip.dll` version matches the HIP SDK version
 
-## Performance Reference (RX 6600, Qwen3.5-9B-MTP-Q4_K_M, ROCm b10448)
+## Performance Reference (RDNA 2 8 GB-class, Qwen3.5-9B-MTP-Q4_K_M, ROCm b10448)
 
 | Test | No MTP | draft-mtp n=4 |
 |------|--------|---------------|
@@ -87,7 +87,7 @@ If devices still show `(none)`, check:
 ## Known Limitations
 
 - **VMM: no** on RDNA 2 (gfx1032) — HIP Virtual Memory Management unsupported. Extra host-side staging buffers are allocated, adding ~2–4 GB RAM overhead.
-- **Memory bandwidth** is the tg bottleneck (224 GB/s on RX 6600 vs 272 GB/s on RTX 4060), not FLOPS.
+- **Memory bandwidth** is the tg bottleneck (224 GB/s on RDNA 2 vs 272 GB/s on an 8 GB-class Ada card), not FLOPS.
 - **MTP boost is lower on ROCm** (~21%) compared to CUDA (~48%) for the same model — speculative decoding kernels are less optimized.
 - **`NO_MMAP = False`** (mmap) recommended when all layers fit in VRAM — OS can reclaim file-backed pages after GPU transfer, reducing steady-state RAM.
 

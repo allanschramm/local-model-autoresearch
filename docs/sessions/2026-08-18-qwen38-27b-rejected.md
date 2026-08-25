@@ -49,7 +49,7 @@ AUTORESEARCH_LLAMA_CPP_ROOT=.../tqp-v0.3.0 AUTORESEARCH_SKIP_FREE_CLAMP=1 \
 4. **TPS:** bench tg 512 = **27.9 t/s** (passes TPS_FLOOR 20; fails Day floor 50).
 5. **VRAM @64k turbo2:** preflight est 7419 MB; **measured peak 7720 MB > limit 7676**
    → runtime monitor killed the server. Implied real turbo2 KV factor ≈
-   (7720 − 6300 − 300)/8192 ≈ **0.137×f16** vs harness `VRAM_QUANT_FACTORS["turbo2"]=0.10`.
+   (7720 − 6300 − 300)/8 GB-class total ≈ **0.137×f16** vs harness `VRAM_QUANT_FACTORS["turbo2"]=0.10`.
    Filed as [issue #58](https://github.com/allanschramm/local-model-autotuning/issues/58).
 6. **Max safe ctx ≈ 61k** (real peak ≈ est + 300 MB). Night floor 65536 unreachable;
    hard target ≥100k unreachable on any local runtime (turbo2 is the densest KV type

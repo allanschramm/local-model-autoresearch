@@ -30,7 +30,7 @@ Complete Objective Vector for lightweight control `unsloth/SmolLM3-3B-GGUF` Q4_K
 - No crash — weak tool use (0 calls on 4/15 tasks) is model capability, not harness. Agentic quick regression 0.40→0.20 shows nondet at low tool-use rate.
 
 ## Decisions
-- **Keep** Smol GGUF for now (D: still ~40G >10G guard, 1.9G tiny). It is `on_front` on speed but **not recommended for coding** — document as speed baseline.
+- **Keep** the Smol GGUF for now (1.9G tiny). It is `on_front` on speed but **not recommended for coding** — document as speed baseline.
 - Baseline stays `SmolLM3-3B` for this trial only — next trial should revert to Qwen distill for hill-climb or test new find.
 
 ## Open questions

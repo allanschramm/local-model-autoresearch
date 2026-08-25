@@ -6,7 +6,6 @@ Document that `Ornith-1.5-35B-A3B` `NVFP4` HF (`MIXED W4A16_NVFP4`) is `rejected
 ## Hardware
 - discrete_gpu, 8 GB VRAM class, Windows host, WSL2 Ubuntu 24.04
 - Existing GGUF store already had `Ornith-1.5-35B-Q4_K_M.gguf` (21.7G, `block_count 41`, `n-cpu-moe 41`)
-- Disk free before: ~48G on D:; after NVFP4: ~24G free (NVFP4 23.5G)
 
 ## Downloads (network only, no GPU)
 - `hf download ornith-ai/Ornith-1.5-35B-A3B-NVFP4 --local-dir models/ornith-ai/Ornith-1.5-35B-A3B-NVFP4` — verified complete via `dry-run 0 files` 2026-08-22. Layout:
@@ -45,7 +44,7 @@ SAMPLER_DEFAULTS = {
 Run when free: `.\venv\Scripts\python.exe benchmark_search.py --agentic-full --desc "trial Ornith-1.5-35B-Q4_K_M"` (or `--validation` for smoke).
 
 ### B — NVFP4 path (vLLM, WSL2, Marlin W4A16 fallback on SM89)
-Not Blackwell-native W4A4; on RTX 4060 it will use `MarlinNvFp4LinearKernel` W4A16 (memory win, no FP4 speed). Requires `float16` activations (`BF16+Marlin` garbled per vllm#34694).
+Not Blackwell-native W4A4; on 8 GB-class Ada it will use `MarlinNvFp4LinearKernel` W4A16 (memory win, no FP4 speed). Requires `float16` activations (`BF16+Marlin` garbled per vllm#34694).
 
 **Env separation (do not reuse `venv-sglang`):** `venv` = Windows llama.cpp harness. `venv-sglang` = WSL2 SGLang (0.5.18, sgl-kernel/flashinfer/DeepGEMM) — do not pollute with vLLM. Create `venv-vllm` for NVFP4.
 
@@ -84,7 +83,7 @@ python -m sglang.launch_server --model-path models/ornith-ai/Ornith-1.5-35B-A3B-
 - No Baseline edit, no server spawn per user request.
 
 ## Decisions
-- Keep both packs on disk; do not delete GGUF root.
+- Keep both packs; do not delete the GGUF store root.
 - Stage comparison via this session log; actual Trials on operator go-ahead when GPU idle.
 
 ## References

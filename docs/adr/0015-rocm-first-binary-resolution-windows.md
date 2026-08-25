@@ -12,7 +12,7 @@
 
 ## Consequences
 
-- AMD GPUs on Windows with the HIP SDK installed now use ROCm/HIP natively (measured: 33.4 t/s tg on RX 6600 vs ~5 t/s CPU-only and ~13 t/s on Vulkan).
+- AMD GPUs on Windows with the HIP SDK installed now use ROCm/HIP natively (measured: 33.4 t/s tg on an RDNA 2 8 GB-class card vs ~5 t/s CPU-only and ~13 t/s on Vulkan).
 - Systems without the HIP SDK still fall back gracefully — `ggml-hip.dll` fails to load and llama.cpp uses the next available backend (CPU).
 - NVIDIA-only systems are unaffected: `has_discrete_amd()` returns False, so the CUDA-first ordering is preserved.
 - The `reasoning_preserve=False` fix resolves the pre-existing test failure `test_build_cmd_reasoning_preserve_off`.

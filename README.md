@@ -244,7 +244,7 @@ mkdir -p llama.cpp-releases/upstream/<tag>/build-cuda/bin
 ```bash
 export AUTORESEARCH_LLAMA_CPP_ROOT="$(pwd)/llama.cpp-releases/upstream/<tag>"
 # Windows PowerShell:
-#   $env:AUTORESEARCH_LLAMA_CPP_ROOT = "D:\Dev\Nexus-System\local-model-autotuning\llama.cpp-releases\upstream\<tag>"
+#   $env:AUTORESEARCH_LLAMA_CPP_ROOT = "<repo>\llama.cpp-releases\upstream\<tag>"
 ```
 
 Verifique se o binário resolve:
@@ -290,7 +290,7 @@ export AUTORESEARCH_LLAMA_CPP_ROOT="/caminho/pra/llama.cpp"
 Depois da migracao do WSL2, o harness tambem resolve builds nativos do Windows (tanto em `build-cuda` quanto em `build-cpu`):
 
 ```powershell
-$env:AUTORESEARCH_LLAMA_CPP_ROOT = "D:\Dev\Nexus-System\local-model-autotuning\llama.cpp"
+$env:AUTORESEARCH_LLAMA_CPP_ROOT = "<repo>\llama.cpp"
 python benchmark_search.py --validation --desc "validar modelo no Windows"
 python scripts\serve-config.py print-cmd
 python scripts\serve-config.py serve

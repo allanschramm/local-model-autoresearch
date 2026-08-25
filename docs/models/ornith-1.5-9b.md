@@ -48,9 +48,19 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 | Status | **on_front** (both axes) |
 | Agentic (claw-full) | **0.9333** (14/15; rerun @ max_tokens 4096) |
 | Coding | **0.6150** (HE+ 1.0000 / MBPP+ 0.7000 / LCB 0.5000 / BC 0.1000) |
-| bench_tg | 44.3 t/s |
-| Combined TPS | 54.5 (first run) |
-| Peak VRAM | 7.4 GB |
+## Trial 2026-08-24 — REASONING_BUDGET=4096 A/B (claw-full + coding-10 @ 65k)
+Requested "reasoning effort medium": `--reasoning-effort` is a **silent no-op on this GGUF** — embedded `tokenizer.chat_template` (7828 chars, `<think>`-based) contains zero `reasoning_effort` variables (verified via `gguf_dump.py --no-tensors --json`; b10549 server accepts `LLAMA_ARG_REASONING_EFFORT`, template never reads it). Harness has no `REASONING_EFFORT` knob. Nearest working lever = `--reasoning-budget`; seeded 4096 (operator-instructed; prior Trial rows ran `reasoning_budget:null`).
+
+| Metric | Value |
+|---|---|
+| Status | **on_front** (row `56a3c78f`) |
+| Agentic (claw-full) | **0.7333** (11/15) |
+| Coding | **0.6050** (HE+ 0.9000 / MBPP+ 0.9000 / LCB 0.4000 / BC 0.1000) |
+| bench_tg | 44.1 t/s |
+| Combined TPS | 53.6 |
+| Peak VRAM | 7.0 GB |
+
+Verdict: budget 4096 did **not** lift agentic vs 2026-08-19 (0.7333 vs 0.9333); coding within noise (0.6050 vs 0.6150). T046 (0.20) and T053 (0.00) failed on HTTP 400 `exceed_context_size_error` at 69052/104611 prompt tokens — `REASONING_PRESERVE` think re-render inflation, the Open Questions risk, now confirmed on 1.5-9B; T048 (0.40) / T054 (0.40) hit `length` stops. Same config minus budget already holds the better vector; no rerun recommendation from this A/B.
 
 Best coding in the Ornith family (1.0: 0.580 deepreinforce / 0.570 UD). Agentic 0.9333 beats 1.0-9B UD's fair rerun **0.8667** (2026-08-19, same 4096 floor + TEMP 0.4); 1.0's older 0.9333 was a 2048-cap run whose success was run variance, not a floor artifact — the fair remeasure scored lower, not higher.
 

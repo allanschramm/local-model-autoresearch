@@ -29,7 +29,7 @@ hf download deepgrove/maple-preview-GGUF maple-preview-TQ1_0-head-Q4_K.gguf --lo
 - No retry at other CTX/KV — load fails before context matters.
 
 ## Decisions
-- **Mark `maple-preview` as `rejected` — do not retry** until `llama.cpp` adds `maple` arch (track upstream PRs/commits). Keep GGUF on disk for now (D: 42G free >10G guard) — delete only if space falls below guard or operator says purge.
+- **Mark `maple-preview` as `rejected` — do not retry** until `llama.cpp` adds `maple` arch (track upstream PRs/commits). Keep the GGUF; delete only on operator purge or disk-guard breach.
 - **Next model:** `unsloth/SmolLM3-3B-GGUF` Q4_K_M 1.9G @128K YARN — lightweight control, fits easily, LCB 30% thinking — per optimal order.
 
 ## Open questions

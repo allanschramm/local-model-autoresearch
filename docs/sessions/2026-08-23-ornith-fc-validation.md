@@ -27,7 +27,7 @@ hf download ermiaazarkhalili/Ornith-1.5-9B-Function-Calling-xLAM-Unsloth-GGUF or
 - File appears incomplete — HF `dry-run` shows only Q2_K (no Q4/Q5/Q8), unusual for 9B (normal Q4 ~5G). Not a VRAM/ctx failure.
 
 ## Decisions
-- **Mark rejected** — do not retry Q2_K until publisher fixes quant. Keep file for now (D: 38.6G >10G) but flag for purge if next download needs space.
+- **Mark rejected** — do not retry Q2_K until publisher fixes quant. Keep file for now but flag for purge if next download needs space.
 - **Next:** Re-query HF API for next NEW small GGUF after 06:25 window — likely next mradermacher re-quant (0-signal) vs fallback to unsloth first-party (none NEW). Consider closing NEW scan.
 
 ## References

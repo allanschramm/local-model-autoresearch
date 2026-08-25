@@ -7,7 +7,6 @@ Validate NEW `empero-ai/Qwen3.8-4B-Distill-GGUF` Q4_K_M at 131072 ctx on 8 GB-cl
 - `discrete_gpu`, 8 GB VRAM class, Windows host, WSL2 available
 - Baseline `VRAM_LIMIT_MB` 8000 → clamped 7676 MB (keepout 512), preflight 5320 MB ok
 - Engine `llama.cpp-releases/upstream/b10549` (Gated DeltaNet), `b` 512 / `ub` 128 / `t` 8 / `fa on` / `q4_0` KV / `jinja` / `cont-batching` / `cache-reuse 256`
-- D: free 48.3 GB before download (see Prep)
 
 ## Setup
 - Model: `models/empero-ai/Qwen3.8-4B-Distill-GGUF/Qwen3.8-4B-Q4_K_M.gguf` (hf download 2026-08-23, 2.8G, 68s)
@@ -36,7 +35,7 @@ hf download empero-ai/Qwen3.8-4B-Distill-GGUF Qwen3.8-4B-Q4_K_M.gguf --local-dir
 
 ## Decisions
 - Validation **PASS** — proceed to full trial (`--agentic-full --include-coding`) on same Fingerprint (`CTX 131072`, `q4_0`, `TEMP 0.6`).
-- Keep GGUF on disk — D: still 48G free (>10G guard).
+- Keep the GGUF.
 
 ## Open questions
 - **TBD:** Full Objective Vector (Claw-full 15 tasks + coding-10) on same Fingerprint — falsifiable via next run's TSV rows with identical `config_json`.

@@ -30,7 +30,7 @@ Complete Objective Vector for missed candidate `bartowski/Ling-3.0-tiny-GGUF` Q4
 - None — clean run.
 
 ## Decisions
-- **Keep** 4.9G file (D: 18.4G → ~13.5G after, still >10G guard) — dominated on coding but valid VRAM-efficient point; useful as low-VRAM fallback.
+- **Keep** the 4.9G file — dominated on coding but valid VRAM-efficient point; useful as low-VRAM fallback.
 - Baseline stays Ling for this trial only — reverted to winning `Qwen3.8-4B-Distill` @131072 for next operator action.
 
 ## Open questions

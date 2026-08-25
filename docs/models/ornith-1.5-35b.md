@@ -36,7 +36,7 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
   - 65k `n=1`: bench **27.6** t/s, peak 3.9 GB — trial `1c1bc293`, validation **PASS**
   - 65k `n=2`: bench **24.6** t/s, peak 3.7 GB — trial `e568c5e0`, validation **PASS** (`draft_accept` 0.54, `mean_len` 2.08)
   - 65k `n=4` pre-fix: **rejected**, est 8369 > 7676 (`1329dc50`)
-  - 131k `n=4` pre-fix: **rejected**, est 9104 > 7676 (`60ddaec2`) — direct server on :18081 fit at **4243 MB** (nvidia-smi 4243,8188), `predicted_per_second` 12.9, draft 346 / accepted 38 (11%); post-fix harness `67cb12d9` (ctx 131072, spec 4) bench **18.1** — rejected under TPS_FLOOR 20.0
+  - 131k `n=4` pre-fix: **rejected**, est 9104 > 7676 (`60ddaec2`) — direct server on :18081 fit at **4243 MB**, `predicted_per_second` 12.9, draft 346 / accepted 38 (11%); post-fix harness `67cb12d9` (ctx 131072, spec 4) bench **18.1** — rejected under TPS_FLOOR 20.0
 - **Pareto-dominated:** TPS −0.7% at `n=1`, −11% at `n=2`, −34% at 131k `n=4` vs the 27.8 t/s non-MTP baseline (`f8980537`).
 - **Estimator fixed:** MoE workspace zeroed — the VRAM estimator (not the binary) was the limiter; post-fix runs estimate correctly.
 - 1.0-35B had NO MTP — do not carry that assumption to 1.5.

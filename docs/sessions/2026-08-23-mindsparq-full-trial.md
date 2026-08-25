@@ -30,7 +30,7 @@ Complete Objective Vector for `mradermacher/MindSparQ-Coder-1.5B-GGUF` Q4_K_M 98
 - None — 0.00 is model capability (1.5B too small for tool format), not harness.
 
 ## Decisions
-- **Keep** 986M file for now (D: 19.7G → ~18.7G after, still >10G) — dominated control, not recommended for coding. Flag for purge if next NEW needs space.
+- **Keep** the 986M file for now — dominated control, not recommended for coding. Flag for purge if next NEW needs space.
 - Baseline stays MindSparQ for this trial only — revert to winning `Qwen3.8-4B-Distill` Q4_K_M @131072 for next.
 
 ## Open questions

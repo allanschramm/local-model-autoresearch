@@ -41,7 +41,7 @@ As context size grows (e.g., our 65k target context), memory bandwidth becomes t
     (`autoresearch/core/model_arch.py`) returns the f16 MiB; scale by bits/16
     for the actual cache type: `q8_0 ×0.5`, `q4_0/tq4 ×0.25`, `tq2_0 ×0.125`,
     `tq1_0 ×0.0625`. Validated against Ornith-1.5-9B: f16 @65k = 4096 MiB →
-    q4_0 = 1024 MiB; nvidia-smi showed 7424 MiB total = weights 5358 MiB +
+    q4_0 = 1024 MiB; measured total ≈ weights 5358 MiB +
     KV 1024 MiB + residual ~1042 MiB (CUDA ctx + compute + allocator slack).
     Per-token q4 cost ≈ 16 KiB (9B), ≈10 KiB (Ornith-1.5-35B A3B, f16 @65k
     2624 MiB). Caveat: the residual is not constant — prefill scratch grows

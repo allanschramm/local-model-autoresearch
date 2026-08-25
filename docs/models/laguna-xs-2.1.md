@@ -107,7 +107,6 @@ Evidence: [claw-full](../sessions/2026-07-24-claw-full-smoke-high.md), [coding-1
 
 - Local GGUF metadata via `gguf.GGUFReader` — 2026-07-24
 - Harness runs logged in `results.tsv` (`agentic-full` / `10-task`) — 2026-07-24
-- Alias: `models/aliases/laguna-xs/config.yaml`
 
 ## Open questions
 

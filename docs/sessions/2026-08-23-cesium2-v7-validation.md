@@ -29,7 +29,7 @@ hf download ram1234598766/Cesium2-v7-GGUF cesium2-v7-q8_0.gguf --local-dir model
 - T006 peg-native format error — model produced output not matching expected tool JSON.
 
 ## Decisions
-- Validation **bench PASS but agentic 0.00** — **still run full trial per instruction** (validation not `rejected`) to complete vector, but expect dominated (0.00 quick predicts ~0.2 full). Keep 1.6G for now (D: 21.3G → ~19.7G after download, still >10G).
+- Validation **bench PASS but agentic 0.00** — **still run full trial per instruction** (validation not `rejected`) to complete vector, but expect dominated (0.00 quick predicts ~0.2 full). Keep the 1.6G file for now.
 
 ## Open questions
 - **TBD:** Full vector (Claw-full + coding-10) on same Fingerprint — expected dominated.

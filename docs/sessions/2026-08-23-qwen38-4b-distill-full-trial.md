@@ -7,7 +7,6 @@ Complete Objective Vector for NEW `empero-ai/Qwen3.8-4B-Distill-GGUF` Q4_K_M at 
 - `discrete_gpu`, 8 GB VRAM class, Windows host
 - Baseline `VRAM_LIMIT_MB` 8000 → 7676 MB, preflight 5320 MB ok, host 27790 ok
 - Engine `b10549` Gated DeltaNet, `q4_0` KV, `fa on`, `b 512 / ub 128 / t 8 / tbd 8`, `jinja`, `cont-batching`, `cache-reuse 256`, dense `block_count 33`
-- D: free ~45 GB post-download (>10G guard)
 
 ## Setup
 - Model: `models/empero-ai/Qwen3.8-4B-Distill-GGUF/Qwen3.8-4B-Q4_K_M.gguf` (2.8G, hf-verified 2026-08-23)
@@ -40,7 +39,7 @@ No `autoloop` — single monitored run.
 - Two finance tasks (T053/T054) fail — **not a harness bug** — same web_real keyword miss seen on 35B; `length_stops` on T046 but still PASS.
 
 ## Decisions
-- **Keep** `Qwen3.8-4B-Q4_K_M.gguf` on disk — D: free still ~45 GB (>10G guard), and it is now `on_front`.
+- **Keep** `Qwen3.8-4B-Q4_K_M.gguf` — it is now `on_front`.
 - Baseline remains `Qwen3.8-4B-Q4_K_M @131072 q4_0` — next hill-climb should `autoloop.py --mode tps` **only on operator command** (not auto).
 
 ## Open questions

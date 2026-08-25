@@ -31,7 +31,7 @@ Complete Objective Vector for NEW `ursb01/Ornith-1.5-35B-A3B-Heretic-MTP-APEX-GG
 - T008 length_stops (12772 chars) but still 0.80 — same as validation. T053/T054 finance web_real cluster fails (same as Qwen/Smol).
 
 ## Decisions
-- **Keep** 14.3G Mini on disk for now (D: ~20G free after download, still >10G guard). Its `on_front` at 65K is valid but not Night winner vs Qwen 131K.
+- **Keep** the 14.3G Mini for now. Its `on_front` at 65K is valid but not Night winner vs Qwen 131K.
 - Baseline stays `Ornith-1.5-35B Heretic Mini @65536` for this trial only — next `autoloop` or validation should revert to Qwen winning point unless testing this family at larger ctx.
 
 ## Open questions

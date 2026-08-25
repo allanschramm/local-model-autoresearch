@@ -28,7 +28,7 @@ Complete Objective Vector for `ram1234598766/Cesium2-v7-GGUF` Q8_0 1.6G at 65536
 - Coding 0/10 on all 40 tasks — model not instruction-tuned for coding (no code extracted, peg-native format error in quick).
 
 ## Decisions
-- **Mark `Cesium2-v7` as `rejected` — do not retry** — 0.00 coding is zero-value (like maple/Ornith FC). Keep file for now but flag for purge (1.6G tiny, D: still 19.7G >10G, but next download will need space).
+- **Mark `Cesium2-v7` as `rejected` — do not retry** — 0.00 coding is zero-value (like maple/Ornith FC). Keep file for now but flag for purge (1.6G tiny; next download will need space).
 - Baseline stays Cesium for this trial only — revert to winning `Qwen3.8-4B-Distill` Q4_K_M @131072 for next.
 
 ## Open questions

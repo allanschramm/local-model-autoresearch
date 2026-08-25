@@ -31,7 +31,7 @@ Complete Objective Vector for NEW `yachen4ever/Qwen3.8-4B-Distill-Heretic-Ablite
 - T046 context exceed 138086 >131072 — same `REASONING_PRESERVE` inflation seen on 35B but now on 4B heretic at 131K — not a harness bug, but heretic's longer reasoning trace exceeds ctx.
 
 ## Decisions
-- **Keep** heretic 2.8G on disk (D: ~17G free >10G) — its vector is `on_front` but **not winning** vs base distill. Document as abliterated variant not superior for coding.
+- **Keep** the heretic 2.8G — its vector is `on_front` but **not winning** vs base distill. Document as abliterated variant not superior for coding.
 - Baseline stays heretic for this trial only — revert to base `empero-ai` distill `on_front` for any hill-climb.
 
 ## Open questions
