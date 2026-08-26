@@ -219,11 +219,7 @@ def _kill_process_tree(pid: int) -> None:
 
 def _server_popen_kwargs() -> dict:
     if IS_WINDOWS:
-        return {
-            "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP
-            | subprocess.DETACHED_PROCESS
-            | subprocess.CREATE_NO_WINDOW
-        }
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS}
     return {"start_new_session": True}
 
 
