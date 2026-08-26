@@ -296,7 +296,11 @@ def _kill_pid(pid: int) -> None:
 
 def _server_kwargs() -> dict[str, object]:
     if IS_WINDOWS:
-        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS}
+        return {
+            "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP
+            | subprocess.DETACHED_PROCESS
+            | subprocess.CREATE_NO_WINDOW
+        }
     return {"start_new_session": True}
 
 

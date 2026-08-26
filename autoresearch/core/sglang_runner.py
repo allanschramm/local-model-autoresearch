@@ -78,7 +78,7 @@ def _sglang_env() -> dict[str, str]:
 
 def _popen_group_kwargs() -> dict[str, Any]:
     if IS_WINDOWS:
-        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW}
     return {"preexec_fn": os.setsid}
 
 
