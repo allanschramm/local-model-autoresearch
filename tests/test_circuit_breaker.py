@@ -15,21 +15,21 @@ from autoresearch.core import circuit_breaker as cb
 
 def test_preflight_ok(monkeypatch):
     monkeypatch.setattr(cb, "free_ram_mb", lambda: 20_000)
-    free = cb.preflight_ram(model_bytes=5 * 1024 * 1024, floor_mb=2500)
+    free = cb.preflight_ram(model_bytes=5 * 1024 * 1024, margin_mb=512)
     assert free == 20_000
 
 
 def test_preflight_rejects_when_insufficient(monkeypatch):
     monkeypatch.setattr(cb, "free_ram_mb", lambda: 8_000)
-    # model 10 GiB + workspace 1 GiB + floor 2.5 GiB = 13.5 GiB > 8 GiB free.
+    # model 10 GiB + workspace 1 GiB + margin 0.5 GiB = 11.5 GiB > 8 GiB free.
     with pytest.raises(cb.CircuitBreakerError, match="RAM_PREFLIGHT"):
-        cb.preflight_ram(model_bytes=10 * 1024**3, floor_mb=2500, workspace_mb=1024)
+        cb.preflight_ram(model_bytes=10 * 1024**3, margin_mb=512, workspace_mb=1024)
 
 
 def test_preflight_unmeasurable_does_not_block(monkeypatch):
     monkeypatch.setattr(cb, "free_ram_mb", lambda: None)
     # Cannot measure -> do not block (runtime watchdog may be degraded too).
-    assert cb.preflight_ram(model_bytes=5 * 1024 * 1024, floor_mb=2500) == 0.0
+    assert cb.preflight_ram(model_bytes=5 * 1024 * 1024, margin_mb=512) == 0.0
 
 
 def test_watchdog_kills_on_low_free_ram(monkeypatch):

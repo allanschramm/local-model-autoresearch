@@ -15,6 +15,12 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from autoresearch.core.circuit_breaker import (
+    DEFAULT_FLOOR_MB,
+    DEFAULT_POLL_S,
+    DEFAULT_PREFLIGHT_MARGIN_MB,
+    DEFAULT_RESERVE_MB,
+)
 from autoresearch.core.model_arch import is_dense_model
 
 
@@ -45,6 +51,10 @@ ENGINE_DEFAULTS = {
     'SPEC_TYPE': None,
     'SPEC_DRAFT_N_MAX': 0,
     'SPEC_DRAFT_MODEL': None,
+    # codacus-fork only (not in upstream b10549 common args): expert-cache trace
+    # CSV (repo-relative) + slot count. Both None → no --moe-cache-* flags.
+    'MOE_CACHE_PROFILE': None,
+    'MOE_CACHE_SLOTS': None,
     'NO_MMAP': False,
     'JINJA': True,
     'REASONING_BUDGET': None,
@@ -69,9 +79,11 @@ ENGINE_DEFAULTS = {
     # Permanent RAM circuit breaker (autoresearch/core/circuit_breaker.py):
     # kills any llama process tree when free RAM < FREE_RAM_FLOOR_MB or its
     # working set > physical - RAM_WATCHDOG_RESERVE_MB. Always on.
-    'FREE_RAM_FLOOR_MB': 2500,
-    'RAM_WATCHDOG_POLL_S': 1.0,
-    'RAM_WATCHDOG_RESERVE_MB': 4096,
+    'FREE_RAM_FLOOR_MB': DEFAULT_FLOOR_MB,
+    'RAM_WATCHDOG_POLL_S': DEFAULT_POLL_S,
+    'RAM_WATCHDOG_RESERVE_MB': DEFAULT_RESERVE_MB,
+    # Launch gate only (small): the runtime watchdog enforces FREE_RAM_FLOOR_MB.
+    'RAM_PREFLIGHT_MARGIN_MB': DEFAULT_PREFLIGHT_MARGIN_MB,
     # Min tg t/s for Trial reject gate. MoE on 8GB often lands 15–19 — lower per model if needed.
     'TPS_FLOOR': 20.0,
     # llama-cli / SGLang bench: median of this many generations after GPU cooldown.

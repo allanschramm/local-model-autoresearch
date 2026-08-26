@@ -5,9 +5,15 @@ always-on 2026-08-25 after a raw llama-cli probe ballooned to a 22.4 GB
 working set and thrashed the pagefile): kill the spawned llama process tree
 when either
 
-- system free RAM drops below FREE_RAM_FLOOR_MB (default 2500 MiB), or
+- system free RAM drops below FREE_RAM_FLOOR_MB (default 500 MiB), or
 - the watched process's own working set exceeds physical RAM minus
   RAM_WATCHDOG_RESERVE_MB (default 4096 MiB).
+
+Floor history: 2500 MiB came from the codacus memory-envelope incident
+(machine already thrashing at that point); the operator set 500 MiB on
+2026-08-25. The single-process balloon guard is the RSS cap
+(physical - reserve); the free-RAM floor only needs to catch combined
+near-death.
 
 Both rules are relative to the machine's physical RAM, so the breaker scales
 to any hardware. It is a hard guarantee: no model process launched through
@@ -39,10 +45,13 @@ import time
 from collections.abc import Callable
 
 # Defaults (match the operator protocol; overridable per integration).
-DEFAULT_FLOOR_MB = 2500
+DEFAULT_FLOOR_MB = (
+    500  # runtime kill: free RAM below this = swap-spill risk (operator-set 2026-08-25)
+)
 DEFAULT_POLL_S = 1.0
 DEFAULT_RESERVE_MB = 4096
 DEFAULT_WORKSPACE_MB = 1024
+DEFAULT_PREFLIGHT_MARGIN_MB = 512  # launch gate only; watchdog is the real guard
 
 _STILL_ACTIVE = 259  # Windows STILL_ACTIVE exit code
 
@@ -248,25 +257,29 @@ def kill_process_tree(pid: int) -> None:
 
 def preflight_ram(
     model_bytes: int,
-    floor_mb: float = DEFAULT_FLOOR_MB,
+    margin_mb: float = DEFAULT_PREFLIGHT_MARGIN_MB,
     workspace_mb: float = DEFAULT_WORKSPACE_MB,
 ) -> float:
-    """Refuse a launch when free RAM cannot hold the model + workspace + floor.
+    """Refuse a launch when free RAM cannot hold the model + workspace + margin.
 
-    Returns free MiB on success; raises :class:`CircuitBreakerError` when the
-    host cannot absorb the model without risking pagefile thrash.
+    The margin is intentionally small (512 MiB default): the *runtime* watchdog
+    (FREE_RAM_FLOOR_MB, default 500) is the hard anti-swap guarantee during the
+    run. The preflight only prevents obviously-impossible launches (free RAM
+    below the file size) and launch-then-instant-kill loops.
+
+    Returns free MiB on success; raises :class:`CircuitBreakerError` otherwise.
     """
     free = free_ram_mb()
     if free is None:
         # Cannot measure: do not block (worst case the runtime watchdog is
         # also degraded) — but still refuse for absurdly large models.
         return 0.0
-    need_mb = model_bytes / (1024 * 1024) + workspace_mb + floor_mb
+    need_mb = model_bytes / (1024 * 1024) + workspace_mb + margin_mb
     if free < need_mb:
         raise CircuitBreakerError(
             f"RAM_PREFLIGHT free={free:.0f}MB < need={need_mb:.0f}MB "
             f"(model={model_bytes / (1024 * 1024):.0f}MB + workspace={workspace_mb:.0f}MB "
-            f"+ floor={floor_mb:.0f}MB) — refusing launch to prevent swap spill"
+            f"+ margin={margin_mb:.0f}MB) — refusing launch to prevent swap spill"
         )
     return free
 

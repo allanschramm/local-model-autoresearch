@@ -188,6 +188,8 @@ class ServerIntent:
     spec_draft_model: str | None = None
     n_cpu_moe: int | None = None
     n_cpu_moe_auto: bool = False
+    moe_cache_profile: str | None = None
+    moe_cache_slots: int | None = None
 
     @classmethod
     def from_config(cls, cfg: dict, models_dir: Path, **overrides) -> tuple["ServerIntent", dict]:
@@ -260,6 +262,8 @@ class ServerIntent:
             spec_draft_model=draft_path,
             n_cpu_moe=resolved_n_cpu_moe,
             n_cpu_moe_auto=n_cpu_moe_auto,
+            moe_cache_profile=norm.get("moe_cache_profile"),
+            moe_cache_slots=norm.get("moe_cache_slots"),
         )
 
         return intent, norm
@@ -1001,6 +1005,15 @@ class LlamaServerRunner:
                     draft_path = self.intent.model_path.parent / draft_path
                 cmd += ["--spec-draft-model", str(draft_path)]
 
+        # codacus-fork expert-cache passthrough (not present in upstream common args).
+        if self.intent.moe_cache_profile:
+            profile = Path(self.intent.moe_cache_profile)
+            if not profile.is_absolute():
+                profile = Path.cwd() / profile
+            cmd += ["--moe-cache-profile", str(profile)]
+            if self.intent.moe_cache_slots:
+                cmd += ["--moe-cache-slots", str(int(self.intent.moe_cache_slots))]
+
         # VITRIOL: MoE expert offload only (resolved in from_config). Dense: no flag.
         if self.intent.n_cpu_moe is not None:
             print(
@@ -1035,9 +1048,14 @@ class LlamaServerRunner:
         self._guard = ProcessGuard()
 
         # Permanent RAM circuit breaker: refuse a launch that cannot fit in RAM.
-        floor = float(config.DEFAULTS.get("FREE_RAM_FLOOR_MB", 2500))
+        # Small launch margin; the runtime watchdog enforces the real floor.
+        margin = float(
+            config.DEFAULTS.get(
+                "RAM_PREFLIGHT_MARGIN_MB", circuit_breaker.DEFAULT_PREFLIGHT_MARGIN_MB
+            )
+        )
         try:
-            circuit_breaker.preflight_ram(self.intent.model_path.stat().st_size, floor_mb=floor)
+            circuit_breaker.preflight_ram(self.intent.model_path.stat().st_size, margin_mb=margin)
         except circuit_breaker.CircuitBreakerError as exc:
             print(f"  [RAM] {exc}", flush=True)
             raise
@@ -1074,9 +1092,17 @@ class LlamaServerRunner:
             if self._server_proc.pid is not None:
                 self._ram_thread = circuit_breaker.start_ram_watchdog(
                     self._server_proc.pid,
-                    floor_mb=float(config.DEFAULTS.get("FREE_RAM_FLOOR_MB", 2500)),
-                    poll_s=float(config.DEFAULTS.get("RAM_WATCHDOG_POLL_S", 1.0)),
-                    reserve_mb=float(config.DEFAULTS.get("RAM_WATCHDOG_RESERVE_MB", 4096)),
+                    floor_mb=float(
+                        config.DEFAULTS.get("FREE_RAM_FLOOR_MB", circuit_breaker.DEFAULT_FLOOR_MB)
+                    ),
+                    poll_s=float(
+                        config.DEFAULTS.get("RAM_WATCHDOG_POLL_S", circuit_breaker.DEFAULT_POLL_S)
+                    ),
+                    reserve_mb=float(
+                        config.DEFAULTS.get(
+                            "RAM_WATCHDOG_RESERVE_MB", circuit_breaker.DEFAULT_RESERVE_MB
+                        )
+                    ),
                     on_kill=self._maybe_kill_ram,
                 )
 
