@@ -22,6 +22,7 @@ def _ensure_repo_root_on_sys_path() -> None:
 
 _ensure_repo_root_on_sys_path()
 
+from autoresearch.core import circuit_breaker
 from autoresearch.core.llama_runner import IS_WINDOWS, resolve_llama_server, resolve_model_path
 from autoresearch.core.single_load import SingleLoadError, enforce_single_load
 
@@ -419,6 +420,15 @@ def cmd_start(alias_name: str | None, allow_multi: bool = False) -> int:
         print(str(exc))
         return 1
 
+    # Permanent RAM circuit breaker: refuse a launch that cannot fit in RAM.
+    try:
+        circuit_breaker.preflight_ram((REPO_ROOT / cfg.model).stat().st_size)
+    except circuit_breaker.CircuitBreakerError as exc:
+        print(f"Refusing: {exc}")
+        return 1
+    except OSError:
+        print("WARN: cannot stat model for RAM preflight; continuing")
+
     if _is_healthy(cfg.host, cfg.port):
         print(f"Already up: {cfg.name} at http://{cfg.host}:{cfg.port}/v1")
         return 0
@@ -450,6 +460,28 @@ def cmd_start(alias_name: str | None, allow_multi: bool = False) -> int:
             **_server_kwargs(),
         )
         _write_state(RunningState(proc.pid, cfg.name, cfg.alias or cfg.name, cfg.port, cfg.host))
+
+        # Permanent RAM circuit breaker: detached watchdog on the server PID.
+        # model_up exits after the server is healthy, so the watchdog must be
+        # its own process (python -m autoresearch.core.circuit_breaker watch).
+        try:
+            subprocess.Popen(
+                [
+                    sys.executable,
+                    "-m",
+                    "autoresearch.core.circuit_breaker",
+                    "watch",
+                    str(proc.pid),
+                    "--log",
+                    str(LOGFILE),
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                cwd=str(REPO_ROOT),
+                **_server_kwargs(),
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            print(f"WARN: failed to start RAM watchdog: {exc}")
 
         for _ in range(180):
             if _is_healthy(cfg.host, cfg.port):

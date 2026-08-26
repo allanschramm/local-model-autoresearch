@@ -26,6 +26,7 @@ from typing import Any
 _LLAMA_SERVER_HELP_CACHE = None
 
 import autoresearch.core.config as config
+from autoresearch.core import circuit_breaker
 from autoresearch.core.config import ConfigError, is_dense_model, validate_config
 from autoresearch.core.hardware import (
     detect_free_vram_mb,
@@ -881,11 +882,13 @@ class LlamaServerRunner:
         self.peak_vram_mb: float = 0.0
         self.peak_shared_mb: float = 0.0
         self.vram_killed: bool = False
+        self.ram_killed: bool = False
 
         self._server_proc: subprocess.Popen[str] | None = None
         self._server_log: Any = None
         self._stop_event = threading.Event()
         self._vram_thread: threading.Thread | None = None
+        self._ram_thread: threading.Thread | None = None
         self._guard: ProcessGuard | None = None
 
         self.llama_server = resolve_llama_server()
@@ -1031,6 +1034,19 @@ class LlamaServerRunner:
             sweep_leftover_processes()
         self._guard = ProcessGuard()
 
+        # Permanent RAM circuit breaker: refuse a launch that cannot fit in RAM.
+        floor = float(config.DEFAULTS.get("FREE_RAM_FLOOR_MB", 2500))
+        try:
+            circuit_breaker.preflight_ram(self.intent.model_path.stat().st_size, floor_mb=floor)
+        except circuit_breaker.CircuitBreakerError as exc:
+            print(f"  [RAM] {exc}", flush=True)
+            raise
+        except OSError:
+            print(
+                "  [RAM] WARN: cannot stat model for RAM preflight; continuing",
+                flush=True,
+            )
+
         startup_tail: list[str] = []
         for port in candidate_ports(self.intent.port):
             cmd = self._build_cmd(port)
@@ -1055,6 +1071,15 @@ class LlamaServerRunner:
                 text=True,
             )
 
+            if self._server_proc.pid is not None:
+                self._ram_thread = circuit_breaker.start_ram_watchdog(
+                    self._server_proc.pid,
+                    floor_mb=float(config.DEFAULTS.get("FREE_RAM_FLOOR_MB", 2500)),
+                    poll_s=float(config.DEFAULTS.get("RAM_WATCHDOG_POLL_S", 1.0)),
+                    reserve_mb=float(config.DEFAULTS.get("RAM_WATCHDOG_RESERVE_MB", 4096)),
+                    on_kill=self._maybe_kill_ram,
+                )
+
             self.port = port
             if self._wait_for_server(port):
                 return self
@@ -1062,6 +1087,9 @@ class LlamaServerRunner:
             if self.vram_killed:
                 self._cleanup_all()
                 raise RuntimeError("VRAM_LIMIT_EXCEEDED")
+            if self.ram_killed:
+                self._cleanup_all()
+                raise RuntimeError("RAM_CIRCUIT_BREAKER")
 
             # If wait failed, grab the tail before cleaning up
             self._server_log.flush()
@@ -1220,6 +1248,19 @@ class LlamaServerRunner:
 
         self._vram_thread = threading.Thread(target=sampler, daemon=True)
         self._vram_thread.start()
+
+    def _maybe_kill_ram(self, reason: str) -> None:
+        """RAM circuit-breaker callback: kill the server before swap spill."""
+        if self.ram_killed:
+            return
+        self.ram_killed = True
+        print(
+            f"  [RAM] CIRCUIT BREAKER: {reason} ({self.intent.model_path.name}) — "
+            "killing to prevent pagefile swap spill",
+            flush=True,
+        )
+        self._cleanup_process()
+        self._stop_event.set()
 
     def _cleanup_process(self):
         if self._server_proc:

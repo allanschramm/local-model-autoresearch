@@ -10,7 +10,8 @@
 - Causal LM, Qwen 3.5 arch (`qwen35.*` fields), **dense**
 - **`block_count` = 32**
 - `kv_f16_mb @ 65536 ctx` = 4096 MB (q4_0 KV ≈ 1 GB at 65k)
-- **No MTP:** `gguf_has_mtp() == false` — no `qwen35.nextn_predict_layers` field, 0 `nextn`/`mtp`/`eh_proj` tensors of 427 total (verified `GGUFReader` field+tensor scan 2026-08-22; `model_arch.py:126` `nextn_predict_layers` check)
+-
+**2026-08-25 artifact swap:** official `Q4_K_M` was re-uploaded and now carries an MTP head — 4 `nextn` tensors, `block_count` 33 (= 32 + 1 MTP layer; GGUF `block_count` counts the MTP head; base config `num_hidden_layers` is 32), 442 tensors (verified `GGUFReader`). Old no-MTP file kept as `Ornith-1.5-9B-Q4_K_M.premtp-fix.gguf`. Measured vectors (agentic 0.9333 / coding 0.6150) refer to the **old** artifact; remeasurement pending. Whether the new head is trained (vs fresh-init) is undetermined from quantized bytes — acceptance probe pending (family dense-MTP ≈ +46 % TPS only with a working head).
 - **TBD:** exact SSM/attention layout (full_attention_interval, hidden dim) — same file size and arch family as Ornith-1.0-9B Q4_K_M; see [ornith-1.0-9b.md](./ornith-1.0-9b.md) for the family layout.
 
 ## Hardware requirements

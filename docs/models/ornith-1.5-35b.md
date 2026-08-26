@@ -11,7 +11,8 @@
 - **`block_count` = 41** (1.0-35B was 40)
 - **~35B total / ~3B activated** per card (MoE, 256 experts, 8 active + shared)
 - `kv_f16_mb @ 65536 ctx` = 2624 MB (q4_0 KV ≈ 0.7 GB at 65k)
-- **Embedded MTP:** `gguf_has_mtp() == true` — `qwen35moe.nextn_predict_layers = 1` (UINT32), 4 `nextn` tensors at `blk.40.nextn.*` (`eh_proj.weight`, `enorm.weight`, `hnorm.weight`, `shared_head_norm.weight`) of 753 total (verified `GGUFReader` 2026-08-22; `model_arch.py:126` `nextn_predict_layers` check) — unlike 1.0-35B (no MTP)
+-
+**2026-08-25 artifact swap:** official `Q4_K_M` was re-uploaded (post-2026-08-23 fix) with a new MTP head — byte-diff vs the old file: all 4 `nextn` tensors changed, `output.weight`/`token_embd.weight` bit-identical (verified `GGUFReader`+sha256). Old file kept as `Ornith-1.5-35B-Q4_K_M.premtp-fix.gguf`. Measured vectors (agentic 0.8667 / coding 0.6300) refer to the **old** artifact; remeasurement pending. The 2026-08-22 MTP dead-end (acceptance 0.38, −25% decode on `n-cpu-moe`) was measured on the old **untrained** head — acceptance re-probe on the new head pending. Note: Q4_K_M tensors are packed quant bytes — kurtosis analysis on raw `GGUFReader` data is invalid (2026-08-25 lesson).
 - **TBD:** exact expert/hidden layout — verify full SSM/MoE params on next card edit
 
 ## Hardware requirements

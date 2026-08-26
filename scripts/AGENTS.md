@@ -10,6 +10,7 @@ Repository operators and developers.
 - Scripts must be runnable from the repository root.
 - OpenVINO GenAI remains optional. `bench_openvino.py` imports it only while running and exits nonzero with an actionable install message when unavailable.
 - `model_up.py` (global `model-up`) must work from any cwd: resolve `--model` and draft path flags (`--spec-draft-model` / `-md` / `--model-draft`) to absolute paths, and spawn `llama-server` with `cwd=REPO_ROOT`.
+- `model_up.py` enforces the permanent RAM circuit breaker: `preflight_ram` refuses launches that cannot fit in free RAM (model + workspace + 2500 MiB floor), and a detached watchdog process (`python -m autoresearch.core.circuit_breaker watch <pid>`, survives the launcher exit) kills the server tree if the machine would spill to swap.
 - `setup-check.sh` is the canonical readiness verification script (supports GPU acceleration and CPU-only builds). It must import-check every package listed in root `requirements.txt` (including `gguf`).
 
 ## Work Guidance
