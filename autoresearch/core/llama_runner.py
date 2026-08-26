@@ -83,7 +83,10 @@ def _is_gpu_working(binary_name: str, probe_flag: str) -> bool:
         return False
     try:
         res = subprocess.run(
-            [tool_path, probe_flag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            [tool_path, probe_flag],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NO_WINDOW if IS_WINDOWS else 0,
         )
         return res.returncode == 0
     except Exception:

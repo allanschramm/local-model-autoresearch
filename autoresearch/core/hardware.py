@@ -24,6 +24,13 @@ DISCRETE_HEADROOM_FLOOR_MB = 4096.0
 DISCRETE_HEADROOM_RATIO = 0.15
 
 
+def _spawn_kwargs() -> dict:
+    """Windows: console probes (wmic/powershell/nvidia-smi/typeperf) must never pop a terminal."""
+    if os.name == "nt":
+        return {"creationflags": subprocess.CREATE_NO_WINDOW}
+    return {}
+
+
 def classify_memory_class(
     *, has_cuda: bool, has_rocm: bool = False, has_metal: bool = False
 ) -> str:
@@ -51,6 +58,7 @@ def detect_host_ram_mb() -> float | None:
                 capture_output=True,
                 text=True,
                 check=False,
+                **_spawn_kwargs(),
             )
             lines = [line.strip() for line in res.stdout.splitlines() if line.strip().isdigit()]
             if lines:
@@ -97,6 +105,7 @@ def detect_nvidia() -> tuple[str | None, float, bool]:
             capture_output=True,
             text=True,
             check=False,
+            **_spawn_kwargs(),
         )
         if res.returncode == 0 and res.stdout.strip():
             line = res.stdout.strip().splitlines()[0]
@@ -120,6 +129,7 @@ def detect_gpu_temp_c() -> float | None:
             capture_output=True,
             text=True,
             check=False,
+            **_spawn_kwargs(),
         )
         if res.returncode == 0 and res.stdout.strip():
             line = res.stdout.strip().splitlines()[0]
@@ -189,6 +199,7 @@ def detect_amd() -> tuple[str | None, float, bool]:
                 capture_output=True,
                 text=True,
                 check=False,
+                **_spawn_kwargs(),
             )
             if res.returncode == 0 and res.stdout.strip():
                 line = res.stdout.strip().splitlines()[0]
@@ -232,6 +243,7 @@ def _nvidia_smi_memory_mb(query: str) -> float | None:
             capture_output=True,
             text=True,
             check=False,
+            **_spawn_kwargs(),
         )
         raw = (res.stdout or "").strip()
         if res.returncode == 0 and raw:
@@ -273,6 +285,7 @@ def detect_used_total_vram_mb() -> tuple[float, float | None]:
             "0",
         ],
         text=True,
+        **_spawn_kwargs(),
     )
     parts = [p.strip() for p in (res.strip().splitlines() or [""])[0].split(",")]
     used = float(parts[0] or 0.0)
@@ -300,6 +313,7 @@ def detect_pid_gpu_shared_mb(pid: int) -> float | None:
             capture_output=True,
             text=True,
             check=False,
+            **_spawn_kwargs(),
         )
         if res.returncode != 0:
             return None
@@ -354,6 +368,7 @@ def detect_physical_cores() -> int | None:
                 capture_output=True,
                 text=True,
                 check=False,
+                **_spawn_kwargs(),
             )
             lines = [line.strip() for line in res.stdout.splitlines() if line.strip().isdigit()]
             if lines:

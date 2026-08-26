@@ -17,15 +17,16 @@ near-death.
 
 Both rules are relative to the machine's physical RAM, so the breaker scales
 to any hardware. It is a hard guarantee: no model process launched through
-this repo may ever pagefile-thrash the host.
+the harness may ever pagefile-thrash the host.
 
-Two integration points (both permanent):
+Integration point (permanent):
 
 - ``autoresearch/core/llama_runner.py`` — harness server launches run an
   in-process watchdog thread (the runner process outlives the server).
-- ``scripts/model_up.py`` — the alias launcher spawns a *detached* watchdog
-  process (``python -m autoresearch.core.circuit_breaker watch <pid>``),
-  because the launcher exits after the server is healthy.
+
+``scripts/model_up.py`` alias launches are exempt (operator decision
+2026-08-26): aliases are hand-tuned trusted recipes, and the detached
+watchdog's probe subprocesses popped terminal windows on Windows 11.
 
 Memory reading is cross-platform and dependency-free: ctypes
 (GlobalMemoryStatusEx / GetProcessMemoryInfo) on Windows, ``/proc/meminfo``
@@ -240,6 +241,7 @@ def kill_process_tree(pid: int) -> None:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 timeout=15,
+                creationflags=subprocess.CREATE_NO_WINDOW,
             )
             return
         try:

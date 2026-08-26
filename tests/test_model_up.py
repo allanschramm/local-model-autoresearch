@@ -286,14 +286,11 @@ def test_model_up_start_allow_multi_flag_bypasses_gate(tmp_path, monkeypatch):
     )
 
     assert model_up.main(["demo", "--allow-multi"]) == 1
-    assert len(captured) == 2  # llama-server + RAM circuit-breaker watchdog
+    assert len(captured) == 1  # llama-server only (no RAM watchdog on aliases since 2026-08-26)
     cmd = captured[0]
     assert cmd[0] == str(Path("llama-server.exe"))
     assert "--model" in cmd
     assert "--port" in cmd and "18080" in cmd
-    watch = captured[1]
-    assert "-m" in watch and "autoresearch.core.circuit_breaker" in watch
-    assert "4242" in watch  # FakeProc.pid
 
 
 def test_model_up_start_allow_multi_env_bypasses_gate(tmp_path, monkeypatch):
@@ -307,8 +304,6 @@ def test_model_up_start_allow_multi_env_bypasses_gate(tmp_path, monkeypatch):
     )
 
     assert model_up.cmd_start("demo") == 1
-    assert len(captured) == 2  # llama-server + RAM circuit-breaker watchdog
+    assert len(captured) == 1  # llama-server only (no RAM watchdog on aliases since 2026-08-26)
     cmd = captured[0]
     assert cmd[0] == str(Path("llama-server.exe"))
-    watch = captured[1]
-    assert "-m" in watch and "autoresearch.core.circuit_breaker" in watch

@@ -196,6 +196,7 @@ def _pid_exists(pid: int) -> bool:
             ["tasklist", "/FI", f"PID eq {pid}"],
             capture_output=True,
             text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
         )
         return str(pid) in result.stdout
     try:
@@ -207,7 +208,12 @@ def _pid_exists(pid: int) -> bool:
 
 def _kill_process_tree(pid: int) -> None:
     if IS_WINDOWS:
-        subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, text=True)
+        subprocess.run(
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
+            capture_output=True,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
         return
     os.killpg(os.getpgid(pid), signal.SIGTERM)
     time.sleep(2)
@@ -219,7 +225,11 @@ def _kill_process_tree(pid: int) -> None:
 
 def _server_popen_kwargs() -> dict:
     if IS_WINDOWS:
-        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS}
+        return {
+            "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP
+            | subprocess.DETACHED_PROCESS
+            | subprocess.CREATE_NO_WINDOW
+        }
     return {"start_new_session": True}
 
 

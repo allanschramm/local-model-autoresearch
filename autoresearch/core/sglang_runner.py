@@ -140,6 +140,7 @@ def run_sglang_bench_validation(
                     capture_output=True,
                     text=True,
                     check=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW if IS_WINDOWS else 0,
                 )
                 vram_gb = float(res.stdout.splitlines()[0].strip()) / 1024
             except Exception:
