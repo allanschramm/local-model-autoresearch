@@ -12,7 +12,7 @@
 - **~35B total / ~3B activated** per card (MoE, 256 experts, 8 active + shared)
 - `kv_f16_mb @ 65536 ctx` = 2624 MB (q4_0 KV ≈ 0.7 GB at 65k)
 -
-**2026-08-25 artifact swap:** official `Q4_K_M` was re-uploaded (post-2026-08-23 fix) with a new MTP head — byte-diff vs the old file: all 4 `nextn` tensors changed, `output.weight`/`token_embd.weight` bit-identical (verified `GGUFReader`+sha256). Old file kept as `Ornith-1.5-35B-Q4_K_M.premtp-fix.gguf`. Measured vectors (agentic 0.8667 / coding 0.6300) refer to the **old** artifact; remeasurement pending. The 2026-08-22 MTP dead-end (acceptance 0.38, −25% decode on `n-cpu-moe`) was measured on the old **untrained** head — acceptance re-probe on the new head pending. Note: Q4_K_M tensors are packed quant bytes — kurtosis analysis on raw `GGUFReader` data is invalid (2026-08-25 lesson).
+**2026-08-25 artifact swap:** official `Q4_K_M` was re-uploaded (post-2026-08-23 fix) with a new MTP head — byte-diff vs the old file: all 4 `nextn` tensors changed, `output.weight`/`token_embd.weight` bit-identical (verified `GGUFReader`+sha256). Old file kept as `Ornith-1.5-35B-Q4_K_M.premtp-fix.gguf`. Measured vectors (agentic 0.8667 / coding 0.6300) refer to the **old** artifact; remeasurement pending. The 2026-08-22 MTP dead-end (acceptance 0.38, −25% decode on `n-cpu-moe`) was measured on the old **untrained** head — re-probed 2026-08-26 on the new trained head (see MTP section): acceptance 0.567 but decode still −9.7% — MTP remains a net loss on this MoE. Note: Q4_K_M tensors are packed quant bytes — kurtosis analysis on raw `GGUFReader` data is invalid (2026-08-25 lesson).
 - **TBD:** exact expert/hidden layout — verify full SSM/MoE params on next card edit
 
 ## Hardware requirements
@@ -41,6 +41,11 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 - **Pareto-dominated:** TPS −0.7% at `n=1`, −11% at `n=2`, −34% at 131k `n=4` vs the 27.8 t/s non-MTP baseline (`f8980537`).
 - **Estimator fixed:** MoE workspace zeroed — the VRAM estimator (not the binary) was the limiter; post-fix runs estimate correctly.
 - 1.0-35B had NO MTP — do not carry that assumption to 1.5.
+- **2026-08-26 (new trained head, harness ladder, codacus fork, ctx 131k, n-cpu-moe 41):**
+  - MTP n-max 2: pp 213.5 t/s, tg **28.0** (−9.7 % vs 31.0 control), acceptance **0.567** (135/238) — trained head tripled acceptance vs the untrained 0.38 but the net decode loss persists (CPU-offloaded MoE: head overhead > accepted-token savings).
+  - Cache-only (48 slots): pp 204.2, tg **36.9** (+19 %) — the 35B winner; unchanged from the old file.
+  - Stack MTP+cache: tg 31.2, acceptance 0.634 @ ngl 36/ctx 115k — the only keepout-compliant fit (ngl 99/ctx 131k peaks 7700–7896 MB > 7676); ~4–5 ms/token CPU-attention penalty means the true GPU-resident stack ≈ 35–37 ≈ cache — cancels, no gain.
+  - Daily profile: cache-only, MTP off.
 
 ## VITRIOL / Split strategy (MoE expert offloading)
 - Auto `--n-cpu-moe 41` (GGUF block_count) — experts on CPU/RAM, attention + shared expert + routing on GPU.
@@ -80,6 +85,6 @@ Same family behavior as 1.5-9B: a 2026-08-22 operator session shows 18/19 turns 
 - Trial rows: `results.tsv` `53ba75b7` (complete vector on_front), `500e9967` (agentic rerun @240 s), `f8980537` (agentic 0.8667 @4096)
 - Evidence artifacts (2026-08-20): `autoresearch/runners/logs/llama-server-20260820-121648-Ornith-1.5-35B-Q4_K_M.log`, `agentic-20260820-135750-Ornith-1.5-35B-Q4_K_M.json`
 ## Open questions
-- MTP measured: no speedup on this MoE; 131k n4 fits at 4.24GB actual vs 9104 est bench 18.1 < floor.
+- MTP (trained head, 2026-08-26): still no net speedup — acceptance 0.567 but decode −9.7 % @131k; stack cancels; cache-only is the winner (36.9). Pre-fix history: 131k n4 fit at 4.24 GB actual vs 9104 est, bench 18.1 < floor.
 - T053: does a larger ctx (131072) or lighter history (no `REASONING_PRESERVE`) clear the 65k ceiling? REASONING_PRESERVE inflates request size by re-rendering think traces — worth an A/B.
 - T054: task content/research path is family-wide weak; possible target for a budget/efficiency A/B later.

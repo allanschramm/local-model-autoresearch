@@ -11,7 +11,7 @@
 - **`block_count` = 32**
 - `kv_f16_mb @ 65536 ctx` = 4096 MB (q4_0 KV ≈ 1 GB at 65k)
 -
-**2026-08-25 artifact swap:** official `Q4_K_M` was re-uploaded and now carries an MTP head — 4 `nextn` tensors, `block_count` 33 (= 32 + 1 MTP layer; GGUF `block_count` counts the MTP head; base config `num_hidden_layers` is 32), 442 tensors (verified `GGUFReader`). Old no-MTP file kept as `Ornith-1.5-9B-Q4_K_M.premtp-fix.gguf`. Measured vectors (agentic 0.9333 / coding 0.6150) refer to the **old** artifact; remeasurement pending. Whether the new head is trained (vs fresh-init) is undetermined from quantized bytes — acceptance probe pending (family dense-MTP ≈ +46 % TPS only with a working head).
+**2026-08-25 artifact swap:** official `Q4_K_M` was re-uploaded and now carries an MTP head — 4 `nextn` tensors, `block_count` 33 (= 32 + 1 MTP layer; GGUF `block_count` counts the MTP head; base config `num_hidden_layers` is 32), 442 tensors (verified `GGUFReader`). Old no-MTP file kept as `Ornith-1.5-9B-Q4_K_M.premtp-fix.gguf`. Measured vectors (agentic 0.9333 / coding 0.6150) refer to the **old** artifact; remeasurement pending. Head verified **trained** 2026-08-26 (harness ladder): acceptance 0.624, decode **61.6 t/s = +49.5 %** vs control @80k — the family dense-MTP win is real. MTP @100k ctx peaks 7.92 GB (rejected by the 7676 keepout); 80k is the 8 GB-class ceiling with the head.
 - **TBD:** exact SSM/attention layout (full_attention_interval, hidden dim) — same file size and arch family as Ornith-1.0-9B Q4_K_M; see [ornith-1.0-9b.md](./ornith-1.0-9b.md) for the family layout.
 
 ## Hardware requirements
@@ -31,7 +31,7 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 **Seeded for this Trial:** coding profile (TEMP 0.6) — matches the card's own ClawEval eval config (temp=0.6).
 
 ## MTP (Multi-Token Prediction)
-- **This GGUF has NO MTP/nextn tensors.** `gguf_has_mtp() == false`, `SPEC_TYPE=None`. Verified 2026-08-22: `GGUFReader` 0 `nextn` tensors / 427 total, no `nextn_predict_layers` field (`autoresearch/core/model_arch.py:126`). No MTP pack exists for 1.5-9B yet; speculative decoding requires external draft only.
+- **MTP head present and trained (2026-08-25 swap + 2026-08-26 probe).** 4 `nextn` tensors, `block_count` 33 (= 32 + 1 MTP layer), `SPEC_TYPE='draft-mtp'` via `--spec-type draft-mtp --spec-draft-n-max 2` (llama.cpp never auto-enables). Measured 2026-08-26 (b10549, harness ladder): @80k pp 1755 t/s, tg **61.6** (+49.5 % vs 41.2 control @80k), acceptance **0.624**; @100k MTP peaks 7924 MB > keepout 7676 — VRAM-rejected, 80k is the ceiling. n-max 4 vs 2 VRAM delta negligible (7961 vs 7924 @100k).
 
 ## VITRIOL / Split strategy
 - Dense — no expert offload. Full GPU: `-ngl 99`, `N_CPU_MOE=None`.
@@ -124,7 +124,7 @@ Lever verdicts (mechanisms verified in pinned-build source, 2026-08-25):
 | 131072, 512/128, 6/8, q4_0 | bench 44.4 but `est 7962>7932` preflight FAIL | — | needs keepout 0 (risky) — out of scope |
 | 100000, 512/128, 6/8, f16 | 44.50 +0.10 | prior sweep | bench win but `est 11918>7932` not server-viable |
 
-**Plateau:** dense 32-layer qwen35 at `Q4_K_M` saturates **44.3–44.4 t/s** on 8 GB-class discrete NVIDIA without MTP. No `BATCH`/`UBATCH`/`THREADS`/`NO_MMAP`/`CONT_BATCHING`/`FLASH_ATTN`/`KV` lift beyond ±0.1 (0.2–0.7% noise). `CTX >65k` does not affect `bench_tg` (capped `c=4096`) — VRAM estimate is limiter. Viable `70k–120k q4_0` all same; `100000` chosen as ≥100k sweet spot, `8/8` threads persisted. Previous ad-hoc `hill_bench_only.py` plateau now reproduced via durable `benchmark_search.py` logs — not prose.
+**Plateau:** dense 32-layer qwen35 at `Q4_K_M` saturates **44.3–44.4 t/s** on 8 GB-class discrete NVIDIA without MTP. The trained MTP head (2026-08-26) breaks the plateau: **61.6 t/s @80k ctx (+49.5 %)**, acceptance 0.624 — the family dense-MTP target. No `BATCH`/`UBATCH`/`THREADS`/`NO_MMAP`/`CONT_BATCHING`/`FLASH_ATTN`/`KV` lift beyond ±0.1 (0.2–0.7% noise). `CTX >65k` does not affect `bench_tg` (capped `c=4096`) — VRAM estimate is limiter. Viable `70k–120k q4_0` all same; `100000` chosen as ≥100k sweet spot, `8/8` threads persisted. Previous ad-hoc `hill_bench_only.py` plateau now reproduced via durable `benchmark_search.py` logs — not prose.
 
 **Env for reproduction:** `AUTORESEARCH_LLAMA_CPP_ROOT=b10549`, `AUTORESEARCH_SKIP_FREE_CLAMP=1`, `AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB=256`, `VRAM_LIMIT_MB=8000`, `TPS_REPS=3`.
 ## Open questions
