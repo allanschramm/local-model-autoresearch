@@ -73,7 +73,9 @@ def read_store(path: Path) -> dict[str, str]:
     return {r["trial_id"]: r["status"] for r in run.read_rows(path)}
 
 
-def test_complete_non_dominated_on_front_and_dominated_demoted(store):
+def test_complete_points_both_on_front_across_basenames(store):
+    # ADR 0017: two DIFFERENT baselines in one bucket never demote each other —
+    # every complete model appears once on the front regardless of being beaten.
     better = row(
         trial_id="better",
         model="B.gguf",
@@ -85,7 +87,7 @@ def test_complete_non_dominated_on_front_and_dominated_demoted(store):
     worse = row(trial_id="worse", model="M.gguf", tps="30.0", agentic="0.6", coding="0.6")
     write_store(store, [better, worse])
     run.recompute_statuses(store)
-    assert read_store(store) == {"better": "on_front", "worse": "dominated"}
+    assert read_store(store) == {"better": "on_front", "worse": "on_front"}
 
 
 def test_incomplete_and_rejected_left_out_of_domination(store):
@@ -173,8 +175,9 @@ def test_same_fp_different_peak_vram_merges_via_vram_limit(store):
     assert read_store(store) == {"cod": "on_front", "ag": "on_front"}
 
 
-def test_later_group_demotes_earlier_group(store):
-    # Input order must not matter: 'a' comes first but is dominated by 'b'.
+def test_different_basenames_all_on_front_regardless_of_order(store):
+    # ADR 0017: input order is irrelevant and cross-baseline demotion ceased —
+    # both basenames stay on_front whatever order they were written.
     a = row(
         trial_id="a",
         model="A.gguf",
@@ -193,11 +196,11 @@ def test_later_group_demotes_earlier_group(store):
     )
     write_store(store, [a, b])
     run.recompute_statuses(store)
-    assert read_store(store) == {"a": "dominated", "b": "on_front"}
+    assert read_store(store) == {"a": "on_front", "b": "on_front"}
     # Reversed input order, same verdict.
     write_store(store, [b, a])
     run.recompute_statuses(store)
-    assert read_store(store) == {"a": "dominated", "b": "on_front"}
+    assert read_store(store) == {"a": "on_front", "b": "on_front"}
 
 
 def test_idempotent_run_twice(store):
@@ -221,12 +224,12 @@ def test_idempotent_run_twice(store):
     run.recompute_statuses(store)
     first = read_store(store)
     run.recompute_statuses(store)
-    assert read_store(store) == first == {"a": "dominated", "b": "on_front"}
+    assert read_store(store) == first == {"a": "on_front", "b": "on_front"}
 
 
-def test_model_scope_keeps_two_models_in_one_bucket_on_front(store):
-    # Bucket scope: A dominates B -> B dominated. Model scope: each model's
-    # own front -> both on_front (per-model lens, ADR 0006 Search/Neighbors).
+def test_bucket_and_model_scopes_agree_per_basename(store):
+    # ADR 0017: domination is same-basename everywhere, so bucket and model
+    # scopes produce identical verdicts — no more cross-baseline demotion.
     a = row(
         trial_id="a",
         model="A.gguf",
@@ -245,7 +248,7 @@ def test_model_scope_keeps_two_models_in_one_bucket_on_front(store):
     )
     write_store(store, [a, b])
     run.recompute_statuses(store)
-    assert read_store(store) == {"a": "on_front", "b": "dominated"}
+    assert read_store(store) == {"a": "on_front", "b": "on_front"}
     out = {
         r["trial_id"]: r["status"]
         for r in recompute.recompute_rows(run.read_rows(store), scope="model")

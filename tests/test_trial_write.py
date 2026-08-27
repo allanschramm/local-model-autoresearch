@@ -247,8 +247,8 @@ def _fp_json() -> str:
 
 def test_recompute_statuses_updates_both_stores(tmp_path):
     tsv = tmp_path / "results.tsv"
-    # Two models in the same budget bucket: the weaker complete vector is
-    # dominated by the stronger one (ADR 0006/0012 bucket scope).
+    # Two DIFFERENT baselines in the same budget bucket never demote each other
+    # (ADR 0017); each stays on_front after recompute.
     _write_row(
         tsv,
         status="on_front",
@@ -273,6 +273,6 @@ def test_recompute_statuses_updates_both_stores(tmp_path):
     run.recompute_statuses(tsv)
     tsv_statuses = sorted(r["status"] for r in _read(tsv))
     db_statuses = sorted(r["status"] for r in run.read_rows(tsv))
-    # Dominated row demoted in BOTH stores (DB canonical, TSV mirror).
+    # Identical statuses in BOTH stores (DB canonical, TSV mirror).
     assert tsv_statuses == db_statuses
-    assert "dominated" in tsv_statuses
+    assert set(tsv_statuses) == {"on_front"}
