@@ -149,7 +149,9 @@ def test_merge_still_incomplete_leaves_rows_alone():
     assert flips == {}
 
 
-def test_plan_write_dominated_by_known_bucket_point():
+def test_plan_write_foreign_stronger_leaves_new_trial_on_front():
+    # ADR 0017: the Known Set is scoped to this Trial's own basename, so a
+    # stronger DIFFERENT model can never demote a new Trial to `dominated`.
     fp = fp_from_baseline(BASELINE)
     better = row(
         trial_id="old1",
@@ -168,7 +170,33 @@ def test_plan_write_dominated_by_known_bucket_point():
         bucket_gb=8,
         model="M.gguf",
     )
-    assert status == "dominated"
+    assert status == "on_front"
+    assert flips == {}
+
+
+def test_plan_write_same_basename_hill_climb_keeps_new_trial_on_front():
+    # Same-basename hill-climb preserved (ADR 0017): a new weaker config of the
+    # SAME GGUF still lands on the shared front rather than being wrongly
+    # demoted — a stronger same-baseline config never blocks an earlier one.
+    fp = fp_from_baseline(BASELINE)
+    stronger = row(
+        trial_id="strong",
+        model="M.gguf",
+        status="on_front",
+        config_json=cfg_json(dict(BASELINE, MODEL="M.gguf", THREADS=8)),
+        ctx="131072",
+        tps="40.0",
+        agentic="0.7",
+        coding="0.7",
+    )
+    status, flips = plan_write(
+        [stronger],
+        fp=fp,
+        vector=v(ctx=131072, tps=30.0, agentic=0.6, coding=0.6),
+        bucket_gb=8,
+        model="M.gguf",
+    )
+    assert status == "on_front"
     assert flips == {}
 
 
