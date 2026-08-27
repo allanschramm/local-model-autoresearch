@@ -118,7 +118,7 @@ def classify_trial(
 def _known_vectors(
     rows: Sequence[Mapping[str, Any]], bucket_gb: int, *, model: str | None = None
 ) -> list[ObjectiveVector]:
-    """Complete points already in this hardware+bucket bucket, merged per basename.
+    """Complete points already in this hardware+budget bucket, merged per basename.
 
     When ``model`` is given, restrict the Known Set to that one GGUF basename
     (ADR 0017): a stronger different model never contributes to the set that

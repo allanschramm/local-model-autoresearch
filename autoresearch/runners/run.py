@@ -883,7 +883,7 @@ def handle_single_run(args):
 
     # Classify via the Pareto nucleus (issue #4): rejected on hard failure,
     # incomplete while any axis is missing, else on_front/dominated vs the
-    # same-basename Known Set for this hardware+bucket bucket (ADR 0017).
+    # same-basename Known Set for this hardware+budget bucket (ADR 0017).
     # coding-10 is canonical-Trial work; validation = smoke gates only (run_trial
     # forces include_coding off). Mirror that so the vector never claims a
     # 0.0 coding axis on a validation row.
