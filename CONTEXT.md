@@ -23,12 +23,12 @@ The four maximize axes of a Trial: configured context (`CTX_SIZE`), TPS, agentic
 _Avoid_: Val Score, blended intelligence, single score
 
 **Pareto Set**:
-The set of Trials whose Objective Vectors are not dominated. Global ranking is the union of per-model fronts for a hardware+budget identity; Neighbor generation stays inside one model.
-_Avoid_: leaderboard winner, single champion, keep list
+Search-internal concept only: the non-dominated Objective Vectors within ONE model's config comparisons (hill-climb). The global model rank is a plain leaderboard — every complete model, quality-first — not a frontier ([ADR 0017](docs/adr/0017-rank-membership-quality-first.md)).
+_Avoid_: leaderboard, keep list
 
 **Domination**:
-Trial A dominates B when A is ≥ on every Objective Vector axis and > on at least one. Dominated Trials are not failures — a better tradeoff exists on the front.
-_Avoid_: discard, reject, worse score
+Same-model config verdict: Trial A dominates B when A is ≥ on every Objective Vector axis and > on at least one. Never applies across different models ([ADR 0017](docs/adr/0017-rank-membership-quality-first.md)). Dominated Trials are not failures.
+_Avoid_: cross-model ranking, discard, reject, worse score
 
 **Fingerprint**:
 Identity of a configuration for merge and frontier membership: the full `ENGINE_DEFAULTS` + `SAMPLER_DEFAULTS` used for the Trial (model, ctx, KV, batch/threads, MTP/spec, offload, sampler, …).

@@ -2,6 +2,7 @@
 
 **Date:** 2026-07-25
 **Status:** Accepted. **Day Usage Profile pick superseded by [0007](0007-day-profile-speed-band.md)** then **[0008](0008-day-iq-epsilon-then-tps.md)** (2026-07-27). Night + Pareto Set membership unchanged.
+**Superseded in part (2026-08-26, operator decision):** cross-model front membership is retired — the rank lists every complete model quality-first and `dominated` becomes a same-model config label ([0017](0017-rank-membership-quality-first.md)).
 **Superseded in part (issue #15, 2026-08-05):** `keep`/`discard` retired as Search truth — `discard` superseded by `dominated`/`incomplete`/`rejected`. Canonical decision = Trial Status via the Pareto nucleus.
 **Superseded in part (2026-08-10):** `keep` TSV persistence alias deleted — writers persist `on_front` only; leftover `keep` cells are not treated as frontier.
 **Superseded in part (2026-08-10):** global Point identity for Day/Night + store status merge → GGUF **basename** ([0012](0012-basename-pareto-point.md)); Fingerprint remains for Neighbor Search / Baseline pick hint.
