@@ -64,10 +64,12 @@ def _load_baseline() -> dict[str, Any]:
     """Read live Baseline from config.py (ENGINE + SAMPLER), never state JSON."""
     try:
         spec = importlib.util.spec_from_file_location(
-            "config", str(_UI_DIR.parents[1] / "autoresearch" / "core" / "config.py")
+            "config", str(_UI_DIR.parent / "autoresearch" / "core" / "config.py")
         )
-        mod = importlib.util.module_from_spec(spec)  # type: ignore[union-attr]
-        spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        if spec is None or spec.loader is None:
+            return {"error": "Baseline: Nenhum dado encontrado."}
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
     except Exception:  # noqa: BLE001
         return {"error": "Baseline: Nenhum dado encontrado."}
     engine = getattr(mod, "ENGINE_DEFAULTS", {})
@@ -170,6 +172,7 @@ _HTML = """<!DOCTYPE html>
   const logTail       = $("log-tail");
   const pinToggle     = $("pin-toggle");
 
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   let pinned = false;
   let lastLogLen = 0;
   let pollCount = 0;
@@ -192,6 +195,15 @@ _HTML = """<!DOCTYPE html>
     }
     baselineEmpty.hidden = true;
     const bg = d.baseline || {};
+    if (bg.error) {
+      baselineEmpty.hidden = false;
+      baselineEmpty.textContent = bg.error;
+      baselineStats.innerHTML = "";
+      baselineChips.innerHTML = "";
+      baselineDetails.innerHTML = "";
+      baselineSampler.hidden = true;
+      return;
+    }
 
     // Stat tiles for critical keys
     baselineStats.innerHTML = "";
