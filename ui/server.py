@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
-"""Dashboard shell server for localhost 18765."""
+"""Dashboard shell server for localhost 18765 (AILOCAL redesign)."""
 
 from __future__ import annotations
 
 import importlib
 import json
+import mimetypes
+import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from typing import Any
 
 from .run_log import run_state_and_tail
 from .trial_reader import format_trial_for_ui, read_last_50_trials
+
+# ── Paths ──────────────────────────────────────────────────────────────────
+
+_UI_DIR = Path(__file__).resolve().parent
+_STATIC_DIR = _UI_DIR / "static"
 
 # Baseline engine keys to surface on the live panel (#24).
 _ENGINE_KEYS = (
@@ -34,130 +42,223 @@ _ENGINE_KEYS = (
     "TPS_FLOOR",
 )
 
+# Engine keys shown as stat tiles in the Baseline panel.
+_STAT_KEYS = (
+    "MODEL",
+    "CTX_SIZE",
+    "KV_CACHE_K",
+    "KV_CACHE_V",
+    "THREADS",
+    "THREADS_BATCH",
+    "N_GPU_LAYERS",
+    "N_CPU_MOE",
+    "SPEC_DRAFT_N_MAX",
+    "TPS_FLOOR",
+)
+
+
+# ── Baseline loader ────────────────────────────────────────────────────────
+
 
 def _load_baseline() -> dict[str, Any]:
     """Read live Baseline from config.py (ENGINE + SAMPLER), never state JSON."""
-    config_module = importlib.import_module("autoresearch.core.config")
-    config_module = importlib.reload(config_module)
-    engine = getattr(config_module, "ENGINE_DEFAULTS", {}) or {}
-    sampler = getattr(config_module, "SAMPLER_DEFAULTS", {}) or {}
-    baseline: dict[str, Any] = {key: engine.get(key) for key in _ENGINE_KEYS}
-    baseline["SAMPLER_DEFAULTS"] = dict(sampler)
-    return baseline
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "config", str(_UI_DIR.parents[1] / "autoresearch" / "core" / "config.py")
+        )
+        mod = importlib.util.module_from_spec(spec)  # type: ignore[union-attr]
+        spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    except Exception:  # noqa: BLE001
+        return {"error": "Baseline: Nenhum dado encontrado."}
+    engine = getattr(mod, "ENGINE_DEFAULTS", {})
+    sampler = getattr(mod, "SAMPLER_DEFAULTS", {})
+    return {**engine, **sampler}
 
+
+# ── HTML shell ─────────────────────────────────────────────────────────────
 
 _HTML = """<!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><title>Dashboard</title>
-<style>
-  body { font-family: system-ui, sans-serif; margin: 1.5rem; }
-  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
-  th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
-  th { background: #f4f4f4; }
-  dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
-  dt { font-weight: 600; }
-  .empty { color: #666; }
-  #run-state { font-weight: 700; }
-  #run-state.running { color: #0a7a2f; }
-  #run-state.idle { color: #666; }
-  #log-tail {
-    background: #111; color: #ddd; padding: 0.75rem; max-height: 20rem;
-    overflow: auto; white-space: pre-wrap; font-size: 0.8rem;
-  }
-</style>
+<head><meta charset="UTF-8"><title>Dashboard — Autotuning</title>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<h1>Dashboard</h1>
-<p>Estado: <span id="run-state" class="idle">—</span></p>
-<p id="status">Carregando status...</p>
-<section>
-  <h2>Baseline</h2>
-  <p id="baseline-empty" class="empty" hidden></p>
-  <dl id="baseline"></dl>
-</section>
-<section>
-  <h2>Últimos Trials</h2>
-  <p id="trials-empty" class="empty" hidden></p>
-  <table id="trials-table" hidden>
-    <thead>
-      <tr>
-        <th>Status</th><th>Outcome</th><th>ctx</th><th>TPS</th>
-        <th>agentic</th><th>coding</th><th>memory</th><th>elapsed</th>
-        <th>diagnostic</th><th>description</th>
-      </tr>
-    </thead>
-    <tbody id="trials-body"></tbody>
-  </table>
-</section>
-<section>
-  <h2>Log do servidor (Trial)</h2>
-  <p id="log-empty" class="empty" hidden></p>
-  <pre id="log-tail"></pre>
-</section>
+
+<!-- ── Fixed Frosted Header ──────────────────────────────────────────── -->
+<header id="header">
+  <span id="wordmark">AUTO<span>TUNING</span></span>
+  <span id="header-model">—</span>
+  <span id="header-spacer"></span>
+  <span id="run-badge"><span class="dot"></span><span id="run-label">—</span></span>
+  <span id="freshness">atualizado há —s</span>
+</header>
+
+<noscript><div id="stale-banner">JavaScript desabilitado — dados não atualizam.</div></noscript>
+
+<!-- ── Stale Data Banner ─────────────────────────────────────────────── -->
+<div id="stale-banner">dados obsoletos — falha na conexão.</div>
+
+<!-- ── Main Grid ─────────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- Baseline Rail -->
+  <section id="baseline-section" class="card">
+    <h2>Baseline</h2>
+    <div id="baseline-stats"></div>
+    <div id="baseline-sampler" class="sampler-group" hidden>
+      <div class="label">SAMPLER</div>
+      <div id="baseline-chips"></div>
+    </div>
+    <div id="baseline-details"></div>
+    <p id="baseline-empty" class="baseline-empty" hidden></p>
+  </section>
+
+  <!-- Trials Table -->
+  <section id="trials-section" class="card">
+    <h2>Últimos Trials</h2>
+    <p id="trials-empty" class="baseline-empty" hidden></p>
+    <table id="trials-table" hidden>
+      <thead>
+        <tr>
+          <th class="status-cell">Status</th>
+          <th>Outcome</th>
+          <th class="num">ctx</th>
+          <th class="num">TPS</th>
+          <th class="num">agentic</th>
+          <th class="num">coding</th>
+          <th class="num">memory</th>
+          <th class="num">elapsed</th>
+          <th>Descrição</th>
+        </tr>
+      </thead>
+      <tbody id="trials-body"></tbody>
+    </table>
+  </section>
+
+  <!-- Log Panel -->
+  <section id="log-section" class="card">
+    <h2>Log do servidor (Trial)</h2>
+    <div id="log-toolbar">
+      <button id="pin-toggle" title="Fixar/Desfixar scroll">📌 Fixar</button>
+    </div>
+    <p id="log-empty" class="baseline-empty" hidden></p>
+    <pre id="log-tail"></pre>
+  </section>
+
+</div>
+
 <script>
-  const statusEl = document.getElementById('status');
-  const runStateEl = document.getElementById('run-state');
-  const baselineEl = document.getElementById('baseline');
-  const baselineEmpty = document.getElementById('baseline-empty');
-  const trialsEmpty = document.getElementById('trials-empty');
-  const trialsTable = document.getElementById('trials-table');
-  const trialsBody = document.getElementById('trials-body');
-  const logEmpty = document.getElementById('log-empty');
-  const logTail = document.getElementById('log-tail');
+(function() {
+  "use strict";
 
+  /* ── Elements ─────────────────────────────────────────────────────── */
+  const $ = id => document.getElementById(id);
+  const headerModel   = $("header-model");
+  const runBadge      = $("run-badge");
+  const runLabel      = $("run-label");
+  const freshness     = $("freshness");
+  const staleBanner   = $("stale-banner");
+  const baselineStats = $("baseline-stats");
+  const baselineSampler = $("baseline-sampler");
+  const baselineChips = $("baseline-chips");
+  const baselineDetails = $("baseline-details");
+  const baselineEmpty = $("baseline-empty");
+  const trialsEmpty   = $("trials-empty");
+  const trialsTable   = $("trials-table");
+  const trialsBody    = $("trials-body");
+  const logEmpty      = $("log-empty");
+  const logTail       = $("log-tail");
+  const pinToggle     = $("pin-toggle");
+
+  let pinned = false;
+  let lastLogLen = 0;
+  let pollCount = 0;
+  let lastPollTime = Date.now();
+
+  /* ── Run-State Badge ──────────────────────────────────────────────── */
   const renderRunState = (d) => {
-    const state = d.run_state || 'Idle';
-    runStateEl.textContent = state;
-    runStateEl.className = state === 'Em execução' ? 'running' : 'idle';
+    const state = d.run_state || "Idle";
+    runLabel.textContent = state;
+    runBadge.className = state === "Em execução" ? "running" :
+                         (d._stale ? "stale" : "idle");
   };
 
-  const renderLog = (d) => {
-    if (d.log_tail == null || d.log_tail === '') {
-      logEmpty.hidden = false;
-      logEmpty.textContent = 'Log do servidor: nenhum arquivo encontrado.';
-      logTail.textContent = '';
-      return;
-    }
-    logEmpty.hidden = true;
-    logTail.textContent = d.log_tail;
-  };
-
+  /* ── Baseline Panel ───────────────────────────────────────────────── */
   const renderBaseline = (d) => {
-    baselineEl.innerHTML = '';
     if (d.error) {
       baselineEmpty.hidden = false;
       baselineEmpty.textContent = d.error;
       return;
     }
-    const baseline = d.baseline || {};
-    const keys = Object.keys(baseline);
-    if (keys.length === 0) {
-      baselineEmpty.hidden = false;
-      baselineEmpty.textContent = 'Baseline: Nenhum dado encontrado.';
-      return;
-    }
     baselineEmpty.hidden = true;
-    for (const key of keys) {
-      const dt = document.createElement('dt');
-      dt.textContent = key;
-      const dd = document.createElement('dd');
-      const value = baseline[key];
-      dd.textContent = (value !== null && typeof value === 'object')
-        ? JSON.stringify(value)
-        : String(value);
-      baselineEl.appendChild(dt);
-      baselineEl.appendChild(dd);
+    const bg = d.baseline || {};
+
+    // Stat tiles for critical keys
+    baselineStats.innerHTML = "";
+    for (const key of ["MODEL","CTX_SIZE","KV_CACHE_K","KV_CACHE_V",
+                       "THREADS","THREADS_BATCH","N_GPU_LAYERS",
+                       "N_CPU_MOE","SPEC_DRAFT_N_MAX","TPS_FLOOR"]) {
+      const val = bg[key];
+      if (val == null) continue;
+      const tile = document.createElement("div");
+      tile.className = "stat-tile";
+      tile.innerHTML = `<div class="label">${key}</div><div class="value">${esc(String(val))}</div>`;
+      baselineStats.appendChild(tile);
     }
+
+    // Sampler chips
+    baselineChips.innerHTML = "";
+    let hasSampler = false;
+    for (const key of ["TEMP","TOP_P","TOP_K","MINT_P","XTC_PROBA",
+                        "XTC_THRESHOLD","REPETITION_PENALTY",
+                        "DRY_MULT","DRY_RATIO","DRY_LAST_N"]) {
+      const val = bg[key];
+      if (val == null) continue;
+      hasSampler = true;
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = `${key}=${esc(String(val))}`;
+      baselineChips.appendChild(chip);
+    }
+    baselineSampler.hidden = !hasSampler;
+
+    // Remaining ENGINE keys in a <details> disclosure
+    const allKeys = new Set([...Object.keys(bg)]);
+    const shown = new Set([...["MODEL","CTX_SIZE","KV_CACHE_K","KV_CACHE_V",
+      "THREADS","THREADS_BATCH","N_GPU_LAYERS","N_CPU_MOE",
+      "SPEC_DRAFT_N_MAX","TPS_FLOOR"], ...["TEMP","TOP_P","TOP_K","MINT_P",
+      "XTC_PROBA","XTC_THRESHOLD","REPETITION_PENALTY","DRY_MULT",
+      "DRY_RATIO","DRY_LAST_N"]]);
+    const remaining = [...allKeys].filter(k => !shown.has(k) && k !== "error");
+    if (remaining.length > 0) {
+      baselineDetails.innerHTML = `<details><summary>ver todas</summary><dl>`;
+      for (const key of remaining) {
+        baselineDetails.innerHTML += `<dt>${esc(key)}</dt><dd>${esc(String(bg[key]))}</dd>`;
+      }
+      baselineDetails.innerHTML += `</dl></details>`;
+    } else {
+      baselineDetails.innerHTML = "";
+    }
+
+    // Model in header
+    if (bg.MODEL) headerModel.textContent = bg.MODEL;
   };
 
+  /* ── Trials Table ─────────────────────────────────────────────────── */
   const cell = (text) => {
-    const td = document.createElement('td');
-    td.textContent = text == null || text === '' ? '—' : String(text);
+    const td = document.createElement("td");
+    td.textContent = text == null || text === "" ? "—" : String(text);
+    return td;
+  };
+  const numCell = (text) => {
+    const td = document.createElement("td");
+    td.className = "num";
+    td.textContent = text == null || text === "" ? "—" : String(text);
     return td;
   };
 
   const renderTrials = (d) => {
-    trialsBody.innerHTML = '';
+    trialsBody.innerHTML = "";
     if (d.error) {
       trialsEmpty.hidden = false;
       trialsEmpty.textContent = d.error;
@@ -167,82 +268,204 @@ _HTML = """<!DOCTYPE html>
     const trials = d.trials || [];
     if (trials.length === 0) {
       trialsEmpty.hidden = false;
-      trialsEmpty.textContent = 'Nenhum dado de Trial encontrado.';
+      trialsEmpty.textContent = "Nenhum dado de Trial encontrado.";
       trialsTable.hidden = true;
       return;
     }
     trialsEmpty.hidden = true;
     trialsTable.hidden = false;
     for (const t of trials) {
-      const tr = document.createElement('tr');
-      for (const key of ['status','outcome','ctx','tps','agentic','coding','memory','elapsed','diagnostic','description']) {
-        tr.appendChild(cell(t[key]));
-      }
+      const tr = document.createElement("tr");
+
+      // Status pill (pt-BR)
+      const sc = document.createElement("td");
+      sc.className = "status-cell";
+      const pill = document.createElement("span");
+      pill.className = "pill";
+      const st = t.status_pt || t.status || "";
+      const cls = st === "na fronteira" ? "on-front" :
+                  st === "dominado" ? "dominated" :
+                  st === "incompleto" ? "incomplete" :
+                  st === "rejeitado" ? "rejected" : "";
+      pill.className += " " + cls;
+      pill.textContent = st;
+      sc.appendChild(pill);
+      tr.appendChild(sc);
+
+      // Outcome (tooltip gets diagnostic)
+      const oc = document.createElement("td");
+      oc.className = "outcome-cell";
+      oc.textContent = t.outcome || "—";
+      if (t.diagnostic) oc.title = t.diagnostic;
+      tr.appendChild(oc);
+
+      // Numeric columns
+      tr.appendChild(numCell(t.ctx));
+      tr.appendChild(numCell(t.tps));
+      tr.appendChild(numCell(t.agentic));
+      tr.appendChild(numCell(t.coding));
+      tr.appendChild(numCell(t.memory));
+      tr.appendChild(numCell(t.elapsed));
+
+      // Description (truncated + tooltip)
+      const dc = document.createElement("td");
+      dc.className = "desc";
+      dc.textContent = t.description || "";
+      if (t.description) dc.title = t.description;
+      tr.appendChild(dc);
+
       trialsBody.appendChild(tr);
     }
   };
 
+  /* ── Log Panel (smart follow + pin) ───────────────────────────────── */
+  const atBottom = (el) => {
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 4;
+  };
+
+  const renderLog = (d) => {
+    if (d.log_tail == null || d.log_tail === "") {
+      logEmpty.hidden = false;
+      logEmpty.textContent = "Log do servidor: nenhum arquivo encontrado.";
+      logTail.textContent = "";
+      return;
+    }
+    logEmpty.hidden = true;
+    logTail.textContent = d.log_tail;
+    // Auto-follow only when not pinned and already at bottom
+    if (!pinned && atBottom(logTail)) {
+      logTail.scrollTop = logTail.scrollHeight;
+    }
+    lastLogLen = d.log_tail.length;
+  };
+
+  /* ── Pin Toggle ───────────────────────────────────────────────────── */
+  pinToggle.addEventListener("click", () => {
+    pinned = !pinned;
+    pinToggle.textContent = pinned ? "📌 Soltar" : "📌 Fixar";
+    pinToggle.classList.toggle("pinned", pinned);
+    // If unpinned and there's content, scroll to bottom
+    if (!pinned && logTail.textContent) {
+      logTail.scrollTop = logTail.scrollHeight;
+    }
+  });
+
+  /* ── Freshness Timer ──────────────────────────────────────────────── */
+  const updateFreshness = () => {
+    const elapsed = Math.floor((Date.now() - lastPollTime) / 1000);
+    freshness.textContent = elapsed < 30
+      ? `atualizado há ${elapsed}s`
+      : `atualizado há ${Math.floor(elapsed/60)}m`;
+  };
+
+  /* ── Poll ─────────────────────────────────────────────────────────── */
   const poll = () => {
-    fetch('/api/status')
+    fetch("/api/status")
       .then(r => r.json())
       .then(d => {
-        if (d.error) {
-          statusEl.textContent = d.error;
-        } else {
-          statusEl.textContent = 'Status: OK';
-        }
+        pollCount++;
+        lastPollTime = Date.now();
+        staleBanner.classList.remove("visible");
+        d._stale = false;
         renderRunState(d);
         renderBaseline(d);
         renderTrials(d);
         renderLog(d);
       })
       .catch(() => {
-        statusEl.textContent = 'Erro ao carregar status.';
-        runStateEl.textContent = 'Idle';
-        runStateEl.className = 'idle';
+        staleBanner.classList.add("visible");
+        runBadge.className = "stale";
+        runLabel.textContent = "Idle";
         baselineEmpty.hidden = false;
-        baselineEmpty.textContent = 'Erro ao carregar Baseline.';
+        baselineEmpty.textContent = "Erro ao carregar Baseline.";
         trialsEmpty.hidden = false;
-        trialsEmpty.textContent = 'Erro ao carregar Trials.';
+        trialsEmpty.textContent = "Erro ao carregar Trials.";
         logEmpty.hidden = false;
-        logEmpty.textContent = 'Erro ao carregar log.';
+        logEmpty.textContent = "Erro ao carregar log.";
         trialsTable.hidden = true;
-        baselineEl.innerHTML = '';
-        trialsBody.innerHTML = '';
-        logTail.textContent = '';
+        baselineStats.innerHTML = "";
+        trialsBody.innerHTML = "";
+        logTail.textContent = "";
       });
   };
+
+  // Initial poll + interval
   poll();
   setInterval(poll, 2500);
+  setInterval(updateFreshness, 1000);
+
+})();
 </script>
 </body></html>"""
 
 
+def _esc(text: str) -> str:
+    """Minimal HTML escape for inline JS attribute values."""
+    return (
+        text.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+    )
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
+    """HTTP handler: serves HTML shell, /api/status JSON, and static assets."""
+
     def do_GET(self) -> None:
         if self.path == "/":
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(_HTML.encode("utf-8"))
+            self._send_html(_HTML)
         elif self.path == "/api/status":
-            try:
-                run_state, log_tail = run_state_and_tail()
-                payload = {
-                    "run_state": run_state,
-                    "log_tail": log_tail,
-                    "baseline": _load_baseline(),
-                    "trials": [format_trial_for_ui(t) for t in read_last_50_trials()],
-                }
-            except Exception as exc:  # noqa: BLE001 — surface any load failure to UI
-                payload = {"error": f"Falha ao carregar status: {exc}", "run_state": "Idle"}
-            body = json.dumps(payload, default=str).encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(body)
+            self._serve_status()
+        elif self.path.startswith("/static/"):
+            self._serve_static()
         else:
             self.send_response(404)
+            self.end_headers()
+
+    def _send_html(self, html: str) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(html.encode("utf-8"))
+
+    def _serve_status(self) -> None:
+        try:
+            run_state, log_tail = run_state_and_tail()
+            payload = {
+                "run_state": run_state,
+                "log_tail": log_tail,
+                "baseline": _load_baseline(),
+                "trials": [format_trial_for_ui(t) for t in read_last_50_trials()],
+            }
+        except Exception as exc:  # noqa: BLE001
+            payload = {"error": f"Falha ao carregar status: {exc}", "run_state": "Idle"}
+        body = json.dumps(payload, default=str).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _serve_static(self) -> None:
+        """Serve files from ui/static/ (CSS, fonts)."""
+        rel = self.path[len("/static/") :].lstrip("/")
+        rel = os.path.normpath(rel)
+        if ".." in Path(rel).parts:
+            self.send_response(404)
+            self.end_headers()
+            return
+        file_path = _STATIC_DIR / rel
+        if not file_path.is_file():
+            self.send_response(404)
+            self.end_headers()
+            return
+        content_type = mimetypes.guess_type(rel)[0] or "application/octet-stream"
+        try:
+            data = file_path.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
+            self.wfile.write(data)
+        except OSError:
+            self.send_response(500)
             self.end_headers()
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A003

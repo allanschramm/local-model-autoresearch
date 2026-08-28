@@ -24,7 +24,7 @@ Repository developers. Port and panels owned here — not by `autoresearch/` run
 - Keep panels additive and poll-friendly; prefer small helpers (`trial_reader.py`, `run_log.py`).
 
 ## Verification
-- Smoke: `python -m ui` → GET `/` (200, `lang=pt-BR`) and GET `/api/status` (JSON with baseline/trials/run_state).
-
+Smoke: `python -m ui` → GET `/` (200, `lang=pt-BR`) and GET `/api/status` (JSON with baseline/trials/run_state).
+Tests: `tests/test_ui_server.py` — 14 HTTP-level tests (real `HTTPServer` thread, ephemeral port).
 ## Child DOX Index
 None — `ui/` is a leaf.

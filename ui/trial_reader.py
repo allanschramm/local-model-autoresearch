@@ -16,10 +16,30 @@ def read_last_50_trials() -> list[dict[str, str]]:
     return list(reversed(rows))[:50]
 
 
+# Canonical → pt-BR display mapping for Trial Status pills.
+# Canonical labels stay untouched in the data/API.
+_STATUS_PT: dict[str, str] = {
+    "on_front": "na fronteira",
+    "dominated": "dominado",
+    "incomplete": "incompleto",
+    "rejected": "rejeitado",
+}
+
+
+def status_pt(canonical: str) -> str:
+    """Return pt-BR display label for a canonical Trial status."""
+    return _STATUS_PT.get(canonical, canonical)
+
+
 def format_trial_for_ui(row: dict[str, str]) -> dict[str, Any]:
-    """Operator columns; pass through ADR 0006 status as stored."""
+    """Operator columns; pass through ADR 0006 status as stored.
+
+    Adds ``status_pt`` presentation field (pt-BR pill label).
+    The canonical ``status`` field stays untouched.
+    """
     return {
         "status": row.get("status") or "",
+        "status_pt": status_pt(row.get("status") or ""),
         "outcome": row.get("outcome") or "",
         "ctx": row.get("ctx") or "",
         "tps": row.get("tps") or "",
