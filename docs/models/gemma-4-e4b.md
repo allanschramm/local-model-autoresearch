@@ -85,6 +85,6 @@ Evidence: `results.tsv` remasure row; [thinking-models-claw-harness.md](../disco
 - GGUF store metadata: ctx_length=131072, architecture=gemma4, totalFileSize ~7.46 GB
 
 ## 9. Open questions
-- **Large row count for one config (2026-08-29):** the store holds ~3400 rows for this GGUF sharing one reasoning-knob config (uppercase legacy `REASONING_*` keys); an initial audit presentation made them look like duplicate trial_ids — re-verified 2026-08-29: all trial_ids distinct (3416/3416), no store corruption. The row-count volume itself remains unexplained (flagged for investigation).
+- **Row volume explained (2026-08-29):** 3404 of the rows are genuine `engine-tps` candidates written by the AutoLoop R1 hill-climb on **2026-07-19/20** (3334 in a single `7b41639-dirty` commit state; 2702 distinct configs; measurements vary per candidate — real search, not repeated writes). These are the only `engine-tps` rows in the store because this GGUF was the sole autoloop target; `status=incomplete` is the store-wide norm for engine-tps rows (recompute grades capability rows only). Upper-case `REASONING_*` keys = legacy writer era. Trial_ids all distinct (3416/3416); no store corruption.
 - Gemma 4 MoE variant (26B A4B) not in scope for this 8 GB card; future work if needed.
 - `--reasoning-budget` interaction with `enable_thinking`-only templates not yet benchmarked at scale.
