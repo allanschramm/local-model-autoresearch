@@ -414,9 +414,9 @@ alias lbench="$LLAMA_CPP/build-cuda/bin/llama-bench"
 
 ## Flag inventory & harness audit (upstream-first)
 
-**Rule:** harness is passthrough mapper in `autoresearch/core/llama_runner.py:895 _build_cmd` (~26 wired) vs `llama.cpp/common/arg.cpp:1424` (~348 `add_opt`, ~310 distinct flags). Before adding any `ENGINE_*/SAMPLER_*` estimator, `grep add_opt` — `90%` already exists. Full matrix in `docs/llamacpp-flags-audit.md`.
+**Rule:** harness is passthrough mapper in `autoresearch/core/llama_runner.py:895 _build_cmd` (~27 wired) vs `llama.cpp/common/arg.cpp:1424` (~348 `add_opt`, ~310 distinct flags). Before adding any `ENGINE_*/SAMPLER_*` estimator, `grep add_opt` — `90%` already exists. Full matrix in `docs/llamacpp-flags-audit.md`.
 
-**Currently wired (~26):** `--model -c/--ctx-size -b/--batch-size -ub/--ubatch-size -t/--threads --threads-batch --parallel -ngl/--n-gpu-layers --numa --cache-type-k/v --flash-attn --no-mmap --mlock --jinja --reasoning/--reasoning-budget/message/--reasoning-preserve --cont-batching --cache-reuse --spec-type --spec-draft-n-max --spec-draft-type-k/v --spec-draft-model --n-cpu-moe` (+ bench `-p -n -r -o`). Everything else untapped.
+**Currently wired (~27):** `--model -c/--ctx-size -b/--batch-size -ub/--ubatch-size -t/--threads --threads-batch --parallel -ngl/--n-gpu-layers --numa --cache-type-k/v --flash-attn --no-mmap --mlock --jinja --reasoning/--reasoning-effort/--reasoning-budget/message/--reasoning-preserve --cont-batching --cache-reuse --spec-type --spec-draft-n-max --spec-draft-type-k/v --spec-draft-model --n-cpu-moe` (+ bench `-p -n -r -o`). Everything else untapped.
 
 **Upstream lacks — keep (value-add):** `preflight_host_memory:662` full `GGUF(21.7GB)+KV+draft` vs `RAM-max(6144,0.2RAM)` unified / `max(4096,0.15RAM)` discrete fail-closed `autoresearch/core/hardware.py:506`; `physical-512 keepout` + `SHARED 2048` kill + `GGML_CUDA_NO_PINNED=1` `llama_runner.py:305`; `free-at-start - headroom` clamp issue #10; `thermal` wait; `TPS_FLOOR/REPS`; Pareto Day/Night `scripts/rank_results.py` (`common/fit.h:14` assumes unlimited host, so host/WDDM/Pareto gates are the only keepers).
 

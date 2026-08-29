@@ -69,4 +69,5 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 ### 5. Harness & Capability Extraction
 - [`prefix-cache-reuse.md`](./prefix-cache-reuse.md) — multi-turn KV-cache prefix reuse: `--cache-reuse` 256 already on in pinned build; ~15x prefill speedup on shared-prefix 2nd turn; wiring + A/B validation.
 - [`capability-extraction-harness.md`](./capability-extraction-harness.md) — harness-side IQ-per-token techniques: led state, verification loops, test-time compute, J-Space assessment, dead-end registry.
+- [`reasoning-levels-mapping.md`](./reasoning-levels-mapping.md) — reading reasoning ladders from embedded chat templates (gguf_dump recipe + tool false-negative caveat); template-gated vs engine levers; store reasoning columns + audit recipe.
 
