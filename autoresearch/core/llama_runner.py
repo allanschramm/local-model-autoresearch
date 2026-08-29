@@ -184,6 +184,7 @@ class ServerIntent:
     reasoning_budget_message: str | None = None
     reasoning: str | None = None
     reasoning_preserve: bool | None = None
+    reasoning_effort: str | None = None
     cont_batching: bool = False
     cache_reuse: int = 256
     host: str = "127.0.0.1"
@@ -257,6 +258,7 @@ class ServerIntent:
             reasoning_budget_message=norm.get("reasoning_budget_message"),
             reasoning=norm.get("reasoning"),
             reasoning_preserve=norm.get("reasoning_preserve"),
+            reasoning_effort=norm.get("reasoning_effort"),
             cont_batching=norm.get("cont_batching", False),
             cache_reuse=int(norm.get("cache_reuse", 256))
             if norm.get("cache_reuse") is not None
@@ -957,6 +959,8 @@ class LlamaServerRunner:
             cmd += ["--reasoning-budget-message", self.intent.reasoning_budget_message]
         if self.intent.reasoning is not None:
             cmd += ["--reasoning", str(self.intent.reasoning)]
+        if self.intent.reasoning_effort is not None:
+            cmd += ["--reasoning-effort", str(self.intent.reasoning_effort)]
         if self.intent.reasoning_preserve is True:
             cmd += ["--reasoning-preserve"]
         elif self.intent.reasoning_preserve is False:

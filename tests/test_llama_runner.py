@@ -285,6 +285,27 @@ class TestLlamaRunner(unittest.TestCase):
 
     @patch("autoresearch.core.llama_runner.resolve_n_cpu_moe", return_value=(None, False))
     @patch("autoresearch.core.llama_runner.resolve_model_path")
+    def test_from_config_reasoning_effort(self, mock_path, _mock_resolve_n):
+        mock_path.return_value = Path("models/model.gguf")
+        cfg = {
+            "MODEL": "model.gguf",
+            "CTX_SIZE": 4096,
+            "FLASH_ATTN": "on",
+            "BATCH_SIZE": 512,
+            "UBATCH_SIZE": 128,
+        }
+        # Hermetic: pin the Baseline default so an operator's live
+        # config.py REASONING_EFFORT cannot leak into the omitted case.
+        from autoresearch.core import config as core_config
+
+        with patch.dict(core_config.DEFAULTS, {"REASONING_EFFORT": None}):
+            seeded, _ = ServerIntent.from_config({**cfg, "REASONING_EFFORT": "low"}, Path("models"))
+            self.assertEqual(seeded.reasoning_effort, "low")
+            omitted, _ = ServerIntent.from_config(cfg, Path("models"))
+            self.assertIsNone(omitted.reasoning_effort)
+
+    @patch("autoresearch.core.llama_runner.resolve_n_cpu_moe", return_value=(None, False))
+    @patch("autoresearch.core.llama_runner.resolve_model_path")
     def test_from_config_prefers_n_gpu_layers_over_legacy_ngl(self, mock_path, _mock_resolve_n):
         mock_path.return_value = Path("models/model.gguf")
         intent, _ = ServerIntent.from_config(
@@ -580,6 +601,32 @@ class TestLlamaRunner(unittest.TestCase):
         cmd = LlamaServerRunner(intent)._build_cmd(18080)
         self.assertIn("--no-reasoning-preserve", cmd)
         self.assertNotIn("--reasoning-preserve", cmd)
+
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_build_cmd_reasoning_effort(self, mock_resolve):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        intent = ServerIntent(
+            model_path=Path("models/test-model.gguf"),
+            ctx_size=4096,
+            kv_cache="q4_0",
+            flash_attn="on",
+            reasoning_effort="low",
+        )
+        cmd = LlamaServerRunner(intent)._build_cmd(18080)
+        self.assertIn("--reasoning-effort", cmd)
+        self.assertEqual(cmd[cmd.index("--reasoning-effort") + 1], "low")
+
+    @patch("autoresearch.core.llama_runner.resolve_llama_server")
+    def test_build_cmd_reasoning_effort_omitted(self, mock_resolve):
+        mock_resolve.return_value = Path("/bin/llama-server")
+        intent = ServerIntent(
+            model_path=Path("models/test-model.gguf"),
+            ctx_size=4096,
+            kv_cache="q4_0",
+            flash_attn="on",
+        )
+        cmd = LlamaServerRunner(intent)._build_cmd(18080)
+        self.assertNotIn("--reasoning-effort", cmd)
 
     def test_estimate_vram_mb(self):
         from autoresearch.core.llama_runner import (

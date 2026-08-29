@@ -64,6 +64,13 @@ ENGINE_DEFAULTS = {
     # Seed True only when GET /props chat_template_caps.supports_preserve_reasoning and the card wants it for agentic.
     # Not a Search neighbor.
     'REASONING_PRESERVE': None,
+    # None = omit llama.cpp flag (template default). Only templates that READ
+    # reasoning_effort react (verified 2026-08-29: Qwen3.8-27B open-source
+    # ladder is xhigh (default) / medium / low, 'high' aliases xhigh, anything
+    # else raises in Jinja; qwen35-family templates ignore the variable ->
+    # silent no-op). Verify per GGUF via gguf_dump.py --no-tensors before
+    # seeding. Not a Search neighbor.
+    'REASONING_EFFORT': None,
     'CONT_BATCHING': False,
     'CACHE_REUSE': 256,
     # MoE: None = auto --n-cpu-moe {GGUF block_count}; 0 = full GPU; N>0 = manual.
@@ -165,6 +172,21 @@ def validate_config(cfg: dict) -> dict:
         raise ConfigError(
             f"REASONING_PRESERVE must be True, False, or None; got {reasoning_preserve!r}"
         )
+    reasoning_effort = normalized.get(
+        "reasoning_effort",
+        normalized.get("REASONING_EFFORT", DEFAULTS.get("REASONING_EFFORT")),
+    )
+    if reasoning_effort is not None and reasoning_effort not in (
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+    ):
+        raise ConfigError(
+            f"REASONING_EFFORT must be minimal/low/medium/high/xhigh/max or None; got {reasoning_effort!r}"
+        )
     n_gpu_layers = normalized.get("n_gpu_layers", normalized.get("N_GPU_LAYERS", DEFAULTS.get("N_GPU_LAYERS", -1)))
     if isinstance(n_gpu_layers, bool) or not isinstance(n_gpu_layers, int):
         raise ConfigError(
@@ -194,6 +216,7 @@ def validate_config(cfg: dict) -> dict:
         normalized["VRAM_LIMIT_MB"] = vram_limit
     normalized["TPS_FLOOR"] = tps_floor
     normalized["REASONING_PRESERVE"] = reasoning_preserve
+    normalized["REASONING_EFFORT"] = reasoning_effort
     normalized["N_GPU_LAYERS"] = n_gpu_layers
     normalized["NUMA"] = numa
     normalized["CACHE_REUSE"] = cache_reuse if cache_reuse is not None else DEFAULTS.get("CACHE_REUSE", 256)
