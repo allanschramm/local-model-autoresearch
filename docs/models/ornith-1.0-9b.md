@@ -1,15 +1,16 @@
 # Ornith-1.0-9B — Model Card (Local)
 
-**Source (Unsloth UD):** https://huggingface.co/unsloth/Ornith-1.0-9B-GGUF  
-**Source (deepreinforce official):** https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B-GGUF  
-**Unsloth docs:** https://unsloth.ai/docs/models/qwen35 (model uses Qwen 3.5 architecture)  
-**License:** Apache-2.0 / upstream as published  
-**GGUF basenames (separate Trials):**  
-- `Ornith-1.0-9B-UD-Q4_K_XL.gguf` — Unsloth Dynamic  
-- `Ornith-1.0-9B-MTP-Q4_K_M.gguf` — MTP pack  
-- `ornith-1.0-9b-Q4_K_M.gguf` — deepreinforce official Q4_K_M (coding-10 **0.5800**; claw-full **0.4000** @ 65k)  
+**Source (Unsloth UD, fetched 2026-08-29):** https://huggingface.co/unsloth/Ornith-1.0-9B-GGUF (api/models/unsloth/Ornith-1.0-9B-GGUF; architecture `qwen35`, context_length 262144, MIT, 228K downloads, lastModified 2026-07-18, base_model: deepreinforce-ai/Ornith-1.0-9B)
+**Source (deepreinforce official, fetched 2026-08-29):** https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B-GGUF (api/models/deepreinforce-ai/Ornith-1.0-9B-GGUF; architecture `qwen35`, context_length 262144, MIT, license_link → deepreinforce-ai/Ornith-1.0-9B/blob/main/LICENSE)
+**Source (ornith-ai mirror, fetched 2026-08-29):** https://huggingface.co/orinith-ai/Ornith-1.0-9B-GGUF (api/models/ornith-ai/Ornith-1.0-9B-GGUF; 4.3M downloads, 660 likes, MIT, same upstream chat_template; serves `ornith-1.0-9b-Q4_K_M.gguf` etc.)
+**Unsloth docs:** https://unsloth.ai/docs/models/qwen35 (model uses Qwen 3.5 architecture; UD 2.0 quant)  
+**License:** **MIT** (per both Unsloth and ornith-ai `cardData.license` + `license_link`; NOT Apache-2.0 — earlier header was wrong)  
+**GGUF basenames (each is its OWN Trial/Objective Vector):**  
+- `Ornith-1.0-9B-UD-Q4_K_XL.gguf` — Unsloth Dynamic 2.0 (5.98 GB; local store: `models/unsloth/Ornith-1.0-9B-GGUF/`)
+- `Ornith-1.0-9B-MTP-Q4_K_M.gguf` — MTP pack (`protoLabsAI/Ornith-1.0-9B-MTP-GGUF`; served via `SPEC_TYPE=draft-mtp`)
+- `ornith-1.0-9b-Q4_K_M.gguf` — deepreinforce official Q4_K_M (coding-10 **0.5800**; claw-full **0.4000** @ 65k)
 **Family:** Ornith (deepreinforce-ai; Qwen 3.5 architecture)  
-**Quantizations:** Unsloth `UD-Q4_K_XL` ≠ deepreinforce `Q4_K_M` ≠ MTP pack — each is its own Objective Vector.
+**Quantizations:** Unsloth `UD-Q4_K_XL` ≠ deepreinforce `Q4_K_M` ≠ MTP pack — each is its own Objective Vector (n=18 / n=19 / n=4 in results store).
 
 ## Architecture (from GGUF metadata, verified via gguf lib)
 - Causal LM (hybrid Attention + SSM)
@@ -27,10 +28,16 @@
 ## Hardware requirements (per community and size)
 | Quant | Total RAM / VRAM |
 |---|---|
-| **Q4_K_M (our pick)** | **~5.6 GB VRAM** (VRAM target is ~5.6 GB + KV cache overhead) |
+| **Q4_K_M (our pick)** | **~5.6 GB VRAM** (VRAM target is ~5.6 GB + KV cache overhead; HF api `gguf.total` = 8953803264 ≈ 8.95 GB bf16, 4-bit ~5.6 GB; same as Unsloth UD; publisher benchmarks: 5.6 GB target) |
 | Q8_0 | ~9.5 GB VRAM |
 
-**Our target:** 8 GB VRAM (8 GB-class discrete NVIDIA). The 4-bit model size is ~5.6 GB, meaning it fits entirely in GPU VRAM (NGL = 999). However, active KV cache overhead for large contexts can push VRAM usage above 8 GB. Setting safe context size limits is important.
+## Our target
+8 GB VRAM (8 GB-class discrete NVIDIA). The 4-bit model size is ~5.6 GB, meaning it fits entirely in GPU VRAM (NGL = 999). However, active KV cache overhead for large contexts can push VRAM usage above 8 GB. Setting safe context size limits is important.
+
+## Publisher HF VRAM recommendations
+- HF README (Unsloth, fetched 2026-08-29): model described as "`≈19 GB in bf16`"; 4-bit quant ~5.6 GB fits single 80 GB GPU
+- HF README (ornith-ai mirror): same model card; no explicit VRAM limit beyond implicit 80 GB context serving; our 8 GB target remains the binding constraint
+
 
 ## Recommended Settings (based on Qwen 3.5)
 - **Temperature:** 0.4
@@ -38,6 +45,17 @@
 - **Top K:** 20
 - **Min P:** 0.0
 - **Repeat Penalty:** 1.0 (disabled)
+
+## Reasoning control (verified 2026-08-29 — local `gguf_dump.py --no-tensors` on UD-Q4_K_XL + cardData.chat_template grep; qwen35 family verified per session)
+- **Template reads ONLY `enable_thinking`** (NOT `reasoning_effort`) — confirmed in both Unsloth UD and deepreinforce `chat_template`: `enable_thinking` appears in the Jinja generate block (line `enable_thinking is defined and enable_thinking is false`); `reasoning_effort` is absent. → `--reasoning-effort` is a **silent NO-OP** on this GGUF family (same verdict as Ornith-1.5-9B / Qwen3.5 family, documented in reasoning-level mapping 2026-08-29).
+- **Working reasoning levers (use these, never `reasoning-effort`):**
+  - `--reasoning on` / `--reasoning off` (Baseline `REASONING`; controls whether `<think>` block is emitted; default = on per template — opens with `<think>` block)
+  - `--reasoning-budget N` (`REASONING_BUDGET`; server/template-independent budget cap — verified lever, not template-gated)
+  - `REASONING_PRESERVE` (`reasoning_preserve`; only where `/props` reports `supports_preserve_reasoning = true` — **not verified** for Ornith-1.0-9B GGUF; mark TBD until prop-checked)
+- **Daily alias budget (unmeasured / no Trial claim — DO NOT claim as measured):** `ornith-9b` alias runs budget **2048 + message** (same family pattern as Ornith-1.5-9B; no `results.db` Trial row validates it; code-only, not a benchmarked number).
+- **Publisher-recommended sampling (HF README / card, fetched 2026-08-29):** `temperature=0.6`, `top_p=0.95`, `top_k=20`; use `temperature=1.0` only to reproduce reported benchmark setup. **Our local baseline stays 0.4 / 0.95 / 20** (see §7) — different from publisher recommendation; both documented.
+- **No `reasoning_effort` ladder** (unlike Qwen3.8-27B UD-IQ1_S which reads `reasoning_effort` with ladder xhigh/medium/low + `high→xhigh` alias + raise-exception; that is a different arch — NOT this card).
+- **Verification notes:** `gguf_dump.py --no-tensors --json` on local `Ornith-1.0-9B-UD-Q4_K_XL.gguf` → `tokenizer.chat_template` contains `enable_thinking` 4×, zero `reasoning_effort`; HF API `cardData` has no reasoning keys. Source: unsloth/Ornith-1.0-9B-GGUF (`chat_template` embedded); deepreinforce-ai/Ornith-1.0-9B-GGUF (same).
 
 ## MTP (Multi-Token Prediction)
 - **Base UD GGUF (`Ornith-1.0-9B-UD-Q4_K_XL.gguf`): NO `nextn`.**
@@ -74,9 +92,12 @@ Since the model is ~5.6 GB and we have 8 GB of VRAM, we can run with maximum GPU
 - **TPS:** `49.4`
 
 ## Sources / Verification
-- HuggingFace Model Card (`deepreinforce-ai/Ornith-1.0-9B-GGUF`)
-- Checked with local scratch tool parsing `models/ornith-1.0-9b-Q4_K_M.gguf` metadata via `GGUFReader` on 2026-06-26.
-- Verification baseline run completed successfully on 2026-06-26.
+- **Unsloth GGUF repo** (fetched 2026-08-29): https://huggingface.co/unsloth/Ornith-1.0-9B-GGUF — HF api: architecture `qwen35`, context_length 262144, MIT, gguf.total=8953803264 (≈8.95 GB bf16), downloads 228K, lastModified 2026-07-18, safetensors.params=null (GGUF-only)
+- **deepreinforce-ai base repo** (fetched 2026-08-29): https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B-GGUF — HF api: same architecture/context, MIT, license_link → deepreinforce-ai/Ornith-1.0-9B/blob/main/LICENSE
+- **ornith-ai mirror repo** (fetched 2026-08-29): https://huggingface.co/orinith-ai/Ornith-1.0-9B-GGUF — HF api: 4.3M downloads, 660 likes, MIT; same model card + chat_template as deepreinforce
+- HF README (Unsloth, fetched 2026-08-29): recommended sampling temp=0.6 / top_p=0.95 / top_k=20; agentic + coding agent examples; benchmarks table (HE+ 88.3 / MBPP+ 84.6 / HumanEval 87.1 / MBPP 86.7 / LCB 73.4 / BigCodeBench 66.8); vLLM / llama.cpp / Ollama / OpenHands / OpenCode integration examples
+- Local GGUF verified via `GGUFReader` on `Ornith-1.0-9B-UD-Q4_K_XL.gguf` (2026-07-18+): block_count=32, hidden=4096, ctx=262144, rope.freq_base=10M, ssm parameters confirmed
+- Reasoning control verified via `gguf_dump.py --no-tensors --json` on UD-Q4_K_XL (2026-08-29): `chat_template` contains `enable_thinking` 4×, zero `reasoning_effort`; qwen35 family ruling applies to Ornith-1.0-9B
 
 ## Tuning History (2026-06-29)
 
@@ -152,4 +173,8 @@ Since the model is ~5.6 GB and we have 8 GB of VRAM, we can run with maximum GPU
 - Success @ 65k / `VRAM_LIMIT_MB=8000`: **agentic_full 0.4000** (6/15), bench_tg **42.5**, peak **7.8 GB**. Weaker than UD claw **0.6000**. Vector **complete** with coding **0.5800** (`iq_min=0.4000`).
 
 ## Open questions
-- None (baseline verified). Coding vs historical Mythos 0.64 still open if Mythos GGUF present.
+- **REASONING_PRESERVE support:** not verified — `/props` check needed; do NOT claim `reasoning_preserve` works until prop-verified (same rule as Ornith-1.5-9B). `--reasoning-effort` confirmed NO-OP (2026-08-29).
+- **Daily budget 2048 + message:** unmeasured — no Trial row; only alias-configured code (same family pattern as Ornith-1.5-9B); do not cite as benchmarked.
+- **Variant separation preserved:** UD-Q4_K_XL (`n=18`, agentic **0.9333** / coding **0.5400**) vs MTP (`n=19`, coding **0.5800**, agentic weaker **0.4667**) vs deepreinforce official Q4_K_M (`n=4`, agentic **0.7333** / claw-full **0.4000** @ 65k) — each is its own Fingerprint, never merged.
+- **Coding vs Mythos 0.64** still open if Mythos GGUF present (historical only).
+- **No `reasoning_effort` ladder** applies — this is qwen35 family (enable_thinking only), unlike 27B which has a ladder; no open question on ladder levels.

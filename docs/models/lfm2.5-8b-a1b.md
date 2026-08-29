@@ -8,7 +8,6 @@
 **Family:** Liquid LFM2.5  
 **Architecture type:** Hybrid MoE (`lfm2moe`) — 8.3B total / ~1.5B active  
 **Quantization:** `Q4_K_M` (`general.file_type=15`)  
-**Alias:** `lfm2.5-8b-a1b` (`model-up`)
 
 ## Architecture (from GGUF metadata)
 
@@ -46,7 +45,7 @@ HF card: 18 double-gated LIV conv + 6 GQA layers (matches 24 blocks). Hybrid —
 
 ## Recommended settings
 
-From Liquid HF card (2026-07-23):
+From Liquid HF card (2026-08-29):
 
 | Param | Value |
 |---|---|
@@ -169,13 +168,20 @@ Related tiny dense sibling: alias `lfm2.5-1.2b` — claw-quick **0.80**, claw-fu
 
 ## Sources / Verification
 
-- HF model card LiquidAI/LFM2.5-8B-A1B — sampling + tool-use notes — extracted 2026-07-23.
+- HF model card LiquidAI/LFM2.5-8B-A1B — benchmarks, architecture, generation params — extracted **2026-08-29**.
+- HF model card LiquidAI/LFM2.5-8B-A1B-GGUF — GGUF quant variants — extracted **2026-08-29**.
+- HF model card LiquidAI/LFM2.5-8B-A1B-DSpark — speculative-decoding drafter (328M) — extracted 2026-08-29.
 - Local GGUF metadata via `gguf.GGUFReader` — 2026-07-23.
 - Session: [2026-07-23-lfm2.5-8b-a1b-validation.md](../sessions/2026-07-23-lfm2.5-8b-a1b-validation.md).
 - Claw-full: [2026-07-24-claw-full-top-tps.md](../sessions/2026-07-24-claw-full-top-tps.md).
 
+## Reasoning control
+
+The `lfm2` family chat template contains **no reasoning/thinking control variables** (`reasoning_effort`, `enable_thinking`, `thinking_budget`). Reasoning flags (`--reasoning`, `--reasoning-budget`, `--reasoning-effort`) are **not applicable** to this model.
+
+Publisher note (HF README 2026-08-29): "Because LFM2.5-8B-A1B is a reasoning model, assistant turns contain an explicit chain of thought before the final answer." — this is a built-in model behavior, not user-controllable via template flags.
+
 ## Open questions
 
-- Claw-quick/full ≤0.20 vs LFM2.5-1.2B 0.80/0.60 — Liquid default tool calls are **Pythonic**; Claw-Eval may expect JSON. Confirm adapter / system prompt override before treating as quality fail.
-- Whether reasoning / CoT budget flags improve tool-call formatting on this GGUF.
 - 131k ctx on 8 GB with heavier KV compression — not tried (65k validated).
+- DSpark (328M speculative-draft companion) — SGLang-only per HF card 2026-08-29; not applicable to our llama.cpp stack.

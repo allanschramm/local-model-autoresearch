@@ -5,7 +5,6 @@
 **Family:** Laguna XS  
 **Architecture type:** MoE (`laguna`) — `256x2.2B`, 8 experts active  
 **Quantization:** `Q3_K_XL` (`general.file_type=13`)  
-**Alias:** `laguna-xs` (`model-up`)
 
 ## Architecture (from GGUF metadata)
 
@@ -60,6 +59,10 @@ GGUF embeds sampling defaults (`temp=1.0`, `top_p=1.0`, `min_p=0.0`). Local harn
 
 No MTP / `nextn` tensors. Speculative decoding not applicable from embedded heads.
 
+## Reasoning control
+
+Publisher documents `enable_thinking` via GGUF chat template (local verified 2026-08-29). `--reasoning-effort` is a silent NO-OP on Laguna templates; working levers: `--reasoning on/off` (Baseline REASONING), `--reasoning-budget N` (REASONING_BUDGET), REASONING_PRESERVE (where `/props` `supports_preserve_reasoning` — verified true for Laguna GGUFs).
+
 ## VITRIOL split
 
 Experts do not fit physical VRAM — full expert offload:
@@ -107,6 +110,7 @@ Evidence: [claw-full](../sessions/2026-07-24-claw-full-smoke-high.md), [coding-1
 
 - Local GGUF metadata via `gguf.GGUFReader` — 2026-07-24
 - Harness runs logged in `results.tsv` (`agentic-full` / `10-task`) — 2026-07-24
+- HF repo `bartowski/laguna-xs-2.1-gguf`: API metadata + README — extraction date 2026-08-29
 
 ## Open questions
 

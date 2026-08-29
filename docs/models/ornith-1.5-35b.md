@@ -29,7 +29,11 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 - **General tasks:** TEMP 0.6, TOP_P 0.95, TOP_K 20
 - **To reproduce reported benchmarks:** TEMP 1.0
 
-**Seeded for this Trial:** TEMP 0.6 / TOP_P 0.95 / TOP_K 20 / MIN_P 0.0 / presence 0.0 / repeat 1.0 (matches card's general profile and the 1.5-9B coding profile).
+### Reasoning control (verified local template, 2026-08-29)
+
+- Template reads **only `enable_thinking`** (confirmed by `gguf_dump` of embedded `tokenizer.chat_template`; no `reasoning_effort` variable present). → **`--reasoning-effort` is a silent NO-OP** on this GGUF; do not rely on ladder flags.
+- Working levers: `--reasoning on/off` (REASONING), `--reasoning-budget N` (REASONING_BUDGET, server-side / template-independent), `REASONING_PRESERVE` (verified `supports_preserve_reasoning = true` for Ornith-1.5 GGUFs per `/props`; seed for agentic, not coding/search).
+- Publisher card (2026-08-19) describes reasoning mode `<think>...</think>` with reasoning parser `qwen3`; sampling for reproduction: `temperature=1.0`, `top_p` default.
 
 ## MTP (Multi-Token Prediction)
 - **Verified tested (2026-08-22).** `gguf_has_mtp() == true`, `qwen35moe.nextn_predict_layers = 1`, 4 tensors (`blk.40.nextn.eh_proj/enorm/hnorm/shared_head_norm`), 753 total. `SPEC_TYPE='draft-mtp'`, `SPEC_DRAFT_N_MAX=4` (binary b10549). Separate fingerprint from the non-MTP vector.
@@ -41,6 +45,7 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 - **Pareto-dominated:** TPS −0.7% at `n=1`, −11% at `n=2`, −34% at 131k `n=4` vs the 27.8 t/s non-MTP baseline (`f8980537`).
 - **Estimator fixed:** MoE workspace zeroed — the VRAM estimator (not the binary) was the limiter; post-fix runs estimate correctly.
 - 1.0-35B had NO MTP — do not carry that assumption to 1.5.
+- **2026-08-28 (b10549 load log):** all other `blk.40.*` tensors (attn/ffn/expert/shexp) are unused/ignored at load — `blk.40` is the MTP-head carrier only; effective MoE blocks are 0-39 (`--n-cpu-moe 41` still covers everything).
 - **2026-08-26 (new trained head, harness ladder, codacus fork, ctx 131k, n-cpu-moe 41):**
   - MTP n-max 2: pp 213.5 t/s, tg **28.0** (−9.7 % vs 31.0 control), acceptance **0.567** (135/238) — trained head tripled acceptance vs the untrained 0.38 but the net decode loss persists (CPU-offloaded MoE: head overhead > accepted-token savings).
   - Cache-only (48 slots): pp 204.2, tg **36.9** (+19 %) — the 35B winner; unchanged from the old file.
@@ -50,6 +55,8 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 ## VITRIOL / Split strategy (MoE expert offloading)
 - Auto `--n-cpu-moe 41` (GGUF block_count) — experts on CPU/RAM, attention + shared expert + routing on GPU.
 - 1.0-35B A/B: n-cpu-moe=block_count beat manual 32. Peak VRAM 4.0 GB @ 65k.
+- **2026-08-28 ubatch ladder** (b10549 upstream, ctx 131k, q4_0 KV, threads 6, 4142-tok prompt, warm rep2): pp 305.7 @ ub512 → 716.9 @ ub2048 → **1172.9 @ ub6144**; tg flat 32.4–33.6 (CPU-expert-stream bound — placement/ubatch do not move decode); peak VRAM 4318 → 4786 → 6306 MB (keepout 7676 OK, ~1.4 GB margin). Manual `-ot` regex ≡ `--n-cpu-moe 41` within noise at ub512 and ub6144 — upstream implements both as the same `LLM_FFN_EXPS_REGEX` override (`common.h:1130/1142`). ub 6144 on the cache profile: rejected — see next bullet. Session: [2026-08-28](../sessions/2026-08-28-ornith-35b-ubatch-ot-ab.md).
+- **2026-08-28 cache × ubatch (codacus fork) + alias degradation:** `models/traces/ornith-1.5-35b-merged.csv` had been wiped → the fork silently served WITHOUT cache (`cannot open profile ... expert cache disabled`, ~31 t/s); profile is a READ input (no auto-create) — regenerated via the discovery workflow (`llama-moe-trace` ×2 prompts, 49 360 rows). Cache 32 slots + ub 2048 = pp **534.9** / tg **35.1** @6862 MB (keepout-compliant; +26 MB vs ub512, decode gain kept); cache + ub 6144 rejects (7857 > 7676); plain upstream + ub 2048 = 716.9 pp / 33.6 tg @4786 MB. The 48-slot alias fingerprint @131k measured 7729 > 7676 under a fat desktop baseline — 32 slots fits with ~840 MB. Alias re-pointed 2026-08-28 (operator, decode-first): cache 32 slots + ubatch 2048; upstream ub2048 stays documented as the prefill-first alternative.
 
 ## Our config baseline (Trial 2026-08-19)
 - `MODEL = 'Ornith-1.5-35B-Q4_K_M.gguf'`
@@ -80,10 +87,10 @@ Best coding in the Ornith family (1.5-9B 0.6150 / 1.0-35B 0.580). Agentic 0.8667
 Same family behavior as 1.5-9B: a 2026-08-22 operator session shows 18/19 turns thinking (mean 3.7k chars, max 18.8k ≈ 4.7k tokens ≈ 3 min at 27.8 t/s); another session ran near-zero thinking (mean 27 chars) — variance by session. Daily-driver alias already caps at `--reasoning-budget 4096` (≈ 2 min/turn at 27.8 t/s); add `--reasoning-budget-message` and consider 2048 for interactive use. KV q8_0 fits on this MoE (KV 1.3→2.6 GB @131k) but does not change think length — budget is the lever.
 
 ## Sources / Verification
-- https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B-GGUF (README, 2026-08-19)
-- Local GGUF metadata via `scripts/model_info.py` + `gguf.GGUFReader` field+tensor scan 2026-08-22 (`autoresearch/core/model_arch.py:126` `gguf_has_mtp()` → true, `qwen35moe.nextn_predict_layers = 1`, 4/753 `nextn` tensors at `blk.40.nextn.*`)
-- Trial rows: `results.tsv` `53ba75b7` (complete vector on_front), `500e9967` (agentic rerun @240 s), `f8980537` (agentic 0.8667 @4096)
-- Evidence artifacts (2026-08-20): `autoresearch/runners/logs/llama-server-20260820-121648-Ornith-1.5-35B-Q4_K_M.log`, `agentic-20260820-135750-Ornith-1.5-35B-Q4_K_M.json`
+
+- https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B-GGUF (README + benchmark table, 2026-08-29): publisher claim — coding (SWE-bench Verified 79 / Terminal-Bench 2.1 67.8) / reasoning (HLE 25.6 / GPQA 89.2) / agentic (ClawEval 72.5 / MCP-Atlas 70.2); context window 262144 tokens (GGUF `context_length` verified); ~3B activated / 256 experts × 8 active + shared (~35B total / ~70 GB bf16, from card); quant Q4_K_M = 21.7 GB file (`totalFileSize` 71 GB from HF siblings); license MIT (`license:mit`); sampling `TEMP=0.6` general / `TEMP=1.0` to reproduce benchmarks.
+- https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B (base model card + chat_template.jinja + `config.json` `Qwen3_5MoeForConditionalGeneration`, 2026-08-29): reasoning parser `qwen3`, tool-call parser `qwen3_xml`; `enable_thinking` only (no `reasoning_effort` in Jinja — confirms local `gguf_dump` result); YaRN RoPE scaling (factor 4.0) for ~1M effective window.
+- https://huggingface.co/api/models/ornith-ai/Ornith-1.5-35B-A3B-GGUF (JSON: `gguf.architecture=qwen35moe`, `context_length=262144`, `total=35505251456` bytes ≈ 33 GB uncompressed; `lastModified=2026-08-24`; siblings include Q4_K_M / Q5_K_M / Q6_K / Q8_0 / BF16), extraction 2026-08-29.
 ## Open questions
 - MTP (trained head, 2026-08-26): still no net speedup — acceptance 0.567 but decode −9.7 % @131k; stack cancels; cache-only is the winner (36.9). Pre-fix history: 131k n4 fit at 4.24 GB actual vs 9104 est, bench 18.1 < floor.
 - T053: does a larger ctx (131072) or lighter history (no `REASONING_PRESERVE`) clear the 65k ceiling? REASONING_PRESERVE inflates request size by re-rendering think traces — worth an A/B.

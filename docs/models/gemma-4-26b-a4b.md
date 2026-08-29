@@ -141,9 +141,10 @@ MTP: `--spec-type draft-mtp` (the accepted spelling — bare `mtp` is rejected; 
 - Objective Vector complete: strong coding, weak agentic → `min(ag,cod)=0.1333`. Prefer E4B / POCKET / Ornith-9B for real use.
 
 ## Sources / Verification
-- HF model card (extracted 2026-06-15)
-- Unsloth Gemma 4 doc (https://unsloth.ai/docs/models/gemma-4, re-extracted 2026-08-02 — Recommended Settings + llama.cpp Guide now captured; earlier 5k truncation resolved)
-- Unsloth MTP guide (https://unsloth.ai/docs/models/mtp, re-extracted 2026-08-02 — MTP packaging = separate `mtp-*` GGUF in same repo)
+- HF model card (extracted 2026-08-29)
+- Unsloth Gemma 4 doc (https://unsloth.ai/docs/models/gemma-4, re-extracted 2026-08-29 — Recommended Settings + GGUF benchmarks + Thinking mode captured)
+- Unsloth MTP guide (https://unsloth.ai/docs/models/mtp, re-extracted 2026-08-29 — MTP packaging = separate `mtp-*` GGUF in same repo)
+- Gemma 4 26B-A4B benchmark data (extracted 2026-08-29 from https://unsloth.ai/docs/models/gemma-4#official-gemma-benchmarks)
 
 ## Open questions
 1. Validar: exato valor de `--n-gpu-layers` para 4B-active MoE em 8 GB VRAM. Commit `2bd795b` rodou Gemma 4 só com `--n-cpu-moe 15`, sem anotar o `--n-gpu-layers` exato.

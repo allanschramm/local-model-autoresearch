@@ -94,11 +94,27 @@ Session: [2026-07-27-kat-coder-v2.5-dev-pipeline.md](../sessions/2026-07-27-kat-
 
 ## Sources / Verification
 
-- HF card `Kwaipilot/KAT-Coder-V2.5-Dev` — sampling examples + SWE-bench footnote (extracted 2026-07-27)
-- Local GGUF via `gguf.GGUFReader` 2026-07-27
-- Bartowski quant table (IQ4_XS size)
-- Local pipeline `results.tsv` 2026-07-27
+- HF card `Kwaipilot/KAT-Coder-V2.5-Dev` (https://huggingface.co/Kwaipilot/KAT-Coder-V2.5-Dev) — model card, benchmark table (SWE-bench Verified 69.40 / Multilingual 63.00 / Pro 45.96; Terminal-Bench 2.1 41.02; PinchBench 93.43; KAT-Code-Bench 46.21), eval config (temp 1.0 / top_p 0.95, 256k ctx, `--reasoning-parser qwen3`; `agent=claude_code@2.1.195`) — **extracted 2026-08-29** (API + README; image/table truncated at ~300 lines, full image referenced by URL `KAT-Coder-V2.5-Dev-Benchmarks.png`)
+- HF API `https://huggingface.co/api/models/Kwaipilot/KAT-Coder-V2.5-Dev` (tags: `qwen3_5_moe`, `agentic-coding`, `code`; license `apache-2.0`; base_model `Qwen3.6-35B-A3B`; downloads 49K) — **2026-08-29**
+- Bartowski GGUF repo https://huggingface.co/bartowski/Kwaipilot_KAT-Coder-V2.5-Dev-GGUF (quant `IQ4_XS`; file `Kwaipilot_KAT-Coder-V2.5-Dev-IQ4_XS.gguf`) — **2026-08-29**
+- Publisher thinking / reasoning claim: `qwen3` reasoning parser (`--reasoning-parser qwen3` in SGLang + vLLM serve commands), 256k context, default agent temp 1.0 / top_p 0.95; vision tower omitted (text-only release). Thinking mode is the publisher's default evaluation profile.
+- Local GGUF via `gguf.GGUFReader` 2026-07-27 (GGUF purged since; architecture / block_count / expert_count kept as historical verification)
+- Bartowski quant table (IQ4_XS size) — **2026-08-29**
+- Local pipeline `results.tsv` 2026-07-27 (store best validated: `n=4`, agentic **0.8000** smoke / **0.6000** full @65536, tb **30.2** t/s, peak VRAM **3.4 GB**, coding **0.6400**; IQ4_XS 17.51 GiB file)
+- Thinking-model harness fix (`docs/discovery/thinking-models-claw-harness.md` 2026-08-08 / 2026-08-19): KAT-Coder is in the `reasoning_content`-emitting family; pre-fix Claw scores (≤~0.40 or capped 0.60) were false lows from empty graders / HTTP 400 / `max_tokens=512`; post-fix (4096-token floor + reasoning_content preserved) required for accurate measurement. Our 0.6000 full / 0.8000 quick are post-fix values from the 2026-07-27 pipeline.
+
+## Reasoning control
+
+**Publisher claim:** KAT-Coder-V2.5-Dev is a Qwen3.5-MoE-based thinking / agentic-coding model; publisher serves with `--reasoning-parser qwen3` (SGLang `sglang.launch_server --reasoning-parser qwen3 --context-length 262144`; vLLM `vllm serve --reasoning-parser qwen3 --max-model-len 262144 --language-model-only`) and evaluates at **temp 1.0 / top_p 0.95 / 256k ctx** with `agent=claude_code@2.1.195`. Thinking is the **default profile**; no `disable_think` flag is documented.
+
+**Local harness note (post-fix, 2026-08-08 → 2026-08-19):** KAT-Coder emits `reasoning_content`; pre-harness-fix Claw graders returned empty content / HTTP 400 / capped scores (historical false-low regime). The 2026-07-27 pipeline scores (**claw-full 0.6000**, **quick 0.8000**, **coding 0.6400**, **tg 30.2 @65536**, peak **3.4 GB**) are **post-fix** — measured after the grader/floor fixes. Do not compare to any pre-2026-08-08 KAT row.
+
+**Reasoning content handling:** like all `qwen35moe` family GGUFs (Ornith-1.5, Qwen3.6-35B-MTP, Qwen3.8-4B-Distill), the embedded tokenizer template reads `enable_thinking`; `--reasoning-effort` is a **silent NO-OP** on these GGUFs — working levers are `REASONING` (`--reasoning on/off`) and `REASONING_BUDGET` (`--reasoning-budget N`). `REASONING_PRESERVE` applies only when `/props` reports `supports_preserve_reasoning` (verified true for Ornith-1.5 GGUFs; **not verified for this purged GGUF** — mark TBD below). For historical reference: publisher's own eval uses `temperature=1.0`, not reasoning-budget control.
+
+**Our baseline (historical, GGUF purged):** `REASONING=on` / `REASONING_BUDGET` unmeasured (default template effort) / `REASONING_PRESERVE=None` (unverified). No `REASONING_EFFORT` key applicable.
 
 ## Open questions
 
-_(none — first Objective Vector complete)_
+- **TBD (2026-08-29):** Re-verify `supports_preserve_reasoning` from a fresh download if the GGUF is re-obtained (current file purged; historical `GGUFReader` 2026-07-27 did not record `/props` preserve flag). Remove TBD + this row once verified.
+- **TBD (2026-08-29):** Whether a newer `qwen3` reasoning-parser revision (post-2026-08-29) changes the default `reasoning_effort` ladder (currently xhigh default per 27B open-source template — different family; KAT uses Qwen3.5-MoE template, not 27B). Remove TBD once confirmed.
+- Historical only — no action required: local GGUF `IQ4_XS` file removed; architecture / MTP / expert counts preserved from `GGUFReader` 2026-07-27; measured vector (claw 0.6000 / coding 0.640 @65k, 30.2 t/s, 3.4 GB) retained in store `results.db` (`n=4`, agentic 0.8 smoke / 0.6 full) and `results.tsv` 2026-07-27.

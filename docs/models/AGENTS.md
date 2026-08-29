@@ -57,13 +57,16 @@ One markdown file per GGUF model we run on the operator host. Cards are the cano
 - [`laguna-xs-2.1.md`](./laguna-xs-2.1.md) — Laguna-XS-2.1 MoE; best claw-full (0.6667); weak coding (0.195).
 - [`ternary-bonsai-27b.md`](./ternary-bonsai-27b.md) — Ternary Q2_0 (rejected/deleted; PrismML; ~10.6 t/s).
 - [`lfm2.5-1.2b.md`](./lfm2.5-1.2b.md) — LFM2.5-1.2B; claw 0.6000 / coding 0.350.
+- [`lfm2.5-2.6b.md`](./lfm2.5-2.6b.md) — LFM2.5-2.6B Q8_0 dense `lfm2`; agentic 0.8667 / coding 0.5200 @65k; no thinking template vars; HF-refreshed 2026-08-29.
 - [`lfm2.5-8b-a1b.md`](./lfm2.5-8b-a1b.md) — LFM2.5-8B-A1B MoE hybrid (`lfm2moe`); full VRAM `n-cpu-moe 0`.
 - [`gemma-4-12b.md`](./gemma-4-12b.md) — Gemma 4 12B model card.
 - [`gemma-4-26b-a4b.md`](./gemma-4-26b-a4b.md) — Gemma 4 26B A4B; claw 0.1333 / coding 0.590 @ 65k.
 - [`gemma-4-e4b.md`](./gemma-4-e4b.md) — Gemma 4 E4B model card.
+- [`nemotron3-nano-4b.md`](./nemotron3-nano-4b.md) — NVIDIA Nemotron-3-Nano-4B Q4_K_M dense `nemotron_h` hybrid; agentic 0.7333 / coding 0.5100 @131k; enable_thinking-only template (created 2026-08-29).
 - [`ornith-1.0-9b.md`](./ornith-1.0-9b.md) — UD / MTP / deepreinforce Q4_K_M are separate Trials (coding 0.580 on deepreinforce basename; claw pending for that id).
 - [`qwen3.8-4b-distill.md`](./qwen3.8-4b-distill.md) — Qwen3.8-4B-Distill Q4_K_M; **on_front claw 0.8667 / coding 0.6400 @131k, bench 74.9**; dense Gated DeltaNet hybrid; current Baseline pick (2026-08-23).
 - [`ling-3.0-tiny.md`](./ling-3.0-tiny.md) — Ling-3.0-Tiny Q4_K_M MoE; dominated coding 0.39 but **agentic 0.8667 @ only 2.5 GB peak** — VRAM-efficient fallback (2026-08-23).
+- [`qwen3.8-27b.md`](./qwen3.8-27b.md) — Qwen3.8-27B UD-IQ1_S dense `qwen35` (text-only GGUF of a multimodal publisher); bench tps 28.4 @65k, capability Trial pending; the ONLY local GGUF whose template reads `reasoning_effort` (ladder xhigh/medium/low; verified 2026-08-29).
 - [`ornith-1.5-9b.md`](./ornith-1.5-9b.md) — Ornith-1.5-9B official Q4_K_M; on_front claw **0.9333** / coding **0.6150**; dense `qwen35` **no MTP** (0/427, 2026-08-22 `GGUFReader`); needed 4096-token agentic floor + 420 s Claw timeout + keepout env fixes.
 - [`ornith-1.5-35b.md`](./ornith-1.5-35b.md) — Ornith-1.5-35B-A3B official Q4_K_M; on_front claw **0.8667** / coding **0.6300**; MoE `n-cpu-moe 41` auto; **embedded MTP** `qwen35moe.nextn_predict_layers=1` 4/753 `blk.40.nextn.*` (2026-08-22).
 - [`ornith-1.0-35b.md`](./ornith-1.0-35b.md) — Ornith 1.0 35B; Q4 claw 0.6000 / coding 0.580; Q3 claw 0.4667 / coding 0.555.

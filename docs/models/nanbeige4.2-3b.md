@@ -101,20 +101,25 @@ SAMPLER_DEFAULTS = {
 }
 ```
 
-Runtime for Trials / `model-up`: set `AUTORESEARCH_LLAMA_CPP_ROOT` (or alias `llama_cpp_root`) to the versioned extracted release root containing `build-cuda/bin/`.
+Runtime for Trials: set `AUTORESEARCH_LLAMA_CPP_ROOT` to the versioned extracted release root containing `build-cuda/bin/`.
 
 ### Status
-- **llama-bench matrix:** tg128 peak **56.00** (f16, b1024/ub512); alias/Baseline **~55 tg** at f16 b512/ub256 with best PP (~2727). Evidence: [session](../sessions/2026-07-23-nanbeige42-tps-matrix.md).
+- **llama-bench matrix:** tg128 peak **56.00** (f16, b1024/ub512); Baseline **~55 tg** at f16 b512/ub256 with best PP (~2727). Evidence: [session](../sessions/2026-07-23-nanbeige42-tps-matrix.md).
 - **Claw-Eval full keep:** **0.2667** (n=15) under prior q4_0 Baseline; see `results.tsv` / same session.
 
 ## Sources / Verification
 
 | Claim | Source | Date |
-|---|---|---|
+|---|---|
 | Arch + loops from GGUF | Local `GGUFReader` on `nanbeige4.2-3b-Q4_K_M.gguf` | 2026-07-23 |
-| Upstream HF card | https://huggingface.co/Nanbeige/Nanbeige4.2-3B | 2026-07-22 |
+| Upstream HF card (benchmarks, ctx, license, reasoning) | https://huggingface.co/Nanbeige/Nanbeige4.2-3B | 2026-08-29 |
+| Upstream HF card (initial read) | https://huggingface.co/Nanbeige/Nanbeige4.2-3B | 2026-07-22 |
 | Fork branch | https://github.com/Nanbeige/llama.cpp/tree/nanbeige42 @ `26cfdc4` | 2026-07-22 |
 | TPS matrix | [session 2026-07-23](../sessions/2026-07-23-nanbeige42-tps-matrix.md) | 2026-07-23 |
+
+**Publisher reasoning control (HF card, 2026-08-29):** The chat template exposes two knobs: `enable_thinking` (default `true` — set `false` for non-thinking) and `preserve_thinking` (default `false` for single-turn, `true` recommended for multi-turn tool-use / office / code-agent workflows). All publisher-reported benchmarks were measured in thinking mode with `preserve_thinking=true`. Publisher TEMP recommendation: 1.0 for agentic/tool-use, 0.6 for reasoning/chat; top_p=0.95, top_k=20, max_new_tokens=65536 (agentic) / 131072 (reasoning). Our Baseline `REASONING: on` (maps to `--reasoning on` on the Nanbeige fork, which surfaces `enable_thinking=true`) is consistent with the publisher's default. There is **no `reasoning_effort` ladder** in this template — only the binary on/off and a separate preserve flag; `--reasoning-budget` on the fork controls the max think tokens emitted before the answer.
+
+**Publisher architecture story (HF card, 2026-08-29):** "Looped Transformer" — transformer layers are reused to increase effective capacity without adding parameters. The accompanying `modeling_nanbeige.py` ships three additional improvements — **LoopSplit**, **mHC with depth attention**, and **concatenated n-gram embeddings** — which are incorporated into the in-training Nanbeige4.5. Our local GGUF is a Nanbeige4.2-3B checkpoint, so only the looped-Llama portion applies at runtime; LoopSplit / mHC / n-gram are upstream-HF-only at present. GGUF-verified `num_loops=2` means each of the 22 physical blocks is applied twice → effective depth 44, ~2× FLOPs per token vs a non-looped equivalent.
 
 ## Open questions
 

@@ -1,8 +1,7 @@
 # Ornith-1.0-35B — Model Card (Local)
 
 **Source repo:** https://huggingface.co/unsloth/Ornith-1.0-35B-GGUF
-**Unsloth docs:** https://unsloth.ai/docs/models/qwen35 (model uses Qwen 3.5 MoE architecture)
-**License:** Apache-2.0
+**License:** MIT
 **Local file:** `models/Ornith-1.0-35B-UD-Q4_K_XL.gguf` (22.32 GB) (previously `models/deepreinforce-ai_Ornith-1.0-35B-IQ3_M.gguf`)
 **Family:** Ornith (based on Qwen 3.5 MoE architecture)
 **Quantization:** `UD-Q4_K_XL` (Unsloth Dynamic Q4_K_XL)
@@ -62,8 +61,10 @@ With MoE, we place **attention + shared expert + routing** on the GPU, and keep 
 - **TPS:** `31.5`
 
 ## Sources / Verification
-- HuggingFace Model Card (`deepreinforce-ai/Ornith-1.0-35B-GGUF`)
-- Verification validation run completed successfully on 2026-06-27.
+- HuggingFace: https://huggingface.co/unsloth/Ornith-1.0-35B-GGUF (MIT, qwen35moe, ctx 262144, lastModified 2026-07-18)
+- Verification: 2026-08-29 (HF fetch + family-verified reasoning control)
+- **Reasoning control:** qwen35 family — enable_thinking only (family-verified; NOT file-verified on 1.0-35B GGUF — assume same template as 1.5/9B siblings verified 2026-08-29). No reasoning_effort ladder (that is 27B-only).
+- **Measured data preserved (NOT overwritten):** UD-Q4_K_XL agentic 0.7333 / Q3_K_XL agentic 0.7333 (results.tsv ground truth); Q4 claw 0.6000 / coding 0.580; Q3 claw 0.4667 / coding 0.555; tps 32.0 (Q4) / 29.5 (Q3) @65536. Card text 0.6000/0.4667 predates harness fix — marked stale above.
 
 ## Variant: IQ3_M (2026-07-02 GGUF verified)
 

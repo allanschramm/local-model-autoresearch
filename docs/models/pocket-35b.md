@@ -4,7 +4,7 @@
 **Publisher blog:** https://huggingface.co/blog/FINAL-Bench/pocket  
 **Base model:** https://huggingface.co/FINAL-Bench/Darwin-36B-Opus (VIDRAFT Darwin lineage → Qwen3.5-family MoE)  
 **License:** Apache-2.0  
-**Local file:** `models/FINAL-Bench/pocket-35b-gguf/POCKET-35B-Q3_K_M.gguf` (15.61 GiB / 16.76 GB)  
+**Local file:** `models/FINAL-Bench/pocket-35b-gguf/POCKET-35B-Q3_K_M.gguf` (15.61 GiB / 16.76 GB) — **GGUF purged (historical)**; architecture/measured rows below are from the 2026-07-26 `gguf.GGUFReader` capture, preserved verbatim (see Sources).
 **Family:** POCKET (FINAL-Bench / VIDRAFT)  
 **Architecture type:** MoE (`qwen35moe`) — 35B total / ~3B active  
 **Quantization:** `Q3_K_M` (`general.file_type=12`)
@@ -66,6 +66,21 @@ POCKET GGUF has **no** embedded `general.sampling.*`. Seed from Darwin-36B-Opus 
 
 Coding / precise: keep same sampler until a quality pass; Darwin does not publish a separate coding profile.
 
+### Reasoning control (think template)
+
+The `qwen35moe` chat template reads **only `enable_thinking`** — there is **no `reasoning_effort` variable** in this family's template (see Sources, embedded tokenizer + `config.chat_template_jinja`).
+
+| Flag / lever | Effect on POCKET-35B | Seed |
+|---|---|---|
+| `--reasoning on` | `enable_thinking=true` → default render injects `<think>…</think>` block (thinking ON) | agentic / general — **Baseline `REASONING=True`** |
+| `--reasoning off` | `enable_thinking=false` → suppresses thinking, answers directly | coding / precise |
+| `--reasoning-budget N` | **server-side, template-independent** — effective on this card | agentic (e.g. 4096) |
+| `--reasoning-effort` | **SILENT NO-OP** here (`reasoning_effort` not read by this template — different from Qwen3.8-27B which does read it) | do not use |
+| `REASONING_PRESERVE` | `True` where `/props` reports `supports_preserve_reasoning` (Ornith-1.5 GGUFs verified) — **TBD for this card: GGUF purged, `/props` cannot be re-probed** | **TBD** |
+
+Working levers for this GGUF: `--reasoning on/off` + `--reasoning-budget N` (+ `REASONING_PRESERVE` once re-verified).
+
+
 ## MTP
 
 `nextn_predict_layers = 0`. No MTP tensors. Leave `SPEC_TYPE=None`.
@@ -115,12 +130,15 @@ TOP_K = 20
 
 Objective Vector complete on this Fingerprint (`on_front` candidate vs Laguna: same agentic, much stronger coding).
 
-## Sources / Verification
+## Sources / Verification (refreshed 2026-08-29; GGUF file PURGED — historical card)
 
-- HF GGUF repo: https://huggingface.co/FINAL-Bench/POCKET-35B-GGUF (extracted 2026-07-26)
-- Publisher blog: https://huggingface.co/blog/FINAL-Bench/pocket (2026-07-23)
-- Darwin-36B-Opus recommended settings: https://huggingface.co/FINAL-Bench/Darwin-36B-Opus (TEMP 0.6–0.7)
-- Local GGUF header via `gguf.GGUFReader` (2026-07-26)
+- HF GGUF repo: https://huggingface.co/FINAL-Bench/POCKET-35B-GGUF (`lastModified=2026-07-29`; API `gguf.architecture=qwen35moe`, `context_length=262144`, `totalFileSize=8239208384`; `license=apache-2.0`; 564K downloads; tags `qwen3_5_moe`/`darwin`/`reasoning`/`advanced-reasoning`/`thinking`/`chain-of-thought`) — extracted 2026-08-29.
+- HF README.md (benchmark table + build picks + lineage): https://huggingface.co/FINAL-Bench/POCKET-35B-GGUF/raw/main/README.md (extracted 2026-08-29) — GPQA-Diamond greedy: Q4_K_M 68.7% · Q2_K 60.1% (Q3_K_M between); build table `Q3_K_M`=16 GB / 3.4 bpw; `Q2_K`=13 GB = daily driver; lineage from Darwin-36B-Opus.
+- HF blog (measurement method + honest prefill loss): https://huggingface.co/blog/FINAL-Bench/pocket (extracted 2026-08-29) — CPU 27.0 tok/s / GPU 197 tok/s / MacBook M3 Pro 25.4 tok/s; prefill 0.41× vs Bonsai honestly reported.
+- Base model / settings (Darwin-36B-Opus, `qwen3_5_moe`): https://huggingface.co/FINAL-Bench/Darwin-36B-Opus (`lastModified=2026-07-25`; tags include `reasoning`, `advanced-reasoning`, `thinking`; `chat_template_jinja` = same qwen35 template; GPQA 88.4% — not verified locally) — source for sampler 0.6–0.7.
+- Publisher settings / recommended: https://huggingface.co/blog/FINAL-Bench/pocket (2026-07-23) — Darwin TEMP 0.6–0.7, greedy=0.0 GPQA.
+- Think-template / reasoning documentation (embedded tokenizer + `config.chat_template_jinja` from HF + verified local `gguf_dump` notes, 2026-08-29): `qwen35moe` family reads **only `enable_thinking`**; `<think>…</think>` auto-inserted when true (default); suppress with `enable_thinking=false`; `preserve_thinking` supported; `reasoning_effort` variable **absent** → `--reasoning-effort` is silent NO-OP on this card (see Reasoning control below; consistent with verified reasoning-template facts for `qwen35` family).
+- Local GGUF header via `gguf.GGUFReader` (2026-07-26) — `block_count=40`, `context_length=262144`, `expert_count=256`, `expert_used_count=8`, `nextn_predict_layers=0`, `architecture=qwen35moe`. GGUF file **purged** since 2026-07-26 run; card kept as historical reference.
 
 ## Open questions
 

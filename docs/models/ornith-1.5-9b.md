@@ -1,10 +1,12 @@
 # Ornith-1.5-9B — Model Card (Local)
 
 **Source repo:** https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF
-**License:** MIT
+**HF URLs (fetched 2026-08-29):** https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF (GGUF repo) · https://huggingface.co/ornith-ai/Ornith-1.5-9B (base model repo)
+**License:** MIT (https://huggingface.co/ornith-ai/Ornith-1.5-9B/blob/main/LICENSE)
 **Local file:** `models/ornith-ai/Ornith-1.5-9B-GGUF/Ornith-1.5-9B-Q4_K_M.gguf` (5.63 GB)
 **Family:** Ornith-1.5 (ornith-ai; Qwen 3.5 architecture)
 **Quantization:** official Q4_K_M (only official GGUF repo; no Unsloth/MTP pack yet)
+**MTP repo:** none — dense qwen35; the Q4_K_M GGUF had no MTP tensors at the 2026-08-22 scan (0/427 `nextn`); an upstream re-upload later carried an MTP head, but our local file is the original no-MTP artifact (see Architecture note).
 
 ## Architecture (verified from local GGUF, `gguf.GGUFReader` + `autoresearch/core/model_arch.py:126` `gguf_has_mtp()`, 2026-08-22)
 - Causal LM, Qwen 3.5 arch (`qwen35.*` fields), **dense**
@@ -18,17 +20,36 @@
 | Quant | Size |
 |---|---|
 | **Q4_K_M (our pick)** | **~5.6 GB VRAM** + KV cache |
-| Q5_K_M / Q6_K / Q8_0 | 6.5 / 7.4 / 9.5 GB — Q5+ risks Shared spill on 8 GB-class |
+| BF16 (publisher) | ≈ 19 GB VRAM (single 80 GB GPU per HF card) |
 
-**Target:** 8 GB-class discrete NVIDIA. Full GPU offload (`-ngl 99`); steady-state at 65k ctx q4_0 KV is ~7.7 GB — fits only with `AUTORESEARCH_PHYSICAL_VRAM_KEEPOUT_MB=256` on 8 GB-class (default 512 keepout clamps the ceiling below steady state; see Trial notes below). Peak measured 7.4 GB.
+**Publisher hardware (https://huggingface.co/ornith-ai/Ornith-1.5-9B, fetched 2026-08-29):** BF16 (≈19 GB) targets a single 80 GB GPU; quantized Q4_K_M / Q5_K_M / Q6_K / Q8_0 are quantized variants in the GGUF repo (file sizes inferred from GGUF directory listing — see `models/ornith-ai/Ornith-1.5-9B-GGUF/`). The 8 GB-class envelope is **not** publisher-supported; the 1.0 / 1.5 family are validated on ≥40 GB. The HF README publishes a quantized `Ornith-1.5-9B-Mobile` variant explicitly for edge/mobile deployment.
 
-## Recommended settings (HF card, 2026-08-19)
-Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/tool-call parsers at the server.
+## Recommended settings (HF card, 2026-08-19; refetched 2026-08-29)
+Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/tool-call parsers at the server. Publisher runtime floors: vLLM ≥ 0.19.1 / SGLang ≥ 0.5.9 / Transformers ≥ 5.8.1. Serving recipes use `--reasoning-parser qwen3` + `--tool-call-parser qwen3_xml` (vLLM) or `qwen3_coder` (SGLang) to surface `reasoning_content` and `tool_calls` as OpenAI-style fields.
 
 - **General tasks:** TEMP 1.0, TOP_P 0.95, TOP_K 20, MIN_P 0.0, presence 1.5, repeat 1.0
 - **Precise coding tasks:** TEMP 0.6, TOP_P 0.95, TOP_K 20, MIN_P 0.0, presence 0.0, repeat 1.0
 
+**Context window (publisher claim, 2026-08-29):** 262,144 tokens native (HF `gguf.context_length=262144`); YaRN `rope_scaling` with `factor: 4.0` extends the effective window to ~1,048,576 tokens (1M). Publisher validates YaRN on bf16; **TBD:** whether YaRN ships in the Q4_K_M GGUF config — our Q4_K_M file inherits the bf16 RoPE, llama.cpp applies scaling at server start.
+
+**Publisher benchmarks (https://huggingface.co/ornith-ai/Ornith-1.5-9B, fetched 2026-08-29):** 5-run averages on the bf16 checkpoint with vLLM / SGLang / OpenHands / Claude-Code harnesses.
+- Coding: Terminal-Bench 2.1 (Terminus-2) **46.2** · Terminal-Bench 2.1 (Claude Code) **47** · SWE-bench Verified **70.6** · SWE-bench Pro **47.5** · SWE-bench Multilingual **54.4** · NL2Repo **32.4** · SWE Atlas QnA **20.6**
+- Reasoning: HLE no-tools **20.2** · HLE with-tools **30.5** · GPQA Diamond **86.4**
+- Agentic: MCP-Atlas **54.2** · Toolathlon-Verified **41.2** · WideSearch **59.5** · BrowseComp **56.4** · ClawEval **66.5**
+
+Eval notes (verbatim from HF card, 2026-08-29): Terminal-Bench 2.1 uses `parser=json, temperature=1.0, top_p=1.0, 128K ctx, 4-hour timeout, 32 CPU cores, 48 GB RAM, 5-run avg`. SWE-bench uses OpenHands harness `temp=1.0, top_p=0.95, 256K ctx` with anti-hacking safeguards (no Git history, no network). ClawEval uses `temp=0.6, 256K ctx`. These are **publisher** numbers on the bf16 model at 128k–400k ctx — not our Q4_K_M measurements.
+
 **Seeded for this Trial:** coding profile (TEMP 0.6) — matches the card's own ClawEval eval config (temp=0.6).
+
+## Reasoning control
+
+**Template reads only `enable_thinking`** (verified 2026-08-29, embedded `tokenizer.chat_template` via `gguf_dump.py --no-tensors --json` on the local Q4_K_M GGUF): the template contains zero `reasoning_effort` / `thinking_budget` variables, so `--reasoning-effort` is a **silent no-op** on this GGUF. The card already documents the 2026-08-24 no-op finding (see [Trial 2026-08-24](#trial-2026-08-24--reasoning_budget4096-ab-claw-full--coding-10--65k) below); this 2026-08-29 re-confirmation is the third independent check.
+
+**Working levers on this GGUF:**
+- `--reasoning on|off` (Baseline `REASONING`): enables/disables the `<think>` block at the server (the rendering itself is a `--reasoning` / `enable_thinking` toggle).
+- `--reasoning-budget N` (Baseline `REASONING_BUDGET`): template-independent think cap; server-side forces the end-of-think tag at exhaustion. 4096 seeded for the 2026-08-24 A/B; 2048 in the daily-driver alias; 2048+message in operator-bumped alias.
+- `--reasoning-budget-message "..."` (Baseline `REASONING_BUDGET_MESSAGE`): nudge injected at budget exhaustion — prevents silent truncation.
+- `--reasoning-preserve` (Baseline `REASONING_PRESERVE`): full-history think preservation; `GET /props` reports `chat_template_caps.supports_preserve_reasoning = true` for this GGUF (sealed in Baseline 2026-08-19, see [Overthinking behavior](#overthinking-behavior--daily-driver-levers-2026-08-25) below).
 
 ## MTP (Multi-Token Prediction)
 - **MTP head present and trained (2026-08-25 swap + 2026-08-26 probe).** 4 `nextn` tensors, `block_count` 33 (= 32 + 1 MTP layer), `SPEC_TYPE='draft-mtp'` via `--spec-type draft-mtp --spec-draft-n-max 2` (llama.cpp never auto-enables). Measured 2026-08-26 (b10549, harness ladder): @80k pp 1755 t/s, tg **61.6** (+49.5 % vs 41.2 control @80k), acceptance **0.624**; @100k MTP peaks 7924 MB > keepout 7676 — VRAM-rejected, 80k is the ceiling. n-max 4 vs 2 VRAM delta negligible (7961 vs 7924 @100k).
@@ -50,7 +71,7 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 | Agentic (claw-full) | **0.9333** (14/15; rerun @ max_tokens 4096) |
 | Coding | **0.6150** (HE+ 1.0000 / MBPP+ 0.7000 / LCB 0.5000 / BC 0.1000) |
 ## Trial 2026-08-24 — REASONING_BUDGET=4096 A/B (claw-full + coding-10 @ 65k)
-Requested "reasoning effort medium": `--reasoning-effort` is a **silent no-op on this GGUF** — embedded `tokenizer.chat_template` (7828 chars, `<think>`-based) contains zero `reasoning_effort` variables (verified via `gguf_dump.py --no-tensors --json`; b10549 server accepts `LLAMA_ARG_REASONING_EFFORT`, template never reads it). Harness has no `REASONING_EFFORT` knob. Nearest working lever = `--reasoning-budget`; seeded 4096 (operator-instructed; prior Trial rows ran `reasoning_budget:null`).
+Requested "reasoning effort medium": `--reasoning-effort` is a **silent no-op on this GGUF** — embedded `tokenizer.chat_template` (7828 chars, `<think>`-based) contains zero `reasoning_effort` variables (verified via `gguf_dump.py --no-tensors --json`; b10549 server accepts `LLAMA_ARG_REASONING_EFFORT`, template never reads it). The harness had no `REASONING_EFFORT` knob at the time (plumbed 2026-08-29 as a config.py-only Baseline key; still a silent no-op on this GGUF's template). Nearest working lever = `--reasoning-budget`; seeded 4096 (operator-instructed; prior Trial rows ran `reasoning_budget:null`).
 
 | Metric | Value |
 |---|---|
@@ -102,8 +123,11 @@ Lever verdicts (mechanisms verified in pinned-build source, 2026-08-25):
 
 ## Sources / Verification
 - https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF (README, 2026-08-19)
+- https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF (HF repo API JSON: tags, `safetensors.parameters`, `cardData.license`, downloads, `lastModified`, `siblings` — fetched 2026-08-29)
+- https://huggingface.co/ornith-ai/Ornith-1.5-9B (base-model repo API + README.md: benchmarks, usage, recommended settings, hardware table — fetched 2026-08-29)
 - Local GGUF metadata via `scripts/model_info.py` (2026-08-19) + `gguf.GGUFReader` field+tensor scan 2026-08-22 (`autoresearch/core/model_arch.py:126` `gguf_has_mtp()` → false, 0/427 `nextn` tensors, no `nextn_predict_layers`)
 - Trial rows: `results.tsv` `f19d991d` (coding 0.6150 + agentic 0.2667), `9b1af29d` (agentic 0.8000 @ 2048 cap), `bf729951` (agentic 0.9333 @ 4096); rejected preflight/kill rows `6fde4721`/`716efd9a`/`06043927` kept for the record
+**Extraction date:** 2026-08-29
 
 ## TPS Hill Climb — dense plateau (2026-08-22, b10549, 8 GB-class discrete NVIDIA, ctx >65k, bench-only no validation)
 

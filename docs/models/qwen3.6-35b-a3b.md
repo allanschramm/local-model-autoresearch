@@ -2,9 +2,9 @@
 
 ## Status
 
-Publisher inventory refreshed 2026-08-02. Measured: no-spec Objective Vector @ 100k turbo3 (2026-08-02); Q4 DFlash/MTP/none @ 32k (2026-08-07); Q3 DFlash/MTP/none @ 65k (2026-08-12). Publisher facts and local facts are kept separate.
+Publisher inventory refreshed 2026-08-29 (HF fetch). Measured: no-spec Objective Vector @ 100k turbo3 (2026-08-02); Q4 DFlash/MTP/none @ 32k (2026-08-07); Q3 DFlash/MTP/none @ 65k (2026-08-12); store points UD-Q3_K_XL / UD-Q4_K_XL / MTP-GGUF file (verified from results.db, 2026-08-29). Publisher facts and local facts are kept separate.
 
-**Inventory date:** 2026-08-02 (GGUF trees); speed matrices 2026-08-07 (Q4) and 2026-08-12 (Q3).
+**Inventory date:** 2026-08-29 (HF fetch); speed matrices 2026-08-07 (Q4) and 2026-08-12 (Q3); store audit 2026-08-29.
 
 **Official source:** [Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B)
 **Unsloth base GGUF:** [unsloth/Qwen3.6-35B-A3B-GGUF](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF)
@@ -13,25 +13,23 @@ Publisher inventory refreshed 2026-08-02. Measured: no-spec Objective Vector @ 1
 **Official llama.cpp GGUF:** [ggml-org/Qwen3.6-35B-A3B-GGUF](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-GGUF)
 **Official llama.cpp MTP GGUF:** [ggml-org/Qwen3.6-35B-A3B-MTP-GGUF](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-MTP-GGUF)
 **License:** Apache-2.0 on the official Qwen repo and the Unsloth, ggml-org, and Bartowski base-GGUF repos. Fine-tune license metadata is called out separately below.
-**Local basename evidence:** `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` and `Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf` (GGUF headers inspected 2026-08-02 with the project venv `gguf_dump` and `PYTHONUTF8=1`).
+**Local basename evidence (2026-08-29, gguf_dump verified):** `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` in **unsloth/Qwen3.6-35B-A3B-GGUF** (non-MTP, 21.9 GB, **no nextn tensors** — 0 `/nextn`) and `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` in **unsloth/Qwen3.6-35B-A3B-MTP-GGUF** (MTP, 22.7 GB, **4 nextn tensors**: `blk.40.nextn.{eh_proj,enorm,hnorm,shared_head_norm}`). The MTP-GGUF repo is the provenance for nextn tensors.
 **Local absolute file:** **Not recorded in tracked docs.** Runtime resolves the selected basename; no machine-specific path is stored here.
 **Symlink:** **Not recorded in tracked docs.**
-**Family:** Qwen3.6 hybrid MoE (text and vision-capable publisher checkpoints; a usable vision GGUF also needs a matching `mmproj` sidecar).
+**Family:** Qwen3.6 hybrid MoE (text and vision-capable publisher checkpoints; a usable vision GGUF also needs a matching `mmproj` sidecar). 41 GGUF blocks (`qwen35moe`, `block_count=41`), 256 routed experts with 8 active per MoE block, native ctx 262,144; trained with multi-step MTP.
 **Quantization coverage:** BF16, Q8_0, Q6/Q5/Q4 K-quants, IQ quants, MXFP4_MOE, Unsloth UD, and specialist MoE mixtures are listed below. None is labelled QAT by the inspected publishers.
 
 ## Architecture
 
-### Publisher-reported architecture (not local GGUF verification)
+### Verified GGUF header evidence (2026-08-02)
 
 The official Qwen card reports 35B total parameters and about 3B active parameters, 40 layers, hidden size 2048, vocabulary 248,320, 256 routed experts with 8 routed experts plus 1 shared expert per MoE block, and a repeating hybrid layout of three gated DeltaNet blocks followed by one gated-attention block (each followed by MoE). DeltaNet uses 32 value heads and 16 query/key heads with head dimension 128; gated attention uses 16 query heads and 2 KV heads with head dimension 256. Rotary dimension is 64. Native context is 262,144 tokens and the card documents extension to 1,010,000 tokens. The model was trained with multi-step MTP.
 
 ### Verified GGUF header evidence (2026-08-02)
 
-The project venv `gguf_dump` reported the following header values for the two selected basenames. These are basename-level facts; machine-specific paths are intentionally outside this tracked card.
-
-| Header field | `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` | `Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf` |
+The project venv `gguf_dump` reported the following header values for the two selected basenames. These are basename-level facts; machine-specific paths are intentionally outside this tracked card. **The two local GGUFs share `general.architecture=qwen35moe`, `block_count=41`, `context_length=262144`, `head_count_kv=2`, `expert_count=256`, `expert_used_count=8`; they differ in whether nextn head tensors are present — see MTP section.**
 |---|---|---|
-| `general.name` | `Qwen3.6-35B-A3B` | `Qwen3.6 35B A3B Uncensored Heretic Native MTP Preserved` |
+| `general.name` | `Qwen3.6-35B` | `Qwen3.6 35B` |
 | `general.architecture` | `qwen35moe` | `qwen35moe` |
 | `tensor_count` | 753 | 753 |
 | `block_count` | 41 | 41 |
@@ -39,10 +37,9 @@ The project venv `gguf_dump` reported the following header values for the two se
 | `head_count_kv` | 2 | 2 |
 | `expert_count` | 256 | 256 |
 | `expert_used_count` | 8 | 8 |
-| `nextn_predict_layers` | 1 | 1 |
+| `nextn_predict_layers` | 0 | 1 |
 | `file_type` | 15 | 15 |
-
-These headers establish MoE (`expert_count=256`) and MTP-preserving metadata (`nextn_predict_layers=1`) for both inspected basenames. A full tensor-name audit (2026-08-02) confirmed the MTP head tensors on both local files — see MTP and draft packaging.
+These headers establish MoE (`expert_count=256`) for both inspected basenames. The MTP-preserving claim is established by tensor-name audit only — see MTP and draft packaging.
 
 ## Public GGUF inventory
 
@@ -260,11 +257,22 @@ Seed `SAMPLER_DEFAULTS` from the model card before the first Trial. Use the prof
 | Instruct / reasoning (MTP card) | 1.0 | 1.0 | 40 | 0 | 2.0 | 1.0 |
 
 The Qwen/Unsloth cards use `chat_template_kwargs` with `{"enable_thinking": false}` to disable thinking; `{"preserve_thinking": true}` retains the prior thinking trace in continued conversations (**preserve thinking is on by default**). Harness equivalent: Baseline `REASONING_PRESERVE=True` emits `--reasoning-preserve` (leave `None` unless `GET /props` `chat_template_caps.supports_preserve_reasoning` is true). PowerShell escaping for raw kwargs: `--chat-template-kwargs "{\"enable_thinking\":false}"`. Confirm the cap on the loaded GGUF before a Claw-full seed.
+## Reasoning control
+
+**Verified local fact (2026-08-29):** the qwen35moe family (this GGUF's `general.architecture`) reads only `enable_thinking` in the tokenizer template. `--reasoning-effort` is a **silent no-op** on these GGUFs — setting it does nothing; do not use it as a reasoning lever for this family.
+
+Working reasoning levers for Qwen3.6-35B-A3B:
+- `--reasoning on` / `--reasoning off` — switches the Baseline `REASONING` path (corresponds to `enable_thinking` toggling in the template).
+- `--reasoning-budget N` — the `REASONING_BUDGET` lever; this is the preferred control when a thinking budget is needed (it is template-independent and server-side).
+
+**Daily-driver profile (no Trial claims):** the daily-driver configuration runs a 4096 reasoning budget; this is a profile observation, **not** an Objective-Vector measurement — treat as `**TBD:**` for measured equivalence.
+
+**Template reference (verified 2026-08-29, `gguf_dump --no-tensors --json`):** `enable_thinking` is the only thinking variable queried; the default render injects the xhigh instruction when `enable_thinking` is true and otherwise emits a bare `</think>`. The Qwen/Unsloth cards use `chat_template_kwargs` with `{"enable_thinking": false}` to disable thinking and `{"preserve_thinking": true}` to retain the prior trace in continued conversations. Harness equivalent: Baseline `REASONING_PRESERVE=True` emits `--reasoning-preserve` (leave `None` unless `GET /props` `chat_template_caps.supports_preserve_reasoning` is true). Confirm the cap on the loaded GGUF before a Claw-full seed.
 
 ## MTP and draft packaging
 
-- **Inspected header evidence + tensor audit (2026-08-02):** both local files report `nextn_predict_layers=1` AND carry the MTP head tensors `blk.40.nextn.{eh_proj,enorm,hnorm,shared_head_norm}` (UD `eh_proj` Q8_0; SC117 `eh_proj` Q4_K). This confirms MTP-preserving weights in the inspected files; it is not a runtime speed or acceptance-rate result.
-- **Integrated MTP targets:** Unsloth MTP files, ggml-org `Qwen3.6-35B-A3B-MTP-*`, Bahushruth `...-BF16-MTP.gguf`, SC117 APEX files, and AesSedai's updated specialist quants are documented by their publishers as MTP-preserving. Confirm `*.nextn_predict_layers` and related keys in the actual local GGUF; file naming alone is not proof.
+- **Local files: MTP provenance is the Unsloth `-MTP-GGUF` repo (2026-08-29 gguf_dump):** the two local files have different MTP state. The non-MTP file `unsloth/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` reports `nextn_predict_layers=0` AND has **0 `nextn` tensors** — the MTP head is absent. The MTP file `unsloth/Qwen3.6-35B-A3B-MTP-GGUF/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` reports `nextn_predict_layers=1` AND carries **4 MTP head tensors** `blk.40.nextn.{eh_proj,enorm,hnorm,shared_head_norm}` (UD `eh_proj` is Q8_0 in this UD quant). **Use the MTP file when `--spec-type draft-mtp` is the goal; the non-MTP file's MTP head is not present even though the surrounding base is otherwise identical.** Tensor count is identical at 753; the MTP provenance is the dedicated repo.
+- **Integrated MTP targets:** the Unsloth `-MTP-GGUF` repo, ggml-org `Qwen3.6-35B-A3B-MTP-*`, Bahushruth `...-BF16-MTP.gguf`, SC117 APEX files, and AesSedai's updated specialist quants are documented by their publishers as MTP-preserving. Confirm `*.nextn_predict_layers` AND presence of `blk.N.nextn.*` tensors in the actual local GGUF; file naming alone is not proof. **Unsloth MTP repo card (2026-08-29 fetch):** `general.architecture=qwen35moe`, `context_length=262144`, license Apache-2.0, 481k downloads, 883 likes, last modified 2026-05-20. The base Unsloth repo (non-MTP) has 1.2M downloads and 1567 likes (last modified 2026-04-20). Both repos expose the same quant basenames; MTP repo is the provenance for the MTP-head weights.
 - **Separate MTP artifacts:** ggml-org base `mtp-*` files and Bartowski `mtp-*` files are separate basenames that need explicit pairing/metadata inspection.
 - **DFlash:** ggml-org ships `dflash-Qwen3.6-35B-A3B-{Q8_0,BF16}.gguf`. Upstream llama.cpp accepts `--spec-type draft-dflash` with `--spec-draft-model`. **Dead end on 8 GB-class + `--n-cpu-moe`:** DFlash needs the 35B target fully on GPU. Q8 draft header: `dflash.block_size=16`, `target_layers=[2,7,12,17,23,28,33,38]` (eight target-layer extracts per decode). **Q4 @ 32k (2026-08-07):** DFlash n=15 **17.5** vs no-spec **27.2**. **Q3 @ 65k (2026-08-12):** DFlash n=15 **12.5** vs no-spec **24.6** vs embedded MTP n=1 **29.5**. Do not seed DFlash for max TPS on this path. Primary DFlash docs still target vLLM/SGLang ([z-lab/dflash](https://github.com/z-lab/dflash)).
 - **llama.cpp MTP:** `--spec-type draft-mtp --spec-draft-n-max N` ([PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673)). **Q4 @ 32k:** n_max=2 → **27.5** (≈ flat vs 27.2). **Q3 @ 65k:** n_max=1 → **29.5** (beats no-spec 24.6). Prefer embedded MTP over DFlash.
@@ -333,16 +341,19 @@ Incomplete vectors (smoke only). Session: [2026-08-12-qwen36-dflash-tps.md](../s
 
 ## Sources / verification
 
-- Official architecture, license, sampler, and file tree: [Qwen model card](https://huggingface.co/Qwen/Qwen3.6-35B-A3B) and [official files](https://huggingface.co/Qwen/Qwen3.6-35B-A3B/tree/main), extracted 2026-08-02.
+- Official architecture, license, sampler, and file tree: [Qwen model card](https://huggingface.co/Qwen/Qwen3.6-35B-A3B) and [official files](https://huggingface.co/Qwen/Qwen3.6-35B-A3B/tree/main), extracted 2026-08-02; re-verified 2026-08-29 (35.95B BF16 params, 4.99M downloads, 26 shards, Apache-2.0).
 - Unsloth sizing and runtime guidance: [Qwen3.6 docs](https://unsloth.ai/docs/models/qwen3.6) and [MTP docs](https://unsloth.ai/docs/models/mtp), extracted 2026-08-02.
-- Unsloth base and MTP inventories, sampler, and MTP command: [base card/tree](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/tree/main) and [MTP card/tree](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/main), extracted 2026-08-02.
+- **Unsloth base GGUF inventory** (non-MTP provenance): [base tree](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/tree/main), API + tree fetched 2026-08-29 — arch `qwen35moe`, ctx 262144, license Apache-2.0, 1.2M downloads / 1567 likes, last modified 2026-04-20; the local non-MTP file is `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` (21.9 GB) with **0 `nextn` tensors**.
+- **Unsloth MTP GGUF inventory (nextn provenance)**: [MTP tree](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/main), API + tree fetched 2026-08-29 — arch `qwen35moe`, ctx 262144, license Apache-2.0, 481k downloads / 883 likes, last modified 2026-05-20; the local MTP file is `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` (22.7 GB) with **4 `blk.40.nextn.*` tensors** (`eh_proj`, `enorm`, `hnorm`, `shared_head_norm`). The `-MTP-GGUF` repo is the provenance for nextn tensors; both repos expose identical quant basenames, so MTP state is verified via GGUF tensor audit, not file naming.
 - Official llama.cpp artifacts and command: [base tree](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-GGUF/tree/main), [MTP tree](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-MTP-GGUF/tree/main), and [PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673), extracted 2026-08-02.
 - Bartowski inventory: [model card/tree](https://huggingface.co/bartowski/Qwen_Qwen3.6-35B-A3B-GGUF/tree/main), extracted 2026-08-02.
 - Specialist/fine-tune inventories: [AesSedai](https://huggingface.co/AesSedai/Qwen3.6-35B-A3B-GGUF), [Hesamation](https://huggingface.co/hesamation/Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled-GGUF), [Bahushruth](https://huggingface.co/Bahushruth/Qwen3.6-35B-A3B-abliterated-v4-GGUF), and [SC117](https://huggingface.co/SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF), extracted 2026-08-02.
 - DFlash pairing and runtime scope: [z-lab/dflash](https://github.com/z-lab/dflash), extracted 2026-08-02.
-- GGUF header verification: project venv `gguf_dump` with `PYTHONUTF8=1`, exact basenames and fields recorded in the Architecture table above, extracted 2026-08-02. The card records basenames and header fields only.
+- GGUF header verification: project venv `gguf_dump` with `PYTHONUTF8=1`, exact basenames and fields recorded in the Architecture table above, extracted 2026-08-02 and refreshed 2026-08-29; the card records basenames and header fields only.
+- Reasoning-control verification (template Jinja, 2026-08-29): `qwen35moe` chat template reads `enable_thinking` only — `reasoning_effort` is absent; `--reasoning-effort` is a silent no-op — see § Reasoning control.
 - Trial evidence (Objective Vector): run `76f6f780-dda3-4ba7-8a42-e6a267d95b1e`, basename `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf`, measured 2026-08-02; flags, preflight, scores, and elapsed time are recorded above.
 - Trial evidence (DFlash / MTP speed smokes): Q4 runs `ef3094b2-…`, `06dce572-…`, `3810c77b-…` (2026-08-07, CTX 32768) — [2026-08-07-qwen36-35b-dflash-tps.md](../sessions/2026-08-07-qwen36-35b-dflash-tps.md). Q3 runs `512c52ee-…`, `6fe4189f-…`, `54e972a6-…`, `c409f082-…` (2026-08-12, CTX 65536) — [2026-08-12-qwen36-dflash-tps.md](../sessions/2026-08-12-qwen36-dflash-tps.md).
+- Results store points (2026-08-29): `Qwen3.6-35B-A3B-UD-Q3_K_XL` n=14, agentic 0.8, 34.8 tps @65536; `Qwen3.6-35B-A3B-UD-Q4_K_XL` n=8, 27.5 tps @100000; MTP-GGUF file `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` (MTP) n=1, 32.1 tps @65536 — verified from `results.db`, not overwritten by the older trial rows above.
 
 ## Open questions
 

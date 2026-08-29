@@ -2,32 +2,45 @@
 
 **Source repo:** https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF
 **Unsloth docs:** https://unsloth.ai/docs/models/gemma-4
+**HF model:** https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF
 **License:** Apache-2.0 (Gemma 4 license)
 **Local file:** `models/lmstudio-community/gemma-4-e4b-it-gguf/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf` (also under `models/unsloth/gemma-4-E4B-it-qat-GGUF/`)
 **Family:** Gemma 4 (Google DeepMind)
 **Quantization:** Unsloth Dynamic QAT — `UD-Q4_K_XL` (QAT-lossless 4-bit)
-**Alias:** `gemma-4-e4b` (`model-up`)
 
-## Hardware requirements (discrete 8 GB-class NVIDIA)
+## 2. Architecture (GGUF-verified values)
+- **Context length:** 131072 tokens (matches publisher config; `--ctx` 131k accepted)
+- **Architecture:** gemma4
+- **Quantization:** UD-Q4_K_XL — QAT-lossless 4-bit; K q4_0, V q4_0
+- **Tokenizer chat template:** `enable_thinking`-conditional Jinja (default: thinking off)
+- **Reasoning control:** template reads `enable_thinking` only → `--reasoning on/off` maps to it; `--reasoning-effort` is a silent NO-OP; `--reasoning-budget N` forces end-of-thinking tag (server-side, template-independent)
+- **Embedding count:** 4.5B effective (PLE); 8B with embeddings — `E4B` = "effective parameters" via Per-Layer Embeddings
+
+## 3. Hardware requirements (discrete 8 GB-class NVIDIA)
 - Fits entirely in GPU VRAM (NGL = 99).
 - Model size ~4.22 GB, leaving plenty of headroom for active KV cache (even up to 131k ctx).
+- **Publisher table:** E4B effective-params story — 4.5B effective (PLE) / 8B with embeddings; ctx 128K tokens; MMLU Pro 69.4%; AIME 2026 no tools 42.5%.
 
-## Recommended Settings (Gemma 4)
-- **Temperature:** 0.4
-- **Top P:** 0.95
-- **Top K:** 20
+## 4. Recommended Settings (Gemma 4)
+- **Temperature:** 0.4 (our speed winner) / publisher std: **1.0**
+- **Top P:** 0.95 (shared across publisher std)
+- **Top K:** 20 (our config) / publisher std: **64**
 - **Min P:** 0.0
 - **Repeat Penalty:** 1.0 (disabled)
 - **Chat Template:** Gemma 4 (requires `--jinja` flag)
+- **Reasoning control:** `enable_thinking` template var → enable via `--reasoning on` or system-prompt `<|think|>` token; `--reasoning-effort` is a silent no-op on this template; `--reasoning-budget N` is server-side and effective regardless
 
-## MTP (Multi-Token Prediction)
-
-- **Main GGUF has NO `nextn` tensors.** Do not treat the UD file as “MTP-inside.”
+## 5. MTP (Multi-Token Prediction)
+- **Main GGUF has NO `nextn` tensors.** Do not treat the UD file as "MTP-inside."
 - MTP lives in the **external assistant draft:** `models/draft/mtp-gemma-4-E4B-it.gguf` (`gemma4-assistant.*` metadata).
 - Flags: `SPEC_TYPE=draft-mtp`, `SPEC_DRAFT_MODEL=draft/mtp-gemma-4-E4B-it.gguf` (path relative to `models/`), `SPEC_DRAFT_N_MAX=4`.
 - Operator guide: [docs/discovery/small-model-mtp-tps.md](../discovery/small-model-mtp-tps.md).
 
-## Config Baseline (2026-07-20 — speed winner)
+## MoE split (VITRIOL)
+
+N/A — dense MatFormer E4B (no expert tensors); `--n-cpu-moe` not applicable.
+
+## 6. Config Baseline (2026-07-20 — speed winner)
 - `MODEL = 'gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf'`
 - `CTX_SIZE = 131072` (do not change without user permission; cli TPS gate does not pass `-c`)
 - `KV_CACHE_K = 'q4_0'`
@@ -51,7 +64,7 @@
 - **Autoloop note:** server-path TPS with PPL ceiling previously peaked **76.67 t/s** at same draft/`q4_0`/n_max=4 — lower than raw cli-bench (different workload). Prefer cli matrix for apples-to-apples MTP compares.
 - **KV:** use `q4_0` only on upstream builds. `turbo*` KV types are **not** in upstream `llama.cpp`.
 
-## Measured (claw-full)
+## 7. Measured (claw-full)
 
 Alias path: ctx **65k**, draft-mtp n=4, KV q4_0, cont-batching on.
 
@@ -62,3 +75,16 @@ Alias path: ctx **65k**, draft-mtp n=4, KV q4_0, cont-batching on.
 
 Evidence: `results.tsv` remasure row; [thinking-models-claw-harness.md](../discovery/thinking-models-claw-harness.md).
 
+## 8. Sources/Verification (dated 2026-08-29)
+- HF model card: https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF (JSON API `api/models/unsloth/gemma-4-E4B-it-qat-GGUF`, raw README)
+- Publisher benchmarks from README table: MMLU Pro 69.4%, AIME 2026 no tools 42.5%, LiveCodeBench v6 52.0%, Codeforces ELO 940, GPQA Diamond 58.6%, Tau2 42.2%, MMMLU 76.6%
+- Context: 128K tokens (publisher) / 131072 tokens (GGUF store, verified via `api/models/` `context_length` field)
+- License: Apache-2.0 (consistent across HF API cardData and publisher)
+- Quantization: UD-Q4_K_XL — Unsloth Dynamic QAT, QAT-lossless 4-bit
+- Reasoning template: verified `enable_thinking` via chat_template Jinja extraction; `--reasoning-effort` no-op; `--reasoning on/off` mapping confirmed
+- GGUF store metadata: ctx_length=131072, architecture=gemma4, totalFileSize ~7.46 GB
+
+## 9. Open questions
+- **Large row count for one config (2026-08-29):** the store holds ~3400 rows for this GGUF sharing one reasoning-knob config (uppercase legacy `REASONING_*` keys); an initial audit presentation made them look like duplicate trial_ids — re-verified 2026-08-29: all trial_ids distinct (3416/3416), no store corruption. The row-count volume itself remains unexplained (flagged for investigation).
+- Gemma 4 MoE variant (26B A4B) not in scope for this 8 GB card; future work if needed.
+- `--reasoning-budget` interaction with `enable_thinking`-only templates not yet benchmarked at scale.

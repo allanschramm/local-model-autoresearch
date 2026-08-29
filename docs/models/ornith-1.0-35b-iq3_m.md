@@ -1,6 +1,6 @@
 # Ornith-1.0-35B IQ3_M — Variant Card (Local)
 
-**Source repo:** https://huggingface.co/deepreinforce-ai/Ornith-1.0-35B-GGUF
+**Source repo:** https://huggingface.co/unsloth/Ornith-1.0-35B-GGUF
 **License:** MIT
 **Local file:** `models/deepreinforce-ai_Ornith-1.0-35B-IQ3_M.gguf` (15.74 GB)
 **Family:** Ornith (based on Qwen 3.5 MoE architecture)
@@ -36,6 +36,10 @@ Same as Q4_K_M variant:
 ## MTP (Multi-Token Prediction)
 - **NO MTP tensors in this GGUF.**
 
+## MoE split (VITRIOL)
+
+qwen35moe MoE — stock 2-knob split: `--n-gpu-layers` + `--n-cpu-moe` (auto resolves to GGUF block_count). Historical IQ3_M: measured slower than Q4_K_M at every `--n-cpu-moe` setting; GGUF purged from local store.
+
 ## Testing Results
 From `ornith-1.0-35b.md` tuning history:
 - **IQ3_M is slower than Q4_K_M at every n-cpu-moe setting**
@@ -54,9 +58,12 @@ Same as Q4_K_M variant with adjusted file:
 - `FLASH_ATTN = 'on'`
 
 ## Sources / Verification
-- HuggingFace: `deepreinforce-ai/Ornith-1.0-35B-GGUF`
-- GGUF metadata verified via `gguf.GGUFReader` on 2026-07-02
-- Testing results from Q4_K_M card tuning history (2026-06-29)
+- HuggingFace: https://huggingface.co/unsloth/Ornith-1.0-35B-GGUF (MIT, qwen35moe, ctx 262144, lastModified 2026-07-18; base model `ornith-ai/Ornith-1.0-35B-GGUF` also available — MIT license)
+- GGUF metadata verified via `gguf.GGUFReader` 2026-07-02.
+- Testing results from `ornith-1.0-35b.md` tuning history (2026-06-29 / 2026-07-27 pipeline).
+- Verification updated 2026-08-29 (HF fetch; measured data preserved — NOT overwritten).
+- **Reasoning control:** qwen35 family — enable_thinking only (family-verified; same family template as Q4_K_M variant; NOT independently file-verified on this GGUF — assume same behavior verified 2026-08-29). No reasoning_effort ladder on 35B (27B family trait only).
+- **Measured data (untouched):** agentic 0.4667 / coding 0.555; TPS 29.5 @65536; peak VRAM ~4.6 GB; file 15.74 GB. Slower than Q4_K_M at every n-cpu-moe; not recommended — prefer Q4_K_XL for quality.
 
 ## Open questions
 - None — tested and rejected. Q4_K_M is the preferred quant for this model.

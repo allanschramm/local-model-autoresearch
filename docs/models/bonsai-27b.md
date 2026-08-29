@@ -3,8 +3,8 @@
 **Source repo:** https://huggingface.co/PrismML-Eng/Bonsai-27B (models were downloaded from here; see note)
 **Canonical card repo:** https://huggingface.co/prism-ml/Bonsai-27B-gguf (**PRIVATE** — 27B repos are gated until launch)
 **Run guide:** https://github.com/PrismML-Eng/Bonsai-demo (README.md + SPECULATIVE.md)
-**License:** Private / gated (Bonsai-27B preview)
-**Local file:** `models/Bonsai-27B-Q1_0.gguf` (3627.3 MB / 3.53 GiB)
+**License:** Apache 2.0 (HF `prism-ml/Bonsai-27B-gguf` 2026-08-29); original `PrismML-Eng/Bonsai-27B` source repo was private/gated at time of original download (card retains that historical note)
+**Local file:** `models/Bonsai-27B-Q1_0.gguf` (3627.3 MB / 3.53 GiB) — **PURGED from local store**; file no longer present (historical card; retain specs from 2026-08-02 GGUF-verified header + 2026-08-29 HF refresh)
 **Drafter file:** `models/draft/Bonsai-27B-dspark-Q4_1.gguf` (1704.7 MB) — DSpark speculative drafter (target-specific)
 **Family:** Bonsai (PrismML-Eng) — 1-bit ternary-pack
 **Quantization:** `Q1_0` (1-bit; ~1.125 bpw)
@@ -54,6 +54,12 @@ Flag notes (from run guide):
 - Verify engaged via API `timings.draft_n` / `draft_n_accepted` (missing/zero = not active).
 - `llama-cli` has no draft support; one-shot binary is `llama-speculative-simple`.
 - Published decode on datacenter GPUs (PrismML, 2026-08-02): ~70 → ~135 tok/s at ~0.9 acceptance. On the operator host the canonical drafter measured 39.2 t/s (2026-07-21) — still below target-only ~41, so max-TPS stays `SPEC_TYPE=None`.
+
+## Reasoning Control
+- Publisher evaluates in **thinking mode** (thinking mode used for all benchmark results on HF `prism-ml/Bonsai-27B-gguf`, 2026-08-29).
+- Chat template (verified from HF GGUF README, `prism-ml/Bonsai-27B-gguf` 2026-08-29) reads `enable_thinking` — same template family as Qwen3.5/Qwen3.6. Template: `{% if enable_thinking is defined and enable_thinking is false %}` renders empty reasoning block; default renders `<think>\\n\\n</think>\\n\\n` — **thinking ON by default**.
+- `--reasoning-effort` is a silent no-op on this template family; use `--reasoning on/off` (Baseline REASONING) and `--reasoning-budget N` (REASONING_BUDGET) to control depth.
+- `REASONING_PRESERVE` (server): TBD — not verified from `/props` on this GGUF; local template probe not run (GGUF purged).
 
 ## Fork Requirement
 - Q2_0 and DSpark need the external **PrismML-Eng/llama.cpp** fork, branch `prism` (tested commit `9fcaed763` = tag `prism-b9596`), built with CUDA. The fork is not vendored in this repository.
@@ -130,7 +136,10 @@ Runtime: upstream `llama.cpp/build-cuda` (Q1_0). DSpark / Ternary Q2_0 requires 
 - Drafter crash: observed server log — 2026-07-18
 - Max-TPS matrix (65k–131k): harness cli-bench, this card table — 2026-07-21
 - Dense/hybrid/KV/DSpark architecture + published throughput: https://github.com/PrismML-Eng/Bonsai-demo (README.md, SPECULATIVE.md, KV-CACHE.md) + https://prismml.com/news/bonsai-27b — 2026-08-02
-- GGUF header verification (local `Bonsai-27B-Q1_0.gguf`, re-downloaded from `prism-ml/Bonsai-27B-gguf`): venv `gguf_dump` with `PYTHONUTF8=1` — 2026-08-02
+- Run guide + dspark command: https://github.com/PrismML-Eng/Bonsai-demo (README.md, SPECULATIVE.md) — read 2026-07-18
+- HF metadata JSON (license: Apache 2.0, context: 262144, architecture: qwen35, chat_template with enable_thinking) — https://huggingface.co/api/models/prism-ml/Bonsai-27B-gguf, read 2026-08-29
+- Full HF README.md (license: Apache 2.0, publisher generation params: TEMP=0.7, TOP_P=0.95, TOP_K=20, benchmarks: thinking mode, intelligence density) — https://huggingface.co/prism-ml/Bonsai-27B-gguf/blob/main/README.md, read 2026-08-29
+- License note: HF repo license is Apache 2.0 (explicit). Original source repo (`PrismML-Eng/Bonsai-27B`) was private/gated at time of original GGUF download (preserve historical note)
 
 ## Open Questions
 - **DSpark speedup**: canonical drafter loads (39.2 t/s @ 65k / 7.6 GB) but still loses to target-only ~41. Acceptance rate / PrismML kernel path TBD if chasing speculative wins.

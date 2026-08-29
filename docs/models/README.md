@@ -25,6 +25,8 @@ Cards:
 - [Qwen3.5-9B](qwen3.5-9b.md) — UD claw **0.1333** / coding **rejected**; MTP claw **0.2000** / coding **0.495**
 - Qwen3.5-4B-MTP (`Qwen3.5-4B-MTP-Q4_K_M.gguf`) — claw **0.2667** / coding **0.385**; GGUF deleted after vector complete; no dedicated card yet
 - [Qwen3.6-35B-A3B](qwen3.6-35b-a3b.md) — claw **0.5333** / coding **0.4300** (UD-Q4_K_XL @ 100k no-spec; Q3_K_XL vector incomplete)
+- [Qwen3.8-27B](qwen3.8-27b.md) — UD-IQ1_S dense (text-only local GGUF of the multimodal publisher); bench 28.4 t/s @65k; capability Trial pending; reasoning-effort ladder xhigh/medium/low (only local GGUF reading it)
+- [Nemotron-3-Nano-4B](nemotron3-nano-4b.md) — dense `nemotron_h` hybrid; agentic 0.7333 / coding 0.5100 @131k; enable_thinking-only; daily budget 2048 unmeasured
 - [Qwen-AgentWorld-35B-A3B](qwen-agentworld-35b-a3b.md)
 - [Gemma-4-26B-A4B](gemma-4-26b-a4b.md) — claw **0.1333** / coding **0.590**
 - [Ornith-1.0-9B](ornith-1.0-9b.md) — UD / MTP / deepreinforce `ornith-1.0-9b-Q4_K_M` are separate Trials

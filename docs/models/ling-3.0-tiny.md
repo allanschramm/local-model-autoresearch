@@ -16,19 +16,15 @@
 
 - Fits with large headroom: measured peak **2.5 GB** @65536 + `q4_0` KV + flash-attn — lowest of any model trialed on this rig. Host preflight est 5063 MB.
 - Day-eligible TPS (≥50 floor) at this config.
-
 ## Recommended settings
 
 No publisher sampler split on the bartowski card → seeded from `UNIVERSAL_FALLBACK_SAMPLER` then matched to the Qwen-family profile used across the sweep: TEMP 0.6 · TOP_P 0.95 · TOP_K 20 · MIN_P 0.0. `JINJA=True`.
-
 ## MTP
 
 - No MTP tensors in this GGUF. No spec decoding configured.
-
 ## MoE split ("VITRIOL split")
 
 `--n-cpu-moe 24` auto-resolved from `block_count`. Works clean on b10549.
-
 ## Our config baseline (measured 2026-08-23)
 
 Same shape as the Qwen distill baseline but `MODEL='Ling-3.0-tiny-Q4_K_M.gguf'`, `CTX_SIZE=65536`, `N_CPU_MOE=None` (auto).
@@ -47,9 +43,8 @@ Status `dominated` on coding, but kept as the **VRAM-efficient fallback**: same 
 
 ## Sources / Verification
 
-- HF `bartowski/Ling-3.0-tiny-GGUF` — quant list via `hf --dry-run`, extracted 2026-08-23.
-- Local measured: `docs/sessions/2026-08-23-ling-tiny-validation.md`, `2026-08-23-ling-tiny-full-trial.md`.
-
+- HF `bartowski/Ling-3.0-tiny-GGUF` — quant list via `hf --dry-run`, extracted 2026-08-29.
+- Local measured: `docs/sessions/2026-08-29-ling-tiny-validation.md`, `2026-08-29-ling-tiny-full-trial.md`.
 ## Open questions
 
 - **TBD:** 131072 ctx with turbo2 KV — VRAM headroom exists (2.5/7.7G used); would coding hold while ctx doubles?

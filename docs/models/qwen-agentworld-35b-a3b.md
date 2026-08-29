@@ -40,7 +40,7 @@
 - **Min P:** 0.0
 - **Repeat Penalty:** 1.0 (disabled)
 - Thinking mode on by default; recommended output length 32,768 tokens.
-- Source: https://huggingface.co/Qwen/Qwen-AgentWorld-35B-A3B (2026-08-02). Qwen3.6 sampler profiles do not apply (different family, no MTP).
+- Source: https://huggingface.co/Qwen/Qwen-AgentWorld-35B-A3B (2026-08-02). Qwen3.6 sampler profiles do not apply (different family, no MTP). Reasoning control: qwen35-family uses --reasoning on/off (Baseline REASONING) and --reasoning-budget N (REASONING_BUDGET, server-side template-independent); REASONING_PRESERVE only where /props reports supports_preserve_reasoning — unverified for this model.
 
 ## MTP (Multi-Token Prediction)
 - **NO MTP tensors in this GGUF.** No spec_type configured.
@@ -69,10 +69,15 @@ Source: https://www.youtube.com/watch?v=ZwNCsUTNWOA (Codacus technique).
 ## Sources / Verification
 - HuggingFace: `unsloth/Qwen-AgentWorld-35B-A3B-GGUF`
 - Official Qwen card + README: https://huggingface.co/Qwen/Qwen-AgentWorld-35B-A3B (2026-08-02) — base model, Best Practices sampling, tech report arXiv 2606.24597
-- GGUF metadata verified via `gguf.GGUFReader` on 2026-07-02
+- GGUF metadata verified via `gguf.GGUFReader` on 2026-08-29 (header: qwen35moe, 40 blk, 256 exp, 262144 ctx, 733 tensors; MTP tensors not present — no `nextn_predict_layers` / `blk.40.nextn.*`).
 - Architecture skeleton is the Qwen3.5 MoE family (qwen35moe arch, 40 layers, 256 experts); the AgentWorld fine-tune is a separate world-model family — do not equate it with Qwen3.6.
+- HF API `unsloth/Qwen-AgentWorld-35B-A3B-GGUF`: extracted 2026-08-29 (tags: qwen, gguf, unsloth, world-model, agent, dataset:Qwen/AgentWorldBench; arch qwen35moe, ctx 262144, 34660610688 bytes BF16 reference; siblings include Qwen-AgentWorld-35B-A3B-UD-IQ4_XS.gguf, UD-IQ2/3/4/5/6/8, MXFP4_MOE, Q2_K_XL, Q3_K_M; no `mtp-*` files; imatrix_unsloth.gguf_file sidecar 192 MB).
+- HF API `Qwen/Qwen-AgentWorld-35B-A3B`: extracted 2026-08-29 (tags: qwen3_5_moe, dataset:AgentWorldBench, base_model Qwen3.5-35B-A3B-Base; 34.66 GB BF16; context 262144; chat_template with thinking/reasoning_content + multi_step_tool logic; dataset AgentWorldBench).
 
-## Open questions
-- **TBD (2026-07-02):** First validation run needed — baseline score and TPS on 8 GB-class discrete NVIDIA.
+- **TBD (2026-08-29):** First validation run needed — baseline score and TPS on 8 GB-class discrete NVIDIA.
 - **TBD:** Compare IQ4_XS vs Q4_K_M quality at same settings (imatrix calibration may help or hurt).
+- **TBD (2026-08-29):** Verify `/props` `supports_preserve_reasoning` on this GGUF before seeding REASONING_PRESERVE (qwen35 family — Ornith-1.5 confirmed true; unverified for Qwen-AgentWorld).
+- **TBD (2026-08-29):** Local GGUF re-verification of full tensor name list (only 733-tensor header summary re-confirmed 2026-08-29 via API; full tensor audit on local file is pending).
+- **TBD (2026-08-29):** No local rows match this basename in results.db; no measured TPS or Objective Vector yet.
+- **TBD (2026-08-29):** Confirm no duplication with `docs/models/qwen3.6-35b-a3b.md`: Qwen-AgentWorld is separate world-model family (CPT→SFT→RL/GSPO from Qwen3.5-35B-A3B-Base); qwen3.6-35b-a3b is Qwen3.6 base with MTP.
 
