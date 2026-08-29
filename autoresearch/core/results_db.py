@@ -12,6 +12,7 @@ rewrites the legacy log.
 from __future__ import annotations
 
 import csv
+import json
 import os
 import sqlite3
 import tempfile
@@ -45,6 +46,7 @@ _NUMERIC_COLUMNS = frozenset(
         "min_p",
         "repeat_penalty",
         "presence_penalty",
+        "reasoning_budget",
         "gpu_temp_c",
         "tps_spread",
     }
@@ -101,6 +103,8 @@ _COLUMNS: list[str] = [
     "gpu_temp_c",
     "tps_reps",
     "tps_spread",
+    "reasoning_budget",
+    "reasoning_effort",
     "description",
 ]
 
@@ -132,7 +136,63 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_trials_model ON trials(model)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_trials_status ON trials(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_trials_model_status ON trials(model, status)")
+    _migrate_columns(conn)
+    _backfill_reasoning_columns(conn)
     conn.commit()
+
+
+# Columns added after the initial schema; legacy DBs migrate via ALTER TABLE.
+_MIGRATED_COLUMNS: dict[str, str] = {
+    "reasoning_budget": "REAL",
+    "reasoning_effort": "TEXT",
+}
+_BACKFILL_MARKER_KEY = "reasoning_columns_backfill_v1"
+
+
+def _migrate_columns(conn: sqlite3.Connection) -> None:
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(trials)")}
+    for name, decl in _MIGRATED_COLUMNS.items():
+        if name not in existing:
+            conn.execute(f"ALTER TABLE trials ADD COLUMN {_q(name)} {decl}")
+
+
+def _config_reasoning(cfg: dict) -> tuple[object, object]:
+    """Reasoning knobs from a config_json dict (lowercase, legacy uppercase)."""
+    budget = cfg.get("reasoning_budget", cfg.get("REASONING_BUDGET"))
+    effort = cfg.get("reasoning_effort", cfg.get("REASONING_EFFORT"))
+    return budget, effort
+
+
+def _backfill_reasoning_columns(conn: sqlite3.Connection) -> None:
+    """One-shot: legacy rows kept the reasoning knobs only inside config_json.
+
+    The marker table makes reruns a no-op; rows inserted through ``_cells``
+    derive the columns themselves, so only pre-existing rows need this pass.
+    """
+    conn.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT)")
+    done = conn.execute(
+        "SELECT 1 FROM schema_meta WHERE key = ?", (_BACKFILL_MARKER_KEY,)
+    ).fetchone()
+    if done:
+        return
+    rows = conn.execute("SELECT trial_id, config_json FROM trials").fetchall()
+    for trial_id, cfg_json in rows:
+        try:
+            cfg = json.loads(cfg_json) if cfg_json else {}
+        except ValueError:
+            continue
+        if not isinstance(cfg, dict):
+            continue
+        budget, effort = _config_reasoning(cfg)
+        if budget is not None or effort is not None:
+            conn.execute(
+                "UPDATE trials SET reasoning_budget = ?, reasoning_effort = ? WHERE trial_id = ?",
+                (budget, effort, trial_id),
+            )
+    conn.execute(
+        "INSERT OR REPLACE INTO schema_meta (key, value) VALUES (?, 'done')",
+        (_BACKFILL_MARKER_KEY,),
+    )
 
 
 def _q(name: str) -> str:
@@ -147,7 +207,29 @@ def _insert_sql() -> str:
 
 
 def _cells(row: dict) -> list:
+    row = _derive_reasoning_cells(row)
     return [_to_cell(c, row.get(c)) for c in _COLUMNS]
+
+
+def _derive_reasoning_cells(row: dict) -> dict:
+    """Fill missing reasoning columns from the row's config_json (legacy rows)."""
+    budget = row.get("reasoning_budget")
+    effort = row.get("reasoning_effort")
+    if budget not in (None, "") and effort not in (None, ""):
+        return row
+    try:
+        cfg = json.loads(row.get("config_json") or "{}")
+    except ValueError:
+        return row
+    if not isinstance(cfg, dict):
+        return row
+    out = dict(row)
+    cfg_budget, cfg_effort = _config_reasoning(cfg)
+    if budget in (None, "") and cfg_budget is not None:
+        out["reasoning_budget"] = cfg_budget
+    if effort in (None, "") and cfg_effort is not None:
+        out["reasoning_effort"] = cfg_effort
+    return out
 
 
 def replace_all(conn: sqlite3.Connection, rows: list[dict]) -> int:
@@ -256,6 +338,7 @@ _INT_COLUMNS = frozenset(
         "n_cpu_moe",
         "top_k",
         "spec_draft_n_max",
+        "reasoning_budget",
     }
 )
 
@@ -276,8 +359,11 @@ def read_rows(db_path: Path) -> list[dict[str, str]] | None:
     """All trials as TSV-shaped dict rows from the canonical store.
 
     None when the DB is missing or un-migrated (no ``trials`` table) —
-    callers fall back to the legacy TSV. Numeric cells read back as their
-    TSV text form (integral floats as ints, blanks as "").
+    callers fall back to the legacy TSV. Legacy DBs missing derived columns
+    (reasoning_budget / reasoning_effort) are migrated in place on first
+    read (ALTER + one-shot config_json backfill), so the SELECT below always
+    sees every column. Numeric cells read back as their TSV text form
+    (integral floats as ints, blanks as "").
     """
     db_path = Path(db_path)
     if not db_path.exists():
@@ -287,6 +373,7 @@ def read_rows(db_path: Path) -> list[dict[str, str]] | None:
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if "trials" not in tables:
             return None
+        ensure_schema(conn)
         conn.row_factory = sqlite3.Row
         cursor = conn.execute(
             f"SELECT {', '.join(_q(c) for c in _COLUMNS)} FROM trials ORDER BY rowid"

@@ -79,7 +79,7 @@ BASELINE_CLI_FLAGS = {
     "--reasoning-budget",
     "--reasoning-budget-message",
     "--reasoning",
-    "--reasoning-preserve",
+    "--reasoning-effort",
     "--no-reasoning-preserve",
     "--cont-batching",
     "--temp",
@@ -322,6 +322,13 @@ def parse_args():
         help="Reasoning mode (on/off/auto)",
     )
     parser.add_argument(
+        "--reasoning-effort",
+        type=str,
+        choices=["minimal", "low", "medium", "high", "xhigh", "max"],
+        default=getattr(config, "REASONING_EFFORT", None),
+        help="Reasoning effort level passed to the chat template (config.py-only)",
+    )
+    parser.add_argument(
         "--reasoning-preserve",
         action=argparse.BooleanOptionalAction,
         default=getattr(config, "REASONING_PRESERVE", None),
@@ -384,6 +391,8 @@ def tsv_fields_from_cfg(baseline: dict[str, Any]) -> dict[str, Any]:
         "flash_attn": baseline.get("FLASH_ATTN", ""),
         "no_mmap": baseline.get("NO_MMAP"),
         "spec_draft_n_max": baseline.get("SPEC_DRAFT_N_MAX"),
+        "reasoning_budget": baseline.get("REASONING_BUDGET"),
+        "reasoning_effort": baseline.get("REASONING_EFFORT"),
         "config_json": json.dumps(recorded, separators=(",", ":"), sort_keys=True),
     }
 
@@ -593,6 +602,8 @@ CATEGORY_FIELDNAMES = [
     "gpu_temp_c",
     "tps_reps",
     "tps_spread",
+    "reasoning_budget",
+    "reasoning_effort",
     "description",
 ]
 
@@ -688,6 +699,8 @@ def write_row(
     gpu_temp_c: float | None = None,
     tps_reps: str = "",
     tps_spread: float | None = None,
+    reasoning_budget: int | None = None,
+    reasoning_effort: str | None = None,
 ):
     _ensure_category_column(results_file)
     if status not in TRIAL_STATUSES:
@@ -764,6 +777,8 @@ def write_row(
         "gpu_temp_c": _tsv_cell(gpu_temp_c),
         "tps_reps": tps_reps,
         "tps_spread": _tsv_cell(tps_spread),
+        "reasoning_budget": _tsv_cell(reasoning_budget),
+        "reasoning_effort": reasoning_effort or "",
         "description": description,
     }
     with _results_lock(results_file):

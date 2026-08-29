@@ -254,3 +254,83 @@ def test_sync_to_tsv_round_trips_from_db(tmp_path):
 
 def test_try_sync_to_tsv_never_raises_when_db_missing(tmp_path):
     assert results_db.try_sync_to_tsv(tmp_path / "results.tsv", tmp_path / "results.db") == 0
+
+
+def _legacy_conn(tmp_path):
+    """Connection with the pre-reasoning-column schema (pre-2026-08-29 layout)."""
+    conn = sqlite3.connect(tmp_path / "results.db")
+    legacy_cols = [
+        c for c in results_db._COLUMNS if c not in ("reasoning_budget", "reasoning_effort")
+    ]
+    cols_sql = ",\n  ".join(
+        f"{results_db._q(c)} {'REAL' if c in results_db._NUMERIC_COLUMNS else 'TEXT'}"
+        + (" PRIMARY KEY" if c == "trial_id" else "")
+        for c in legacy_cols
+    )
+    conn.execute(f"CREATE TABLE trials (\n  {cols_sql}\n)")
+    return conn
+
+
+def test_ensure_schema_migrates_legacy_db_without_reasoning_columns(tmp_path):
+    conn = _legacy_conn(tmp_path)
+    conn.execute(
+        f"INSERT INTO trials ({results_db._q('trial_id')}, {results_db._q('model')}) VALUES (?, ?)",
+        ("t-legacy", "Ornith-35B"),
+    )
+    conn.commit()
+    results_db.ensure_schema(conn)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(trials)")}
+    assert "reasoning_budget" in cols
+    assert "reasoning_effort" in cols
+
+
+def test_backfill_reasoning_columns_from_config_json(tmp_path):
+    conn = _legacy_conn(tmp_path)
+    rows = [
+        ("t-budget", '{"kv":"q4_0","reasoning_budget":4096,"reasoning":null}'),
+        ("t-upper", '{"REASONING_BUDGET":8192,"REASONING_EFFORT":"low"}'),
+        ("t-plain", '{"kv":"q4_0","reasoning_budget":null,"reasoning":null}'),
+    ]
+    for trial_id, cfg in rows:
+        conn.execute(
+            f"INSERT INTO trials ({results_db._q('trial_id')}, {results_db._q('config_json')}) VALUES (?, ?)",
+            (trial_id, cfg),
+        )
+    conn.commit()
+    results_db.ensure_schema(conn)
+    assert (
+        conn.execute("SELECT reasoning_budget FROM trials WHERE trial_id = 't-budget'").fetchone()[
+            0
+        ]
+        == 4096
+    )
+    assert conn.execute(
+        "SELECT reasoning_budget, reasoning_effort FROM trials WHERE trial_id = 't-upper'"
+    ).fetchone() == (8192, "low")
+    plain = conn.execute(
+        "SELECT reasoning_budget, reasoning_effort FROM trials WHERE trial_id = 't-plain'"
+    ).fetchone()
+    assert plain[0] is None and plain[1] is None
+    # Marker: a second ensure_schema is a no-op (NULLs stay NULL, no resurrection).
+    conn.execute("UPDATE trials SET reasoning_budget = NULL")
+    results_db.ensure_schema(conn)
+    assert (
+        conn.execute("SELECT reasoning_budget FROM trials WHERE trial_id = 't-budget'").fetchone()[
+            0
+        ]
+        is None
+    )
+
+
+def test_upsert_derives_reasoning_columns_from_config_json(tmp_path):
+    conn = _legacy_conn(tmp_path)
+    results_db.ensure_schema(conn)
+    row = {
+        "trial_id": "t-1",
+        "config_json": '{"reasoning_budget":2048,"reasoning_effort":"low"}',
+    }
+    results_db.upsert_rows(tmp_path / "results.db", [row])
+    got = conn.execute(
+        "SELECT reasoning_budget, reasoning_effort FROM trials WHERE trial_id = 't-1'"
+    ).fetchone()
+    assert got == (2048, "low")

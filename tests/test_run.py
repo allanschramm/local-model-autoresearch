@@ -690,6 +690,79 @@ class TestRun(unittest.TestCase):
         self.assertEqual(row["spec_draft_n_max"], "0")
         self.assertEqual(row["tps_source"], "llama-bench")
 
+    def test_write_row_records_reasoning_columns(self):
+        """write_row must persist reasoning_budget/reasoning_effort as flat columns."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "results.tsv"
+            run.write_row(
+                path,
+                "abc123",
+                0.5,
+                0.0,
+                0.1,
+                0.2,
+                4.5,
+                "on_front",
+                "desc",
+                model="m.gguf",
+                reasoning_budget=2048,
+                reasoning_effort="low",
+            )
+            with open(path, encoding="utf-8") as f:
+                header = f.readline().rstrip("\n").split("\t")
+            with open(path, encoding="utf-8") as f:
+                row = next(csv.DictReader(f, delimiter="\t"))
+
+        self.assertIn("reasoning_budget", header)
+        self.assertIn("reasoning_effort", header)
+        self.assertEqual(row["reasoning_budget"], "2048")
+        self.assertEqual(row["reasoning_effort"], "low")
+
+    def test_ensure_category_column_migrates_pre_reasoning_tsv(self):
+        """Legacy TSV without the reasoning columns gains them on first write."""
+        import tempfile
+
+        legacy_fields = [
+            c for c in run.CATEGORY_FIELDNAMES if c not in ("reasoning_budget", "reasoning_effort")
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "results.tsv"
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=legacy_fields, delimiter="\t")
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "trial_id": "t-0",
+                        "model": "m.gguf",
+                        "config_json": '{"reasoning_budget":4096}',
+                    }
+                )
+            run.write_row(
+                path,
+                "abc123",
+                0.5,
+                0.0,
+                0.1,
+                0.2,
+                4.5,
+                "on_front",
+                "desc",
+                model="m.gguf",
+                reasoning_budget=2048,
+                reasoning_effort="low",
+            )
+            with open(path, encoding="utf-8") as f:
+                rows = list(csv.DictReader(f, delimiter="\t"))
+
+        migrated = next(r for r in rows if r["trial_id"] == "t-0")
+        self.assertIn("reasoning_budget", migrated)
+        # Legacy row keeps a blank flat column; its budget lives in config_json
+        # and is backfilled only in the canonical DB layer.
+        self.assertEqual(migrated["reasoning_budget"], "")
+        self.assertEqual(migrated["config_json"], '{"reasoning_budget":4096}')
+
     @patch("autoresearch.runners.run.run_evaluation")
     @patch("autoresearch.runners.run.get_git_commit", return_value="abcdefg")
     def test_successful_single_run_logs_throughput_columns(self, mock_commit, mock_eval):
