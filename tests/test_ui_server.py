@@ -11,6 +11,7 @@ import json
 import socket
 import threading
 import time
+import unittest.mock
 import urllib.error
 import urllib.request
 
@@ -99,6 +100,24 @@ def test_api_status_trial_rows_have_status_pt():
         trials = data.get("trials") or []
         if trials:
             assert "status_pt" in trials[0]
+    finally:
+        _stop_server(server, t)
+
+
+def test_failed_baseline_feed_does_not_blank_other_panels():
+    """Baseline failure yields its own pt-BR error while run_state/trials/log survive (#42)."""
+    port, server, t = _start_server()
+    try:
+        with unittest.mock.patch("ui.server._load_baseline", side_effect=RuntimeError("boom")):
+            resp = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/status")
+            assert resp.status == 200
+            data = json.loads(resp.read())
+        # Other feeds are untouched by the baseline failure...
+        assert "run_state" in data
+        assert "log_tail" in data
+        assert isinstance(data.get("trials"), list)
+        # ...and the failing panel reports its own pt-BR error.
+        assert data["baseline"]["error"] == "Falha ao carregar Baseline."
     finally:
         _stop_server(server, t)
 

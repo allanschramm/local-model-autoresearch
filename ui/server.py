@@ -278,6 +278,13 @@ _HTML = """<!DOCTYPE html>
       return;
     }
     const trials = d.trials || [];
+    // Per-panel error from server fallback (one feed failed, others still render).
+    if (trials.some((t) => t.error)) {
+      trialsEmpty.hidden = false;
+      trialsEmpty.textContent = trials.find((t) => t.error).error;
+      trialsTable.hidden = true;
+      return;
+    }
     if (trials.length === 0) {
       trialsEmpty.hidden = false;
       trialsEmpty.textContent = "Nenhum dado de Trial encontrado.";
@@ -439,16 +446,28 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.wfile.write(html.encode("utf-8"))
 
     def _serve_status(self) -> None:
+        baseline = {}
+        trials = []
+        log_tail = None
+        run_state = "Idle"
         try:
             run_state, log_tail = run_state_and_tail()
-            payload = {
-                "run_state": run_state,
-                "log_tail": log_tail,
-                "baseline": _load_baseline(),
-                "trials": [format_trial_for_ui(t) for t in read_last_50_trials()],
-            }
-        except Exception as exc:  # noqa: BLE001
-            payload = {"error": f"Falha ao carregar status: {exc}", "run_state": "Idle"}
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            baseline = _load_baseline()
+        except Exception:  # noqa: BLE001
+            baseline = {"error": "Falha ao carregar Baseline."}
+        try:
+            trials = [format_trial_for_ui(t) for t in read_last_50_trials()]
+        except Exception:  # noqa: BLE001
+            trials = [{"error": "Falha ao carregar Trials."}]
+        payload = {
+            "run_state": run_state,
+            "log_tail": log_tail,
+            "baseline": baseline,
+            "trials": trials,
+        }
         body = json.dumps(payload, default=str).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
