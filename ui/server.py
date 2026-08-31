@@ -243,11 +243,11 @@ _HTML = """<!DOCTYPE html>
       "DRY_RATIO","DRY_LAST_N"]]);
     const remaining = [...allKeys].filter(k => !shown.has(k) && k !== "error");
     if (remaining.length > 0) {
-      baselineDetails.innerHTML = `<details><summary>ver todas</summary><dl>`;
+      let rows = "";
       for (const key of remaining) {
-        baselineDetails.innerHTML += `<dt>${esc(key)}</dt><dd>${esc(String(bg[key]))}</dd>`;
+        rows += `<dt>${esc(key)}</dt><dd>${esc(String(bg[key]))}</dd>`;
       }
-      baselineDetails.innerHTML += `</dl></details>`;
+      baselineDetails.innerHTML = `<details><summary>ver todas</summary><dl>${rows}</dl></details>`;
     } else {
       baselineDetails.innerHTML = "";
     }

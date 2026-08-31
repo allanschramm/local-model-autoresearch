@@ -92,14 +92,28 @@ def test_api_status_returns_json():
 
 
 def test_api_status_trial_rows_have_status_pt():
-    """Trial rows in /api/status carry status_pt presentation field."""
+    """Seeded on_front row → status_pt "na fronteira", canonical status intact (#46)."""
+    row = {
+        "status": "on_front",
+        "outcome": "ok",
+        "ctx": "65536",
+        "tps": "40.0",
+        "agentic": "0.5",
+        "coding": "0.5",
+        "memory_gb": "7.0",
+        "elapsed_sec": "120",
+        "diagnostic": "",
+        "description": "seeded row",
+    }
     port, server, t = _start_server()
     try:
-        resp = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/status")
-        data = json.loads(resp.read())
-        trials = data.get("trials") or []
-        if trials:
-            assert "status_pt" in trials[0]
+        with unittest.mock.patch("ui.server.read_last_50_trials", return_value=[row]):
+            resp = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/status")
+            assert resp.status == 200
+            data = json.loads(resp.read())
+        trials = data["trials"]
+        assert trials[0]["status"] == "on_front"
+        assert trials[0]["status_pt"] == "na fronteira"
     finally:
         _stop_server(server, t)
 
