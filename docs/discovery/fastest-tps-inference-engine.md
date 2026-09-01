@@ -36,16 +36,16 @@ Pattern: **small-active MoE + speculative MTP heads beat dense 9B by 2.5–4x** 
 
 ## 3. ExLlamaV3 — the one challenger (primary sources)
 
-ExLlamaV2 is **archived** ("This project is archived for now. Development continues on ExLlamaV3") ([ExLlamaV2 README](https://github.com/turboderp/ExLlamaV2)). ExLlamaV3 ([repo](https://github.com/turboderp-org/exllamav3) — active, **v1.4.2 published 2026-08-11** ships `win_amd64` prebuilt wheels `cp310–cp313`, `cu128`/`torch2.10.x` on [releases](https://github.com/turboderp-org/exllamav3/releases) — verified via GitHub API 2026-08-22) is the live project: "optimized quantization and inference library for running LLMs locally on modern consumer-class GPUs."
+ExLlamaV2 is **archived** ("This project is archived for now. Development continues on ExLlamaV3") ([ExLlamaV2 README](https://github.com/turboderp/ExLlamaV2)). ExLlamaV3 ([repo](https://github.com/turboderp-org/exllamav3) — active, **v1.4.5 published 2026-08-31** ships `win_amd64` prebuilt wheels `cp310–cp313`, `cu128`/`torch2.10.0` on [releases](https://github.com/turboderp-org/exllamav3/releases) — verified via GitHub API 2026-08-31) is the live project: "optimized quantization and inference library for running LLMs locally on modern consumer-class GPUs."
 
 Headline facts from the [ExLlamaV3 README](https://github.com/turboderp-org/exllamav3):
-- **EXL3 format**: streamlined variant of **QTIP** (Cornell RelaxML); one-step quantization (fused Viterbi kernel), minutes for small models on one RTX 4090; coherent at 1.6 bpw (Llama-3.1-70B in <16 GB). TPS-relevant: **Marlin-inspired GEMM kernel ≈ memory-bound at 4 bpw on RTX 4090**; author notes efficiency on Ampere (30-series) "still needs work" — Ada (8GB-class, sm89) unverified.
+- **EXL3 format**: streamlined variant of **QTIP** (Cornell RelaxML); one-step quantization (fused Viterbi kernel), minutes for small models on one RTX 4090; coherent at 1.6 bpw (Llama-3.1-70B in <16 GB). TPS-relevant: **Marlin-inspired GEMM kernel ≈ memory-bound at 4 bpw on RTX 4090**; Ampere efficiency addressed in v1.0.0 (2026-07-14 release body: "Greatly improved GEMM/GEMV performance on Ampere", also removed `flash-attn-2`/`xformers` deps — verified 2026-08-31); Ada sm_89: community sm_89 CUDA extension builds exercised in the wild (PR #303, §7.3) — still unverified on this rig.
 - **Tensor-parallel + expert-parallel** for consumer setups; 2–8-bit KV cache quantization (helps long ctx on 8 GB); speculative decoding; LoRA; multimodal.
-- **Windows (updated 2026-08-22):** earlier "source-build only / `linux_x86_64` only" note was stale — **v1.4.2** (2026-08-11) ships `win_amd64` wheels for `cp310–cp313`, `cu128`/`torch2.10.x` on [releases](https://github.com/turboderp-org/exllamav3/releases) (GitHub API, 2026-08-22). Caveat: torch/CUDA pin must match host env; PyPI path still requires VS Build Tools per README.
+- **Windows (updated 2026-08-31):** **v1.4.5** (2026-08-31) ships `win_amd64` wheels for `cp310–cp313`, `cu128`/`torch2.10.0` on [releases](https://github.com/turboderp-org/exllamav3/releases) (GitHub API, 2026-08-31). Caveat: torch/CUDA pin must match host env; PyPI path still requires VS Build Tools per README. Recent release notes of note: v1.4.3 partial CPU layer expert offload + auto-calibrated dynamic-draft thresholds; v1.4.4 vision tower quantization + vision offload from system RAM ("performance penalty is small"); v1.4.5 improved MoE MTP performance.
 - **NVIDIA-only** ("ROCm support" on to-do list).
-- Arch list (vs this repo's inventory, [README](https://github.com/turboderp-org/exllamav3), re-checked 2026-08-22 via `web_search`):
+  - Arch list (vs this repo's inventory, [README](https://github.com/turboderp-org/exllamav3), re-checked 2026-08-31 via direct README fetch):
   - ✅ **LFM 2.5** (`Lfm2MoeForCausalLM`) — the 178-TPS king *could* run on ExLlamaV3
-  - ✅ **Qwen 3.5 / Qwen 3.5 MoE** — dense 4B/9B supported (MTP-head behavior unverified)
+  - ✅ **Qwen 3.5 / Qwen 3.5 MoE** — dense 4B/9B supported; **embedded MTP works** (resolved 2026-08-31: PR #303 scope is "Qwen3.5/3.6 embedded MTP"; issue #260 runs Qwen3.6-27B EXL3 5bpw with embedded MTP tensors, ~2.9–3.1× accept speedup; TabbyAPI `draft_mode: mtp`) — external / unverified on this rig; v1.2.0 GDN state-rewind bug affects multi-GPU splits only, single-GPU unaffected (issue #260)
   - ✅ **Laguna 2.1** (`LagunaForCausalLM`) — Laguna-XS
   - ✅ **Gemma 4** (dense 31B/12B etc.: `Gemma4ForConditionalGeneration`, `Gemma4UnifiedForConditionalGeneration`) — **now supported** as of 0.0.29+ (see [HaoweiShen/Gemma-4-31B-it-EXL3](https://huggingface.co/HaoweiShen/Gemma-4-31B-it-EXL3-6.0bpw) EXL3 pack; the earlier "Gemma 4 not supported" for this repo's era was accurate at 2026-07-31 but is stale for the family). Caveat: a `layer_scalar` inference bug required a patched fork for correct 31B inference (fixed upstream after); verify current wheel before use.
   - ❌ **Gemma 4 E2B/E4B specifically still not supported** — the E2B/E4B efficient variants remain listed as unsupported (kills the 122-TPS MTP champion on this rig) — confirmed via `web_search` 2026-08-22.
@@ -53,13 +53,50 @@ Headline facts from the [ExLlamaV3 README](https://github.com/turboderp-org/exll
 
 Historical TPS context (ExLlamaV2-era, **4090**, primary README tables): Llama-7B EXL2 4.0 bpw **211 t/s**, TinyLlama-1.1B EXL2 4.0 bpw 700 t/s. Directional secondary sources claim ExLlamaV2 was 50–85% faster than llama.cpp on 3090/4090 (blog aggregator; ExLlamaV2-era; not primary, treat as directional). **No primary 8GB-class-class ExLlamaV3-vs-llama.cpp TPS benchmark exists in the sources gathered** — any speedup on this specific rig is unverified until measured.
 
+### 3.1 Qwen3.5-9B-exl3 — trigger artifact exists (added 2026-08-31)
+
+[turboderp/Qwen3.5-9B-exl3](https://huggingface.co/turboderp/Qwen3.5-9B-exl3) is the exact §6 trigger case: a dense Qwen3.5-class EXL3 pack published by the format author. Requires ExLlamaV3 ≥ v0.0.23 (any current 1.4.x satisfies it); branches 2.00–6.00 bpw; KLD-vs-bpw chart on the card.
+
+Measured branch sizes (HF API tree, 2026-08-31; single `model.safetensors` per branch) vs the Baseline `VRAM_LIMIT_MB` keepout (7676 MB class, ±200 MB WDDM variance):
+
+| branch | size | fit (est., before KV + runtime) |
+| :-- | --: | :-- |
+| 3.00bpw | 5.89 GiB | plausible fit at moderate ctx — hybrid arch has 8/32 full-attn layers (small KV) + EXL3 2–8-bit cache quant |
+| 3.50bpw | 6.29 GiB | borderline |
+| 4.00bpw | 6.69 GiB | over — only with vision offload (v1.4.4 streams vision tower from system RAM) and/or small ctx |
+
+Δ(3.00→4.00bpw) = 0.80 GiB → ~3.5 GiB of the pack does not scale with bpw (vision tower + fixed-precision parts; per-tensor bitrates in `quantization_config.json` not decomposed). Pack is multimodal (`Qwen3_5ForConditionalGeneration`).
+
+Repo-measured llama.cpp targets to beat ([model card](../models/qwen3.5-9b.md)): base **38.7** / MTP **57.3** t/s (llama-cli fair matrix, 2026-07-20), bench_tg **67.5** @ 32k+MTP (Q4_K_M).
+
+ExLlamaV3-side levers: embedded-MTP draft (`draft_mode: mtp` in TabbyAPI; v1.4.3 auto-calibrated dynamic-draft thresholds) — works only on packs that keep the MTP head (see measured block below); cache quantization; vision offload.
+
+**Falsifiable experiment** (manual pass outside the harness — benchmark/validation are llama-server-only; never autoloop):
+1. Fresh venv, not the harness venv: `torch 2.10.0+cu128`, then the exllamav3 `win_amd64` wheel (v1.4.5) matching the venv's cp version (cp310–cp313).
+2. Download the 3.00bpw branch (~6.3 GB disk).
+3. Single-stream tg at fixed ctx (16k/32k), MTP off then `mtp` draft on, batch 1, fixed prompt; nvidia-smi peak vs the keepout ceiling. Cache: EXL3 quantized (2–8 bit) at 32k to match the llama.cpp q4_0-KV comparison style — fp16 KV at 131k does not fit 3.50+ bpw. Tooling: no standalone bench script upstream (examples listing checked 2026-08-31) — measure via `examples/chat.py` / a `generator.py`-style loop, or TabbyAPI for the server path.
+4. Win condition: EXL3-MTP > 57.3 t/s at the same ctx class → then consider a wider comparison; otherwise llama.cpp stays.
+
+**Measured on the operator host (2026-08-31; ExLlamaV3 v1.4.5+cu128.torch2.10.0 wheel, triton 3.8.0, dedicated Python 3.12 venv outside the harness):**
+
+| config | decode t/s | peak VRAM | notes |
+| :-- | --: | --: | :-- |
+| EXL3 3.00bpw, base (no MTP) | **49.6** | **5437 MB** | 511 tokens greedy, batch 1, 32k q4/q4 cache |
+| llama.cpp Q4_K_M base | 38.7 | — | fair matrix, 2026-07-20 |
+| llama.cpp Q4_K_M + MTP | **57.3** | — | fair matrix, 2026-07-20 (bench_tg 67.5 @ 32k) |
+
+**EXL3 base is +28% over llama.cpp base but −13% vs llama.cpp-with-MTP — llama.cpp stays.** The MTP-on leg is impossible on this pack: the safetensors header (1363 tensors audited) contains **zero `mtp`/`nextn` tensors** — turboderp's EXL3 conversion dropped the embedded MTP head, and `Model.from_config(config, component="mtp")` fails at load (`mtp.pre_fc_norm_hidden.weight not found`). EXL3-embedded-MTP works only on packs that keep the head (e.g. Qwen3.6-27B EXL3 5bpw, issue #260). **Fair-comparison follow-up (operator-directed, 2026-08-31): attempted, hardware-blocked.** Self-quantizing from the BF16 source with the head kept is mechanically possible — convert.py v1.4.5 wires the MTP component automatically for qwen3_5 (source-verified; a completed run produced a 1399-tensor pack with **39 MTP tensors** at 3 bpw text / 4 bpw MTP / unquantized head, zero vision) — but two hardware walls block the fair benchmark on this rig: (1) **quantizing the 248K-vocab lm_head exceeds 32 GB host RAM on every head path** (6 bpw mul1 Viterbi: 55 GB commit, frozen at 0 % for 45 min; 8 bpw retry: free RAM 24 → 0.8 GB in ~2 min, killed per the circuit-breaker protocol — the quantizer's head-stage state scales with vocab size); (2) **storing the head unquantized (`-hb 16`) doesn't fit 8 GB inference** — the pack is 7.18 GiB (bf16 head 2.03 + bf16 embed 2.03 + 3 bpw layers ≈ 3.2) and autosplit load fails with "Insufficient VRAM in split for model and cache" (turboderp's pack only fits because its vision tower is skipped at text-gen and its head is 4-bpw-quantized — the exact quantization blocked by (1)). exl3.md's "embedding layer can be relegated to system RAM" is not exposed in v1.4.5 — the `Model.load` signature has no embedding-offload (only MoE CPU-offload exists, `model_ls.py`) and convert.py has no embedding-bits option, so the residual lever is upstream.
+**Ecosystem scan (2026-08-31, `hf models ls` across authors):** the only MTP-bearing EXL3 pack for the Qwen3.5 family on HF is `komeijishiki/DeepSeek-V4-Pro-Qwen3.5-9B-EXL3-6.50bpw-H8-V8-MTP8` (created 2026-09-01T01:08Z, unsloth finetune base). Its H8 recipe proves 8-bit head quant works on bigger-RAM hosts, but the pack totals **9.6 GB** — ~3 GB over this rig's placement ceiling. No ≤4 bpw base-model EXL3 pack with an MTP head exists yet; embedding quantization is not a converter option (embeddings are hard-coded 16-bit copies), and v1.4.5's `Model.load` exposes no embedding-offload (only MoE CPU-offload exists in `model_ls.py`).
+
+Setup gotchas for any future pass: (1) `triton-windows` is **mandatory** on Windows — v1.4.5 `bc_dsa.py` imports triton kernels unconditionally, so without it the package fails at import (README says "suboptimal"; reality is "won't import"); (2) the fit estimate for 3.00bpw is now measured — 5437 MB peak incl. torch context, big headroom under the keepout; (3) load took 35.9s first run (triton JIT compile), 3.4s with warm JIT cache; (4) the PyPI/release **wheel omits `standard_cal_data/`** (c4/code/multilingual/technical/tiny/wiki .utf8) that convert.py expects — fetch from the GitHub tag into the installed package, else calibration fails; (5) EXL3 packs keep embeddings at 16 bits (they are not in the quant walk) — budget ~2 GiB per 248K-vocab embed when fitting.
+
 ### Why not adopt now (repo-relevant)
 
 1. **Format lockout**: EXL3 is a new quant format; the repo's entire GGUF store + `docs/models/*` cards + Pareto `results.tsv` lineage are GGUF. Every candidate model must be re-quantized from HF safetensors (new format, new quality baselines) — contradicts "keep the harness stable" contract.
-2. **Model coverage gaps**: top TPS models on the operator host are MoE (LFM2.5-8B-A1B) and MTP-packaged (gemma-4-E4B, Qwen3.5-MTP). Gemma-4 E2B/E4B is explicitly unsupported; MTP-head behavior on Qwen3.5 unverified. ExLlamaV3's win condition (dense Llama/Qwen EXL3 4bpw) is exactly the class that's *slower* than MoE/MTP on the operator host under llama.cpp.
+2. **Model coverage gaps**: top TPS models on the operator host are MoE (LFM2.5-8B-A1B) and MTP-packaged (gemma-4-E4B, Qwen3.5-MTP). Gemma-4 E2B/E4B is explicitly unsupported; on this rig the turboderp Qwen3.5-9B EXL3 pack carries no MTP head, so EXL3 runs base-only and loses to llama.cpp-with-MTP (§3.1, measured). ExLlamaV3's win condition (dense Llama/Qwen EXL3 4bpw) is exactly the class that's *slower* than MoE/MTP on the operator host under llama.cpp.
 3. **Context regime mismatch**: this repo's Pareto runs 65k–131k ctx (KV-heavy). ExLlamaV3 targets shorter-context consumer chat; KV quant helps but no evidence at 131k on 8 GB.
 4. **Harness contract**: benchmark_search/validation run llama-server only; ExLlamaV3 (TabbyAPI/OpenAI server) is a different process, no `config.py` Baseline path, would violate "no ad-hoc eval" until a harness adapter exists (not requested).
-5. **Windows build burden (softened 2026-08-22):** prebuilt `win_amd64` wheels now exist for `cu128`/`torch2.10.x` (`cp310–cp313`, v1.4.2), so source-build with CUDA toolkit + VS Build Tools + `flash-attn-2` + `triton-windows` is now fallback, not the only path. Remaining pin: wheel's torch/CUDA must match host env vs llama.cpp prebuilt release (download, no build, no torch pin).
+5. **Windows build burden (softened 2026-08-31):** prebuilt `win_amd64` wheels now exist for `cu128`/`torch2.10.0` (`cp310–cp313`, v1.4.5), so source-build with CUDA toolkit + VS Build Tools + `triton-windows` is fallback, not the only path. Remaining pin: wheel's torch/CUDA must match host env vs llama.cpp prebuilt release (download, no build, no torch pin).
 
 ## 4. Why the others lose on the operator host
 
@@ -85,7 +122,7 @@ llama.cpp already owns the operator host's speed levers (all repo-measured, `con
 
 **Upstream llama.cpp CUDA remains the fastest *practical* TPS engine on the operator host.** It holds the measured records (MoE 178.5, MTP +80%), natively supports Windows + the GGUF store, and all remaining speed lives in model/flag choice, not engine choice.
 
-**ExLlamaV3 (EXL3)** is the only credible raw-TPS challenger that runs on Windows NVIDIA, but it targets the dense-short-context niche the operator host already beats via MoE/MTP, breaks the GGUF store and harness contracts, and has **zero measured 8GB-class evidence** (web search, §7). Track it in the landscape; if a future need is "maximum single-stream TPS for one dense Qwen3.5-class model at ≤16k ctx," measure ExLlamaV3 vs llama.cpp on *the operator host* before switching (repo rule: measure, never estimate; no eval-score floors).
+**ExLlamaV3 (EXL3)** is the only credible raw-TPS challenger that runs on Windows NVIDIA, but it targets the dense-short-context niche the operator host already beats via MoE/MTP, breaks the GGUF store and harness contracts. **Measured on the operator host (2026-08-31, §3.1): EXL3 3.00bpw base 49.6 t/s vs llama.cpp base 38.7 (+28%) but llama.cpp-with-MTP 57.3 (−13%) — and the EXL3 pack ships without the MTP head, so the engine swap loses on the one model class it targeted. The self-quant path to a fair EXL3-MTP number is hardware-blocked (head quant needs >32 GB RAM at 248K vocab; unquantized head doesn't fit 8 GB VRAM, §3.1). Verdict unchanged: llama.cpp stays.** Re-test only if (a) a Qwen3.5-9B EXL3 pack appears with the MTP head kept, (b) ExLlamaV3 exposes embedding offload making a bf16-head self-quant fit on 8 GB, or (c) a dense-model need arises where MTP is unavailable.
 
 ## 7. Web-search addendum (external benchmarks)
 
@@ -114,6 +151,8 @@ NVIDIA developer blog (2024-10-02): llama.cpp, Llama 3 8B, ~**150 t/s on RTX 409
 - Reddit (r/LocalLLaMA): on older GPUs "no speed gains to expect using exllama2" — llama.cpp flash-attention optimizations closed the gap; advantage is GPU-generation dependent.
 - ExLlamaV3 vendor: Marlin-style GEMM memory-bound at 4bpw **on 4090**; Ampere efficiency "needs work"; **Ada (8GB-class, sm89) unverified**.
 - A LinkedIn post benchmarking llama.cpp vs ExLlamaV3 on Qwen3.6-27B @ 4.5 bpw surfaced in search but the page 404'd on retrieval — anecdotal, not citable.
+- r/LocalLLaMA (Aug 2026, [thread 1vqh5s7](https://www.reddit.com/r/LocalLLaMA/comments/1vqh5s7/exllamav3_vs_llamacpp_2x_3060/)): ExLlamaV3 vs llama.cpp on 2× RTX 3060 TP — Qwen3.8-27B EXL3 4.0bpw ~95 vs ~40 t/s; Qwen3.6-35B-A3B ~150 vs ~84 t/s. **External / unverified on this rig; multi-GPU TP setup; numbers from search-result summary — direct fetch blocked (403).**
+- ExLlamaV3 PR #303 (2026-08-22, open, `dev`): Qwen3.8-27B EXL3 3.00bpw MTP-4, full 248K-vocab head **36.58 t/s** mean on an RTX 4060 Ti 16 GB with a CUDA 12.8 extension built for SM 8.9 (selected-head variant 44.58 t/s). **External / unverified on this rig** (16 GB card, 27B model, unmerged PR) — but proof that Qwen3.5-family embedded MTP and sm_89 builds run in the wild.
 
 **Net:** every ExLlama speed claim is either EXL2-era (archived engine), 4090/3090-class, or unverified on Ada. No web source shows ExLlamaV3 beating modern llama.cpp on a 8GB-class 8 GB with big context. The only way to know would be an on-rig measurement; per harness contract that means a config.py Baseline experiment through the search loop (llama.cpp) plus a manual ExLlamaV3 run outside it — not requested, so documented here instead.
 
@@ -123,6 +162,11 @@ NVIDIA developer blog (2024-10-02): llama.cpp, Llama 3 8B, ~**150 t/s on RTX 409
 - Measured TPS: `results.tsv` (llama.cpp CUDA, upstream); [small-model-mtp-tps.md](./small-model-mtp-tps.md)
 - ExLlamaV2 (archived): https://github.com/turboderp/ExLlamaV2 (README incl. 4090 TPS tables)
 - ExLlamaV3: https://github.com/turboderp-org/exllamav3 (README: EXL3/QTIP, arch list, Windows build, no-ROCm)
+- ExLlamaV3 v1.0.0 release (2026-07-14; Ampere GEMM/GEMV, attention-kernel rewrite): https://github.com/turboderp-org/exllamav3/releases/tag/v1.0.0
+- ExLlamaV3 v1.4.3–v1.4.5 release notes (CPU expert offload, vision offload/quant, MoE MTP perf): https://github.com/turboderp-org/exllamav3/releases
+- PR #303 — Qwen MTP hot-vocab head (Qwen3.5/3.6 embedded-MTP scope; 4060 Ti sm_89 measurement): https://github.com/turboderp-org/exllamav3/pull/303
+- Issue #260 — GDN rewind + EXL3-embedded MTP tensors (Qwen3.6-27B EXL3 5bpw): https://github.com/turboderp-org/exllamav3/issues/260
+- Qwen3.5-9B-exl3 pack: https://huggingface.co/turboderp/Qwen3.5-9B-exl3 (branch sizes via HF API tree, 2026-08-31)
 - TensorRT-LLM Windows: https://blogs.nvidia.com/blog/2023/10/17/tensorrt-llm-windows-stable-diffusion-rtx/ (2023-10-17, "up to 4x"); https://github.com/NVIDIA/TensorRT-LLM (current tree, no Windows path)
 - vLLM: https://github.com/vllm-project/vllm (README, no Windows)
 - SGLang: [sglang-inference-engine.md](./sglang-inference-engine.md) (Windows issues #2249/#7766)

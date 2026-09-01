@@ -105,4 +105,4 @@ Discrete 8 GB-class AMD (RDNA 2, gfx1032) via ROCm/HIP b10448. Setup: [AMD ROCm 
 - **No truncation noted:** HF API responses fully read (base repo + GGUF repo); Unsloth docs fully read; local GGUF header verified via `GGUFReader` in prior session (not truncated). No missing source URLs.
 
 ## Open questions
-- None for the operator host — UD coding axis closed as failure; MTP basename vector complete (weak).
+- None for the operator host — UD coding axis closed as failure; MTP basename vector complete (weak). EXL3 side: 3 bpw base measured 49.6 t/s (+28 % vs 38.7) but packs ship without the MTP head and head self-quant is hardware-blocked on this rig — see [discovery engine doc](../discovery/fastest-tps-inference-engine.md) §3.1 and [session log](../sessions/2026-08-31-qwen35-9b-exl3-probe.md).
