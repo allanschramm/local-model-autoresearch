@@ -1,6 +1,6 @@
 # POCKET-26B — Model Card (Local, historical)
 
-**Status:** **DELETED from `models/` + alias removed** (2026-07-26). Doc + `results.tsv` rows kept.  
+**Historical card.**
 **Source repo:** https://huggingface.co/FINAL-Bench/POCKET-26B-GGUF  
 **Base model:** https://huggingface.co/google/gemma-4-26B-A4B-it  
 **License:** Apache-2.0  
@@ -9,7 +9,7 @@
 **Architecture type:** MoE (`gemma4`) — 26B total / ~4B active  
 **Quantization:** `Q4_K_M` (`general.file_type=15`)
 
-## Why deleted
+## Performance vs `pocket-35b`
 
 Weak on the operator host vs `pocket-35b`: claw-full **0.2000**, coding **0.490**, ~21 t/s. Prefer POCKET-35B. Scores stay in `results.tsv` / leaderboards / session log.
 
@@ -86,9 +86,8 @@ TPS_FLOOR = 15.0
 | Claw full (15) | **0.2000** (3/15) |
 | Coding-10 | **0.4900** (HE 0.60 / MBPP 0.60 / LCB 0.50 / BC 0.10) |
 | Session | [2026-07-26-pocket-26b-pipeline.md](../sessions/2026-07-26-pocket-26b-pipeline.md) |
-| Alias | ~~`pocket-26b`~~ (removed 2026-07-26) |
 
-**GGUF deleted 2026-07-26** — prefer `pocket-35b` on the operator host. Historical scores above remain valid.
+**Prefer `pocket-35b`** on 8 GB-class — it wins claw-full, coding, and TPS against the numbers above.
 
 ## Sources / Verification
 

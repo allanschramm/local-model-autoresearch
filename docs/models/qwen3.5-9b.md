@@ -76,7 +76,7 @@ Objective Vector **incomplete** for `Qwen3.5-9B-UD-Q4_K_XL.gguf` (coding axis ne
 | ctx 32768 + MTP n=4 | **VRAM kill** 7913 MB mid HumanEval |
 | ctx 65536, no MTP | **VRAM kill** 7931 MB mid HumanEval (preflight est 7584 MB) |
 
-Claw-full @ 32k+MTP fits because tool calls are short; coding-10 long generation does not. **Do not retry** UD coding on discrete 8 GB-class NVIDIA unless `VRAM_LIMIT_MB` or ctx/KV policy changes. **SSD delete candidate** — weak agentic + no coding vector.
+Claw-full @ 32k+MTP fits because tool calls are short; coding-10 long generation does not. **Do not retry** UD coding on discrete 8 GB-class NVIDIA unless `VRAM_LIMIT_MB` or ctx/KV policy changes. Weak agentic + no coding vector on this rig.
 
 `Qwen3.5-9B-MTP-Q4_K_M` already has coding-10 **0.4950** in TSV (separate Trial).
 

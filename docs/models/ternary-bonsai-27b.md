@@ -1,10 +1,10 @@
-# Ternary-Bonsai-27B-Q2_0 — Model Card (Local, historical / rejected)
+# Ternary-Bonsai-27B-Q2_0 — Model Card (Local, historical)
 
-**Status:** **REJECTED / deleted from `models/`** (2026-07-23). Doc kept for future re-acquire decisions.
+**Below TPS floor on 8 GB-class** (2026-07-23 measurements). Doc kept for reference.
 **Source:** PrismML Bonsai family (Q2_0 ternary pack). Related: [bonsai-27b.md](bonsai-27b.md) (Q1_0 keep).
 **Runtime:** requires a compatible PrismML prebuilt release under `llama.cpp-releases/`; upstream `llama.cpp` cannot run this quant. Do not clone/build the fork locally.
 
-## Why deleted
+## Measurements
 Validation on discrete 8 GB-class NVIDIA (PrismML `build-cuda`):
 
 | ctx | Preflight | bench_tg | Verdict |

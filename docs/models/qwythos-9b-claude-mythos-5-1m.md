@@ -122,7 +122,7 @@ REPEAT_PENALTY = 1.05
 - 2026-06-30: Batch sweep (1024/256 → 0.4250, 3.4× improvement)
 - 2026-06-30: llama-bench ubatch sweep (ub=256 is sweet spot)
 - 2026-06-30: MTP tested — no VRAM headroom on 8GB at 131k ctx
-- 2026-07-01: MTP variant deleted — non-MTP is the only local copy
+- 2026-07-01: MTP variant found no speedup — non-MTP preferred
 - 2026-07-20: MTP GGUF re-downloaded; short-gen matrix +1% only — keep non-MTP for speed
 - 2026-08-29: HF refresh — Sources/Verification dated, license lineage (Apache-2.0 inherited from Qwen3.5-9B base) recorded, MTP repo corrected to the primary empero-ai GGUF repo (sibling file, not mradermacher re-host). Measured data untouched.
 

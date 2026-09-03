@@ -55,7 +55,7 @@ One markdown file per GGUF model we run on the operator host. Cards are the cano
 - [`README.md`](./README.md) — index and summary of available GGUF model cards.
 - [`bonsai-27b.md`](./bonsai-27b.md) — Bonsai 27B model card.
 - [`laguna-xs-2.1.md`](./laguna-xs-2.1.md) — Laguna-XS-2.1 MoE; best claw-full (0.6667); weak coding (0.195).
-- [`ternary-bonsai-27b.md`](./ternary-bonsai-27b.md) — Ternary Q2_0 (rejected/deleted; PrismML; ~10.6 t/s).
+- [`ternary-bonsai-27b.md`](./ternary-bonsai-27b.md) — Ternary Q2_0 (PrismML; ~10.6 t/s on 8 GB-class).
 - [`lfm2.5-1.2b.md`](./lfm2.5-1.2b.md) — LFM2.5-1.2B; claw 0.6000 / coding 0.350.
 - [`lfm2.5-2.6b.md`](./lfm2.5-2.6b.md) — LFM2.5-2.6B Q8_0 dense `lfm2`; agentic 0.8667 / coding 0.5200 @65k; no thinking template vars; HF-refreshed 2026-08-29.
 - [`lfm2.5-8b-a1b.md`](./lfm2.5-8b-a1b.md) — LFM2.5-8B-A1B MoE hybrid (`lfm2moe`); full VRAM `n-cpu-moe 0`.
@@ -66,7 +66,7 @@ One markdown file per GGUF model we run on the operator host. Cards are the cano
 - [`ornith-1.0-9b.md`](./ornith-1.0-9b.md) — UD / MTP / deepreinforce Q4_K_M are separate Trials (coding 0.580 on deepreinforce basename; claw pending for that id).
 - [`qwen3.8-4b-distill.md`](./qwen3.8-4b-distill.md) — Qwen3.8-4B-Distill Q4_K_M; **on_front claw 0.8667 / coding 0.6400 @131k, bench 74.9**; dense Gated DeltaNet hybrid; current Baseline pick (2026-08-23).
 - [`ling-3.0-tiny.md`](./ling-3.0-tiny.md) — Ling-3.0-Tiny Q4_K_M MoE; dominated coding 0.39 but **agentic 0.8667 @ only 2.5 GB peak** — VRAM-efficient fallback (2026-08-23).
-- [`qwen3.8-27b.md`](./qwen3.8-27b.md) — Qwen3.8-27B UD-IQ1_S dense `qwen35` (text-only GGUF of a multimodal publisher); bench tps 28.4 @65k, capability Trial pending; the ONLY local GGUF whose template reads `reasoning_effort` (ladder xhigh/medium/low; verified 2026-08-29).
+- [`qwen3.8-27b.md`](./qwen3.8-27b.md) — Qwen3.8-27B UD-IQ1_S dense `qwen35`; bench tps 28.4 @65k; template was the only verified `reasoning_effort` ladder (xhigh/medium/low, verified 2026-08-29).
 - [`ornith-1.5-9b.md`](./ornith-1.5-9b.md) — Ornith-1.5-9B official Q4_K_M; on_front claw **0.9333** / coding **0.6150**; dense `qwen35` **no MTP** (0/427, 2026-08-22 `GGUFReader`); needed 4096-token agentic floor + 420 s Claw timeout + keepout env fixes.
 - [`ornith-1.5-35b.md`](./ornith-1.5-35b.md) — Ornith-1.5-35B-A3B official Q4_K_M; on_front claw **0.8667** / coding **0.6300**; MoE `n-cpu-moe 41` auto; **embedded MTP** `qwen35moe.nextn_predict_layers=1` 4/753 `blk.40.nextn.*` (2026-08-22).
 - [`ornith-1.0-35b.md`](./ornith-1.0-35b.md) — Ornith 1.0 35B; Q4 claw 0.6000 / coding 0.580; Q3 claw 0.4667 / coding 0.555.
@@ -78,5 +78,5 @@ One markdown file per GGUF model we run on the operator host. Cards are the cano
 - [`nanbeige4.2-3b.md`](./nanbeige4.2-3b.md) — Nanbeige4.2-3B looped dense (arch fork required).
 - [`kat-coder-v2.5-dev.md`](./kat-coder-v2.5-dev.md) — KAT IQ4_XS; claw **0.6000** + coding **0.640**.
 - [`pocket-35b.md`](./pocket-35b.md) — POCKET-35B Q3_K_M; claw **0.6667** + coding **0.615**; Night pick.
-- [`pocket-26b.md`](./pocket-26b.md) — POCKET-26B **deleted**; historical claw **0.2000** / coding **0.490**.
+- [`pocket-26b.md`](./pocket-26b.md) — POCKET-26B; historical claw **0.2000** / coding **0.490**.
 - [`vitriol-technique.md`](./vitriol-technique.md) — stock `--n-cpu-moe` path + absorbed notes from Randozart/VITRIOL (fork = study only).
