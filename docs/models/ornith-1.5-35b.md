@@ -13,7 +13,7 @@
 - `kv_f16_mb @ 65536 ctx` = 2624 MB (q4_0 KV ≈ 0.7 GB at 65k)
 -
 **2026-08-25 artifact swap:** official `Q4_K_M` was re-uploaded (post-2026-08-23 fix) with a new MTP head — byte-diff vs the old file: all 4 `nextn` tensors changed, `output.weight`/`token_embd.weight` bit-identical (verified `GGUFReader`+sha256). Old file kept as `Ornith-1.5-35B-Q4_K_M.premtp-fix.gguf`. Measured vectors (agentic 0.8667 / coding 0.6300) refer to the **old** artifact; remeasurement pending. The 2026-08-22 MTP dead-end (acceptance 0.38, −25% decode on `n-cpu-moe`) was measured on the old **untrained** head — re-probed 2026-08-26 on the new trained head (see MTP section): acceptance 0.567 but decode still −9.7% — MTP remains a net loss on this MoE. Note: Q4_K_M tensors are packed quant bytes — kurtosis analysis on raw `GGUFReader` data is invalid (2026-08-25 lesson).
-- **TBD:** exact expert/hidden layout — verify full SSM/MoE params on next card edit
+- **Layout (verified `gguf_dump.py --no-tensors --json` 2026-09-02):** `embedding_length` 2048; attention 16 heads / **2 kv heads**, `key_length` = `value_length` 256, rope dim 64 @ `freq_base` 1e7; GDN/SSM: conv 4, state 128, group 16, inner 4096, time-step rank 32; experts 256 × 8 active + shared (ffn 512, shared ffn 512); `context_length` 262144. KV total implies ~20 full-attn blocks (41.9 KB/token f16 = measured `kv_f16_mb` 2624 @ 65k); the rest are GDN (constant state, no KV growth).
 
 ## Hardware requirements
 | Quant | Size |
@@ -58,6 +58,19 @@ Reasoning model: emits `<think>` blocks; card suggests qwen3-style reasoning/too
 - **2026-08-28 ubatch ladder** (b10549 upstream, ctx 131k, q4_0 KV, threads 6, 4142-tok prompt, warm rep2): pp 305.7 @ ub512 → 716.9 @ ub2048 → **1172.9 @ ub6144**; tg flat 32.4–33.6 (CPU-expert-stream bound — placement/ubatch do not move decode); peak VRAM 4318 → 4786 → 6306 MB (keepout 7676 OK, ~1.4 GB margin). Manual `-ot` regex ≡ `--n-cpu-moe 41` within noise at ub512 and ub6144 — upstream implements both as the same `LLM_FFN_EXPS_REGEX` override (`common.h:1130/1142`). ub 6144 on the cache profile: rejected — see next bullet. Session: [2026-08-28](../sessions/2026-08-28-ornith-35b-ubatch-ot-ab.md).
 - **2026-08-28 cache × ubatch (codacus fork) + alias degradation:** `models/traces/ornith-1.5-35b-merged.csv` had been wiped → the fork silently served WITHOUT cache (`cannot open profile ... expert cache disabled`, ~31 t/s); profile is a READ input (no auto-create) — regenerated via the discovery workflow (`llama-moe-trace` ×2 prompts, 49 360 rows). Cache 32 slots + ub 2048 = pp **534.9** / tg **35.1** @6862 MB (keepout-compliant; +26 MB vs ub512, decode gain kept); cache + ub 6144 rejects (7857 > 7676); plain upstream + ub 2048 = 716.9 pp / 33.6 tg @4786 MB. The 48-slot alias fingerprint @131k measured 7729 > 7676 under a fat desktop baseline — 32 slots fits with ~840 MB. Alias re-pointed 2026-08-28 (operator, decode-first): cache 32 slots + ubatch 2048; upstream ub2048 stays documented as the prefill-first alternative.
 
+## Context ladder (2026-09-02, serving-path probes)
+
+Operator ask: ≥200k window on the 8 GB box. Harness preflight cannot launch it: est @ 204800 q4_0 ≈ 8.4 GB (`gguf_kv_f16_mb` KV + `VRAM_MOE_NON_EXPERT_FRAC` 0.28 × file ≈ 5.8 GB) vs the hard clamp `resolve_vram_limit_mb` applies to any configured budget (physical − 512 keepout = 7676) — the 0.28 frac over-reads this MoE's real ~1.8 GB GPU-resident weights ~3×, so **every ctx > ~136k is preflight-rejected regardless of KV type**. Ladder ran via `model-up` alias probes per the `use-harness-not-raw-llama` carve-out (which names the moe-cache ladder explicitly). Device-wide nvidia-smi; q4_0 KV, ubatch 2048, threads 6, `--no-warmup`, single-shot prompts:
+
+| Config | idle+smoke | peak @ fill | pp | tg @ fill |
+|---|---|---|---|---|
+| codacus cache32 @ 204800 | 7555 | **7710 @ 4k fill — breaks keepout** | 925 | 28.2 @ 4k |
+| codacus cache24 @ 204800 | 7075 | 7335 @ 110k | 763 | 17.7 @ 110k |
+| plain b10549 @ 204800 | 5816 | 5509 @ 145k | 1045 | 18.0 @ 145k |
+| plain b10549 @ 262144 | 6051 | 6135 @ 145k | 1061 | 19.5 @ 145k |
+
+**Winner: plain upstream b10549, ctx 262144 (full native GGUF window), q4_0 KV, ubatch 2048** — daily alias re-pointed; expert-cache flags removed. Final-config numbers: shallow-4k pp 1420 / tg 30.4 @ ~5.96 GB; decode-vs-fill curve 30.4 → 19.5 @ 145k → 14.7 @ ~255k. llama.cpp preallocates the entire KV at load (q4_0 @ 262144 ≈ 2.8 GB inside the ~6.0 GB idle), so filling costs attention speed, not VRAM. At deep fill the codacus expert cache buys nothing (17.7 vs 18.0 tg) while costing +1.8 GB — its 131k shallow-decode edge (35.1) does not survive the 200k window trade: −13% shallow decode, +165% prefill, +131k window. No-Trial-claims (single-shot serving probes, not TPS_REPS medians). Do not lower `VRAM_MOE_NON_EXPERT_FRAC` globally to un-block harness Trials at 200k+ — it protects other arches; re-test trigger: model-arch-derived non-expert sizing.
+
 ## Our config baseline (Trial 2026-08-19)
 - `MODEL = 'Ornith-1.5-35B-Q4_K_M.gguf'`
 - `CTX_SIZE = 65536` (family complete-vector context; MoE keeps VRAM low)
@@ -93,5 +106,5 @@ Same family behavior as 1.5-9B: a 2026-08-22 operator session shows 18/19 turns 
 - https://huggingface.co/api/models/ornith-ai/Ornith-1.5-35B-A3B-GGUF (JSON: `gguf.architecture=qwen35moe`, `context_length=262144`, `total=35505251456` bytes ≈ 33 GB uncompressed; `lastModified=2026-08-24`; siblings include Q4_K_M / Q5_K_M / Q6_K / Q8_0 / BF16), extraction 2026-08-29.
 ## Open questions
 - MTP (trained head, 2026-08-26): still no net speedup — acceptance 0.567 but decode −9.7 % @131k; stack cancels; cache-only is the winner (36.9). Pre-fix history: 131k n4 fit at 4.24 GB actual vs 9104 est, bench 18.1 < floor.
-- T053: does a larger ctx (131072) or lighter history (no `REASONING_PRESERVE`) clear the 65k ceiling? REASONING_PRESERVE inflates request size by re-rendering think traces — worth an A/B.
+- T053: **serving side resolved 2026-09-02** — alias window now 262144 (see Context ladder). Harness Trial side remains est-capped ~131k until the MoE preflight frac is recalibrated; REASONING_PRESERVE re-render inflation untested.
 - T054: task content/research path is family-wide weak; possible target for a budget/efficiency A/B later.

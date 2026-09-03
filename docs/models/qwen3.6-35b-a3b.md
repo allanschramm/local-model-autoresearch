@@ -283,9 +283,23 @@ Working reasoning levers for Qwen3.6-35B-A3B:
 
 The repository policy is to keep dense models fully resident and to use expert CPU offload only for MoE models. For this family, seed `N_CPU_MOE=None` and let the harness derive the initial value from the inspected GGUF's block count; do not hardcode `40` until local metadata confirms 40 blocks. Tune `--n-gpu-layers` and `--n-cpu-moe N` only after the host-memory preflight passes. See [vitriol-technique.md](./vitriol-technique.md) for the stock split policy; this is not the Randozart DMA fork.
 
+## Context ladder (2026-09-02, serving-path probes)
+
+Operator ask: ≥200k window on the 8 GB box. Same harness preflight wall as ornith-1.5-35b (same `qwen35moe` geometry): est @ 204800 q4_0 ≈ 8.6 GB (`VRAM_MOE_NON_EXPERT_FRAC` 0.28 × 21.6 GB file over-reads the real ~1.8 GB GPU-resident weights ~3×) vs the hard 7676 keepout clamp — **every ctx > ~136k is preflight-rejected regardless of KV type**. Ladder ran via `model-up` alias probes per the `use-harness-not-raw-llama` carve-out. Device-wide nvidia-smi; q4_0 KV, draft-mtp n-max 2 unless noted, single-shot prompts:
+
+| Config | idle+smoke | peak @ fill | pp | tg |
+|---|---|---|---|---|
+| codacus cache48 + MTP @ 204800 | **7710 — over at idle** | 7760 @ 4k | 258 | 32.5 @ 4k |
+| codacus cache32 + MTP @ 204800 | 7599 | 7717 @ 4k — over | 621 | (early-stop) |
+| plain b10549 + MTP @ 204800 | 5376 | 5443 @ 4k | 807 | **34.0** @ 512-tok gen |
+| plain b10549, MTP off @ 204800 | 4587 | — | — | 30.3 @ 472-tok gen |
+| **plain b10549 + MTP @ 262144 (winner)** | 6035 | **6093 @ 255k fill** | 582 @ fill | 30.5 shallow / 14.7 @ ~255k |
+
+**Winner: plain upstream b10549, ctx 262144 (full native GGUF window), q4_0 KV, draft-mtp n-max 2 kept** — daily alias re-pointed, expert-cache flags removed. MTP A/B on plain upstream: +12% decode (34.0 vs 30.3) for +789 MB — kept, unlike ornith-1.5-35b where MTP is a net loss on the CPU-offloaded MoE; this model's trained head stays positive on plain upstream. Deep-fill acceptance: 255014-tok prefill (pp_avg 582, wall 441 s), tg@fill 14.7, peak 6093 = 1.58 GB under keepout. The fork cache+MTP stack's 42 t/s @131k shallow number does not survive the 200k window trade (cache48 is over keepout at idle; at deep fill cache buys nothing). No-Trial-claims (single-shot serving probes, not TPS_REPS medians).
+
 ## Our config baseline
 
-- `CTX_SIZE`: repository default `131072`. Speed smokes (2026-08-07) used `32768`. Objective Vector point below used `100000`.
+- `CTX_SIZE`: repository default `131072`. Speed smokes (2026-08-07) used `32768`. Objective Vector point below used `100000`. **Serving alias now 262144 (2026-09-02 ladder)**; harness Trials remain est-capped ~131k until the MoE preflight frac is recalibrated.
 - `SAMPLER_DEFAULTS`: thinking/general `TEMP=1.0`, `TOP_P=0.95`, `TOP_K=20`, `MIN_P=0`, `REPEAT_PENALTY=1.0`, `PRESENCE_PENALTY=1.5`.
 - `N_CPU_MOE=None`: harness auto-resolved to `41` for the measured basename.
 - Objective Vector engine knobs (2026-08-02): TurboQuant `tqp-v0.3.0`, KV K/V `turbo3/turbo3`, batch/ubatch `32/16`, threads `6/8`, `SPEC_TYPE=None`.
