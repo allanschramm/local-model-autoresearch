@@ -49,7 +49,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`local-models-low-vram-configs.md`](./local-models-low-vram-configs.md) — optimal llama.cpp parameters for local and LM Studio models on 8 GB VRAM.
 
 ### 3. Inference Engines & Speculative Runtimes
-- [`inference-engines-landscape.md`](./inference-engines-landscape.md) — technical comparison & taxonomy guide of LLM inference engines (vLLM, SGLang, TensorRT-LLM, LMDeploy, llama.cpp, Colibrì, TGI).
+- [`inference-engines-landscape.md`](./inference-engines-landscape.md) — technical comparison & taxonomy guide of LLM inference engines (vLLM, SGLang, TensorRT-LLM, LMDeploy, llama.cpp & fork ecosystem [KoboldCpp, alpaca.cpp, TurboQuant, BeeLlama], Colibrì, TGI).
 - [`vllm-quantization.md`](./vllm-quantization.md) — vLLM quantization formats, hardware compatibility matrix, out-of-tree quant plugin API.
 - [`vllm-quant-deep-dive.md`](./vllm-quant-deep-dive.md) — per-format quantization mechanics from vLLM source: kernels, group sizes, min SMs, NVFP4 status, config flags, repo relevance.
 - [`colibri-inference-engine.md`](./colibri-inference-engine.md) — architectural & performance guide for Colibrì zero-dependency C streaming MoE runtime.

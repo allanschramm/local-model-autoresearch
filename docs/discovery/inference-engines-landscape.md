@@ -93,6 +93,37 @@ Quality ordering (**external / unverified on this rig**): UD-Q4_K_XL ≈ AWQ > G
 - **Local Autotuning Target**: The core backend engine integrated into `local-model-autotuning` via `llama-server` and `llama-cli`. Default Search path is **upstream** `llama.cpp` (MoE: `--n-cpu-moe`). Arch forks only when required by the GGUF.
 - **Related fork (not default):** [Randozart/VITRIOL](https://github.com/Randozart/VITRIOL) — page-locked host experts + GPU PCIe DMA (+ optional Chimera CUDA/Vulkan). Study notes: [vitriol-technique.md](../models/vitriol-technique.md).
 
+### 5.1 The `llama.cpp` Fork & Distribution Ecosystem
+
+The `llama.cpp` ecosystem includes distinct classes of forks and distributions, ranging from user-facing GUI wrappers to deep architectural and kernel experiments. The matrix below benchmarks four prominent projects against the requirements of autonomous tuning on consumer 8 GB-class hardware:
+
+| Project | Primary Focus | Architecture & Backend | KV Cache & Speculative Tech | 8 GB Hardware Relevance | Verdict |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **[LostRuins/koboldcpp](https://github.com/LostRuins/koboldcpp)** | Turn-key consumer app / WebUI | Standard `llama.cpp` CUDA/Vulkan/Metal + Python server wrapper | Context Shift (sliding KV cache recycling), Smart Context | Identical kernel TPS ceiling; adds process wrapper overhead | **Wrapper — No TPS gain** |
+| **[antimatter15/alpaca.cpp](https://github.com/antimatter15/alpaca.cpp)** | Early historical prototype (March 2023) | Pre-GGUF / Pre-GGJT `.bin`, CPU-only AVX2 | None (hardcoded Alpaca instruction prompt template) | Obsolete; lacks CUDA, GGUF, modern quants, RoPE, MoE | **Dead end (Historical artifact)** |
+| **[TheTom/llama-cpp-turboquant](https://github.com/TheTom/llama-cpp-turboquant)** | Low-bit KV cache compression | `llama.cpp` fork + custom WHT / Polar Quant kernels | `turbo2`, `turbo3`, `turbo4` (2–4 bit KV), Asymmetric KV (`q8_0`/`turbo3`) | Fits 65k–131k ctx on tight VRAM; ~5–10% decode TPS penalty | **Specialized niche (High ctx only)** |
+| **[Anbeeld/beellama.cpp](https://github.com/Anbeeld/beellama.cpp)** | Experimental performance & speculative decoding | Aggressive `llama.cpp` fork + DFlash drafter / TCQ | KVarN, KV precision tail, DFlash, CopySpec, TCQ (`turbo3_tcq`) | Measured: -20% baseline TPS, DFlash collapses (3.3 TPS), server crashes | **Measured dead end on 8 GB** |
+
+#### Detailed Comparative Breakdown
+
+1. **LostRuins/koboldcpp** ([GitHub](https://github.com/LostRuins/koboldcpp), release `v1.120` published 2026-08-29; active commits 2026-09-02; 11.6k stars):
+   - *Mechanism*: Packages `llama.cpp` and `ggml` C/C++ backend, embedded Python HTTP server, and the Kobold Lite web UI into a single self-contained PyInstaller executable (`koboldcpp.exe` on Windows).
+   - *Memory & Inference*: Features mature **Context Shifting** (sliding KV cache without reprocessing prompts, cutting multi-turn prompt ingestion latency by up to ~85% in chat/roleplay), Smart Context, DirectIO model loading (`--usedirectio`), combined mlock+mmap, and multimodal extensions (Stable Diffusion, Whisper, OuteTTS). Supports new architectures like Qwen3.8-Flash-Next and Ling-3.0-flash.
+   - *Assessment on 8 GB rig*: Relies on stock `llama.cpp` compute kernels; generation TPS ceiling is identical to upstream `llama.server`. For automated benchmarking and search loops (Claw-Eval, LiveCodeBench), the bundled web server adds process overhead and API latency without compute gains.
+
+2. **antimatter15/alpaca.cpp** ([GitHub](https://github.com/antimatter15/alpaca.cpp), created 2023-03-16; release `81bd894` on 2023-03-21; dormant since 2023-04-19; 10.1k stars):
+   - *Mechanism*: Created in mid-March 2023 immediately following Stanford Alpaca 7B, this was the first viral fork enabling local instruction-following on personal computers.
+   - *Assessment on 8 GB rig*: Entirely obsolete. Built on pre-GGUF/pre-GGJT legacy `.bin` formats (`ggml-alpaca-7b-q4.bin`), CPU-only (no GPU acceleration), hardcoded prompt formats (`### Instruction: ... ### Response:`), and primitive 4-bit quantizers. Completely superseded by upstream `llama.cpp`.
+
+3. **TheTom/llama-cpp-turboquant** ([GitHub](https://github.com/TheTom/llama-cpp-turboquant), created 2026-03-25; release `tqp-v0.3.0` published 2026-07-12; active commits 2026-09-02; 2.3k stars; companion `TheTom/turboquant_plus`):
+   - *Mechanism*: Implements Walsh-Hadamard Transform (WHT) rotation and polar quantization based on TurboQuant (ICLR 2026) to compress Key-Value caches down to 2–4 bits (`turbo2`, `turbo3`, `turbo4`). Release `tqp-v0.3.0` added DFlash speculative decoding (#201), server slot save/restore across restarts via `.ckpt` sidecars (#206; ~720x delta prefill on 100k sessions), and fused-MMA decode for `head_dim 128` (up to +69% at 131k ctx).
+   - *Assessment on 8 GB rig*: Niche lever for long-context survival ([`2026-08-01-turboquant-release-research.md`](../sessions/2026-08-01-turboquant-release-research.md)). Documented best practice is asymmetric KV (`--cache-type-k q8_0 --cache-type-v turbo3`). Tradeoffs: incurs ~5–10% decode TPS overhead due to dequantization math; on GQA 8:1 models `turbo4` K-cache auto-upgrades to `q8_0` yielding negligible savings over standard `q4_0` ([`CONTEXT.md`](../../CONTEXT.md)); tested Ornith 9B @ 100k still exceeded the 7900 MB physical limit with MTP ([`2026-08-01-ornith-turboquant-100k.md`](../sessions/2026-08-01-ornith-turboquant-100k.md)). Treat as an isolated external binary toolchain (`llama.cpp-releases/turboquant/tqp-v0.3.0`), not the default engine.
+
+4. **Anbeeld/beellama.cpp** ([GitHub](https://github.com/Anbeeld/beellama.cpp), created 2026-05-05; release `v0.4.4` published 2026-08-29; active commits 2026-09-02; 1.0k stars):
+   - *Mechanism*: Performance testbed tracking `llama.cpp` (base `6fdd0ac89`, ggml `0.22.0`) and implementing DFlash/DFlash2 (cross-attention feature-level speculative decoding), CopySpec (context suffix-matching speculation), KVarN (variance-normalized KV cache quantization), KV precision tail (keeping recent N tokens in FP16), TCQ, MTP multi-ubatch synchronization, and pathological reasoning-loop force-close detection.
+   - *Assessment on 8 GB rig*: Measured dead end ([`2026-06-29-beellama-tcq-copyspec-dflash-iq3.md`](../sessions/2026-06-29-beellama-tcq-copyspec-dflash-iq3.md)). Pure inference baseline ran 20% slower than stock fork (Ornith 9B: 41.7 vs 52.2 TPS; 35B MoE: 26.2 vs 31.5 TPS). Speculative decoding collapsed under hardware constraints: DFlash on GPU dropped throughput to 3.3 TPS (draft model competed for saturated compute); DFlash CPU offload OOMed system RAM; CopySpec slowed MoE decode; TCQ (`turbo3_tcq`) crashed with HTTP 500 at 131k ctx on hybrid architectures; server suffered connection drops between benchmark rounds. Suitable primarily for 24 GB+ GPUs with compute surplus, not 8 GB budget tiers.
+
+
 ### 6. Colibrì (Streaming MoE Runtime)
 - **Core Mechanism**: Specialized zero-dependency single-file C runtime (`c/glm.c`) designed for 700B+ MoE models (GLM-5.2).
 - **Storage Tiering**: Holds dense core in RAM (~9.9 GB int4) while streaming 19,456 routed experts (~370 GB int4) from NVMe SSD on demand.
