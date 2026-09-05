@@ -2,6 +2,8 @@
 
 Global **Pareto Set** on this hardware budget: maximize **ctx × TPS × agentic × coding** ([ADR 0006](../adr/0006-pareto-frontier-search.md)). Selection lenses: **Day** ([ADR 0009](../adr/0009-day-profile-tps-floor.md)) / **Night** ([ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md) Night rule).
 
+> **Report, not the ship picker ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md)):** this front, its `on_front` rows, and the Day/Night picks below are a **numeric report** — comparable scores for video/compare. What actually runs in Pi is elected by the TPS climb: it writes `fingerprints/<stem>.json`, and `model-up` serves that file. No pick on this page ships to Pi by itself.
+
 Hardware: discrete **8 GB-class** NVIDIA, `VRAM_LIMIT_MB=7900`, Windows, upstream CUDA unless noted.  
 Ground truth: the results store — canonical `results.db` (SQLite), legacy `results.tsv` fallback (`scripts\rebuild_results_db.py` keeps them in sync). TPS axis = claw-full `bench_tg` when available. Complete vector = claw-full **and** coding-10 (exact 10 tasks/dataset).
 
@@ -99,6 +101,7 @@ Different quants of the same family (e.g. Ornith-35B **Q3_K_XL** vs **Q4_K_XL**)
 * [ADR 0006](../adr/0006-pareto-frontier-search.md) — Pareto Set membership  
 * [ADR 0009](../adr/0009-day-profile-tps-floor.md) — Day TPS floor → max IQ  
 * [ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md) — Night ctx floor / historical Day IQ ε-band  
+* [ADR 0014](../adr/0014-fingerprint-bus-product-split.md) — this front is a report; TPS-then-Pi is the ship path  
 * [pareto-selection.md](pareto-selection.md) — method citations (maximin / Day floors)  
 * [claw-eval-leaderboard.md](claw-eval-leaderboard.md) · [coding-leaderboard.md](coding-leaderboard.md)  
 * Session: [2026-07-27 incomplete vectors + Pareto](../sessions/2026-07-27-incomplete-vectors-pareto.md), [KAT-Coder pipeline](../sessions/2026-07-27-kat-coder-v2.5-dev-pipeline.md)

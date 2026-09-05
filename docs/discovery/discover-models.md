@@ -1,6 +1,6 @@
 # Discover Models for Your Hardware
 
-End-to-end workflow: **find models that fit your rig, filter for coding quality, run the autoloop on the Pareto-optimal pick.** Start it with `autoloop.py --profile day|night` to continue from the current Day/Night pick off the results store (issue #8).
+End-to-end workflow: **find models that fit your rig, filter for coding quality, pick ONE GGUF, then hand it to the TPS climb.** The climb writes the Fingerprint file, `model-up` serves it, and **Pi (Pi Agent, the daily driver) is the quality that matters** ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md)). The measured Pareto Set (and its Day/Night picks) is a numeric report along the way — not the thing that elects what you ship to Pi.
 
 ## Step 0 — Detect local hardware (`check_hardware`)
 
@@ -92,14 +92,16 @@ Don't try to autotune every candidate. Pick the Pareto-optimal point that matche
 
 Once picked, download the GGUF and place it where `local-model-autotuning` expects.
 
-## Step 5 — Hand off: Pareto Set → Baseline via Profile
+## Step 5 — Hand off: picked GGUF → TPS climb → Fingerprint → Pi
 
-Do **not** burn overnight Claw full while hunting flags. Default path — the picked point joins the measured **Pareto Set** ([ADR 0006](../adr/0006-pareto-frontier-search.md)):
+Do **not** burn overnight Claw full while hunting flags. Default path ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md)) — the picked GGUF joins the measured **Pareto Set** ([ADR 0006](../adr/0006-pareto-frontier-search.md)) as a numeric report, and the climb (not a report pick) produces what ships:
 
 1. Seed the FULL Baseline (ENGINE + SAMPLER) in `autoresearch/core/config.py` from the model card's Recommended settings
-2. Follow [`good-enough-tuning.md`](./good-enough-tuning.md): `--validation` → `autoloop.py --mode tps` → **complete the Objective Vector** (`--agentic-full` + coding-10 on the same Fingerprint)
-3. Read status (`on_front` / `dominated` / `incomplete` / `rejected`) via `scripts/recompute_status.py` — `on_front` requires a complete, non-dominated vector; partial vectors merge by Fingerprint
-4. **Baseline via Profile**: `autoloop.py --profile day|night` starts from the Day/Night pick off the results-store front (canonical `results.db`, legacy TSV fallback), loading that row's `config_json` as the Baseline (issue #8)
+2. Follow [`good-enough-tuning.md`](./good-enough-tuning.md): `--validation` → `autoloop.py --mode tps` — every kept TPS+PPL Neighbor **writes `fingerprints/<stem>.json`** (engine frozen, sampler stays user choice)
+3. **Ship to Pi**: `.\venv\Scripts\python.exe scripts/model_up.py <alias>` — the launcher serves the Fingerprint file; Pi is the IQ gate
+4. **Optional numeric benches** on the same file: `scripts/apply_fingerprint.py --model <GGUF>` pins the engine into Baseline, then `--agentic-full` + coding-10 complete the Objective Vector
+5. Read status (`on_front` / `dominated` / `incomplete` / `rejected`) via `scripts/recompute_status.py` — `on_front` requires a complete, non-dominated vector; partial vectors merge by Fingerprint
+6. **Numeric lens only**: `autoloop.py --profile day|night` starts a *new Search* from the Day/Night report pick off the results-store front (canonical `results.db`, legacy TSV fallback), loading that row's `config_json` as the Baseline (issue #8). It seeds a climb — it is **not** what you ship to Pi.
 
 ```bash
 # Edit autoresearch/core/config.py
@@ -113,14 +115,14 @@ cd local-model-autotuning
 .\venv\Scripts\python.exe autoloop.py --mode tps --vram-limit-mb=<your-VRAM-budget-in-MB>
 ```
 
-The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (engine-only vectors use the legacy scalar keep; complete vectors use `improves_set`), and appends rows to the results store (canonical `results.db` SQLite + legacy `results.tsv` append-log, both gitignored, stay local).
+The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (engine-only vectors use the legacy scalar keep; complete vectors use `improves_set`), appends rows to the results store (canonical `results.db` SQLite + legacy `results.tsv` append-log, both gitignored, stay local), and **writes the Fingerprint file on every kept TPS+PPL Neighbor** (`fingerprints/<stem>.json`, [ADR 0014](../adr/0014-fingerprint-bus-product-split.md)).
 
-**Only after TPS is acceptable**, complete the Objective Vector (Claw full + coding-10) on the same Fingerprint (good-enough-tuning.md §4). Overnight `--mode both` is for quality search *after* speed, not the default first pass.
+**After TPS is acceptable**, ship first: `scripts/model_up.py <alias>` → Pi (good-enough-tuning.md §4). Numeric benches (Claw full + coding-10) are **optional** on the same file via `scripts/apply_fingerprint.py` (§5); overnight `--mode both` is for quality search *after* speed, not the default first pass.
 
 **Expected behavior (TPS mode)**:
 - Cheap Trials (bench + PPL ceiling) — minutes, not Claw-full hours
 - Each Trial writes 1 row to the results store (both `results.db` and legacy `results.tsv`) with TPS / VRAM / status
-- On acceptance, `config.py` rewrites with the better config
+- On acceptance, `config.py` rewrites with the better config and the Fingerprint file refreshes ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md))
 - SIGINT handler saves state — kill any time, resume later
 - TPS Floor (`TPS_FLOOR` in Baseline `config.py`, default 20): configs below the floor are auto-`rejected`; lower it for large MoE on constrained VRAM
 
@@ -134,10 +136,11 @@ The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (e
 - [ ] Download GGUF, place in models/, seed FULL Baseline in config.py from the card
 - [ ] Set `AUTORESEARCH_LLAMA_CPP_ROOT` if using a non-upstream llama.cpp fork
 - [ ] Smoke: `benchmark_search.py --validation`
-- [ ] Speed search: `autoloop.py --mode tps` ([good-enough-tuning.md](./good-enough-tuning.md))
-- [ ] Complete Objective Vector: `--agentic-full` + coding-10 (same Fingerprint)
+- [ ] Speed search: `autoloop.py --mode tps` ([good-enough-tuning.md](./good-enough-tuning.md)) — keeps write `fingerprints/<stem>.json`
+- [ ] Ship to Pi: `scripts/model_up.py <alias>` serves the Fingerprint file ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md))
+- [ ] Optional numeric benches: `scripts/apply_fingerprint.py --model <GGUF>` → `--agentic-full` + coding-10 (same file)
 - [ ] Read status: `scripts/recompute_status.py` → `on_front` needs a complete vector ([ADR 0006](../adr/0006-pareto-frontier-search.md))
-- [ ] Baseline via Profile: `autoloop.py --profile day|night` (issue #8)
+- [ ] Optional numeric lens: `autoloop.py --profile day|night` seeds a new climb from a report pick (issue #8) — **not** the ship path
 
 ## Common pitfalls
 
@@ -149,12 +152,14 @@ The TPS autoloop hill-climbs engine knobs, rewrites `config.py` on acceptance (e
 5. **Not watching VRAM at startup** — use Baseline `VRAM_LIMIT_MB` (or whatever your budget) to skip configs that would OOM.
 6. **Downloading before hardware is known** — agents must not `hf download` or run validation until pool is detected and explained.
 7. **Treating keep/Val Score as Search truth** — membership is four-axis non-domination on a complete Objective Vector ([ADR 0006](../adr/0006-pareto-frontier-search.md)); Val Score is legacy display. `keep`/`discard` are gone — read `on_front` | `dominated` | `incomplete` | `rejected` via `scripts/recompute_status.py`.
+8. **Shipping the Day/Night maximin pick to Pi** — the front is a numeric report ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md)); Pi runs the Fingerprint file the TPS climb wrote, served by `model-up`.
 
 ## Related docs
 
-- [`pareto-leaderboard.md`](./pareto-leaderboard.md) — measured global Pareto Set + Day/Night on the operator host (ADR 0006/0008)
+- [`pareto-leaderboard.md`](./pareto-leaderboard.md) — measured global Pareto Set + Day/Night report lenses on the operator host (ADR 0006/0008)
 - [`claw-eval-leaderboard.md`](./claw-eval-leaderboard.md) / [`coding-leaderboard.md`](./coding-leaderboard.md) — per-axis ranks
-- [`good-enough-tuning.md`](./good-enough-tuning.md) — default speed path after you pick a GGUF
+- [`good-enough-tuning.md`](./good-enough-tuning.md) — default speed path after you pick a GGUF: climb → Fingerprint → Pi
+- [`visual-pack.md`](./visual-pack.md) — optional Pi camera run on the same Fingerprint file
 - `docs/models/` — per-model GGUF specs and architecture notes
 - `docs/sessions/` — empirical session logs (yours and others)
 - `docs/adr/` — architecture decisions (why certain conventions exist)

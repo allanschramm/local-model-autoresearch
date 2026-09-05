@@ -25,19 +25,19 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 ## Child DOX Index
 
 ### 1. Tooling & Onboarding
-- [`discover-models.md`](./discover-models.md) — end-to-end workflow: discovery (whichllm/llmfit) → Pareto frontier → autoloop target selection.
+- [`discover-models.md`](./discover-models.md) — end-to-end workflow: discovery (whichllm/llmfit) → Pareto report → pick GGUF → TPS climb writes Fingerprint file → `model-up` → Pi (ADR 0014).
 - [`whichllm-reference.md`](./whichllm-reference.md) — full whichllm CLI reference (commands, flags, profiles, examples).
 - [`llmfit-reference.md`](./llmfit-reference.md) — full llmfit CLI/TUI reference (hardware sizing, planning, model search, examples).
 - [`agent-onboarding.md`](./agent-onboarding.md) — onboarding guide for future agents.
-- [`good-enough-tuning.md`](./good-enough-tuning.md) — default speed path: validation smoke → autoloop `--mode tps` → champion quality check.
+- [`good-enough-tuning.md`](./good-enough-tuning.md) — default speed path: validation smoke → autoloop `--mode tps` (keeps write the Fingerprint file) → `model-up` → Pi; numeric benches optional via apply-to-Baseline (ADR 0014).
 - [`agentic-coding-benchmarks.md`](./agentic-coding-benchmarks.md) — Claw tiers + SWE-lite `--agentic-coding` (ADR 0013).
 - [`claw-eval-leaderboard.md`](./claw-eval-leaderboard.md) — ranked Claw-Eval full/quick scores on this 8 GB rig + operational lessons.
 - [`visual-pack.md`](./visual-pack.md) — Pi visual-pack stub on the Fingerprint bus: same file as daily Pi, camera rubric optional, never writes rank (issue #54, ADR 0014 phase 4).
 - [`visual-pack-prompt.md`](./visual-pack-prompt.md) — frozen workspace-shaped sample prompt 01 (notes-CLI fix); do not edit, add numbered files.
 - [`thinking-models-claw-harness.md`](./thinking-models-claw-harness.md) — thinking/`reasoning_content` Claw false-fails: symptoms, fix, remasure policy, regression checklist.
 - [`coding-leaderboard.md`](./coding-leaderboard.md) — ranked coding-10 (HE/MBPP/LCB/BC) scores on this 8 GB rig.
-- [`pareto-leaderboard.md`](./pareto-leaderboard.md) — global Pareto Set (ctx × TPS × agentic × coding) + Day/Night picks (ADR 0006/0009). Live recompute: `scripts/rank_results.py`.
-- [`pareto-selection.md`](./pareto-selection.md) — method note: Night ctx floor + Day TPS floor then max IQ ([ADR 0009](../adr/0009-day-profile-tps-floor.md); ADR 0008 historical IQ band).
+- [`pareto-leaderboard.md`](./pareto-leaderboard.md) — global Pareto Set (ctx × TPS × agentic × coding) + Day/Night report lenses (ADR 0006/0009); numeric report, not the ship picker (ADR 0014). Live recompute: `scripts/rank_results.py`.
+- [`pareto-selection.md`](./pareto-selection.md) — method note: Night ctx floor + Day TPS floor then max IQ ([ADR 0009](../adr/0009-day-profile-tps-floor.md); ADR 0008 historical IQ band); report lens only under ADR 0014 — not the ship picker.
 - [`best-model-8gb-vram.md`](./best-model-8gb-vram.md) — web-sourced selection guide: fastest + smartest model fitting 8 GB VRAM (primary publisher cards only; no local measurements).
 - [`../models/README.md`](../../models/README.md) — nested GGUF store shared with LM Studio.
 
@@ -47,7 +47,7 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`nvfp4-quantization.md`](./nvfp4-quantization.md) — NVIDIA NVFP4 4-bit FP format: structure, scaling, memory, native vs Marlin fallback, ecosystem, repo relevance.
 - [`advanced-inference-optimizations.md`](./advanced-inference-optimizations.md) — high-performance techniques: CUDA graphs, tcmalloc/jemalloc, KV cache optimizations, and offload bottlenecks.
 - [`low-vram-optimizations.md`](./low-vram-optimizations.md) — strategies for VRAM-constrained GPUs: GGUF/EXL2/HQQ quants, KV cache compression, MoE offloading, and preventing system paging.
-- [`../models/vitriol-technique.md`](../models/vitriol-technique.md) — stock `--n-cpu-moe` vs Randozart/VITRIOL DMA fork (study only; Search stays upstream).
+- [`vitriol-technique.md`](./vitriol-technique.md) — stock `--n-cpu-moe` vs Randozart/VITRIOL DMA fork (study only; Search stays upstream).
 - [`local-models-low-vram-configs.md`](./local-models-low-vram-configs.md) — optimal llama.cpp parameters for local and LM Studio models on 8 GB VRAM.
 
 ### 3. Inference Engines & Speculative Runtimes

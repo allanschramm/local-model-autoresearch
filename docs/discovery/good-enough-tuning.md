@@ -2,7 +2,11 @@
 
 **Goal:** find a runtime config that is *fast enough* on your rig, quickly — not the global optimum.
 
-This is the **default path** for new agents and humans when the question is “what flags should I use for this GGUF?”. Claw-Eval full / coding-10 complete the **Objective Vector** on one Fingerprint — a point only reaches `on_front` when that vector is complete ([ADR 0006](../adr/0006-pareto-frontier-search.md)). They are not a per-neighbor search signal.
+This is the **default path** for new agents and humans when the question is “what flags should I use for this GGUF?”.
+
+**Operator path ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md)):** pick GGUF → TPS climb (PPL guard) **writes the Fingerprint file** → `model-up` serves that file → **Pi** is the IQ that gates daily use. Numeric benches (Claw full / coding-10) are **optional** on the same file via apply-to-Baseline — never a required stop before Pi. The Day/Night maximin pick off the Pareto front is a numeric report lens, not what you ship to Pi.
+
+Claw-Eval full / coding-10 complete the **Objective Vector** on one Fingerprint — a point only reaches `on_front` when that vector is complete ([ADR 0006](../adr/0006-pareto-frontier-search.md)). They are not a per-neighbor search signal.
 
 ## Cost–benefit rule
 
@@ -60,23 +64,39 @@ Set `VRAM_LIMIT_MB` in `config.py`; the same Baseline value governs preflight an
 
 - Mutates **one** engine knob per Trial.
 - Optimizes TPS; perplexity acts as quality ceiling (do not keep big PPL regressions).
+- **Fingerprint bus (ADR 0014):** every kept TPS+PPL Neighbor rewrites `fingerprints/<GGUF stem>.json` (engine only — sampler stays user/card choice, never a TPS Neighbor). A failed or rejected Trial never overwrites a good file. This file — not a Pareto Day/Night pick — is what the launcher serves to Pi.
 - Stop on local maxima / Ctrl+C. Baseline stays in `config.py`; history in `results.tsv`.
 
 Optional: small manual A/B of 2–3 configs via `config.py` + `--validation` if you already know the candidates.
 
-### 4. Complete the Objective Vector (same Fingerprint)
+### 4. Ship to Pi (default endpoint)
 
-Only after TPS looks acceptable — and on the **same** `config.py` Fingerprint the TPS Trials used:
+The climb wrote `fingerprints/<stem>.json`. Serve it and judge quality where it matters — daily use in Pi:
 
 ```bash
+.\venv\Scripts\python.exe scripts/model_up.py <alias>
+```
+
+- The alias gives identity + local bind (host/port); **engine flags come from the Fingerprint file** — the exact engine that won the TPS climb. Missing/invalid file fails closed; re-run the climb instead of hand-editing flags.
+- Sampler is user/card choice; it is not part of the climb and not in the file.
+- No numeric bench is required first: Pi (plus the optional [`visual-pack.md`](./visual-pack.md) camera run) is the quality gate ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md)).
+- Engine change after TPS = new Fingerprint file, new Pi run, new optional numeric row.
+
+### 5. Optional: numeric benches (same file, apply-to-Baseline)
+
+Only if you want comparable numbers for the engine Pi actually sees:
+
+```bash
+.\venv\Scripts\python.exe scripts/apply_fingerprint.py --model <model>.gguf
 # Edit config.py: enable INCLUDE_AGENTIC_FULL and INCLUDE_CODING=10 tasks
 .\venv\Scripts\python.exe benchmark_search.py --agentic-full --desc "<model> objective-vector"
 ```
 
+- `apply_fingerprint.py` copies the Fingerprint engine (+ optional sampler) into the mutable Baseline, so benches measure the shipped engine — the bus and the benches share one truth.
 - Claw full = agentic axis; coding-10 = coding axis; both must land on the same Fingerprint.
 - A point becomes `on_front` **only** when the Objective Vector is complete and non-dominated ([ADR 0006](../adr/0006-pareto-frontier-search.md)). Partial vectors stay `incomplete` and merge by Fingerprint — later Trials complete the point, they do not spawn new ones.
 - Read status, not a scalar: `scripts/recompute_status.py` → `on_front` | `dominated` | `incomplete` | `rejected`. Val Score / keep is legacy display, never Search truth.
-- Day/Night pick off the front: `autoloop.py --profile day|night` ([pareto-selection.md](./pareto-selection.md)).
+- Day/Night picks off the front (`autoloop.py --profile day|night`) are a **numeric report lens** over that archive ([pareto-selection.md](./pareto-selection.md)) — fine as a Baseline start for another Search; **not** the pick you ship to Pi.
 
 ## Anti-patterns
 
@@ -85,12 +105,15 @@ Only after TPS looks acceptable — and on the **same** `config.py` Fingerprint 
 3. **Coding-10 / Claw full inside the TPS search loop** — complete the Objective Vector once, on the final Fingerprint; do not re-run quality axes per neighbor.
 4. **Dense models spilling to shared GPU memory** — cut `CTX_SIZE` / KV / draft, or reject; never “spill and hope”.
 5. **Parallel validations** — one Trial at a time on the shared GPU/port.
+6. **Treating the Day/Night maximin pick as what you ship to Pi** — Pi sees the Fingerprint file the TPS climb wrote ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md)); the front and its picks are a numeric report.
 
 ## Related
 
 - [`agent-onboarding.md`](./agent-onboarding.md) — bootstrap for agents
 - [`discover-models.md`](./discover-models.md) — pick which GGUF first (Pareto), then this guide
-- [`pareto-selection.md`](./pareto-selection.md) — Objective Vector, Fingerprint merge, Day/Night pick
+- [`visual-pack.md`](./visual-pack.md) — Pi camera run on the same Fingerprint file
+- [`pareto-selection.md`](./pareto-selection.md) — Objective Vector, Fingerprint merge, Day/Night report lens
 - [`../adr/0006-pareto-frontier-search.md`](../adr/0006-pareto-frontier-search.md) — Pareto Set membership (four axes, non-domination)
+- [`../adr/0014-fingerprint-bus-product-split.md`](../adr/0014-fingerprint-bus-product-split.md) — Fingerprint bus; TPS-then-Pi is the ship path
 - `GOLDEN-RULES.md` — validation gates and harness rules
 - `program.md` — Search terminology and Trial logging

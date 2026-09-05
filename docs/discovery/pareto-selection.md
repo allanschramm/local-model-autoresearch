@@ -2,6 +2,8 @@
 
 **Scope:** how to pick 1–2 points from a non-dominated Pareto Set (axes: ctx, TPS, agentic, coding) for two usage modes — **Day** (supervised, wants speed, must not collapse intelligence) and **Night** (unsupervised long loops, wants balanced IQ with enough ctx). This is a selection-lens note, not a new membership rule.
 
+> **Report lens under [ADR 0014](../adr/0014-fingerprint-bus-product-split.md):** the Day/Night picks here describe the numeric archive — they are **not** the pick you ship to Pi. The product path is TPS climb → Fingerprint file → `model-up` → Pi; `--profile day|night` remains a Search Baseline start from a report pick, nothing more.
+
 ## Membership (out of scope, one sentence)
 
 Front membership is plain Pareto non-domination on the four axes ([ADR 0006](../adr/0006-pareto-frontier-search.md)); this note only covers which point(s) to pick *off* an already-computed front.
@@ -14,7 +16,7 @@ Stored statuses (results store: canonical `results.db`, legacy TSV fallback) are
 
 Agent-facing step list for driving a model toward the front one Trial at a time, no autoloop required. Same rules that autoloop follows, spelled out for a manual loop.
 
-> **Autoloop shortcut (issue #8):** `autoloop.py --profile day|night` replaces steps 1–3's Baseline start — it picks the Day/Night point off the results-store front (canonical `results.db`, legacy TSV fallback) (`pick_day`/`pick_night`), loads that row's `config_json` as the Baseline, and runs rounds from there. Neighbor acceptance inside the loop is the same Pareto rule as step 4 (`improves_set`); the legacy scalar keep only applies to incomplete vectors (engine-only / quality-only modes). `--dry-run` prints the plan (pick, baseline, neighbors) without running benchmarks.
+> **Autoloop shortcut (issue #8):** `autoloop.py --profile day|night` replaces steps 1–3's Baseline start — it picks the Day/Night point off the results-store front (canonical `results.db`, legacy TSV fallback) (`pick_day`/`pick_night`), loads that row's `config_json` as the Baseline, and runs rounds from there. Neighbor acceptance inside the loop is the same Pareto rule as step 4 (`improves_set`); the legacy scalar keep only applies to incomplete vectors (engine-only / quality-only modes). `--dry-run` prints the plan (pick, baseline, neighbors) without running benchmarks. This starts a climb — under [ADR 0014](../adr/0014-fingerprint-bus-product-split.md) the pick itself never ships to Pi; the climb's Fingerprint file does.
 
 1. **Profile pick** — choose the job profile the Trial must serve (agentic/general vs coding); before the first Trial on a model, seed `SAMPLER_DEFAULTS` from the model card's Recommended settings for that profile.
 2. **Edit Baseline** — set the knobs in `autoresearch/core/config.py` (`ENGINE_DEFAULTS` / `SAMPLER_DEFAULTS`), never as CLI flags. `config.py` is the only mutable Baseline; harnesses and `program.md` stay fixed.
@@ -25,7 +27,7 @@ Agent-facing step list for driving a model toward the front one Trial at a time,
 ### States for agents
 
 - **incomplete** — vector missing axes (e.g. no Claw full or no coding-10 yet). Normal mid-work state, not a failure.
-- **on_front** — complete vector and non-dominated on ctx × TPS × agentic × coding; a candidate for the Day/Night pick below.
+- **on_front** — complete vector and non-dominated on ctx × TPS × agentic × coding; a row in the numeric report, candidate for the Day/Night report lens below.
 - **dominated** — complete vector but another front point beats it on every axis; recompute demotes rows a new `on_front` dominates.
 - **rejected** — a preflight or harness gate refused the Trial (e.g. host-memory preflight). Does not compete. Low eval scores are never a rejection reason.
 
@@ -68,11 +70,13 @@ This guarantees daytime interactive users get snappy throughput (>= 50.0 TPS) wh
 - [ADR 0007](../adr/0007-day-profile-speed-band.md) — superseded Day (speed band → IQ); Night unchanged.
 - [ADR 0008](../adr/0008-day-iq-epsilon-then-tps.md) — superseded Day (IQ ratio → max TPS); Night maximin unchanged.
 - [ADR 0009](../adr/0009-day-profile-tps-floor.md) — **current Day**: TPS floor (`TPS ≥ 50.0`) → max IQ; Night maximin unchanged.
+- [ADR 0014](../adr/0014-fingerprint-bus-product-split.md) — Day/Night picks are a numeric report lens, no longer the required picker that elects what ships to Pi.
 
 ## See also
 
 - [`claw-eval-leaderboard.md`](./claw-eval-leaderboard.md) — agentic axis scores.
 - [`coding-leaderboard.md`](./coding-leaderboard.md) — coding axis scores.
-- [`pareto-leaderboard.md`](./pareto-leaderboard.md) — global front + current Day/Night picks.
+- [`pareto-leaderboard.md`](./pareto-leaderboard.md) — global front + current Day/Night picks (report lens).
+- [`good-enough-tuning.md`](./good-enough-tuning.md) — the TPS-then-Pi product path ([ADR 0014](../adr/0014-fingerprint-bus-product-split.md)).
 - [`../adr/`](../adr/) — architecture decision records.
 
