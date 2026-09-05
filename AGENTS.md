@@ -18,7 +18,7 @@ Repository developers.
 - **No autonomous autoloop:** When the user asks for a trial, hill climb, bench, validate, or any tuning/eval action, do **NOT** launch `autoloop.py` or the `/autoresearch` autonomous loop. Use the explicit harness (`benchmark_search.py`, `python -m autoresearch.runners.run`, or the Trial skill's `--agentic-full` command). `autoloop.py` is operator-only — if the user wanted the background hill-climb loop, they would start it themselves.
 
 ## Work Guidance
-- **Runtime (do not rebuild)**: use the prebuilt release `llama.cpp-releases/upstream/b10549` (`v0.2.0`, CUDA 13.3) via `AUTORESEARCH_LLAMA_CPP_ROOT` — it loads Nemotron-3.5 embedded-MTP (`nextn_predict_layers`). `./llama.cpp` is source-only; its `build-cuda/` artifacts are stale (`b10099`, pre-MTP) and rebuilding does NOT fix Nemotron (`b10549` supersedes `b10375`; `b10566` is the nightly backing `v0.2.0`). Previous pin `b10375` remains as fallback.
+- **Runtime (do not rebuild)**: use the prebuilt release `llama.cpp-releases/upstream/b10819` (nightly, CUDA 13.3) via `AUTORESEARCH_LLAMA_CPP_ROOT` — smoke-validated 2026-09-05 (LFM2.5 bench 74 t/s, quick 5/5); carries Nemotron-3.5 embedded-MTP (`nextn_predict_layers`). `./llama.cpp` is source-only; its `build-cuda/` artifacts are stale (`b10099`, pre-MTP) and rebuilding does NOT fix Nemotron (`b10819` supersedes `b10549`, deleted after green smoke; `b10375` remains on disk — Machine-scope env still points there, User scope is `b10819`).
 - Method + Trial procedure: `CONTEXT.md`, `docs/adr/`, `docs/discovery/`, `autoresearch/AGENTS.md`, `program.md`.
 - Full Trial operator skill (Claw-15 + coding-10, sequential queues): [`.agents/skills/trial/SKILL.md`](.agents/skills/trial/SKILL.md).
 
