@@ -644,6 +644,8 @@ class TestLlamaRunner(unittest.TestCase):
         self.assertEqual(VRAM_OVERHEAD_MB, 300.0)
         self.assertEqual(VRAM_DEFAULT_QUANT_FACTOR, 0.3)
         self.assertEqual(VRAM_QUANT_FACTORS["q4"], 0.28)
+        # Issue #58: turbo2 measured ~0.137 on tqp-v0.3.0 (was 0.10, under-read KV).
+        self.assertEqual(VRAM_QUANT_FACTORS["turbo2"], 0.137)
 
         # Test with 4 arguments (backward-compatibility check)
         v1 = estimate_vram_mb(Path("models/non-existent.gguf"), 2048, "q4_0", "q4_0")

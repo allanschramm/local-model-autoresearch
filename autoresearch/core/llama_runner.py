@@ -301,7 +301,9 @@ VRAM_QUANT_FACTORS = {
     "q4": 0.28,
     "turbo4": 0.18,
     "turbo3": 0.14,
-    "turbo2": 0.10,
+    # Issue #58: measured ~0.137 on tqp-v0.3.0 dense 27B @64k
+    # (7720 MB peak − 6300 weights − 300 overhead) / 8192 f16; was 0.10.
+    "turbo2": 0.137,
 }
 """KV cache quantization type memory usage scaling factors relative to f16."""
 
