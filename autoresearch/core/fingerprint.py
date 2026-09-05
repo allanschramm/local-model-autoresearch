@@ -238,3 +238,110 @@ def apply(
     if baseline_path is not None:
         return config_module.write_baseline(cfg, path=baseline_path)
     return config_module.write_baseline(cfg)
+
+
+# ENGINE_DEFAULTS split (single source; scripts/model_up.py imports both):
+# server keys map to llama-server flags (same engine = same server Pi sees);
+# harness-only keys are budgets/floors/gates carried in the file but never
+# emitted as flags. A Trial scores flags, so only server keys (+ MODEL
+# identity) can reject it as a Fingerprint mismatch (issue #53).
+SERVER_ENGINE_KEYS = frozenset(
+    {
+        "CTX_SIZE",
+        "BATCH_SIZE",
+        "UBATCH_SIZE",
+        "THREADS",
+        "PARALLEL",
+        "N_GPU_LAYERS",
+        "NUMA",
+        "KV_CACHE",
+        "KV_CACHE_K",
+        "KV_CACHE_V",
+        "FLASH_ATTN",
+        "THREADS_BATCH",
+        "NO_MMAP",
+        "MLOCK",
+        "JINJA",
+        "REASONING_BUDGET",
+        "REASONING_BUDGET_MESSAGE",
+        "REASONING",
+        "REASONING_PRESERVE",
+        "REASONING_EFFORT",
+        "CONT_BATCHING",
+        "CACHE_REUSE",
+        "SPEC_TYPE",
+        "SPEC_DRAFT_N_MAX",
+        "SPEC_DRAFT_MODEL",
+        "MOE_CACHE_PROFILE",
+        "MOE_CACHE_SLOTS",
+        "N_CPU_MOE",
+    }
+)
+HARNESS_ONLY_ENGINE_KEYS = frozenset(
+    {
+        "VRAM_LIMIT_MB",
+        "VRAM_HEADROOM_MB",
+        "HOST_MEMORY_HEADROOM_MB",
+        "FREE_RAM_FLOOR_MB",
+        "RAM_WATCHDOG_POLL_S",
+        "RAM_WATCHDOG_RESERVE_MB",
+        "RAM_PREFLIGHT_MARGIN_MB",
+        "TPS_FLOOR",
+        "TPS_REPS",
+        "THERMAL_WAIT",
+    }
+)
+
+
+def mismatch_reason(
+    model_basename: str,
+    baseline_engine: Mapping[str, Any],
+    *,
+    directory: Path | str | None = None,
+) -> str | None:
+    """Trial gate (issue #53): None = Trial may proceed, else the reject reason.
+
+    No Fingerprint file for ``model_basename`` → None (Baseline-only behavior
+    unchanged). Otherwise the file's frozen server flags must equal the live
+    Baseline engine; harness-only drift (TPS_FLOOR, VRAM limits, …) never
+    rejects. Unreadable/invalid files and unknown keys fail closed with a
+    reason — never an exception, never a quality score.
+    """
+    base = _basename((model_basename or "").strip())
+    if not base:
+        return "Fingerprint check: Trial has no model basename; refusing to score"
+    baseline = {str(k).upper(): v for k, v in dict(baseline_engine).items()}
+    target = path_for(base, directory)
+    if not target.is_file():
+        return None
+    try:
+        data = load(target)
+    except FingerprintError as exc:
+        return f"Fingerprint {target.name} for {base} is invalid ({exc}); delete it or re-climb"
+    except OSError as exc:
+        return f"Fingerprint {target.name} for {base} is unreadable ({exc}); delete it or re-climb"
+    if data["model"] != base:
+        return (
+            f"Fingerprint {target.name} serves {data['model']!r}, not the Trial model "
+            f"{base!r}; delete it or re-climb"
+        )
+    file_engine = data["engine"]
+    unknown = sorted(
+        k
+        for k in file_engine
+        if k not in SERVER_ENGINE_KEYS and k not in HARNESS_ONLY_ENGINE_KEYS and k != "MODEL"
+    )
+    if unknown:
+        return f"Fingerprint {target.name} for {base} has unknown engine keys {unknown}; delete it or re-climb"
+    diffs = [
+        f"{key} Baseline={baseline.get(key)!r} file={file_engine.get(key)!r}"
+        for key in sorted(SERVER_ENGINE_KEYS | {"MODEL"})
+        if baseline.get(key) != file_engine.get(key)
+    ]
+    if not diffs:
+        return None
+    return (
+        f"Fingerprint mismatch for {base} ({target.name}): " + "; ".join(diffs) + " "
+        "(Baseline engine differs from the TPS-climbed flags; "
+        "apply the Fingerprint or re-climb before scoring)"
+    )

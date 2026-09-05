@@ -24,6 +24,7 @@ from autoresearch.core import (
     classify,
     config,
     engine_version_tag,
+    fingerprint,
     recompute,
     resolve_llama_server,
     results_db,
@@ -870,11 +871,51 @@ def run_evaluation(cfg: dict | Any, skip_bench: bool = False, **overrides) -> di
     }
 
 
+def fingerprint_reject_reason(args) -> str | None:
+    """Trial gate (issue #53): None = Trial may proceed, else the reject reason.
+
+    Baseline CLI flags are config.py-only (parse_args rejects them), so the
+    Trial always serves the live Baseline — compare it against the Fingerprint
+    file for the Trial model. No file → None (Baseline-only behavior).
+    """
+    baseline = config.load_config()
+    model = (getattr(args, "model", "") or "").strip() or str(baseline.get("MODEL", "")).strip()
+    return fingerprint.mismatch_reason(model, baseline)
+
+
 def handle_single_run(args):
     if not args.desc:
         print(
             "Error: --desc is required for logging single runs. Example: --desc 'Tweak system prompt'"
         )
+        sys.exit(1)
+
+    fp_reason = fingerprint_reject_reason(args)
+    if fp_reason is not None:
+        # Fingerprint mismatch (issue #53): reject before scoring — the Trial
+        # would log numbers for the wrong flags. Rejected row, never a score.
+        print(f"Evaluation failed: {fp_reason}")
+        write_row(
+            RESULTS_FILE,
+            get_git_commit(),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            "rejected",
+            f"FAIL: {fp_reason} | {args.desc}",
+            category=determine_category(args),
+            elapsed_sec=0.0,
+            tps=None,
+            bench_tg=None,
+            outcome="MODEL_REJECTED",
+            diagnostic=fp_reason,
+            task_ids="",
+            tps_source="",
+            **_result_config(),
+        )
+        recompute_statuses(RESULTS_FILE)
         sys.exit(1)
 
     print(f"Starting single run for model: {args.model}")

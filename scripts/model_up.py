@@ -206,56 +206,10 @@ def _resolve_alias_server(cfg: AliasConfig) -> Path:
     )
 
 
-# ENGINE_DEFAULTS keys that map to llama-server flags (mirrors
-# LlamaServerRunner._build_cmd; same engine = same server Pi sees).
-_SERVER_ENGINE_KEYS = frozenset(
-    {
-        "CTX_SIZE",
-        "BATCH_SIZE",
-        "UBATCH_SIZE",
-        "THREADS",
-        "PARALLEL",
-        "N_GPU_LAYERS",
-        "NUMA",
-        "KV_CACHE",
-        "KV_CACHE_K",
-        "KV_CACHE_V",
-        "FLASH_ATTN",
-        "THREADS_BATCH",
-        "NO_MMAP",
-        "MLOCK",
-        "JINJA",
-        "REASONING_BUDGET",
-        "REASONING_BUDGET_MESSAGE",
-        "REASONING",
-        "REASONING_PRESERVE",
-        "REASONING_EFFORT",
-        "CONT_BATCHING",
-        "CACHE_REUSE",
-        "SPEC_TYPE",
-        "SPEC_DRAFT_N_MAX",
-        "SPEC_DRAFT_MODEL",
-        "MOE_CACHE_PROFILE",
-        "MOE_CACHE_SLOTS",
-        "N_CPU_MOE",
-    }
-)
-# ENGINE_DEFAULTS keys that are harness-only (budgets, floors, gates):
-# carried in the file, never emitted as server flags.
-_HARNESS_ONLY_ENGINE_KEYS = frozenset(
-    {
-        "VRAM_LIMIT_MB",
-        "VRAM_HEADROOM_MB",
-        "HOST_MEMORY_HEADROOM_MB",
-        "FREE_RAM_FLOOR_MB",
-        "RAM_WATCHDOG_POLL_S",
-        "RAM_WATCHDOG_RESERVE_MB",
-        "RAM_PREFLIGHT_MARGIN_MB",
-        "TPS_FLOOR",
-        "TPS_REPS",
-        "THERMAL_WAIT",
-    }
-)
+# ENGINE_DEFAULTS server/harness split lives in the bus owner
+# (autoresearch/core/fingerprint.py); same engine = same server Pi sees.
+_SERVER_ENGINE_KEYS = fingerprint.SERVER_ENGINE_KEYS
+_HARNESS_ONLY_ENGINE_KEYS = fingerprint.HARNESS_ONLY_ENGINE_KEYS
 
 
 def _probe_spec_type(server_binary: Path) -> str:
