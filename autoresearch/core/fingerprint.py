@@ -203,3 +203,38 @@ def load(path: Path | str) -> dict[str, Any]:
         "engine": dict(engine),
         "sampler": dict(sampler) if sampler is not None else None,
     }
+
+
+def apply(
+    path: Path | str,
+    *,
+    baseline_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Copy a Fingerprint file into the mutable Baseline (issue #50).
+
+    Engine is always applied; the optional sampler only when the file
+    carries one — an omitted sampler leaves the Baseline sampler alone.
+    Existing benches keep reading Baseline (no scorer change); only the
+    Baseline moves. Values validate via ``write_baseline``.
+
+    Unknown keys raise: ``write_baseline`` only copies ``CONFIG_KEYS``, so
+    a typo'd key would otherwise vanish while the caller reports success.
+    The config module imports lazily so this file stays pure-stdlib at
+    import time (roundtrip works with no Baseline present).
+    """
+    data = load(path)
+    from autoresearch.core import config as config_module
+
+    cfg = dict(data["engine"])
+    # Top-level `model` is the file's validated identity (ADR 0014); the
+    # engine mapping may lack MODEL or carry a stale one (hand-edited or
+    # third-party file), so pin it — never run new flags on the old GGUF.
+    cfg["MODEL"] = data["model"]
+    if data.get("sampler") is not None:
+        cfg.update(data["sampler"])
+    unknown = sorted(k for k in cfg if k not in config_module.CONFIG_KEYS)
+    if unknown:
+        raise FingerprintError(f"unknown Baseline keys in {path}: {unknown}")
+    if baseline_path is not None:
+        return config_module.write_baseline(cfg, path=baseline_path)
+    return config_module.write_baseline(cfg)

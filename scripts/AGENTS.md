@@ -43,5 +43,6 @@ Repository operators and developers.
 - [model_info.py](model_info.py) — read-only GGUF metadata query (arch, block count, KV sizing, `--tensors` inventory) via `autoresearch.core.model_arch`.
 - [rebuild_results_db.py](rebuild_results_db.py) — store maintenance: seed/repair canonical `results.db`, rewrite legacy TSV (`--rebuild-tsv`), parity check (`autoresearch/core/results_db.py` owns the logic).
 - [backfill_2026_08_08_missing_claw.py](backfill_2026_08_08_missing_claw.py) — one-shot restore of session-documented claw/coding rows that never landed in TSV (idempotent).
+- [apply_fingerprint.py](apply_fingerprint.py) — copy a Fingerprint file into the mutable Baseline (issue #50, ADR 0014 phase 1): engine always, sampler only when present; benches keep reading Baseline.
 - [measure_vram_peak.py](measure_vram_peak.py) — real peak-VRAM measurement for the Baseline model, gate bypass (estimator calibration, issue #10).
 - Git pre-commit: [../.pre-commit-config.yaml](../.pre-commit-config.yaml) + [../pyproject.toml](../pyproject.toml).
