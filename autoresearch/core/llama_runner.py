@@ -36,6 +36,7 @@ from autoresearch.core.hardware import (
 )
 from autoresearch.core.model_arch import (
     gguf_block_count,
+    gguf_expert_bytes_mb,
     gguf_has_mtp,
     gguf_is_moe,
     gguf_kv_f16_mb,
@@ -312,7 +313,9 @@ DEFAULT_VRAM_LIMIT_MB = 7900.0
 # Safety margin subtracted from free VRAM at Trial start (issue #10).
 DEFAULT_VRAM_HEADROOM_MB = 512.0
 # Keep this much dedicated VRAM free so WDDM CUDA Sysmem Fallback never arms.
-DEFAULT_PHYSICAL_VRAM_KEEPOUT_MB = 512.0
+# 256 MiB measured safe on the 8 GB rig (dense @65k peaks 7.4-7.8 GB, no
+# Shared spill — autoresearch/AGENTS.md); 512 false-killed loads that fit.
+DEFAULT_PHYSICAL_VRAM_KEEPOUT_MB = 256.0
 # Task Manager "Shared GPU" kill — WDDM/PCI-e host maps (MoE+NO_MMAP), not
 # dedicated-full CUDA Sysmem Fallback. Dedicated can stay ~4–5 GB while Shared
 # climbs to 10+ GB and pagefile/SSD freezes the PC. Absolute ceil; do not wait
@@ -353,6 +356,25 @@ def resolve_shared_vram_limit_mb(limit: float | int | None = None) -> float:
     if env:
         return float(env)
     return float(config.DEFAULTS.get("SHARED_VRAM_LIMIT_MB", DEFAULT_SHARED_VRAM_LIMIT_MB))
+
+
+DEFAULT_CUDA_FREE_FLOOR_MB = 256.0
+
+
+def resolve_cuda_free_floor_mb(limit: float | int | None = None) -> float:
+    """Resolve CUDA-free kill floor (env AUTORESEARCH_CUDA_FREE_FLOOR_MB).
+
+    When the CUDA-free probe is available, this is the ONLY dedicated-VRAM kill
+    condition: kill when CUDA itself reports less free memory than the floor.
+    NVML ``used`` counts committed-but-evictable desktop memory on WDDM and is
+    kept for peak reporting / fallback only (operator decision 2026-09-04).
+    """
+    if limit is not None:
+        return float(limit)
+    env = os.environ.get("AUTORESEARCH_CUDA_FREE_FLOOR_MB")
+    if env:
+        return float(env)
+    return float(config.DEFAULTS.get("CUDA_FREE_FLOOR_MB", DEFAULT_CUDA_FREE_FLOOR_MB))
 
 
 def resolve_vram_limit_mb(limit: float | int | None = None) -> float:
@@ -403,14 +425,15 @@ def resolve_vram_headroom_mb(headroom_mb: float | int | None = None) -> float:
     return float(DEFAULT_VRAM_HEADROOM_MB)
 
 
-def skip_free_vram_clamp() -> bool:
-    """Operator escape: AUTORESEARCH_SKIP_FREE_CLAMP=1 skips dense free-at-start clamp.
+def free_vram_clamp_enabled() -> bool:
+    """Dense free-at-start clamp: OFF by default (operator decision 2026-09-04).
 
-    Default remains free−headroom (issue #10). Opt-in only — runtime VRAM monitoring
-    stays the kill guard. Use when WDDM desktop reservation would false-reject a Trial
-    known to fit physical VRAM (same spirit as MoE n_cpu_moe>0 configured-only budget).
+    WDDM/desktop reservations made free−headroom false-reject loads that fit
+    physical VRAM. AUTORESEARCH_VRAM_FREE_CLAMP=1 restores the old
+    min(free−headroom) budget. The runtime VRAM monitor remains the kill guard
+    in both modes (device-wide NVML sampling + physical−keepout ceil).
     """
-    raw = (os.environ.get("AUTORESEARCH_SKIP_FREE_CLAMP") or "").strip().lower()
+    raw = (os.environ.get("AUTORESEARCH_VRAM_FREE_CLAMP") or "").strip().lower()
     return raw in ("1", "true", "yes", "on")
 
 
@@ -455,8 +478,28 @@ def estimate_vram_mb(
         except Exception:
             pass
         offload = min(1.0, float(n_cpu_moe) / layer_ref)
-        expert_frac = 1.0 - VRAM_MOE_NON_EXPERT_FRAC
-        model_size_mb = model_size_mb * (VRAM_MOE_NON_EXPERT_FRAC + expert_frac * (1.0 - offload))
+        # GGUF-derived charge (operator decision 2026-09-04): the flat 0.28
+        # non-expert fraction over-read 3x on MoVA-class archs (experts = 91%
+        # of file). Non-expert = file − expert-class bytes; on-GPU experts for
+        # partial offload = total expert bytes − offloaded expert bytes.
+        expert_total_mb = None
+        expert_off_mb = None
+        try:
+            expert_total_mb = gguf_expert_bytes_mb(model_path)
+            expert_off_mb = gguf_expert_bytes_mb(model_path, layer_limit=int(n_cpu_moe))
+        except Exception:
+            expert_total_mb = None
+        if (
+            expert_total_mb is not None
+            and expert_off_mb is not None
+            and expert_total_mb <= model_size_mb
+        ):
+            model_size_mb = (model_size_mb - expert_total_mb) + (expert_total_mb - expert_off_mb)
+        else:
+            expert_frac = 1.0 - VRAM_MOE_NON_EXPERT_FRAC
+            model_size_mb = model_size_mb * (
+                VRAM_MOE_NON_EXPERT_FRAC + expert_frac * (1.0 - offload)
+            )
 
     draft_mb = 0.0
     if draft_path:
@@ -544,13 +587,14 @@ def preflight_vram_effective(
     """
     configured = resolve_vram_limit_mb(vram_limit_mb)
     moe_offload = n_cpu_moe is not None and int(n_cpu_moe) > 0
-    skip_clamp = skip_free_vram_clamp()
-    if moe_offload or skip_clamp:
+    clamp_on = free_vram_clamp_enabled()
+    if moe_offload or not clamp_on:
         effective = float(configured)
-        if skip_clamp and not moe_offload:
+        if not moe_offload:
             print(
-                f"  [vram-preflight] SKIP_FREE_CLAMP=1 — using configured={configured:.0f}MB "
-                "(runtime monitor remains kill guard)",
+                f"  [vram-preflight] free-at-start clamp off (default; "
+                "AUTORESEARCH_VRAM_FREE_CLAMP=1 restores) — budget="
+                f"configured={configured:.0f}MB; runtime monitor remains kill guard",
                 flush=True,
             )
     else:
@@ -667,6 +711,50 @@ def _kv_est_mb(
     return (kv_base_mb / 2.0) * kf + (kv_base_mb / 2.0) * vf
 
 
+# RAM charge fallback when the GGUF header cannot be read but n-cpu-moe is on:
+# the expert share of the file (complement of the VRAM non-expert fraction).
+MOE_EXPERT_RAM_FRAC_FALLBACK = 1.0 - VRAM_MOE_NON_EXPERT_FRAC
+
+
+def ram_resident_bytes_mb(
+    model_path: Path,
+    n_cpu_moe: int | None = None,
+    unified: bool | None = None,
+) -> tuple[float, bool]:
+    """System-RAM resident charge for the model (MiB) + whether it was shrunk.
+
+    Discrete GPU + n-cpu-moe>0: CPU buffers hold expert-class tensors only
+    (GGUF-derived bytes; fallback = file x MOE_EXPERT_RAM_FRAC_FALLBACK when
+    the header cannot be read) — non-expert weights live in VRAM, the file
+    itself stays mmap'd. Full file otherwise (unified hosts, dense, CPU-only).
+    Operator decision 2026-09-04: the full-file charge false-rejected offloaded
+    MoE loads that fit physical RAM with room to spare.
+    """
+    try:
+        model_size_mb = model_path.stat().st_size / (1024 * 1024)
+    except Exception:
+        model_size_mb = 4000.0
+    if n_cpu_moe is None or int(n_cpu_moe) <= 0:
+        return model_size_mb, False
+    if unified is None:
+        try:
+            from autoresearch.core.hardware import is_unified_memory_host
+
+            unified = is_unified_memory_host()
+        except Exception:
+            unified = False
+    if unified:
+        return model_size_mb, False
+    expert_mb = None
+    try:
+        expert_mb = gguf_expert_bytes_mb(model_path, layer_limit=int(n_cpu_moe))
+    except Exception:
+        expert_mb = None
+    if expert_mb is None:
+        return model_size_mb * MOE_EXPERT_RAM_FRAC_FALLBACK, True
+    return expert_mb, True
+
+
 def estimate_host_memory_mb(
     model_path: Path,
     ctx_size: int,
@@ -674,12 +762,17 @@ def estimate_host_memory_mb(
     kv_cache_v: str | None = None,
     base_kv_cache: str = "q4_0",
     draft_path: Path | str | None = None,
+    n_cpu_moe: int | None = None,
+    unified: bool | None = None,
 ) -> float:
-    """Full GGUF + draft + KV + overhead. Never shrinks for MoE CPU offload."""
-    try:
-        model_size_mb = model_path.stat().st_size / (1024 * 1024)
-    except Exception:
-        model_size_mb = 4000.0
+    """Host-RAM charge (MiB).
+
+    Discrete + n-cpu-moe>0: expert bytes + overhead only — the offloaded
+    experts fill CPU buffers while draft weights and KV stay on the GPU.
+    Otherwise full GGUF + draft + KV + overhead."""
+    ram_mb, shrunk = ram_resident_bytes_mb(model_path, n_cpu_moe, unified)
+    if shrunk:
+        return ram_mb + VRAM_OVERHEAD_MB
 
     draft_mb = 0.0
     if draft_path:
@@ -695,7 +788,7 @@ def estimate_host_memory_mb(
         base_kv_cache=base_kv_cache,
         model_path=model_path,
     )
-    return model_size_mb + draft_mb + kv_est_mb + VRAM_OVERHEAD_MB
+    return ram_mb + draft_mb + kv_est_mb + VRAM_OVERHEAD_MB
 
 
 def preflight_host_memory(
@@ -704,6 +797,7 @@ def preflight_host_memory(
     kv_cache_k: str | None = None,
     kv_cache_v: str | None = None,
     draft_path: Path | str | None = None,
+    n_cpu_moe: int | None = None,
     headroom_mb: float | int | None = None,
     ram_mb: float | None = None,
     unified: bool | None = None,
@@ -735,6 +829,8 @@ def preflight_host_memory(
         kv_cache_k=kv_cache_k,
         kv_cache_v=kv_cache_v,
         draft_path=draft_path,
+        n_cpu_moe=n_cpu_moe,
+        unified=unified,
     )
 
     if ram_mb is None or ram_mb <= 0:
@@ -784,6 +880,7 @@ def preflight_host_memory_for_intent(
         kv_cache_k=intent.kv_cache_k or intent.kv_cache,
         kv_cache_v=intent.kv_cache_v or intent.kv_cache,
         draft_path=intent.spec_draft_model,
+        n_cpu_moe=intent.n_cpu_moe,
         headroom_mb=headroom_mb,
     )
 
@@ -1062,15 +1159,11 @@ class LlamaServerRunner:
             )
         )
         try:
-            circuit_breaker.preflight_ram(self.intent.model_path.stat().st_size, margin_mb=margin)
+            resident_mb, _ = ram_resident_bytes_mb(self.intent.model_path, self.intent.n_cpu_moe)
+            circuit_breaker.preflight_ram(int(resident_mb * 1024 * 1024), margin_mb=margin)
         except circuit_breaker.CircuitBreakerError as exc:
             print(f"  [RAM] {exc}", flush=True)
             raise
-        except OSError:
-            print(
-                "  [RAM] WARN: cannot stat model for RAM preflight; continuing",
-                flush=True,
-            )
 
         startup_tail: list[str] = []
         for port in candidate_ports(self.intent.port):
@@ -1206,29 +1299,6 @@ class LlamaServerRunner:
                 "  [VRAM] NVML initialization failed. Falling back to subprocess nvidia-smi (200ms)."
             )
 
-        dense = is_dense_model(self.intent.model_path)
-        limit = self.vram_limit_mb
-        shared_limit = self.shared_vram_limit_mb
-        shared_tick = 0
-
-        def _maybe_kill(current: float, total_mb: float | None = None) -> None:
-            if current > self.peak_vram_mb:
-                self.peak_vram_mb = current
-            # Kill ANY arch (dense or MoE) over limit — MoE used to skip and WDDM
-            # spilled into shared GPU memory / pagefile, freezing the host.
-            ceil = dedicated_vram_kill_ceil(limit, total_mb)
-            if current > ceil and not self.vram_killed:
-                self.vram_killed = True
-                kind = "dense" if dense else "moe"
-                print(
-                    f"  [VRAM] LIMIT EXCEEDED used={current:.0f}MB > limit={ceil:.0f}MB "
-                    f"({kind}={self.intent.model_path.name}) — killing "
-                    "(no Windows shared-GPU / pagefile spill)",
-                    flush=True,
-                )
-                self._cleanup_process()
-                self._stop_event.set()
-
         def _maybe_kill_shared() -> None:
             """Kill absolute Shared GPU overshoot (dedicated can stay ~4–5 GB)."""
             if self.vram_killed or self._server_proc is None or self._server_proc.pid is None:
@@ -1250,8 +1320,69 @@ class LlamaServerRunner:
                 self._cleanup_process()
                 self._stop_event.set()
 
+        cuda_guard = True
+        try:
+            from autoresearch.core.hardware import cuda_free_mb
+
+            probe = cuda_free_mb()
+        except Exception:
+            probe = None
+        if probe is None:
+            cuda_guard = False
+            print(
+                "  [VRAM] CUDA-free probe unavailable — NVML used>ceil kill remains active.",
+                flush=True,
+            )
+        else:
+            print(
+                f"  [VRAM] CUDA-free guard active (floor={resolve_cuda_free_floor_mb():.0f}MB; "
+                "NVML used is peak-metric only — desktop committed memory is evictable).",
+                flush=True,
+            )
+
+        dense = is_dense_model(self.intent.model_path)
+        limit = self.vram_limit_mb
+        shared_limit = self.shared_vram_limit_mb
+        shared_tick = 0
+
+        def _maybe_kill(
+            current: float, total_mb: float | None = None, cuda_free_now: float | None = None
+        ) -> None:
+            if current > self.peak_vram_mb:
+                self.peak_vram_mb = current
+            if self.vram_killed:
+                return
+            kind = "dense" if dense else "moe"
+            if cuda_guard:
+                if cuda_free_now is None:
+                    return  # transient probe miss: no kill decision this tick
+                floor = resolve_cuda_free_floor_mb()
+                if cuda_free_now < floor:
+                    self.vram_killed = True
+                    print(
+                        f"  [VRAM] CUDA FREE EXHAUSTED cuda_free={cuda_free_now:.0f}MB < "
+                        f"floor={floor:.0f}MB ({kind}={self.intent.model_path.name}) — killing "
+                        "(allocation failure imminent)",
+                        flush=True,
+                    )
+                    self._cleanup_process()
+                    self._stop_event.set()
+                return
+            ceil = dedicated_vram_kill_ceil(limit, total_mb)
+            if current > ceil:
+                self.vram_killed = True
+                print(
+                    f"  [VRAM] LIMIT EXCEEDED used={current:.0f}MB > limit={ceil:.0f}MB "
+                    f"({kind}={self.intent.model_path.name}) — killing "
+                    "(no Windows shared-GPU / pagefile spill)",
+                    flush=True,
+                )
+
+        probe_fail_streak = 0
+
         def sampler() -> None:
-            nonlocal nvml, shared_tick
+            nonlocal nvml, shared_tick, cuda_guard, probe_fail_streak
+            probe_fail_streak = 0
             while not self._stop_event.is_set():
                 if nvml is not None and device is not None:
                     try:
@@ -1259,18 +1390,35 @@ class LlamaServerRunner:
                         nvml.nvmlDeviceGetMemoryInfo(device, ctypes.byref(mem_info))
                         current = float(mem_info.used) / (1024.0 * 1024.0)
                         total_mb = float(mem_info.total) / (1024.0 * 1024.0)
-                        _maybe_kill(current, total_mb)
+                        cuda_cf = cuda_free_mb() if cuda_guard else None
+                        if cuda_cf is None and cuda_guard:
+                            probe_fail_streak += 1
+                            if probe_fail_streak >= 5:
+                                cuda_guard = False
+                                from autoresearch.core.hardware import cuda_probe_last_error
+
+                                last_err = cuda_probe_last_error()
+                                print(
+                                    "  [VRAM] CUDA-free probe unstable — NVML used>ceil fallback engaged"
+                                    + (f" (last cuMemGetInfo ret={last_err})" if last_err else "")
+                                    + ".",
+                                    flush=True,
+                                )
+                        else:
+                            probe_fail_streak = 0
+                        _maybe_kill(current, total_mb, cuda_free_now=cuda_cf)
                         shared_tick += 1
                         # typeperf is slow — sample Shared ~1/s while NVML is 20ms.
                         if shared_tick % 50 == 0:
                             _maybe_kill_shared()
                         self._stop_event.wait(0.02)
-                        continue
                     except Exception:
                         nvml = None
                 try:
                     current, total_mb = detect_used_total_vram_mb()
-                    _maybe_kill(current, total_mb)
+                    _maybe_kill(
+                        current, total_mb, cuda_free_now=cuda_free_mb() if cuda_guard else None
+                    )
                     _maybe_kill_shared()
                 except FileNotFoundError:
                     # VRAM sampling unavailable on non-GPU host

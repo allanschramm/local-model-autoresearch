@@ -817,7 +817,7 @@ class TestLlamaRunner(unittest.TestCase):
             self.assertTrue(ok, reason)
             self.assertLessEqual(est, 7900.0)
 
-    def test_estimate_host_memory_ignores_n_cpu_moe(self):
+    def test_estimate_host_memory_shrinks_to_expert_bytes_when_offloaded(self):
         from autoresearch.core.llama_runner import estimate_host_memory_mb, estimate_vram_mb
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -826,10 +826,18 @@ class TestLlamaRunner(unittest.TestCase):
             size = 10 * 1024 * 1024 * 1024
             with patch("pathlib.Path.stat", return_value=MagicMock(st_size=size)):
                 host = estimate_host_memory_mb(model, 2048, "q4_0", "q4_0")
-                vram_full = estimate_vram_mb(model, 2048, "q4_0", "q4_0")
+                host_off = estimate_host_memory_mb(
+                    model, 2048, "q4_0", "q4_0", n_cpu_moe=32, unified=False
+                )
+                host_off_unified = estimate_host_memory_mb(
+                    model, 2048, "q4_0", "q4_0", n_cpu_moe=32, unified=True
+                )
                 vram_off = estimate_vram_mb(model, 2048, "q4_0", "q4_0", n_cpu_moe=32)
-            self.assertAlmostEqual(host, vram_full, places=1)
-            self.assertGreater(host, vram_off * 1.5)
+            # Discrete + offload: expert bytes only (header unreadable -> 0.72 fallback).
+            self.assertLess(host_off, host)
+            self.assertGreater(host_off, vram_off)
+            # Unified hosts hold the whole model in RAM regardless of offload.
+            self.assertAlmostEqual(host_off_unified, host, places=1)
 
     def test_preflight_host_rejects_12gb_on_16gb_unified(self):
         from autoresearch.core.llama_runner import preflight_host_memory
@@ -1073,7 +1081,8 @@ class TestLlamaRunner(unittest.TestCase):
         finally:
             path.unlink(missing_ok=True)
 
-    def test_vram_sampler_kills_dense_over_limit(self):
+    def test_vram_sampler_kills_dense_on_cuda_free_exhausted(self):
+        """Kill when CUDA-reported free memory drops below floor — not on NVML used."""
         from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent
 
         intent = ServerIntent(
@@ -1091,17 +1100,17 @@ class TestLlamaRunner(unittest.TestCase):
         # Force nvidia-smi path (no NVML)
         with patch("ctypes.CDLL", side_effect=OSError("no nvml")):
             with patch("subprocess.check_output", return_value="500,8192\n"):
-                with patch(
-                    "autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True
-                ):
-                    runner._start_vram_sampler()
-                # Allow sampler thread to fire once
-                import time
+                with patch("autoresearch.core.hardware.cuda_free_mb", return_value=50.0):
+                    with patch(
+                        "autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True
+                    ):
+                        runner._start_vram_sampler()
+                    import time
 
-                time.sleep(0.35)
-                runner._stop_event.set()
-                if runner._vram_thread:
-                    runner._vram_thread.join(timeout=1.0)
+                    time.sleep(0.35)
+                    runner._stop_event.set()
+                    if runner._vram_thread:
+                        runner._vram_thread.join(timeout=1.0)
         self.assertTrue(runner.vram_killed)
         proc.kill.assert_called()
 
@@ -1144,11 +1153,9 @@ class TestLlamaRunner(unittest.TestCase):
                     runner._stop_event.set()
                     if runner._vram_thread:
                         runner._vram_thread.join(timeout=1.0)
-        self.assertTrue(runner.vram_killed)
-        proc.kill.assert_called()
 
-    def test_vram_sampler_kills_moe_over_limit(self):
-        """MoE must die at VRAM_LIMIT too — skipping enabled WDDM shared spill."""
+    def test_vram_sampler_kills_moe_on_cuda_free_exhausted(self):
+        """MoE must die on CUDA-free exhaustion too — skipping enabled WDDM shared spill."""
         from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent
 
         intent = ServerIntent(
@@ -1167,26 +1174,89 @@ class TestLlamaRunner(unittest.TestCase):
         runner._server_proc = proc
         with patch("ctypes.CDLL", side_effect=OSError("no nvml")):
             with patch("subprocess.check_output", return_value="500,8192\n"):
-                with patch(
-                    "autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True
-                ):
-                    runner._start_vram_sampler()
-                import time
+                with patch("autoresearch.core.hardware.cuda_free_mb", return_value=50.0):
+                    with patch(
+                        "autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True
+                    ):
+                        runner._start_vram_sampler()
+                    import time
 
-                time.sleep(0.35)
-                runner._stop_event.set()
-                if runner._vram_thread:
-                    runner._vram_thread.join(timeout=1.0)
+                    time.sleep(0.35)
+                    runner._stop_event.set()
+                    if runner._vram_thread:
+                        runner._vram_thread.join(timeout=1.0)
         self.assertTrue(runner.vram_killed)
         proc.kill.assert_called()
+
+    def test_vram_sampler_ignores_nvml_over_limit_when_cuda_healthy(self):
+        """NVML used>ceil alone must NOT kill — committed desktop memory is evictable."""
+        from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent
+
+        intent = ServerIntent(
+            model_path=Path("Bonsai-27B-Q1_0.gguf"),
+            ctx_size=65536,
+            kv_cache="q4_0",
+            flash_attn="on",
+        )
+        with patch(
+            "autoresearch.core.llama_runner.resolve_llama_server", return_value=Path("llama-server")
+        ):
+            runner = LlamaServerRunner(intent, vram_limit_mb=100.0)
+        proc = MagicMock()
+        runner._server_proc = proc
+        with patch("ctypes.CDLL", side_effect=OSError("no nvml")):
+            with patch("subprocess.check_output", return_value="500,8192\n"):
+                with patch("autoresearch.core.hardware.cuda_free_mb", return_value=8000.0):
+                    with patch(
+                        "autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True
+                    ):
+                        runner._start_vram_sampler()
+                    import time
+
+                    time.sleep(0.5)
+                    runner._stop_event.set()
+                    if runner._vram_thread:
+                        runner._vram_thread.join(timeout=1.0)
+        self.assertFalse(runner.vram_killed)
+        proc.kill.assert_not_called()
+
+    def test_vram_sampler_nvml_fallback_after_probe_streak(self):
+        """Probe returning None 5x disengages the CUDA guard — NVML used>ceil kills again."""
+        from autoresearch.core.llama_runner import LlamaServerRunner, ServerIntent
+
+        intent = ServerIntent(
+            model_path=Path("Bonsai-27B-Q1_0.gguf"),
+            ctx_size=65536,
+            kv_cache="q4_0",
+            flash_attn="on",
+        )
+        with patch(
+            "autoresearch.core.llama_runner.resolve_llama_server", return_value=Path("llama-server")
+        ):
+            runner = LlamaServerRunner(intent, vram_limit_mb=100.0)
+        proc = MagicMock()
+        runner._server_proc = proc
+        with patch("ctypes.CDLL", side_effect=OSError("no nvml")):
+            with patch("subprocess.check_output", return_value="500,8192\n"):
+                with patch("autoresearch.core.hardware.cuda_free_mb", return_value=None):
+                    with patch(
+                        "autoresearch.core.llama_runner.should_prefer_gpu_build", return_value=True
+                    ):
+                        runner._start_vram_sampler()
+                    import time
+
+                    time.sleep(1.4)
+                    runner._stop_event.set()
+                    if runner._vram_thread:
+                        runner._vram_thread.join(timeout=2.0)
 
     def test_resolve_vram_limit_clamps_to_physical(self):
         from autoresearch.core.llama_runner import resolve_vram_limit_mb
 
         with patch("autoresearch.core.llama_runner.detect_total_vram_mb", return_value=8188.0):
-            # physical − keepout(512) = 7676
-            self.assertEqual(resolve_vram_limit_mb(8600), 7676.0)
-            self.assertEqual(resolve_vram_limit_mb(7900), 7676.0)
+            # physical − keepout(256) = 7932
+            self.assertEqual(resolve_vram_limit_mb(8600), 7932.0)
+            self.assertEqual(resolve_vram_limit_mb(7900), 7900.0)
             self.assertEqual(resolve_vram_limit_mb(7000), 7000.0)
 
 
@@ -1427,10 +1497,11 @@ class TestVramHeadroomPreflight(unittest.TestCase):
         limit = llama_runner.effective_vram_limit_mb(4000.0, free_vram_mb=6000.0, headroom_mb=0.0)
         self.assertEqual(limit, 4000.0)
 
-    def test_preflight_effective_rejects_and_records_both_budgets(self):
+    def test_preflight_effective_free_clamp_opt_in_rejects_and_records_both_budgets(self):
         with (
             patch.object(llama_runner, "detect_free_vram_mb", return_value=6000.0),
             patch.object(llama_runner, "detect_total_vram_mb", return_value=None),
+            patch.dict(os.environ, {"AUTORESEARCH_VRAM_FREE_CLAMP": "1"}, clear=False),
         ):
             ok, est, reason = llama_runner.preflight_vram_effective(
                 Path("models/non-existent.gguf"),
@@ -1459,25 +1530,26 @@ class TestVramHeadroomPreflight(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(reason, "")
 
-    def test_skip_free_clamp_env_uses_configured_budget(self):
-        """AUTORESEARCH_SKIP_FREE_CLAMP=1 ignores free−headroom (operator escape)."""
+    def test_preflight_effective_default_ignores_free_at_start(self):
+        """Free clamp is opt-in (operator decision 2026-09-04): dense budget = configured."""
         with (
+            patch.dict(os.environ, {"AUTORESEARCH_VRAM_FREE_CLAMP": ""}, clear=False),
             patch.object(llama_runner, "detect_free_vram_mb", return_value=6000.0),
-            patch.dict(os.environ, {"AUTORESEARCH_SKIP_FREE_CLAMP": "1"}, clear=False),
+            patch.object(llama_runner, "detect_total_vram_mb", return_value=None),
         ):
-            self.assertTrue(llama_runner.skip_free_vram_clamp())
+            self.assertFalse(llama_runner.free_vram_clamp_enabled())
             ok, est, reason = llama_runner.preflight_vram_effective(
                 Path("models/non-existent.gguf"),
-                2048,
+                131072,
                 "q4_0",
                 "q4_0",
                 vram_limit_mb=7900.0,
                 headroom_mb=512.0,
             )
-        self.assertTrue(ok)
+        self.assertTrue(ok, f"est={est} reason={reason!r}")
         self.assertEqual(reason, "")
 
-    def test_preflight_for_intent_uses_free_vram(self):
+    def test_preflight_for_intent_uses_free_vram_when_clamped(self):
         intent = ServerIntent(
             model_path=Path("models/test-model.gguf"),
             ctx_size=131072,
@@ -1487,6 +1559,7 @@ class TestVramHeadroomPreflight(unittest.TestCase):
         with (
             patch.object(llama_runner, "detect_free_vram_mb", return_value=5000.0),
             patch.object(llama_runner, "detect_total_vram_mb", return_value=None),
+            patch.dict(os.environ, {"AUTORESEARCH_VRAM_FREE_CLAMP": "1"}, clear=False),
         ):
             ok, _, reason = llama_runner.preflight_vram_for_intent(
                 intent, 7900.0, headroom_mb=512.0

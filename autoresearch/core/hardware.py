@@ -563,11 +563,69 @@ def host_memory_budget_mb(
     return max(0.0, float(ram_mb) - float(headroom))
 
 
+_CUDA_PROBE_STATE: dict[str, Any] = {}
+
+
+def cuda_free_mb() -> float | None:
+    """Free dedicated VRAM as CUDA itself reports it (MiB), or None.
+
+    NVML ``memory.used`` counts committed-but-evictable desktop memory on
+    WDDM hosts, which false-trips a device-wide ``used > physical-keepout``
+    guard while CUDA still has hundreds of MiB to allocate (operator report
+    2026-09-04: Task Manager per-process view disagreed with NVML kills).
+    ``cuMemGetInfo`` is the quantity CUDA allocations actually compete for.
+    Primary context retained once per process; CUDA contexts are per-thread,
+    so ``cuCtxSetCurrent`` runs on every call before the query.
+    """
+    if _CUDA_PROBE_STATE.get("failed"):
+        return None
+    try:
+        import ctypes
+        import threading
+
+        lock = _CUDA_PROBE_STATE.setdefault("lock", threading.Lock())
+        with lock:
+            dll = _CUDA_PROBE_STATE.get("dll")
+            if dll is None:
+                dll = ctypes.WinDLL("nvcuda.dll")
+                if dll.cuInit(0) != 0:
+                    _CUDA_PROBE_STATE["failed"] = True
+                    return None
+                dev = ctypes.c_int()
+                if dll.cuDeviceGet(ctypes.byref(dev), 0) != 0:
+                    _CUDA_PROBE_STATE["failed"] = True
+                    return None
+                ctx = ctypes.c_void_p()
+                if dll.cuDevicePrimaryCtxRetain(ctypes.byref(ctx), dev) != 0:
+                    _CUDA_PROBE_STATE["failed"] = True
+                    return None
+                _CUDA_PROBE_STATE["dll"] = dll
+                _CUDA_PROBE_STATE["ctx"] = ctx
+            ctx = _CUDA_PROBE_STATE.get("ctx")
+            if dll.cuCtxSetCurrent(ctx) != 0:
+                return None  # context unavailable this call; caller tracks streak
+            free = ctypes.c_size_t()
+            total = ctypes.c_size_t()
+            ret = dll.cuMemGetInfo_v2(ctypes.byref(free), ctypes.byref(total))
+            if ret != 0:
+                _CUDA_PROBE_STATE["last_error"] = ret
+                return None
+            return free.value / (1024.0 * 1024.0)
+    except Exception:
+        _CUDA_PROBE_STATE["failed"] = True
+        return None
+
+
 def model_pool_gb(info: dict[str, Any]) -> float:
     """Reported capacity GB: dedicated VRAM, or total unified RAM (not a safe fill target)."""
     if info.get("memory_class") == MEMORY_CLASS_DISCRETE:
         return float(info.get("vram_gb") or 0.0)
     return float(info.get("ram_gb") or 0.0)
+
+
+def cuda_probe_last_error() -> int | None:
+    """Last non-zero ``cuMemGetInfo`` return code, or None if the probe is healthy."""
+    return _CUDA_PROBE_STATE.get("last_error")
 
 
 def get_system_info() -> dict[str, Any]:
@@ -581,6 +639,7 @@ def get_system_info() -> dict[str, Any]:
     caps = detect_hardware_capabilities()
     ram_mb = caps["ram_mb"]
     has_gpu = caps["has_gpu"]
+
     physical_cores = caps["physical_cores"]
     ram_gb = round(ram_mb / 1024.0, 1) if ram_mb else 0.0
     gpu_name, vram_gb, has_cuda = detect_nvidia()

@@ -174,6 +174,47 @@ def gguf_block_count(path: Path) -> int:
     return block_count
 
 
+def gguf_expert_bytes_mb(path: Path, layer_limit: int | None = None) -> float | None:
+    """Sum expert-class tensor bytes in MiB from GGUF tensor metadata (header-only).
+
+    Expert-class = the tensor families a ``--n-cpu-moe`` style buffer-type
+    override routes to CPU: routed FFN experts (``ffn_*(ch|)exps``) and
+    attention value experts (``attn_v_exps``, MoVA-style). Returns None when the
+    file cannot be read or carries no expert tensors (dense GGUFs).
+    ``layer_limit`` (first N blocks, as ``--n-cpu-moe N``) scales the sum.
+    """
+    import re
+
+    try:
+        from gguf import GGML_QUANT_SIZES, GGUFReader
+    except ImportError:
+        return None
+    pattern = re.compile(r"\.ffn_(up|down|gate|gate_up)_(ch|)exps(\.|$)|\.attn_v_exps(\.|$)")
+    try:
+        reader = GGUFReader(str(path))
+        total_bytes = 0
+        for tensor in reader.tensors:
+            if not pattern.search(tensor.name):
+                continue
+            n_elem = 1
+            for dim in tensor.shape:
+                n_elem *= dim
+            blck_size, type_size = GGML_QUANT_SIZES[tensor.tensor_type]
+            total_bytes += ((n_elem + blck_size - 1) // blck_size) * type_size
+        if total_bytes <= 0:
+            return None
+    except Exception:
+        return None
+    total_mb = total_bytes / (1024.0 * 1024.0)
+    if layer_limit is not None:
+        try:
+            blocks = gguf_block_count(path)
+            total_mb *= min(1.0, float(layer_limit) / float(blocks))
+        except Exception:
+            pass
+    return total_mb
+
+
 def gguf_kv_bytes_per_token_f16(path: Path) -> float | None:
     """KV cache bytes per token at f16 from GGUF metadata, or None if unknown.
 

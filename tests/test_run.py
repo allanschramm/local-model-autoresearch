@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -102,6 +103,7 @@ class TestRun(unittest.TestCase):
             patch("autoresearch.core.llama_runner.detect_free_vram_mb", return_value=6000.0),
             patch("autoresearch.core.llama_runner.detect_total_vram_mb", return_value=None),
             patch("autoresearch.core.llama_runner.resolve_vram_headroom_mb", return_value=512.0),
+            patch.dict(os.environ, {"AUTORESEARCH_VRAM_FREE_CLAMP": "1"}, clear=False),
         ):
             result = ExperimentRunner(Path("models")).run_trial(
                 {
