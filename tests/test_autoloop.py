@@ -1356,5 +1356,99 @@ class TestAutoLoopCpuPreflight(TestAutoLoop):
         self.assertIn("SPEC_DRAFT_N_MAX", captured["search_space"])
 
 
+class TestClimbFingerprint(unittest.TestCase):
+    """TPS climb writes the ADR 0014 Fingerprint file on keep (issue #51)."""
+
+    def _cfg(self, **over):
+        cfg = {
+            "MODEL": "climb-model.gguf",
+            "CTX_SIZE": 65536,
+            "N_GPU_LAYERS": -1,
+            "KV_CACHE": "q4_0",
+            "KV_CACHE_K": "q4_0",
+            "KV_CACHE_V": "q4_0",
+            "BATCH_SIZE": 512,
+            "UBATCH_SIZE": 128,
+            "THREADS": 8,
+            "FLASH_ATTN": "on",
+            "CONT_BATCHING": True,
+            "SPEC_DRAFT_N_MAX": 0,
+            "TPS_FLOOR": 20.0,
+            "VRAM_LIMIT_MB": 7900.0,
+            "TEMP": 0.0,
+            "TOP_P": 0.9,
+        }
+        cfg.update(over)
+        return cfg
+
+    def test_kept_tps_neighbor_writes_matching_engine_without_sampler(self):
+        from autoresearch.core.fingerprint import load
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = autoloop.write_climb_fingerprint(
+                "climb-model.gguf",
+                self._cfg(),
+                outcome=autoloop.TrialOutcome.OK,
+                status="on_front",
+                is_tps_climb=True,
+                directory=tmp,
+            )
+            self.assertIsNotNone(path)
+            loaded = load(path)
+            self.assertEqual(loaded["model"], "climb-model.gguf")
+            self.assertEqual(loaded["engine"]["CTX_SIZE"], 65536)
+            self.assertEqual(loaded["engine"]["MODEL"], "climb-model.gguf")
+            self.assertIsNone(loaded["sampler"])
+            self.assertNotIn("TEMP", loaded["engine"])
+            self.assertNotIn("TOP_P", loaded["engine"])
+
+    def test_rejected_climb_keeps_good_file(self):
+        from autoresearch.core.fingerprint import dump, load, path_for
+
+        with tempfile.TemporaryDirectory() as tmp:
+            good = path_for("climb-model.gguf", tmp)
+            dump(good, model="climb-model.gguf", engine={"CTX_SIZE": 32768})
+            out = autoloop.write_climb_fingerprint(
+                "climb-model.gguf",
+                self._cfg(),
+                outcome=autoloop.TrialOutcome.OK,
+                status="rejected",
+                is_tps_climb=True,
+                directory=tmp,
+            )
+            self.assertIsNone(out)
+            self.assertEqual(load(good)["engine"]["CTX_SIZE"], 32768)
+
+    def test_failed_outcome_keeps_good_file(self):
+        from autoresearch.core.fingerprint import dump, load, path_for
+
+        with tempfile.TemporaryDirectory() as tmp:
+            good = path_for("climb-model.gguf", tmp)
+            dump(good, model="climb-model.gguf", engine={"CTX_SIZE": 32768})
+            out = autoloop.write_climb_fingerprint(
+                "climb-model.gguf",
+                self._cfg(),
+                outcome=autoloop.TrialOutcome.INFRA_ERROR,
+                status="rejected",
+                is_tps_climb=True,
+                directory=tmp,
+            )
+            self.assertIsNone(out)
+            self.assertEqual(load(good)["engine"]["CTX_SIZE"], 32768)
+
+    def test_non_tps_climb_skips_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = autoloop.write_climb_fingerprint(
+                "climb-model.gguf",
+                self._cfg(),
+                outcome=autoloop.TrialOutcome.OK,
+                status="on_front",
+                is_tps_climb=False,
+                directory=tmp,
+            )
+            self.assertIsNone(out)
+            self.assertEqual(list(Path(tmp).glob("*.json")), [])
+
+
 if __name__ == "__main__":
     unittest.main()

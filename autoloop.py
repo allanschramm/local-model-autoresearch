@@ -531,6 +531,39 @@ def update_model_alias(model_name: str, new_cfg: dict, tps: float, mode: str) ->
         print(f"  [WARNING] Failed to auto-update alias config: {e}")
 
 
+def write_climb_fingerprint(
+    model_name: str,
+    cfg: dict[str, Any],
+    *,
+    outcome: Any = None,
+    status: str = "on_front",
+    is_tps_climb: bool = True,
+    directory: Path | str | None = None,
+) -> Path | None:
+    """Write the ADR 0014 Fingerprint file after a kept TPS+PPL Neighbor (issue #51).
+
+    Engine only — sampler is user/card choice, never a TPS Neighbor, so the
+    file carries no sampler section. Skips (None, existing file untouched) when
+    this was not a TPS/PPL climb, the Trial outcome is not OK, or the Trial was
+    rejected — a failed climb never overwrites a good file. Write failures warn;
+    the Baseline keep stands.
+    """
+    from autoresearch.core.fingerprint import dump, path_for
+
+    if not is_tps_climb:
+        return None
+    if outcome is not None and outcome != "OK":
+        return None
+    if status == "rejected":
+        return None
+    try:
+        engine = {k: v for k, v in cfg.items() if k in ENGINE_DEFAULTS}
+        return dump(path_for(model_name, directory), model=model_name, engine=engine)
+    except Exception as e:
+        print(f"  [WARNING] Failed to write Fingerprint file: {e}")
+        return None
+
+
 def _objective_vector(cfg: dict[str, Any], res) -> classify.ObjectiveVector:
     """Objective Vector of a Trial; blank axis = not measured (ADR 0006)."""
     return classify.ObjectiveVector(
@@ -1137,7 +1170,9 @@ def main():
                     f"{search_strategy.format_config_summary(neighbor.config)} TPS={tps:.1f} "
                     f"PPL={getattr(res, 'bench_ppl', 0.0):.4f} Δ={delta:+.6f}"
                 )
-                _write_trial(neighbor.config, res, neighbor_desc, model_name, tsv_category)
+                neighbor_status = _write_trial(
+                    neighbor.config, res, neighbor_desc, model_name, tsv_category
+                )
 
                 if getattr(res, "outcome", TrialOutcome.OK) in (
                     TrialOutcome.INFRA_ERROR,
@@ -1151,6 +1186,16 @@ def main():
                     state_manager.update_baseline(neighbor.config)
                     # Automatically update model alias config
                     update_model_alias(model_name, neighbor.config, tps, cli_args.mode)
+                    # TPS+PPL keep writes the Fingerprint file (issue #51, ADR 0014).
+                    # TPS mode always measures PPL, so is_tps_mode alone is the
+                    # spec climb; sampler keeps (quality/both) never touch the bus.
+                    write_climb_fingerprint(
+                        model_name,
+                        neighbor.config,
+                        outcome=getattr(res, "outcome", TrialOutcome.OK),
+                        status=neighbor_status,
+                        is_tps_climb=is_tps_mode,
+                    )
                     improved = True
                     break
                 else:
