@@ -32,6 +32,8 @@ User-facing guides for **discovering, evaluating, selecting, and optimizing** lo
 - [`good-enough-tuning.md`](./good-enough-tuning.md) — default speed path: validation smoke → autoloop `--mode tps` → champion quality check.
 - [`agentic-coding-benchmarks.md`](./agentic-coding-benchmarks.md) — Claw tiers + SWE-lite `--agentic-coding` (ADR 0013).
 - [`claw-eval-leaderboard.md`](./claw-eval-leaderboard.md) — ranked Claw-Eval full/quick scores on this 8 GB rig + operational lessons.
+- [`visual-pack.md`](./visual-pack.md) — Pi visual-pack stub on the Fingerprint bus: same file as daily Pi, camera rubric optional, never writes rank (issue #54, ADR 0014 phase 4).
+- [`visual-pack-prompt.md`](./visual-pack-prompt.md) — frozen workspace-shaped sample prompt 01 (notes-CLI fix); do not edit, add numbered files.
 - [`thinking-models-claw-harness.md`](./thinking-models-claw-harness.md) — thinking/`reasoning_content` Claw false-fails: symptoms, fix, remasure policy, regression checklist.
 - [`coding-leaderboard.md`](./coding-leaderboard.md) — ranked coding-10 (HE/MBPP/LCB/BC) scores on this 8 GB rig.
 - [`pareto-leaderboard.md`](./pareto-leaderboard.md) — global Pareto Set (ctx × TPS × agentic × coding) + Day/Night picks (ADR 0006/0009). Live recompute: `scripts/rank_results.py`.
