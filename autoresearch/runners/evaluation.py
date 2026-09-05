@@ -32,6 +32,8 @@ from autoresearch.core.hardware import (
 )
 from autoresearch.core.llama_client import GenerationParams, LlamaClient
 from autoresearch.core.llama_runner import (
+    WATCHDOG_KILL_LEGACY_MARKER,
+    WATCHDOG_KILL_LEGACY_REASON,
     ConfigError,
     LlamaServerRunner,
     ServerIntent,
@@ -42,6 +44,7 @@ from autoresearch.core.llama_runner import (
     resolve_llama_perplexity,
     resolve_shared_vram_limit_mb,
     resolve_vram_limit_mb,
+    watchdog_kill_reason,
 )
 from autoresearch.core.model_arch import gguf_block_count, gguf_has_mtp, gguf_is_moe
 from autoresearch.core.sglang_runner import SGLangServerRunner, run_sglang_bench_validation
@@ -150,6 +153,9 @@ class TrialOutcome(str, Enum):
     OK = "OK"
     INVALID_CONFIG = "INVALID_CONFIG"
     MODEL_REJECTED = "MODEL_REJECTED"
+    # Runtime VRAM-policy kill (issue #72): the harness watchdog stopped a
+    # healthy server on its VRAM budget — never a model OOM rejection.
+    WATCHDOG_KILL = "WATCHDOG_KILL"
     INFRA_ERROR = "INFRA_ERROR"
     CODE_ERROR = "CODE_ERROR"
 
@@ -331,7 +337,7 @@ def run_llama_bench_validation(
     limit = resolve_vram_limit_mb(vram_limit_mb)
     shared_limit = resolve_shared_vram_limit_mb()
     stop = threading.Event()
-    vram_killed = {"value": False}
+    vram_killed = {"value": False, "reason": ""}
     cli_env = os.environ.copy()
     cli_env.setdefault("GGML_CUDA_NO_PINNED", "1")
 
@@ -342,6 +348,11 @@ def run_llama_bench_validation(
                 ceil = dedicated_vram_kill_ceil(limit, total)
                 if used > ceil:
                     vram_killed["value"] = True
+                    vram_killed["reason"] = watchdog_kill_reason(
+                        "nvml-used",
+                        f"used={used:.0f}MB>ceil={ceil:.0f}MB",
+                        f"llama-cli={model_path.name}",
+                    )
                     print(
                         f"  [VRAM] LIMIT EXCEEDED used={used:.0f}MB > limit={ceil:.0f}MB "
                         f"(llama-cli={model_path.name}) — killing "
@@ -355,6 +366,11 @@ def run_llama_bench_validation(
                     shared = detect_pid_gpu_shared_mb(int(proc.pid))
                     if shared is not None and shared > shared_limit:
                         vram_killed["value"] = True
+                        vram_killed["reason"] = watchdog_kill_reason(
+                            "shared",
+                            f"shared={shared:.0f}MB>limit={shared_limit:.0f}MB",
+                            f"llama-cli={model_path.name}",
+                        )
                         print(
                             f"  [VRAM] SHARED GPU EXCEEDED shared={shared:.0f}MB > "
                             f"limit={shared_limit:.0f}MB (llama-cli={model_path.name}) — killing "
@@ -387,7 +403,7 @@ def run_llama_bench_validation(
         watcher.join(timeout=2.0)
 
     if vram_killed["value"]:
-        raise RuntimeError("VRAM_LIMIT_EXCEEDED")
+        raise RuntimeError(vram_killed["reason"] or WATCHDOG_KILL_LEGACY_MARKER)
     if proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode or -1, cmd, stdout or "", stderr or "")
 
@@ -465,6 +481,29 @@ def run_llama_perplexity_validation(
         )
 
     return float(match.group(1))
+
+
+def _watchdog_reason(runner: Any) -> str:
+    """Scoped policy-kill reason from a runner, with legacy fallback.
+
+    Live runners carry ``vram_kill_reason`` (``WATCHDOG_KILL scope=...``).
+    Anything else (pre-fix messages, bare mocks) maps to the legacy
+    NVML device-wide scope so the row still lands honest.
+    """
+    raw = getattr(runner, "vram_kill_reason", "")
+    if isinstance(raw, str) and raw.startswith("WATCHDOG_KILL"):
+        return raw
+    return WATCHDOG_KILL_LEGACY_REASON
+
+
+def _apply_watchdog_kill(res: TrialResult, runner: Any) -> None:
+    """Record a runtime VRAM-policy kill as WATCHDOG_KILL (issue #72)."""
+    reason = _watchdog_reason(runner)
+    res.status = f"FAIL: {reason}"
+    res.outcome = TrialOutcome.WATCHDOG_KILL
+    res.diagnostic = reason
+    res.val_score = 0.0
+    res.peak_vram_gb = max(getattr(runner, "peak_vram_mb", 0.0), 0.0) / 1024.0
 
 
 class ExperimentRunner:
@@ -678,11 +717,15 @@ class ExperimentRunner:
                     res.outcome = TrialOutcome.MODEL_REJECTED
                     return res
                 except RuntimeError as e:
-                    if "VRAM_LIMIT_EXCEEDED" in str(e):
-                        print("  [FAIL] llama-cli VRAM_LIMIT_EXCEEDED")
-                        res.status = "FAIL: VRAM_LIMIT_EXCEEDED"
-                        res.outcome = TrialOutcome.MODEL_REJECTED
-                        res.diagnostic = "VRAM_LIMIT_EXCEEDED"
+                    msg = str(e)
+                    if "WATCHDOG_KILL" in msg or WATCHDOG_KILL_LEGACY_MARKER in msg:
+                        reason = (
+                            msg if msg.startswith("WATCHDOG_KILL") else WATCHDOG_KILL_LEGACY_REASON
+                        )
+                        print(f"  [FAIL] llama-cli {reason}")
+                        res.status = f"FAIL: {reason}"
+                        res.outcome = TrialOutcome.WATCHDOG_KILL
+                        res.diagnostic = reason
                         return res
                     print(f"  [FAIL] llama-cli error: {e}")
                     res.status = f"FAIL: llama-cli error: {str(e)[:50]}"
@@ -805,10 +848,7 @@ class ExperimentRunner:
             with runner as entered_runner:
                 runner = entered_runner
                 if getattr(runner, "vram_killed", False) is True:
-                    res.status = "FAIL: VRAM_LIMIT_EXCEEDED"
-                    res.outcome = TrialOutcome.MODEL_REJECTED
-                    res.diagnostic = "VRAM_LIMIT_EXCEEDED"
-                    res.peak_vram_gb = max(getattr(runner, "peak_vram_mb", 0.0), 0.0) / 1024.0
+                    _apply_watchdog_kill(res, runner)
                     return res
                 client = LlamaClient(runner.port)
 
@@ -946,10 +986,7 @@ class ExperimentRunner:
             if runner is not None:
                 res.peak_vram_gb = max(runner.peak_vram_mb, 0.0) / 1024.0
                 if getattr(runner, "vram_killed", False) is True:
-                    res.status = "FAIL: VRAM_LIMIT_EXCEEDED"
-                    res.outcome = TrialOutcome.MODEL_REJECTED
-                    res.diagnostic = "VRAM_LIMIT_EXCEEDED"
-                    res.val_score = 0.0
+                    _apply_watchdog_kill(res, runner)
 
         res.elapsed_sec = time.time() - trial_start
         return res

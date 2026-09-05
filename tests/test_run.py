@@ -907,7 +907,45 @@ class TestRun(unittest.TestCase):
             self.assertIsNone(_moe_vram_reject(intent, 6650.0, 7900.0))
             self.assertIsNotNone(_moe_vram_reject(intent, 8000.0, 7900.0))
 
-    def test_vram_kill_during_enter_is_model_rejected(self):
+    def test_vram_kill_during_enter_is_watchdog_kill(self):
+        """Issue #72: runtime policy kills are WATCHDOG_KILL with scope, never MODEL_REJECTED."""
+        from autoresearch.core.llama_runner import ServerIntent
+        from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
+
+        intent = ServerIntent(
+            model_path=Path("model.gguf"),
+            ctx_size=100000,
+            kv_cache="turbo3",
+            flash_attn="on",
+        )
+        reason = "WATCHDOG_KILL scope=cuda_free cuda_free=50MB<floor=256MB (dense=model.gguf)"
+        runner = MagicMock(vram_killed=True, peak_vram_mb=7978.0)
+        runner.vram_kill_reason = reason
+        runner.__enter__.side_effect = RuntimeError(reason)
+        with (
+            patch(
+                "autoresearch.runners.evaluation.ServerIntent.from_config",
+                return_value=(intent, {"vram_limit_mb": 7900}),
+            ),
+            patch(
+                "autoresearch.runners.evaluation.preflight_vram_for_intent",
+                return_value=(True, 6906.0, ""),
+            ),
+            patch(
+                "autoresearch.runners.evaluation.preflight_host_memory_for_intent",
+                return_value=(True, 6906.0, 27790.0, ""),
+            ),
+            patch("autoresearch.runners.evaluation.LlamaServerRunner", return_value=runner),
+        ):
+            result = ExperimentRunner(Path("models")).run_trial({}, skip_bench=True)
+
+        self.assertEqual(result.outcome, TrialOutcome.WATCHDOG_KILL)
+        self.assertIn("cuda_free", result.diagnostic)
+        self.assertTrue(result.status.startswith("FAIL: WATCHDOG_KILL"))
+        self.assertNotEqual(result.outcome, TrialOutcome.MODEL_REJECTED)
+
+    def test_vram_kill_legacy_message_maps_to_watchdog_kill(self):
+        """Pre-fix RuntimeError('VRAM_LIMIT_EXCEEDED') without scope still lands honest."""
         from autoresearch.core.llama_runner import ServerIntent
         from autoresearch.runners.evaluation import ExperimentRunner, TrialOutcome
 
@@ -936,8 +974,8 @@ class TestRun(unittest.TestCase):
         ):
             result = ExperimentRunner(Path("models")).run_trial({}, skip_bench=True)
 
-        self.assertEqual(result.outcome, TrialOutcome.MODEL_REJECTED)
-        self.assertEqual(result.diagnostic, "VRAM_LIMIT_EXCEEDED")
+        self.assertEqual(result.outcome, TrialOutcome.WATCHDOG_KILL)
+        self.assertIn("WATCHDOG_KILL", result.diagnostic)
 
     def test_format_arch_line_modes(self):
         import tempfile

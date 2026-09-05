@@ -500,6 +500,35 @@ def recompute_statuses(results_file: Path) -> None:
             results_db.try_sync_from_tsv(results_file)
 
 
+def relabel_watchdog_kills(results_file: Path) -> int:
+    """One-shot issue #72 migration: legacy policy kills → WATCHDOG_KILL.
+
+    Rewrites rows stored as MODEL_REJECTED/VRAM_LIMIT_EXCEEDED (all pre-fix
+    watchdog kills were device-wide NVML policy kills) to the honest
+    WATCHDOG_KILL outcome. Store status stays ``rejected``. Idempotent:
+    returns the relabeled row count (0 = nothing to do).
+    """
+    with _results_lock(results_file):
+        rows, source = results_db.store_rows(results_file)
+        updated = recompute.relabel_watchdog_kills(rows)
+        changed = [u for u, o in zip(updated, rows, strict=False) if u != o]
+        if not changed:
+            return 0
+        if source == "db":
+            try:
+                results_db.upsert_rows(results_db.default_db_path(results_file), changed)
+            except Exception as exc:
+                print(f"[results] DB relabel failed, healing from TSV: {exc}")
+                results_db.try_sync_from_tsv(results_file)
+        try:
+            _replace_tsv(results_file, updated)
+        except Exception as exc:
+            print(f"[results] legacy TSV rewrite failed: {exc}")
+        if source == "tsv":
+            results_db.try_sync_from_tsv(results_file)
+        return len(changed)
+
+
 def _replace_tsv(results_file: Path, rows: list[dict[str, str]]) -> None:
     """Atomically rewrite the legacy TSV (a killed Search must not truncate it)."""
     temp_path: Path | None = None

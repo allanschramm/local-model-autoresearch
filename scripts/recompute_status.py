@@ -13,6 +13,7 @@ Usage (repo root):
     .\\venv\\Scripts\\python.exe scripts\\recompute_status.py
     .\\venv\\Scripts\\python.exe scripts\\recompute_status.py path\\to\\results.tsv
     .\\venv\\Scripts\\python.exe scripts\\recompute_status.py --scope model
+    .\\venv\\Scripts\\python.exe scripts\\recompute_status.py --relabel-watchdog
 """
 
 from __future__ import annotations
@@ -48,11 +49,23 @@ def main() -> int:
             "model: read-only per-model lens, printed, not written"
         ),
     )
+    parser.add_argument(
+        "--relabel-watchdog",
+        action="store_true",
+        help=(
+            "one-shot issue #72 migration: relabel legacy NVML device-wide "
+            "policy kills (MODEL_REJECTED/VRAM_LIMIT_EXCEEDED) to WATCHDOG_KILL "
+            "before the status refresh; idempotent, no GPU"
+        ),
+    )
     args = parser.parse_args()
     results_file = Path(args.results_file)
     if not results_file.exists():
         print(f"results store not found: {results_file}", file=sys.stderr)
         return 1
+    if args.relabel_watchdog:
+        relabeled = run.relabel_watchdog_kills(results_file)
+        print(f"watchdog kills relabeled: {relabeled} rows in {results_file}")
     rows = run.read_rows(results_file)
     updated = recompute.recompute_rows(rows, scope=args.scope)
     if args.scope == "model":

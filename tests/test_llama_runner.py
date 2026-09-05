@@ -428,11 +428,14 @@ class TestLlamaRunner(unittest.TestCase):
 
         def reject_for_vram(_port):
             runner.vram_killed = True
+            runner.vram_kill_reason = (
+                "WATCHDOG_KILL scope=cuda_free cuda_free=50MB<floor=256MB (dense=test-model.gguf)"
+            )
             runner._cleanup_process()
             return False
 
         runner._wait_for_server = reject_for_vram
-        with self.assertRaisesRegex(RuntimeError, "VRAM_LIMIT_EXCEEDED"):
+        with self.assertRaisesRegex(RuntimeError, "WATCHDOG_KILL"):
             runner.__enter__()
 
     @patch("autoresearch.core.llama_runner.resolve_llama_server")
@@ -1113,6 +1116,7 @@ class TestLlamaRunner(unittest.TestCase):
                         runner._vram_thread.join(timeout=1.0)
         self.assertTrue(runner.vram_killed)
         proc.kill.assert_called()
+        self.assertIn("cuda_free", runner.vram_kill_reason)
 
     def test_vram_sampler_kills_absolute_shared_with_low_dedicated(self):
         """Shared>ceil kills even when dedicated is under budget (WDDM/PCI-e thrash)."""
@@ -1187,6 +1191,7 @@ class TestLlamaRunner(unittest.TestCase):
                         runner._vram_thread.join(timeout=1.0)
         self.assertTrue(runner.vram_killed)
         proc.kill.assert_called()
+        self.assertIn("cuda_free", runner.vram_kill_reason)
 
     def test_vram_sampler_ignores_nvml_over_limit_when_cuda_healthy(self):
         """NVML used>ceil alone must NOT kill — committed desktop memory is evictable."""

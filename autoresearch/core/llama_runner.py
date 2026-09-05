@@ -972,6 +972,24 @@ def sweep_leftover_processes() -> None:
         print(f"  [process-guard] pre-flight killed leftover harness procs: {sorted(killed)}")
 
 
+WATCHDOG_KILL_LEGACY_MARKER = "VRAM_LIMIT_EXCEEDED"
+"""Pre-fix watchdog kill text: always a policy kill, never a model OOM."""
+
+WATCHDOG_KILL_LEGACY_REASON = (
+    f"WATCHDOG_KILL (legacy {WATCHDOG_KILL_LEGACY_MARKER}, scope=nvml-device-wide)"
+)
+"""Scope-less kills predate the CUDA-free guard: all were NVML device-wide (issue #72)."""
+
+
+def watchdog_kill_reason(scope: str, detail: str, where: str) -> str:
+    """One formatter for every watchdog policy-kill reason (issue #72).
+
+    Keeps the ``WATCHDOG_KILL scope=<scope> <detail> (<where>)`` shape a single
+    contract shared by the server sampler and the llama-cli bench watcher.
+    """
+    return f"WATCHDOG_KILL scope={scope} {detail} ({where})"
+
+
 class LlamaServerRunner:
     def __init__(
         self,
@@ -988,6 +1006,7 @@ class LlamaServerRunner:
         self.peak_vram_mb: float = 0.0
         self.peak_shared_mb: float = 0.0
         self.vram_killed: bool = False
+        self.vram_kill_reason: str = ""
         self.ram_killed: bool = False
 
         self._server_proc: subprocess.Popen[str] | None = None
@@ -1212,7 +1231,7 @@ class LlamaServerRunner:
 
             if self.vram_killed:
                 self._cleanup_all()
-                raise RuntimeError("VRAM_LIMIT_EXCEEDED")
+                raise RuntimeError(self.vram_kill_reason or WATCHDOG_KILL_LEGACY_REASON)
             if self.ram_killed:
                 self._cleanup_all()
                 raise RuntimeError("RAM_CIRCUIT_BREAKER")
@@ -1311,6 +1330,11 @@ class LlamaServerRunner:
             if shared > shared_limit and not self.vram_killed:
                 self.vram_killed = True
                 kind = "dense" if dense else "moe"
+                self.vram_kill_reason = watchdog_kill_reason(
+                    "shared",
+                    f"shared={shared:.0f}MB>limit={shared_limit:.0f}MB",
+                    f"{kind}={self.intent.model_path.name}",
+                )
                 print(
                     f"  [VRAM] SHARED GPU EXCEEDED shared={shared:.0f}MB > "
                     f"limit={shared_limit:.0f}MB ({kind}={self.intent.model_path.name}) — killing "
@@ -1359,6 +1383,11 @@ class LlamaServerRunner:
                 floor = resolve_cuda_free_floor_mb()
                 if cuda_free_now < floor:
                     self.vram_killed = True
+                    self.vram_kill_reason = watchdog_kill_reason(
+                        "cuda_free",
+                        f"cuda_free={cuda_free_now:.0f}MB<floor={floor:.0f}MB",
+                        f"{kind}={self.intent.model_path.name}",
+                    )
                     print(
                         f"  [VRAM] CUDA FREE EXHAUSTED cuda_free={cuda_free_now:.0f}MB < "
                         f"floor={floor:.0f}MB ({kind}={self.intent.model_path.name}) — killing "
@@ -1371,6 +1400,11 @@ class LlamaServerRunner:
             ceil = dedicated_vram_kill_ceil(limit, total_mb)
             if current > ceil:
                 self.vram_killed = True
+                self.vram_kill_reason = watchdog_kill_reason(
+                    "nvml-used",
+                    f"used={current:.0f}MB>ceil={ceil:.0f}MB",
+                    f"{kind}={self.intent.model_path.name}",
+                )
                 print(
                     f"  [VRAM] LIMIT EXCEEDED used={current:.0f}MB > limit={ceil:.0f}MB "
                     f"({kind}={self.intent.model_path.name}) — killing "

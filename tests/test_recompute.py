@@ -361,3 +361,85 @@ def test_morris_screen_rows_never_join_domination(store):
     write_store(store, [screen, real])
     run.recompute_statuses(store)
     assert read_store(store) == {"real": "on_front", "scr": "incomplete"}
+
+
+def test_relabel_watchdog_kills_legacy_policy_rows():
+    """Issue #72: legacy NVML device-wide policy kills relabel to WATCHDOG_KILL."""
+    rows = [
+        row(
+            trial_id="policy",
+            status="rejected",
+            outcome="MODEL_REJECTED",
+            diagnostic="VRAM_LIMIT_EXCEEDED",
+        ),
+    ]
+    out = recompute.relabel_watchdog_kills(rows)
+    assert out[0]["outcome"] == "WATCHDOG_KILL"
+    assert out[0]["status"] == "rejected"  # still failed: out of the front
+    assert out[0]["diagnostic"].startswith("WATCHDOG_KILL")
+    assert "nvml-device-wide" in out[0]["diagnostic"]
+    assert rows[0]["outcome"] == "MODEL_REJECTED"  # pure: input untouched
+
+
+def test_relabel_watchdog_kills_leaves_honest_rows():
+    """Genuine model rejects (preflight, TPS floor) and honest kills are untouched."""
+    honest = row(
+        trial_id="honest",
+        status="rejected",
+        outcome="WATCHDOG_KILL",
+        diagnostic="WATCHDOG_KILL scope=cuda_free",
+    )
+    preflight = row(
+        trial_id="preflight",
+        status="rejected",
+        outcome="MODEL_REJECTED",
+        diagnostic="VRAM_PREFLIGHT est=8108MB > limit=7900MB",
+    )
+    out = recompute.relabel_watchdog_kills([honest, preflight])
+    assert out[0]["outcome"] == "WATCHDOG_KILL"
+    assert out[0]["diagnostic"] == "WATCHDOG_KILL scope=cuda_free"
+    assert out[1]["outcome"] == "MODEL_REJECTED"
+    assert out[1]["diagnostic"] == "VRAM_PREFLIGHT est=8108MB > limit=7900MB"
+
+
+def test_relabel_watchdog_kills_idempotent():
+    """Relabeling twice changes nothing the second time."""
+    rows = [
+        row(
+            trial_id="policy",
+            status="rejected",
+            outcome="MODEL_REJECTED",
+            diagnostic="VRAM_LIMIT_EXCEEDED",
+        ),
+    ]
+    once = recompute.relabel_watchdog_kills(rows)
+    twice = recompute.relabel_watchdog_kills(once)
+    assert twice == once
+
+
+def test_relabel_watchdog_kills_store_migration(store):
+    """Issue #72: store migration rewrites the outcome and holds on rerun."""
+    write_store(
+        store,
+        [
+            row(
+                trial_id="policy",
+                status="rejected",
+                outcome="MODEL_REJECTED",
+                diagnostic="VRAM_LIMIT_EXCEEDED",
+            ),
+            row(
+                trial_id="preflight",
+                status="rejected",
+                outcome="MODEL_REJECTED",
+                diagnostic="VRAM_PREFLIGHT est=8108MB > limit=7900MB",
+            ),
+        ],
+    )
+    assert run.relabel_watchdog_kills(store) == 1
+    rows = {r["trial_id"]: r for r in run.read_rows(store)}
+    assert rows["policy"]["outcome"] == "WATCHDOG_KILL"
+    assert rows["policy"]["status"] == "rejected"
+    assert "nvml-device-wide" in rows["policy"]["diagnostic"]
+    assert rows["preflight"]["outcome"] == "MODEL_REJECTED"
+    assert run.relabel_watchdog_kills(store) == 0

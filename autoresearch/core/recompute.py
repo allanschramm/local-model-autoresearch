@@ -87,3 +87,37 @@ def recompute_rows(
         for idx in idxs:
             out[idx]["status"] = status
     return out
+
+
+#: Pre-fix watchdog kill marker (issue #72): every such row was a device-wide
+#: NVML policy kill — the CUDA-free guard did not exist yet.
+WATCHDOG_KILL_LEGACY_MARKER = "VRAM_LIMIT_EXCEEDED"
+
+WATCHDOG_KILL_RELABELED_DIAGNOSTIC = (
+    f"WATCHDOG_KILL (legacy {WATCHDOG_KILL_LEGACY_MARKER}, scope=nvml-device-wide)"
+)
+
+
+def relabel_watchdog_kills(
+    rows: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Relabel legacy policy kills to WATCHDOG_KILL (issue #72). Pure, idempotent.
+
+    Pre-fix watchdog kills were stored as MODEL_REJECTED/VRAM_LIMIT_EXCEEDED —
+    indistinguishable from real OOMs. Every such row was a device-wide NVML
+    policy kill, so the scope is honest. Genuine model rejects (preflight,
+    TPS floor) and already-honest rows pass through untouched. Store status
+    stays ``rejected``: still failed, still out of the Pareto front — only
+    the outcome/diagnostic become honest.
+    """
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        relabeled = dict(row)
+        if (relabeled.get("outcome") or "") == "MODEL_REJECTED" and (
+            WATCHDOG_KILL_LEGACY_MARKER in (relabeled.get("diagnostic") or "")
+            or WATCHDOG_KILL_LEGACY_MARKER in (relabeled.get("status") or "")
+        ):
+            relabeled["outcome"] = "WATCHDOG_KILL"
+            relabeled["diagnostic"] = WATCHDOG_KILL_RELABELED_DIAGNOSTIC
+        out.append(relabeled)
+    return out
