@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import os
-import shlex
 import socket
 import subprocess
 import sys
@@ -22,10 +21,14 @@ def _ensure_repo_root_on_sys_path() -> None:
 
 _ensure_repo_root_on_sys_path()
 
+from autoresearch.core import fingerprint
+from autoresearch.core.fingerprint import FingerprintError
 from autoresearch.core.llama_runner import IS_WINDOWS, resolve_llama_server, resolve_model_path
+from autoresearch.core.model_arch import gguf_has_mtp, resolve_n_cpu_moe
 from autoresearch.core.single_load import SingleLoadError, enforce_single_load
 
 ALIASES_DIR = REPO_ROOT / "models" / "aliases"
+FINGERPRINTS_DIR = REPO_ROOT / "fingerprints"
 STATE_DIR = (
     Path(os.environ["LOCALAPPDATA"]) / "local-model-autoresearch"
     if IS_WINDOWS and os.environ.get("LOCALAPPDATA")
@@ -182,29 +185,6 @@ def _resolve_model_path(raw: str) -> Path:
     return resolve_model_path(models_dir, ref)
 
 
-# llama-server aliases that take a GGUF path; resolve relative → absolute so
-# launching from any cwd (e.g. user home via global model-up) still finds drafts.
-_PATH_FLAGS = frozenset({"--spec-draft-model", "-md", "--model-draft"})
-
-
-def _expand_flag_tokens(flag: str) -> list[str]:
-    tokens = shlex.split(flag)
-    out: list[str] = []
-    i = 0
-    while i < len(tokens):
-        tok = tokens[i]
-        out.append(tok)
-        if tok in _PATH_FLAGS and i + 1 < len(tokens):
-            path = _resolve_model_path(tokens[i + 1])
-            if not path.exists():
-                raise FileNotFoundError(f"draft model not found: {path}")
-            out.append(str(path))
-            i += 2
-            continue
-        i += 1
-    return out
-
-
 def _resolve_alias_server(cfg: AliasConfig) -> Path:
     if not cfg.llama_cpp_root:
         return resolve_llama_server()
@@ -226,11 +206,208 @@ def _resolve_alias_server(cfg: AliasConfig) -> Path:
     )
 
 
+# ENGINE_DEFAULTS keys that map to llama-server flags (mirrors
+# LlamaServerRunner._build_cmd; same engine = same server Pi sees).
+_SERVER_ENGINE_KEYS = frozenset(
+    {
+        "CTX_SIZE",
+        "BATCH_SIZE",
+        "UBATCH_SIZE",
+        "THREADS",
+        "PARALLEL",
+        "N_GPU_LAYERS",
+        "NUMA",
+        "KV_CACHE",
+        "KV_CACHE_K",
+        "KV_CACHE_V",
+        "FLASH_ATTN",
+        "THREADS_BATCH",
+        "NO_MMAP",
+        "MLOCK",
+        "JINJA",
+        "REASONING_BUDGET",
+        "REASONING_BUDGET_MESSAGE",
+        "REASONING",
+        "REASONING_PRESERVE",
+        "REASONING_EFFORT",
+        "CONT_BATCHING",
+        "CACHE_REUSE",
+        "SPEC_TYPE",
+        "SPEC_DRAFT_N_MAX",
+        "SPEC_DRAFT_MODEL",
+        "MOE_CACHE_PROFILE",
+        "MOE_CACHE_SLOTS",
+        "N_CPU_MOE",
+    }
+)
+# ENGINE_DEFAULTS keys that are harness-only (budgets, floors, gates):
+# carried in the file, never emitted as server flags.
+_HARNESS_ONLY_ENGINE_KEYS = frozenset(
+    {
+        "VRAM_LIMIT_MB",
+        "VRAM_HEADROOM_MB",
+        "HOST_MEMORY_HEADROOM_MB",
+        "FREE_RAM_FLOOR_MB",
+        "RAM_WATCHDOG_POLL_S",
+        "RAM_WATCHDOG_RESERVE_MB",
+        "RAM_PREFLIGHT_MARGIN_MB",
+        "TPS_FLOOR",
+        "TPS_REPS",
+        "THERMAL_WAIT",
+    }
+)
+
+
+def _probe_spec_type(server_binary: Path) -> str:
+    """Auto-select mtp vs draft-mtp like the trial runner (MTP GGUF, no SPEC_TYPE)."""
+    try:
+        help_text = subprocess.check_output(
+            [str(server_binary), "--help"], stderr=subprocess.STDOUT, text=True
+        )
+    except Exception:
+        help_text = "mtp"
+    return "mtp" if "mtp" in help_text else "draft-mtp"
+
+
+def fingerprint_flags(engine: dict, *, model_path: Path, server_binary: Path) -> list[str]:
+    """Map a Fingerprint engine mapping to llama-server flags (issue #52).
+
+    Same subset and order as the trial runner so Pi sees the engine the TPS
+    climb wrote. Unknown keys raise (a typo'd hand-written file must never
+    silently serve defaults); harness-only keys are ignored.
+    """
+    unknown = sorted(
+        k
+        for k in engine
+        if k not in _SERVER_ENGINE_KEYS and k not in _HARNESS_ONLY_ENGINE_KEYS and k != "MODEL"
+    )
+    if unknown:
+        raise FingerprintError(f"unknown engine keys (not ENGINE_DEFAULTS): {unknown}")
+
+    kv = engine.get("KV_CACHE") or "q4_0"
+    cache_k = engine.get("KV_CACHE_K") or kv
+    cache_v = engine.get("KV_CACHE_V") or kv
+    ngl = engine.get("N_GPU_LAYERS")
+    cmd = [
+        "--ctx-size",
+        str(engine.get("CTX_SIZE") or 131072),
+        "--batch-size",
+        str(engine.get("BATCH_SIZE") or 512),
+        "--ubatch-size",
+        str(engine.get("UBATCH_SIZE") or 128),
+        "--threads",
+        str(engine.get("THREADS") or 8),
+        "--parallel",
+        str(engine.get("PARALLEL") or 1),
+        "--n-gpu-layers",
+        str(999 if ngl is None else ngl),
+    ]
+    numa = engine.get("NUMA")
+    if numa is not None:
+        cmd += ["--numa", str(numa)]
+    cmd += [
+        "--cache-type-k",
+        str(cache_k),
+        "--cache-type-v",
+        str(cache_v),
+        "--flash-attn",
+        str(engine.get("FLASH_ATTN") or "on"),
+    ]
+    threads_batch = engine.get("THREADS_BATCH")
+    if threads_batch is not None:
+        cmd += ["--threads-batch", str(threads_batch)]
+    if engine.get("NO_MMAP"):
+        cmd += ["--no-mmap"]
+    if engine.get("MLOCK"):
+        cmd += ["--mlock"]
+    if engine.get("JINJA"):
+        cmd += ["--jinja"]
+    reasoning_budget = engine.get("REASONING_BUDGET")
+    if reasoning_budget is not None:
+        cmd += ["--reasoning-budget", str(reasoning_budget)]
+    reasoning_budget_message = engine.get("REASONING_BUDGET_MESSAGE")
+    if reasoning_budget_message is not None:
+        cmd += ["--reasoning-budget-message", str(reasoning_budget_message)]
+    reasoning = engine.get("REASONING")
+    if reasoning is not None:
+        cmd += ["--reasoning", str(reasoning)]
+    reasoning_effort = engine.get("REASONING_EFFORT")
+    if reasoning_effort is not None:
+        cmd += ["--reasoning-effort", str(reasoning_effort)]
+    reasoning_preserve = engine.get("REASONING_PRESERVE")
+    if reasoning_preserve is True:
+        cmd += ["--reasoning-preserve"]
+    elif reasoning_preserve is False:
+        cmd += ["--no-reasoning-preserve"]
+    if engine.get("CONT_BATCHING"):
+        cmd += ["--cont-batching"]
+    cache_reuse = engine.get("CACHE_REUSE")
+    if cache_reuse is not None and int(cache_reuse) > 0:
+        cmd += ["--cache-reuse", str(int(cache_reuse))]
+
+    spec_type = engine.get("SPEC_TYPE")
+    draft_n_max = int(engine.get("SPEC_DRAFT_N_MAX") or 0)
+    if spec_type is None and gguf_has_mtp(model_path) and draft_n_max > 0:
+        spec_type = _probe_spec_type(server_binary)
+    if spec_type is not None and str(spec_type).lower() != "none" and draft_n_max > 0:
+        cmd += [
+            "--spec-type",
+            str(spec_type),
+            "--spec-draft-n-max",
+            str(draft_n_max),
+            "--spec-draft-type-k",
+            str(cache_k),
+            "--spec-draft-type-v",
+            str(cache_v),
+        ]
+        draft = engine.get("SPEC_DRAFT_MODEL")
+        if draft:
+            draft_path = Path(str(draft))
+            if not draft_path.is_absolute():
+                draft_path = model_path.parent / draft_path
+            if not draft_path.exists():
+                raise FileNotFoundError(f"draft model not found: {draft_path}")
+            cmd += ["--spec-draft-model", str(draft_path)]
+
+    moe_profile = engine.get("MOE_CACHE_PROFILE")
+    if moe_profile:
+        profile = Path(str(moe_profile))
+        if not profile.is_absolute():
+            profile = REPO_ROOT / profile
+        cmd += ["--moe-cache-profile", str(profile)]
+        moe_slots = engine.get("MOE_CACHE_SLOTS")
+        if moe_slots:
+            cmd += ["--moe-cache-slots", str(int(moe_slots))]
+
+    try:
+        resolved_moe, _ = resolve_n_cpu_moe(model_path, engine.get("N_CPU_MOE"))
+    except ValueError as exc:
+        raise FingerprintError(str(exc)) from exc
+    if resolved_moe is not None:
+        cmd += ["--n-cpu-moe", str(resolved_moe)]
+    return cmd
+
+
+def _load_fingerprint(cfg: AliasConfig) -> dict:
+    """Load the Fingerprint file for the alias GGUF; fail closed when missing."""
+    basename = Path(cfg.model).name
+    target = fingerprint.path_for(basename, FINGERPRINTS_DIR)
+    if not target.exists():
+        raise FileNotFoundError(
+            f"Fingerprint not found: {target} for model {basename!r} "
+            f"(alias {cfg.name!r}). Run a TPS climb or hand-write one "
+            "(ADR 0014); model-up never falls back to alias flags."
+        )
+    return fingerprint.load(target)
+
+
 def build_command(cfg: AliasConfig) -> tuple[list[str], Path]:
+    """Build the llama-server command: identity/bind from alias, engine from Fingerprint."""
     binary = _resolve_alias_server(cfg)
     model_path = _resolve_model_path(cfg.model)
     if not model_path.exists():
         raise FileNotFoundError(f"model not found: {model_path}")
+    data = _load_fingerprint(cfg)
 
     cmd = [
         str(binary),
@@ -243,8 +420,7 @@ def build_command(cfg: AliasConfig) -> tuple[list[str], Path]:
         "--port",
         str(cfg.port),
     ]
-    for flag in cfg.flags:
-        cmd.extend(_expand_flag_tokens(flag))
+    cmd += fingerprint_flags(data["engine"], model_path=model_path, server_binary=binary)
     return cmd, model_path
 
 
@@ -428,6 +604,14 @@ def cmd_start(alias_name: str | None, allow_multi: bool = False) -> int:
     except FileNotFoundError as exc:
         print(str(exc))
         return 1
+    except FingerprintError as exc:
+        print(f"invalid Fingerprint: {exc}")
+        return 1
+    if cfg.flags:
+        print(
+            f"NOTE: ignoring {len(cfg.flags)} stale alias flags; "
+            "the Fingerprint file is the engine source of truth."
+        )
 
     if _is_healthy(cfg.host, cfg.port):
         print(f"Already up: {cfg.name} at http://{cfg.host}:{cfg.port}/v1")

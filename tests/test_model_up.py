@@ -1,11 +1,30 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+import pytest
+
+from autoresearch.core import fingerprint
+from autoresearch.core.fingerprint import FingerprintError
 from scripts import model_up
 
 
-def test_model_up_parses_flags_and_builds_command(tmp_path, monkeypatch):
+def _seed_fingerprint(monkeypatch, tmp_path, basename="demo.gguf", engine=None):
+    """Seed fingerprints/<stem>.json + hermetic GGUF readers for fake model files."""
+    from autoresearch.core import fingerprint as fp_mod
+
+    fp_dir = tmp_path / "fingerprints"
+    target = fp_mod.path_for(basename, fp_dir)
+    fp_mod.dump(target, model=basename, engine=dict(engine or {"CTX_SIZE": 32768}))
+    monkeypatch.setattr(model_up, "FINGERPRINTS_DIR", fp_dir)
+    # Fake test models are text files: MoE auto-resolution would raise.
+    monkeypatch.setattr(model_up, "resolve_n_cpu_moe", lambda path, raw: (raw, False))
+    monkeypatch.setattr(model_up, "gguf_has_mtp", lambda path: False)
+    return target
+
+
+def test_model_up_builds_command_from_fingerprint_not_alias_flags(tmp_path, monkeypatch):
     alias_dir = tmp_path / "models" / "aliases" / "demo"
     alias_dir.mkdir(parents=True)
     model_file = tmp_path / "models" / "demo.gguf"
@@ -31,6 +50,20 @@ def test_model_up_parses_flags_and_builds_command(tmp_path, monkeypatch):
     monkeypatch.setattr(model_up, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(model_up, "ALIASES_DIR", tmp_path / "models" / "aliases")
     monkeypatch.setattr(model_up, "resolve_llama_server", lambda: Path("llama-server.exe"))
+    _seed_fingerprint(
+        monkeypatch,
+        tmp_path,
+        engine={
+            "CTX_SIZE": 65536,
+            "BATCH_SIZE": 256,
+            "UBATCH_SIZE": 128,
+            "THREADS": 4,
+            "FLASH_ATTN": "on",
+            "JINJA": True,
+            "NO_MMAP": True,
+            "N_GPU_LAYERS": 999,
+        },
+    )
 
     cfg = model_up.load_alias_config(alias_file)
     cmd, model_path = model_up.build_command(cfg)
@@ -38,6 +71,7 @@ def test_model_up_parses_flags_and_builds_command(tmp_path, monkeypatch):
     assert cfg.name == "demo"
     assert cfg.alias == "demo-model"
     assert model_path == model_file
+    # Bind stays local: identity + host/port come from the alias.
     assert cmd[:9] == [
         "llama-server.exe",
         "--model",
@@ -49,7 +83,13 @@ def test_model_up_parses_flags_and_builds_command(tmp_path, monkeypatch):
         "--port",
         "19090",
     ]
-    assert cmd[9:] == ["--jinja", "--ctx-size", "131072", "--flash-attn", "on"]
+    # Engine comes from the Fingerprint file; stale alias flags are ignored.
+    assert "--ctx-size" in cmd and "65536" in cmd
+    assert "131072" not in cmd
+    assert "--batch-size" in cmd and "256" in cmd
+    assert "--jinja" in cmd
+    assert "--no-mmap" in cmd
+    assert "--n-gpu-layers" in cmd and "999" in cmd
 
 
 def test_model_up_resolves_nested_lmstudio_layout(tmp_path, monkeypatch):
@@ -77,6 +117,7 @@ def test_model_up_resolves_nested_lmstudio_layout(tmp_path, monkeypatch):
     monkeypatch.setattr(model_up, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(model_up, "ALIASES_DIR", tmp_path / "models" / "aliases")
     monkeypatch.setattr(model_up, "resolve_llama_server", lambda: Path("llama-server.exe"))
+    _seed_fingerprint(monkeypatch, tmp_path)
 
     cfg = model_up.load_alias_config(alias_file)
     _, model_path = model_up.build_command(cfg)
@@ -111,6 +152,7 @@ def test_model_up_uses_llama_cpp_root_for_fork_binary(tmp_path, monkeypatch):
 
     monkeypatch.setattr(model_up, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(model_up, "ALIASES_DIR", tmp_path / "models" / "aliases")
+    _seed_fingerprint(monkeypatch, tmp_path)
 
     cfg = model_up.load_alias_config(alias_file)
     cmd, model_path = model_up.build_command(cfg)
@@ -145,10 +187,6 @@ def test_model_up_resolves_spec_draft_model_path(tmp_path, monkeypatch):
                 "model: models/main.gguf",
                 "port: 18080",
                 "host: 127.0.0.1",
-                "flags:",
-                "  - --spec-type draft-mtp",
-                "  - --spec-draft-model models/draft/mtp-demo.gguf",
-                "  - --spec-draft-n-max 2",
                 "status: ready",
             ]
         ),
@@ -158,10 +196,23 @@ def test_model_up_resolves_spec_draft_model_path(tmp_path, monkeypatch):
     monkeypatch.setattr(model_up, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(model_up, "ALIASES_DIR", tmp_path / "models" / "aliases")
     monkeypatch.setattr(model_up, "resolve_llama_server", lambda: Path("llama-server.exe"))
+    _seed_fingerprint(
+        monkeypatch,
+        tmp_path,
+        basename="main.gguf",
+        engine={
+            "CTX_SIZE": 32768,
+            "SPEC_TYPE": "draft-mtp",
+            "SPEC_DRAFT_N_MAX": 2,
+            "SPEC_DRAFT_MODEL": "draft/mtp-demo.gguf",
+        },
+    )
 
     cfg = model_up.load_alias_config(alias_file)
     cmd, _ = model_up.build_command(cfg)
 
+    assert cmd[cmd.index("--spec-type") + 1] == "draft-mtp"
+    assert cmd[cmd.index("--spec-draft-n-max") + 1] == "2"
     assert cmd[cmd.index("--spec-draft-model") + 1] == str(draft_file)
 
 
@@ -206,6 +257,7 @@ def test_model_up_start_sets_cwd_to_repo_root(tmp_path, monkeypatch):
     monkeypatch.setattr(model_up, "STATE_FILE", tmp_path / "state" / "model-up.state")
     monkeypatch.setattr(model_up, "LOGFILE", tmp_path / "state" / "model-up.log")
     monkeypatch.setattr(model_up, "resolve_llama_server", lambda: Path("llama-server.exe"))
+    _seed_fingerprint(monkeypatch, tmp_path)
     monkeypatch.setattr(model_up, "_is_healthy", lambda host, port: False)
     monkeypatch.setattr(model_up, "_is_listening", lambda host, port: False)
     monkeypatch.setattr(model_up.subprocess, "Popen", fake_popen)
@@ -242,6 +294,7 @@ def _alias_env(tmp_path, monkeypatch, name="demo"):
     monkeypatch.setattr(model_up, "STATE_FILE", tmp_path / "state" / "model-up.state")
     monkeypatch.setattr(model_up, "LOGFILE", tmp_path / "state" / "model-up.log")
     monkeypatch.setattr(model_up, "resolve_llama_server", lambda: Path("llama-server.exe"))
+    _seed_fingerprint(monkeypatch, tmp_path)
     monkeypatch.setattr(model_up, "_is_healthy", lambda host, port: False)
     monkeypatch.setattr(model_up, "_is_listening", lambda host, port: False)
     monkeypatch.setattr(model_up.time, "sleep", lambda _: None)
@@ -307,3 +360,83 @@ def test_model_up_start_allow_multi_env_bypasses_gate(tmp_path, monkeypatch):
     assert len(captured) == 1  # llama-server only (no RAM watchdog on aliases since 2026-08-26)
     cmd = captured[0]
     assert cmd[0] == str(Path("llama-server.exe"))
+
+
+def test_model_up_missing_fingerprint_fails_clearly(tmp_path, monkeypatch, capsys):
+    _alias_env(tmp_path, monkeypatch)
+    # Point at an empty dir: fail closed, never serve alias soup.
+    empty = tmp_path / "empty-fingerprints"
+    empty.mkdir(parents=True)
+    monkeypatch.setattr(model_up, "FINGERPRINTS_DIR", empty)
+    captured: list = []
+    _fake_popen_capture(monkeypatch, captured)
+    monkeypatch.setattr(
+        "autoresearch.core.single_load.live_full_server_pids",
+        lambda ports, process_names: [],
+    )
+    cfg = model_up.load_alias_config(tmp_path / "models" / "aliases" / "demo" / "config.yaml")
+
+    with pytest.raises(FileNotFoundError, match="Fingerprint not found"):
+        model_up.build_command(cfg)
+    assert model_up.cmd_start("demo") == 1
+    assert captured == []
+    assert "Fingerprint not found" in capsys.readouterr().out
+
+
+def test_model_up_invalid_fingerprint_fails(tmp_path, monkeypatch, capsys):
+    _alias_env(tmp_path, monkeypatch)
+    fp_dir = tmp_path / "fingerprints"
+    (fp_dir / "demo.json").write_text('{"model": "demo.gguf"}', encoding="utf-8")
+    monkeypatch.setattr(model_up, "FINGERPRINTS_DIR", fp_dir)
+    captured: list = []
+    _fake_popen_capture(monkeypatch, captured)
+    monkeypatch.setattr(
+        "autoresearch.core.single_load.live_full_server_pids",
+        lambda ports, process_names: [],
+    )
+
+    assert model_up.cmd_start("demo") == 1
+    assert captured == []
+    assert "invalid Fingerprint" in capsys.readouterr().out
+
+
+def test_model_up_fingerprint_unknown_engine_key_rejected(tmp_path, monkeypatch):
+    _alias_env(tmp_path, monkeypatch)
+    fp_dir = tmp_path / "fingerprints"
+    target = fingerprint.path_for("demo.gguf", fp_dir)
+    payload = json.loads(target.read_text(encoding="utf-8"))
+    payload["engine"]["CTX_SIZZE"] = 65536
+    target.write_text(json.dumps(payload), encoding="utf-8")
+    cfg = model_up.load_alias_config(tmp_path / "models" / "aliases" / "demo" / "config.yaml")
+
+    with pytest.raises(FingerprintError, match="CTX_SIZZE"):
+        model_up.build_command(cfg)
+
+
+def test_model_up_fingerprint_auto_mtp_matches_trial_runner(tmp_path, monkeypatch):
+    _alias_env(tmp_path, monkeypatch)
+    _seed_fingerprint(
+        monkeypatch,
+        tmp_path,
+        engine={"CTX_SIZE": 32768, "SPEC_DRAFT_N_MAX": 2},
+    )
+    monkeypatch.setattr(model_up, "gguf_has_mtp", lambda path: True)
+    monkeypatch.setattr(
+        model_up.subprocess, "check_output", lambda *args, **kwargs: "  --spec-type mtp draft"
+    )
+    cfg = model_up.load_alias_config(tmp_path / "models" / "aliases" / "demo" / "config.yaml")
+
+    cmd, _ = model_up.build_command(cfg)
+
+    assert cmd[cmd.index("--spec-type") + 1] == "mtp"
+    assert cmd[cmd.index("--spec-draft-n-max") + 1] == "2"
+
+
+def test_model_up_fingerprint_explicit_n_cpu_moe_passthrough(tmp_path, monkeypatch):
+    _alias_env(tmp_path, monkeypatch)
+    _seed_fingerprint(monkeypatch, tmp_path, engine={"CTX_SIZE": 32768, "N_CPU_MOE": 40})
+    cfg = model_up.load_alias_config(tmp_path / "models" / "aliases" / "demo" / "config.yaml")
+
+    cmd, _ = model_up.build_command(cfg)
+
+    assert cmd[cmd.index("--n-cpu-moe") + 1] == "40"
