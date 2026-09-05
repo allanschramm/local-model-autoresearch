@@ -97,6 +97,7 @@ run_nexus_only.py
 
 # Models folder is entirely local/offline
 /models/
+/fingerprints/
 
 # Local vendor/runtime artifacts (do not commit)
 /claw-eval/

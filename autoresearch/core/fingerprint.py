@@ -1,0 +1,205 @@
+"""Fingerprint file IO (issue #49, ADR 0014 bus).
+
+Portable hill-climb -> launcher bus: GGUF **basename** + the ENGINE_DEFAULTS
+used for that climb, optional SAMPLER_DEFAULTS. Machine-local JSON under a
+gitignored ``fingerprints/`` directory. This is NOT the Pareto Fingerprint
+hash in :mod:`autoresearch.core.pareto` (a sha256 of engine + sampler).
+
+No GPU, no launcher/eval imports — pure stdlib so roundtrip works in tests.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from collections.abc import Mapping
+from pathlib import Path, PurePath, PureWindowsPath
+from typing import Any
+
+SCHEMA_VERSION = 1
+
+DEFAULT_DIR_NAME = "fingerprints"
+
+# Key names that must never land in a shared file (case-insensitive match).
+_PRIVATE_KEYS = frozenset(
+    {
+        "hostname",
+        "host",
+        "machine",
+        "user",
+        "username",
+        "email",
+        "gpu",
+        "gpu_sku",
+        "gpu_model",
+        "alias",
+        "alias_name",
+        "model_alias",
+    }
+)
+
+_ABSOLUTE_PATH_RE = re.compile(
+    r"^(?:[A-Za-z]:[\\/]|\\\\|/|~[\\/]?)"  # drive, UNC, POSIX abs, tilde
+)
+_EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+_URL_RE = re.compile(r"[a-zA-Z][a-zA-Z0-9+.-]*://")
+_GPU_SKU_RE = re.compile(r"\b(?:RTX|GTX|GT|RX|ARC|A100|H100|H200|B200)\b", re.IGNORECASE)
+_HOSTNAME_RE = re.compile(
+    r"(?i)^(localhost|([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+(local|lan|internal|[a-z]{2,}))$"
+)
+# Dotted basenames that must not trip the hostname check (e.g. "model.gguf").
+_FILENAME_EXT_RE = re.compile(r"(?i)\.(gguf|bin|safetensors|csv|json|md|txt|yaml|yml|log|ggml)$")
+
+
+class FingerprintError(ValueError):
+    """Raised when a Fingerprint payload leaks private data or breaks schema."""
+
+
+def _basename(name: str) -> str:
+    """Strip any directory components (POSIX + Windows) to a pure basename."""
+    base = PureWindowsPath(name).name or PurePath(name).name or name
+    return PurePath(base).name
+
+
+def _looks_like_basename(name: str) -> bool:
+    return (
+        "/" not in name
+        and "\\" not in name
+        and not _ABSOLUTE_PATH_RE.match(name)
+        and PureWindowsPath(name).name == name
+        and PurePath(name).name == name
+    )
+
+
+def _check_value(key: str, value: Any) -> None:
+    if isinstance(value, str):
+        if _ABSOLUTE_PATH_RE.match(value.strip()):
+            raise FingerprintError(f"private absolute path in {key!r}: {value!r}")
+        if _EMAIL_RE.search(value) or _URL_RE.search(value):
+            raise FingerprintError(f"private contact/host value in {key!r}: {value!r}")
+        if _GPU_SKU_RE.search(value):
+            raise FingerprintError(f"private GPU SKU value in {key!r}: {value!r}")
+        stripped = value.strip()
+        if (
+            ("." in stripped or stripped.lower() == "localhost")
+            and "/" not in stripped
+            and "\\" not in stripped
+            and not _FILENAME_EXT_RE.search(stripped)
+            and _HOSTNAME_RE.match(stripped)
+        ):
+            raise FingerprintError(f"private hostname value in {key!r}: {value!r}")
+    elif isinstance(value, Mapping):
+        _check_mapping(value)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _check_value(key, item)
+
+
+def _check_mapping(data: Mapping[str, Any]) -> None:
+    for key, value in data.items():
+        if str(key).strip().lower() in _PRIVATE_KEYS:
+            raise FingerprintError(f"private key {key!r} must not be fingerprinted")
+        _check_value(str(key), value)
+
+
+def default_dir(root: Path | str | None = None) -> Path:
+    """Return the machine-local fingerprints directory (created on dump)."""
+    base = Path(root) if root is not None else Path(__file__).resolve().parents[2]
+    return base / DEFAULT_DIR_NAME
+
+
+def path_for(model_basename: str, directory: Path | str | None = None) -> Path:
+    """Return the one-file-per-basename path for ``model_basename``."""
+    stem = PurePath(_basename(model_basename)).stem
+    parent = default_dir() if directory is None else Path(directory)
+    return parent / f"{stem}.json"
+
+
+def dump(
+    path: Path | str,
+    *,
+    model: str,
+    engine: Mapping[str, Any],
+    sampler: Mapping[str, Any] | None = None,
+) -> Path:
+    """Write a Fingerprint file; return the path written.
+
+    ``model`` may carry directories — only the basename is stored. Absolute
+    user paths, hostnames, emails, alias names, and GPU SKUs in ``engine`` /
+    ``sampler`` raise :class:`FingerprintError`.
+    """
+    if not isinstance(engine, Mapping):
+        raise FingerprintError("engine must be a mapping of ENGINE_DEFAULTS")
+    if sampler is not None and not isinstance(sampler, Mapping):
+        raise FingerprintError("sampler must be a mapping of SAMPLER_DEFAULTS or None")
+
+    base = _basename(model.strip())
+    if not base:
+        raise FingerprintError("model must be a non-empty GGUF basename")
+
+    engine_clean = dict(engine)
+    engine_clean["MODEL"] = base
+    _check_mapping(engine_clean)
+    sampler_clean = dict(sampler) if sampler is not None else None
+    if sampler_clean is not None:
+        _check_mapping(sampler_clean)
+
+    payload: dict[str, Any] = {
+        "schema_version": SCHEMA_VERSION,
+        "model": base,
+        "engine": engine_clean,
+    }
+    if sampler_clean is not None:
+        payload["sampler"] = sampler_clean
+
+    target = Path(path)
+    if target.parent != Path(".") and str(target.parent):
+        target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return target
+
+
+def _checked_mapping(
+    value: Any, what: str, target: Path, *, required: bool
+) -> dict[str, Any] | None:
+    """Validate a load() engine/sampler section and scrub it for private data."""
+    if value is None and not required:
+        return None
+    if not isinstance(value, dict) or not value:
+        raise FingerprintError(f"invalid Fingerprint {what} in {target}: mapping required")
+    _check_mapping(value)
+    return dict(value)
+
+
+def load(path: Path | str) -> dict[str, Any]:
+    """Load a Fingerprint file; reject missing schema or private leakage."""
+    target = Path(path)
+    try:
+        payload = json.loads(target.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise FingerprintError(f"invalid Fingerprint JSON in {target}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise FingerprintError(f"invalid Fingerprint payload in {target}: not an object")
+
+    version = payload.get("schema_version")
+    if version != SCHEMA_VERSION:
+        raise FingerprintError(
+            f"unsupported Fingerprint schema_version {version!r} in {target} "
+            f"(want {SCHEMA_VERSION}); schema_version is required"
+        )
+
+    model = payload.get("model")
+    if not isinstance(model, str) or not model or not _looks_like_basename(model):
+        raise FingerprintError(
+            f"invalid Fingerprint model {model!r} in {target}: GGUF basename only"
+        )
+
+    engine = _checked_mapping(payload.get("engine"), "engine", target, required=True)
+    sampler = _checked_mapping(payload.get("sampler"), "sampler", target, required=False)
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "model": model,
+        "engine": dict(engine),
+        "sampler": dict(sampler) if sampler is not None else None,
+    }
