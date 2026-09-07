@@ -74,6 +74,7 @@ SEARCH_SPACE = {
     "BATCH_SIZE": [256, 512, 1024],
     "UBATCH_SIZE": [64, 128, 256, 512],
     "SPEC_DRAFT_N_MAX": [0, 1, 2, 3, 4],
+    "SPEC_TYPE": [None, "ngram-cache"],
     "CONT_BATCHING": [False, True],
     "FLASH_ATTN": ["on"],
     "NO_MMAP": [False, True],

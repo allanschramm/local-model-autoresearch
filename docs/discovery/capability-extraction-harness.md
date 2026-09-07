@@ -63,7 +63,7 @@ Caveats (from the report itself): first-person word frequency (`we`/`let me`) is
 
 ## 7. Candidate experiments (falsifiable, one Fingerprint each)
 
-1. **ngram-cache as Search neighbor** — engine-only, 0 MB, universal. Measure coding-10 + Claw vs `--spec-type none` on the same Fingerprint. Zero cost, zero risk.
+1. **ngram-cache as Search neighbor** — engine-only, 0 MB, universal. Measured 2026-09-07 (Trial 0593e117, Issue #57) on Qwen3.8-4B-Distill Q4_K_M @ 131k: TPS -23.5% (72.1 vs 94.2), coding 0.5900 vs 0.6400, host RAM leak (~160MB/req). Refuted on dense; strictly discarded against `--spec-type none`.
 2. **Led-state + fail-diagnosis retry harness flag** — `agentic_coding` switch on/off on one Fingerprint. Harness change → operator decision (ADR if adopted).
 3. **Best-of-N self-consistency** on grader-critical turns — measure agentic/coding gain per token budget.
 4. **score/token observational metric** in Night loops — derived from existing results + mock logs; not a Pareto axis.
@@ -73,7 +73,7 @@ Protocol rule: harness is fixed unless the operator approves a change; every can
 
 ## 8. Open questions
 
-- **TBD:** ngram gain on coding-10 — unmeasured locally; external prior negative on A3B-class (MoESD expert-union), positive on dense. Run stays cheap and falsifiable (0 MB VRAM, same Fingerprint, switch on/off).
+- **Resolved (2026-09-07):** ngram gain on coding-10 — measured locally (Issue #57, Trial 0593e117); speedup is negative on dense (-23.5% TPS) with low draft acceptance (1.7-9.5%) and continuous host RAM ballooning.
 - **TBD:** DSpark on this rig — llama.cpp-native path exists in pinned b10375 for Qwen3-backbone dense-format drafts; Gemma-4-backbone speculators-format drafts need a bump past b10375 ([#26275](https://github.com/ggml-org/llama.cpp/pull/26275)); official dense-format Gemma-4 drafts unverified in llama.cpp. All require a dense on-GPU target to beat the measured dead ends (quantization-speed inversion).
 - **TBD:** best-of-N token cost vs agentic gain — harness-side (parked until a harness fork); no local measurement yet.
 - **Engine bump (re-checked 2026-08-22):** latest is **v0.2.0 / b10549** (2026-08-21T09:23Z, 174 commits ahead of b10375, [releases/tag/b10549](https://github.com/ggml-org/llama.cpp/releases/tag/b10549)); new since b10488: **general CUDA decode** MVQ→MMQ per-HW/quant crossover ([#26079](https://github.com/ggml-org/llama.cpp/pull/26079)) + CUDA-graph retention for `mul_mat_id` ([#26802](https://github.com/ggml-org/llama.cpp/pull/26802)) — first general decode-path change for this class; plus recurrent-state rollback for spec on SSM hybrids ([#26623](https://github.com/ggml-org/llama.cpp/pull/26623)), `--mmap`→`--load-mode` migration ([#26934](https://github.com/ggml-org/llama.cpp/pull/26934)), spec auto-detect ([#26814](https://github.com/ggml-org/llama.cpp/pull/26814)/[#27005](https://github.com/ggml-org/llama.cpp/pull/27005)), DSpark-for-LFM2 ([#27383](https://github.com/ggml-org/llama.cpp/pull/27383)). Verdict stays **optional**: falsifiable bench_tg on same Fingerprint b10375 vs latest before adopting a bump (which must also migrate harness `NO_MMAP` to `--load-mode`).

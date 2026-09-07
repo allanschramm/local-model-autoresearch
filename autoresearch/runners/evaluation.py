@@ -38,6 +38,7 @@ from autoresearch.core.llama_runner import (
     LlamaServerRunner,
     ServerIntent,
     dedicated_vram_kill_ceil,
+    is_ngram_spec_type,
     preflight_host_memory_for_intent,
     preflight_vram_for_intent,
     resolve_llama_cli,
@@ -314,19 +315,27 @@ def run_llama_bench_validation(
     if spec_type_val is None and gguf_has_mtp(model_path) and spec_draft_n_max > 0:
         spec_type_val = "draft-mtp"
 
-    if spec_type_val is not None and spec_type_val.lower() != "none" and spec_draft_n_max > 0:
+    is_ngram = is_ngram_spec_type(spec_type_val)
+    if (
+        spec_type_val is not None
+        and spec_type_val.lower() != "none"
+        and (spec_draft_n_max > 0 or is_ngram)
+    ):
         cmd += [
             "--spec-type",
             spec_type_val.lower(),
-            "--spec-draft-n-max",
-            str(spec_draft_n_max),
-            "--spec-draft-type-k",
-            cache_type_k,
-            "--spec-draft-type-v",
-            cache_type_v,
-            "-ngld",
-            str(ngl),
         ]
+        if spec_draft_n_max > 0:
+            cmd += [
+                "--spec-draft-n-max",
+                str(spec_draft_n_max),
+                "--spec-draft-type-k",
+                cache_type_k,
+                "--spec-draft-type-v",
+                cache_type_v,
+                "-ngld",
+                str(ngl),
+            ]
         if spec_draft_model:
             draft_path = Path(spec_draft_model)
             if not draft_path.is_absolute():

@@ -456,6 +456,13 @@ def effective_vram_limit_mb(
     return min(float(configured_mb), max(0.0, float(free_vram_mb) - headroom))
 
 
+def is_ngram_spec_type(spec_type: str | None) -> bool:
+    """Return True if spec_type specifies ngram-based statistical decoding."""
+    if not spec_type:
+        return False
+    return any(t.strip().startswith("ngram-") for t in str(spec_type).lower().split(","))
+
+
 def estimate_vram_mb(
     model_path: Path,
     ctx_size: int,
@@ -523,14 +530,21 @@ def estimate_vram_mb(
         model_path=model_path,
     )
 
-    spec_enabled = bool(spec_type and spec_type.lower() != "none" and spec_draft_n_max > 0)
+    is_ngram = is_ngram_spec_type(spec_type)
+    spec_enabled = bool(
+        spec_type and spec_type.lower() != "none" and (spec_draft_n_max > 0 or is_ngram)
+    )
     # MoE expert-CPU offload: speculative workspace is already covered by the
     # offload shrink — charging flat 512+256*n false-rejects embedded-MTP
-    # (measured 131k n=4 = 4.2GB actual vs 9104 est). Keep workspace for dense.
+    # (measured 131k n=4 = 4.2GB actual vs 9104 est). Pure ngram speculation
+    # has 0 MB VRAM cost (universal statistical lookup). Keep workspace for dense neural spec.
+    is_pure_ngram = is_ngram and not any(
+        t.strip().startswith("draft-") for t in str(spec_type).lower().split(",")
+    )
     moe_spec = n_cpu_moe is not None and int(n_cpu_moe) > 0 and spec_enabled
     spec_workspace_mb = (
         0.0
-        if (not spec_enabled) or moe_spec
+        if (not spec_enabled) or moe_spec or is_pure_ngram
         else VRAM_SPECULATIVE_BASE_MB + VRAM_SPECULATIVE_PER_DRAFT_TOKEN_MB * spec_draft_n_max
     )
 
@@ -640,7 +654,10 @@ def resolve_spec_estimate_args(
     """
     if spec_type is None and gguf_has_mtp(Path(model_path)):
         spec_type = "mtp"
-    spec_enabled = bool(spec_type and spec_type.lower() != "none" and spec_draft_n_max > 0)
+    is_ngram = is_ngram_spec_type(spec_type)
+    spec_enabled = bool(
+        spec_type and spec_type.lower() != "none" and (spec_draft_n_max > 0 or is_ngram)
+    )
     return spec_type, spec_enabled, draft_path if spec_enabled else None
 
 
@@ -1109,21 +1126,25 @@ class LlamaServerRunner:
                 f"  [MTP] Multi-Token Prediction detected for {self.intent.model_path.name}. Auto-selected spec-type: {spec_type_val}"
             )
 
+        is_ngram = is_ngram_spec_type(spec_type_val)
         if (
             spec_type_val is not None
             and spec_type_val.lower() != "none"
-            and self.intent.spec_draft_n_max > 0
+            and (self.intent.spec_draft_n_max > 0 or is_ngram)
         ):
             cmd += [
                 "--spec-type",
                 spec_type_val,
-                "--spec-draft-n-max",
-                str(self.intent.spec_draft_n_max),
-                "--spec-draft-type-k",
-                cache_type_k,
-                "--spec-draft-type-v",
-                cache_type_v,
             ]
+            if self.intent.spec_draft_n_max > 0:
+                cmd += [
+                    "--spec-draft-n-max",
+                    str(self.intent.spec_draft_n_max),
+                    "--spec-draft-type-k",
+                    cache_type_k,
+                    "--spec-draft-type-v",
+                    cache_type_v,
+                ]
             if self.intent.spec_draft_model:
                 draft_path = Path(self.intent.spec_draft_model)
                 if not draft_path.is_absolute():

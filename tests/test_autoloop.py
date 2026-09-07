@@ -1203,6 +1203,20 @@ class TestAutoLoopCpuPreflight(TestAutoLoop):
         self.assertIn("NUMA", autoloop.SEARCH_SPACE)
         self.assertEqual(autoloop.SEARCH_SPACE["NUMA"], [None, "distribute", "isolate"])
 
+    def test_search_space_includes_spec_type(self):
+        self.assertIn("SPEC_TYPE", autoloop.SEARCH_SPACE)
+        self.assertEqual(autoloop.SEARCH_SPACE["SPEC_TYPE"], [None, "ngram-cache"])
+
+    def test_neighbor_generation_reaches_ngram_cache(self):
+        strategy = SearchStrategy(autoloop.SEARCH_SPACE, use_pareto_tiebreaker=True)
+        base_cfg = self._full_config(SPEC_TYPE=None)
+        neighbors = strategy.get_neighbors(base_cfg)
+        ngram_neighbors = [n for n in neighbors if n.changed == "SPEC_TYPE"]
+        self.assertEqual(len(ngram_neighbors), 1)
+        self.assertIsNone(ngram_neighbors[0].old)
+        self.assertEqual(ngram_neighbors[0].new, "ngram-cache")
+        self.assertEqual(ngram_neighbors[0].config["SPEC_TYPE"], "ngram-cache")
+
     @patch(
         "autoloop.detect_hardware_capabilities",
         return_value={"has_gpu": False, "physical_cores": 8, "ram_mb": 16384.0},

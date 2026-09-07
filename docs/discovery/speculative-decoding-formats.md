@@ -93,6 +93,19 @@ Five draftless (statistical) variants ship in upstream llama.cpp. All search the
 
 - The 2026-07-20 small-model TPS matrix has **no ngram row** — candidate Search neighbor on coding-10 (0 MB, universal); prior is negative on A3B-class per [external measurement](./capability-extraction-harness.md) §3/§8.
 
+### Refuted on this rig: `ngram-cache` on dense model (Trial 0593e117, 2026-09-07)
+
+**Tested 2026-09-07 (Qwen3.8-4B-Distill Q4_K_M @ 131072 ctx, q4_0 KV, `--spec-type ngram-cache`).**
+Full Trial measured on coding-10 + Claw-Eval full (15 tasks) vs Baseline `--spec-type none` (Trial 6069530a):
+
+- **TPS:** 72.1 vs 94.2 t/s (**-23.5% slower**); bench_tg 60.3 vs 74.9 t/s (-19.5%).
+- **Coding score:** 0.5900 vs 0.6400 (-7.8%).
+- **Agentic score:** 0.8667 vs 0.8667 (tied).
+- **Draft acceptance:** Extremely poor in practice (~1.7% to 9.5% across most tasks, max 33.9% on boilerplate).
+- **Memory footprint / leak:** `ngram-cache` allocates an unbounded dynamic n-gram map (`std::map<common_ngram, common_ngram_cache_part>`) in host RAM. Measured initial RSS was 3,249 MB (vs 380 MB baseline), growing by **~160 MB permanently per request**, risking pagefile thrashing and RAM circuit-breaker kills on extended runs.
+
+**Verdict:** `ngram-cache` is a net-loss on fast dense targets. Verification overhead dominates and draft acceptance is too low to offset it. Reached cleanly as a Search Neighbor, but strictly discarded against `--spec-type none`.
+
 ### Refuted on this rig: `ngram-simple` (with healthy MTP)
 
 **Tested 2026-08-20 (Qwen3.8-27B via Hermes, IQ3_S @ 131k, ts 70,30,

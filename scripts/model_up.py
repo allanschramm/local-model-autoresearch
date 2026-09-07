@@ -303,17 +303,23 @@ def fingerprint_flags(engine: dict, *, model_path: Path, server_binary: Path) ->
     draft_n_max = int(engine.get("SPEC_DRAFT_N_MAX") or 0)
     if spec_type is None and gguf_has_mtp(model_path) and draft_n_max > 0:
         spec_type = _probe_spec_type(server_binary)
-    if spec_type is not None and str(spec_type).lower() != "none" and draft_n_max > 0:
+    is_ngram = spec_type and any(
+        t.strip().startswith("ngram-") for t in str(spec_type).lower().split(",")
+    )
+    if spec_type is not None and str(spec_type).lower() != "none" and (draft_n_max > 0 or is_ngram):
         cmd += [
             "--spec-type",
             str(spec_type),
-            "--spec-draft-n-max",
-            str(draft_n_max),
-            "--spec-draft-type-k",
-            str(cache_k),
-            "--spec-draft-type-v",
-            str(cache_v),
         ]
+        if draft_n_max > 0:
+            cmd += [
+                "--spec-draft-n-max",
+                str(draft_n_max),
+                "--spec-draft-type-k",
+                str(cache_k),
+                "--spec-draft-type-v",
+                str(cache_v),
+            ]
         draft = engine.get("SPEC_DRAFT_MODEL")
         if draft:
             draft_path = Path(str(draft))

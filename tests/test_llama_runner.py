@@ -1599,6 +1599,46 @@ class TestVramHeadroomPreflight(unittest.TestCase):
         self.assertEqual(reason, "")
         self.assertLess(est, 7900.0)
 
+    def test_is_ngram_spec_type(self):
+        self.assertTrue(llama_runner.is_ngram_spec_type("ngram-cache"))
+        self.assertTrue(llama_runner.is_ngram_spec_type("ngram-simple"))
+        self.assertTrue(llama_runner.is_ngram_spec_type("draft-mtp,ngram-mod"))
+        self.assertFalse(llama_runner.is_ngram_spec_type("draft-mtp"))
+        self.assertFalse(llama_runner.is_ngram_spec_type("none"))
+        self.assertFalse(llama_runner.is_ngram_spec_type(None))
+
+    def test_estimate_vram_pure_ngram_zero_workspace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "model.gguf"
+            model.write_bytes(b"x")
+            with patch("pathlib.Path.stat", return_value=MagicMock(st_size=4 * 1024 * 1024 * 1024)):
+                base_est = llama_runner.estimate_vram_mb(
+                    model, 2048, "q4_0", "q4_0", spec_type=None
+                )
+                ngram_est = llama_runner.estimate_vram_mb(
+                    model, 2048, "q4_0", "q4_0", spec_type="ngram-cache", spec_draft_n_max=0
+                )
+            self.assertEqual(base_est, ngram_est)
+
+    def test_build_cmd_ngram_cache_without_spec_draft_n_max(self):
+        intent = ServerIntent(
+            model_path=Path("models/test.gguf"),
+            ctx_size=2048,
+            kv_cache="q4_0",
+            flash_attn="on",
+            spec_type="ngram-cache",
+            spec_draft_n_max=0,
+        )
+        with patch.object(
+            llama_runner, "resolve_llama_server", return_value=Path("llama-server.exe")
+        ):
+            runner = LlamaServerRunner(intent)
+            cmd = runner._build_cmd(8080)
+        self.assertIn("--spec-type", cmd)
+        idx = cmd.index("--spec-type")
+        self.assertEqual(cmd[idx + 1], "ngram-cache")
+        self.assertNotIn("--spec-draft-n-max", cmd)
+
 
 if __name__ == "__main__":
     unittest.main()
