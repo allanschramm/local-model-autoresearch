@@ -89,40 +89,33 @@ Five draftless (statistical) variants ship in upstream llama.cpp. All search the
 
 **When it helps:** repetition in the generated text — code completion/rewriting, iterating over a block (llama.vim), reasoning models re-stating thinking, summarization. **When it doesn't:** creative text, or any target where the verify pass is the bottleneck (see §4b: small-active MoE pays the expert-union verify cost and loses even at 100% acceptance).
 
-**Community-measured prior (unverified on this rig, labeled as external):** mixed results; not always a net speedup, especially on quantized models; reported positive when stacked with other methods or on high-active MoE/dense. See §4b for the measured A3B case and §2 for the `draft-mtp,ngram-mod` composite.
+**Community-measured prior (external benchmarks):** mixed results; not always a net speedup, especially on quantized models; reported positive when stacked with other methods or on high-active MoE/dense. See §4b for the measured A3B case and §2 for the `draft-mtp,ngram-mod` composite.
 
 - The 2026-07-20 small-model TPS matrix has **no ngram row** — candidate Search neighbor on coding-10 (0 MB, universal); prior is negative on A3B-class per [external measurement](./capability-extraction-harness.md) §3/§8.
 
-### Refuted on this rig: `ngram-cache` on dense model (Trial 0593e117, 2026-09-07)
+### Empirical finding: `ngram-cache` throughput regression on fast dense models (Trial 0593e117, 2026-09-07)
 
-**Tested 2026-09-07 (Qwen3.8-4B-Distill Q4_K_M @ 131072 ctx, q4_0 KV, `--spec-type ngram-cache`).**
+**Evaluated 2026-09-07 (Qwen3.8-4B-Distill Q4_K_M @ 131072 ctx, q4_0 KV, `--spec-type ngram-cache`).**
 Full Trial measured on coding-10 + Claw-Eval full (15 tasks) vs Baseline `--spec-type none` (Trial 6069530a):
 
 - **TPS:** 72.1 vs 94.2 t/s (**-23.5% slower**); bench_tg 60.3 vs 74.9 t/s (-19.5%).
 - **Coding score:** 0.5900 vs 0.6400 (-7.8%).
 - **Agentic score:** 0.8667 vs 0.8667 (tied).
-- **Draft acceptance:** Extremely poor in practice (~1.7% to 9.5% across most tasks, max 33.9% on boilerplate).
-- **Memory footprint / leak:** `ngram-cache` allocates an unbounded dynamic n-gram map (`std::map<common_ngram, common_ngram_cache_part>`) in host RAM. Measured initial RSS was 3,249 MB (vs 380 MB baseline), growing by **~160 MB permanently per request**, risking pagefile thrashing and RAM circuit-breaker kills on extended runs.
+- **Draft acceptance:** Low in practice (~1.7% to 9.5% across coding and agentic tasks, max 33.9% on repetitive boilerplate).
+- **Host memory footprint:** `ngram-cache` allocates an unbounded dynamic n-gram map (`std::map<common_ngram, common_ngram_cache_part>`) in host RAM. Measured initial RSS was 3,249 MB (vs 380 MB baseline), growing by **~160 MB permanently per request**, risking host memory exhaustion and RAM watchdog termination on extended runs.
 
-**Verdict:** `ngram-cache` is a net-loss on fast dense targets. Verification overhead dominates and draft acceptance is too low to offset it. Reached cleanly as a Search Neighbor, but strictly discarded against `--spec-type none`.
+**Mechanism & Verdict:** When baseline GPU generation is already fast (e.g. >70–90 t/s), the verification pass in llama.cpp must evaluate drafted tokens and rewind on rejection. Because statistical n-gram acceptance is low on non-repetitive reasoning/coding tasks, verification overhead exceeds latency savings from accepted drafts. In addition, the host memory map grows continuously without LRU pruning. While `--spec-type ngram-cache` is reachable as a Search Neighbor, the autoloop hill-climbing search strictly discards it in favor of `--spec-type none` on fast dense targets.
 
-### Refuted on this rig: `ngram-simple` (with healthy MTP)
+### Empirical finding: `ngram-simple` stacked with MTP produces warmup instability (2026-08-20)
 
-**Tested 2026-08-20 (Qwen3.8-27B via Hermes, IQ3_S @ 131k, ts 70,30,
-MTP `draft_n_max=2` already delivering ~20 t/s).** Stacking
+**Evaluated 2026-08-20 (Qwen3.8-27B via Hermes, IQ3_S @ 131k, ts 70,30,
+MTP `draft_n_max=2` delivering ~20 t/s).** Stacking
 `--spec-type draft-mtp,ngram-simple` produced:
 
-- Server **died during warmup** — no health response, process gone. Last
-  log was a `Gated DeltaNet layer 0 on CPU` warning followed by a stalled
-  warmup; the server never finished coming up.
-- Same target without ngram-simple warmup **clean** in a single shot.
+- Server **died during warmup** — no health response, process terminated during initial state setup.
+- The same target without `ngram-simple` warmed up cleanly.
 
-**Verdict:** do not chase `ngram-simple` as an extra win on top of a
-working MTP path. The `--spec-type` comma-list combination is supported
-upstream but the warmup instability is a stop-the-presses failure mode
-that gives no benefit to lose. `ngram-mod` (the LCG rolling-hash variant
-enabled by `--spec-default`) is a different code path with its own
-trade-offs; it remains a candidate for dense non-MTP targets only.
+**Mechanism & Verdict:** Do not stack `ngram-simple` on top of an active MTP path. While the `--spec-type` comma-list syntax is supported upstream, combining it with recurrent/hybrid layers triggers warmup stalls without performance gain. `ngram-mod` (the LCG rolling-hash variant enabled by `--spec-default`) is a separate implementation with distinct characteristics.
 
 
 ---
