@@ -1607,6 +1607,21 @@ class TestVramHeadroomPreflight(unittest.TestCase):
         self.assertFalse(llama_runner.is_ngram_spec_type("none"))
         self.assertFalse(llama_runner.is_ngram_spec_type(None))
 
+    def test_is_pure_ngram_spec_type(self):
+        self.assertTrue(llama_runner.is_pure_ngram_spec_type("ngram-cache"))
+        self.assertTrue(llama_runner.is_pure_ngram_spec_type("ngram-simple"))
+        self.assertFalse(llama_runner.is_pure_ngram_spec_type("draft-mtp,ngram-mod"))
+        self.assertFalse(llama_runner.is_pure_ngram_spec_type("draft-mtp"))
+        self.assertFalse(llama_runner.is_pure_ngram_spec_type("none"))
+        self.assertFalse(llama_runner.is_pure_ngram_spec_type(None))
+
+    def test_is_spec_enabled(self):
+        self.assertTrue(llama_runner.is_spec_enabled("ngram-cache", 0))
+        self.assertTrue(llama_runner.is_spec_enabled("draft-mtp", 2))
+        self.assertFalse(llama_runner.is_spec_enabled("draft-mtp", 0))
+        self.assertFalse(llama_runner.is_spec_enabled("none", 4))
+        self.assertFalse(llama_runner.is_spec_enabled(None, 0))
+
     def test_estimate_vram_pure_ngram_zero_workspace(self):
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "model.gguf"

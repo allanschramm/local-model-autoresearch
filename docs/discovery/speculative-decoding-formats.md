@@ -95,16 +95,15 @@ Five draftless (statistical) variants ship in upstream llama.cpp. All search the
 
 ### Empirical finding: `ngram-cache` throughput regression on fast dense models (Trial 0593e117, 2026-09-07)
 
-**Evaluated 2026-09-07 (Qwen3.8-4B-Distill Q4_K_M @ 131072 ctx, q4_0 KV, `--spec-type ngram-cache`).**
-Full Trial measured on coding-10 + Claw-Eval full (15 tasks) vs Baseline `--spec-type none` (Trial 6069530a):
+Measured on coding-10 + Claw-Eval full (15 tasks) vs Baseline `--spec-type none` (Trial 6069530a). Full run log and task breakdown: [session log](../sessions/2026-09-07-issue-57-ngram-cache-trial.md).
 
-- **TPS:** 72.1 vs 94.2 t/s (**-23.5% slower**); bench_tg 60.3 vs 74.9 t/s (-19.5%).
-- **Coding score:** 0.5900 vs 0.6400 (-7.8%).
+- **TPS:** -23.5% slower (72.1 vs 94.2 t/s; bench_tg 60.3 vs 74.9 t/s).
+- **Coding score:** -7.8% (0.5900 vs 0.6400).
 - **Agentic score:** 0.8667 vs 0.8667 (tied).
 - **Draft acceptance:** Low in practice (~1.7% to 9.5% across coding and agentic tasks, max 33.9% on repetitive boilerplate).
-- **Host memory footprint:** `ngram-cache` allocates an unbounded dynamic n-gram map (`std::map<common_ngram, common_ngram_cache_part>`) in host RAM. Measured initial RSS was 3,249 MB (vs 380 MB baseline), growing by **~160 MB permanently per request**, risking host memory exhaustion and RAM watchdog termination on extended runs.
+- **Host memory footprint:** `ngram-cache` maintains an unbounded dynamic n-gram table (`std::map<common_ngram, common_ngram_cache_part>`) in host RAM that grows continuously across requests without LRU eviction, risking host memory exhaustion and RAM watchdog termination on extended runs.
 
-**Mechanism & Verdict:** When baseline GPU generation is already fast (e.g. >70–90 t/s), the verification pass in llama.cpp must evaluate drafted tokens and rewind on rejection. Because statistical n-gram acceptance is low on non-repetitive reasoning/coding tasks, verification overhead exceeds latency savings from accepted drafts. In addition, the host memory map grows continuously without LRU pruning. While `--spec-type ngram-cache` is reachable as a Search Neighbor, the autoloop hill-climbing search strictly discards it in favor of `--spec-type none` on fast dense targets.
+**Mechanism & Pareto Verdict:** When baseline GPU generation is already fast (>70–90 t/s), llama.cpp verification passes must evaluate drafted tokens and rewind on rejection. Because statistical n-gram acceptance is low on reasoning and coding tasks, verification overhead exceeds latency savings from accepted drafts. Relative to the baseline at the same Fingerprint, candidate Trial `0593e117` is strictly **dominated** under multi-objective Pareto rules (lower TPS, lower coding, tied ctx and agentic). The autoloop hill-climbing search discards `ngram-cache` in favor of `--spec-type none` on fast dense targets.
 
 ### Empirical finding: `ngram-simple` stacked with MTP produces warmup instability (2026-08-20)
 

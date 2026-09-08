@@ -23,7 +23,12 @@ _ensure_repo_root_on_sys_path()
 
 from autoresearch.core import fingerprint
 from autoresearch.core.fingerprint import FingerprintError
-from autoresearch.core.llama_runner import IS_WINDOWS, resolve_llama_server, resolve_model_path
+from autoresearch.core.llama_runner import (
+    IS_WINDOWS,
+    is_spec_enabled,
+    resolve_llama_server,
+    resolve_model_path,
+)
 from autoresearch.core.model_arch import gguf_has_mtp, resolve_n_cpu_moe
 from autoresearch.core.single_load import SingleLoadError, enforce_single_load
 
@@ -303,10 +308,7 @@ def fingerprint_flags(engine: dict, *, model_path: Path, server_binary: Path) ->
     draft_n_max = int(engine.get("SPEC_DRAFT_N_MAX") or 0)
     if spec_type is None and gguf_has_mtp(model_path) and draft_n_max > 0:
         spec_type = _probe_spec_type(server_binary)
-    is_ngram = spec_type and any(
-        t.strip().startswith("ngram-") for t in str(spec_type).lower().split(",")
-    )
-    if spec_type is not None and str(spec_type).lower() != "none" and (draft_n_max > 0 or is_ngram):
+    if is_spec_enabled(spec_type, draft_n_max):
         cmd += [
             "--spec-type",
             str(spec_type),

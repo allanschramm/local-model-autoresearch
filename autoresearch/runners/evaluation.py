@@ -38,7 +38,7 @@ from autoresearch.core.llama_runner import (
     LlamaServerRunner,
     ServerIntent,
     dedicated_vram_kill_ceil,
-    is_ngram_spec_type,
+    is_spec_enabled,
     preflight_host_memory_for_intent,
     preflight_vram_for_intent,
     resolve_llama_cli,
@@ -315,12 +315,7 @@ def run_llama_bench_validation(
     if spec_type_val is None and gguf_has_mtp(model_path) and spec_draft_n_max > 0:
         spec_type_val = "draft-mtp"
 
-    is_ngram = is_ngram_spec_type(spec_type_val)
-    if (
-        spec_type_val is not None
-        and spec_type_val.lower() != "none"
-        and (spec_draft_n_max > 0 or is_ngram)
-    ):
+    if is_spec_enabled(spec_type_val, spec_draft_n_max):
         cmd += [
             "--spec-type",
             spec_type_val.lower(),
