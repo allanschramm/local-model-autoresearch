@@ -178,6 +178,34 @@ class TestRun(unittest.TestCase):
         self.assertIn("--no-mmap", command)
         self.assertNotIn("--mmap", command)
 
+    @patch(
+        "autoresearch.runners.evaluation.detect_used_total_vram_mb", side_effect=FileNotFoundError
+    )
+    @patch("autoresearch.runners.evaluation.subprocess.Popen")
+    @patch("autoresearch.runners.evaluation.resolve_llama_cli", return_value=Path("llama-cli.exe"))
+    @patch("autoresearch.runners.evaluation.resolve_vram_limit_mb", return_value=7900.0)
+    def test_llama_bench_ngram_cache_omits_draft_flags(
+        self, _mock_limit, mock_resolve, mock_popen, _mock_smi
+    ):
+        """Issue #57: ngram spec has no draft model, so draft-only flags stay off.
+
+        Pre-#57 the guard required ``spec_draft_n_max > 0``, which dropped
+        ``--spec-type`` entirely for pure ngram configs.
+        """
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = ("Generation: 7.4 t/s", "")
+        mock_proc.returncode = 0
+        mock_popen.return_value = mock_proc
+
+        from autoresearch.runners.evaluation import run_llama_bench_validation
+
+        run_llama_bench_validation(Path("model.gguf"), spec_type="ngram-cache", spec_draft_n_max=0)
+
+        command = mock_popen.call_args.args[0]
+        self.assertEqual(command[command.index("--spec-type") + 1], "ngram-cache")
+        self.assertNotIn("--spec-draft-n-max", command)
+        self.assertNotIn("-ngld", command)
+
     @patch("autoresearch.runners.evaluation.run_llama_bench_validation", return_value=45.0)
     @patch("autoresearch.runners.evaluation.LlamaServerRunner")
     @patch("autoresearch.runners.evaluation.run_coding")

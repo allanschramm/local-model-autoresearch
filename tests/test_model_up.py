@@ -432,6 +432,27 @@ def test_model_up_fingerprint_auto_mtp_matches_trial_runner(tmp_path, monkeypatc
     assert cmd[cmd.index("--spec-draft-n-max") + 1] == "2"
 
 
+def test_model_up_fingerprint_ngram_cache_omits_draft_flags(tmp_path, monkeypatch):
+    """Issue #57: pure ngram spec is draftless, so draft flags must not leak in.
+
+    Pre-#57 the guard required ``draft_n_max > 0``, so an ngram Fingerprint
+    silently dropped ``--spec-type`` and never reached the server.
+    """
+    _alias_env(tmp_path, monkeypatch)
+    _seed_fingerprint(
+        monkeypatch,
+        tmp_path,
+        engine={"CTX_SIZE": 32768, "SPEC_TYPE": "ngram-cache", "SPEC_DRAFT_N_MAX": 0},
+    )
+    cfg = model_up.load_alias_config(tmp_path / "models" / "aliases" / "demo" / "config.yaml")
+
+    cmd, _ = model_up.build_command(cfg)
+
+    assert cmd[cmd.index("--spec-type") + 1] == "ngram-cache"
+    assert "--spec-draft-n-max" not in cmd
+    assert "--spec-draft-model" not in cmd
+
+
 def test_model_up_fingerprint_explicit_n_cpu_moe_passthrough(tmp_path, monkeypatch):
     _alias_env(tmp_path, monkeypatch)
     _seed_fingerprint(monkeypatch, tmp_path, engine={"CTX_SIZE": 32768, "N_CPU_MOE": 40})
